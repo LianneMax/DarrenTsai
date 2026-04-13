@@ -20,9 +20,11 @@ export default function Newsletter() {
         return;
       }
 
-      const res = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+      // Google Apps Script requires no-cors — response will be opaque but data is written
+      await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           email: email.trim(),
           source: 'newsletter',
@@ -30,7 +32,6 @@ export default function Newsletter() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed');
       setStatus('success');
     } catch {
       setStatus('error');

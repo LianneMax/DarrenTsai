@@ -84,8 +84,8 @@ export default function Hero() {
           <div className="hero-stat">
             <span className="hero-stat-label">Typical HELOAN rate range</span>
             <div className="hero-stat-value">
-              <span className="hero-stat-num hero-stat-teal">8.99</span>
-              <span className="hero-stat-range hero-stat-teal"> – 13.99%</span>
+              <span className="hero-stat-num">8.99</span>
+              <span className="hero-stat-range"> – 13.99%</span>
             </div>
           </div>
 

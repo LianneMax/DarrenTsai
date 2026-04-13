@@ -49,7 +49,9 @@ function getOrCreateSheet(ss, name, headers) {
 
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
+    // Accepts both application/json and text/plain (no-cors sends text/plain)
+    const raw = e.postData ? e.postData.contents : '{}';
+    const data = JSON.parse(raw);
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
     if (data.source === 'newsletter') {

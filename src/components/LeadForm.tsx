@@ -107,13 +107,14 @@ export default function LeadForm({ currentInputs }: Props) {
         return;
       }
 
-      const res = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+      // Google Apps Script requires no-cors — response will be opaque but data is written
+      await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Network response was not ok');
       setStatus('success');
     } catch {
       setStatus('error');
