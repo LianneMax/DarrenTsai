@@ -1,23 +1,22 @@
 /**
  * Darren Tsai Mortgage Calculator — Google Apps Script
  *
+ * ⚠️  IMPORTANT: You must re-deploy after every code change.
+ *     Deploy → Manage deployments → edit → New version → Deploy
+ *
  * SETUP INSTRUCTIONS:
  * 1. Open your Google Sheet:
  *    https://docs.google.com/spreadsheets/d/1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI/edit
  * 2. Click Extensions → Apps Script
- * 3. Delete any existing code and paste this entire file
+ * 3. Delete all existing code and paste this entire file
  * 4. Click Save (disk icon)
- * 5. Click Deploy → New deployment
- * 6. Click the gear icon next to "Type" → Select "Web app"
- * 7. Set:
- *      Description:   Mortgage Calculator Leads
- *      Execute as:    Me
- *      Who has access: Anyone
- * 8. Click Deploy → Authorize access (follow prompts)
- * 9. Copy the Web App URL — it looks like:
- *    https://script.google.com/macros/s/XXXXXXXXXX/exec
- * 10. In Netlify → Site settings → Environment variables, add:
- *      VITE_GOOGLE_SHEET_WEBHOOK_URL = (paste the URL from step 9)
+ * 5. Click Deploy → New deployment  (or Manage deployments → edit existing)
+ * 6. Type: Web app
+ *    Execute as: Me
+ *    Who has access: Anyone
+ * 7. Click Deploy → authorize → copy the Web App URL
+ * 8. In Netlify → Environment variables:
+ *    VITE_GOOGLE_SHEET_WEBHOOK_URL = <paste URL>
  */
 
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
@@ -37,7 +36,6 @@ function getOrCreateSheet(ss, name, headers) {
   if (!sheet) {
     sheet = ss.insertSheet(name);
     sheet.appendRow(headers);
-    // Style the header row
     const headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#223d55');
@@ -49,34 +47,32 @@ function getOrCreateSheet(ss, name, headers) {
 
 function doPost(e) {
   try {
-    // Accepts both application/json and text/plain (no-cors sends text/plain)
-    const raw = e.postData ? e.postData.contents : '{}';
+    // Browser sends text/plain with no-cors mode — body is still valid JSON
+    const raw = (e.postData && e.postData.contents) ? e.postData.contents : '{}';
     const data = JSON.parse(raw);
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
     if (data.source === 'newsletter') {
-      // Newsletter sign-up
       const sheet = getOrCreateSheet(ss, 'Newsletter', NEWSLETTER_HEADERS);
       sheet.appendRow([
         data.timestamp || new Date().toISOString(),
-        data.email || '',
-        data.source || 'newsletter'
+        data.email     || '',
+        'newsletter'
       ]);
     } else {
-      // Lead form submission
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
       sheet.appendRow([
-        data.timestamp || new Date().toISOString(),
-        data.firstName  || '',
-        data.lastName   || '',
-        data.email      || '',
-        data.phone      || '',
-        data.loanAmount || '',
-        data.termYears  || '',
-        data.annualRate || '',
-        data.message    || '',
-        data.subscribeNewsletter ? 'Yes' : 'No',
-        data.source     || 'calculator'
+        data.timestamp            || new Date().toISOString(),
+        data.firstName            || '',
+        data.lastName             || '',
+        data.email                || '',
+        data.phone                || '',
+        data.loanAmount           || '',
+        data.termYears            || '',
+        data.annualRate           || '',
+        data.message              || '',
+        data.subscribeNewsletter  ? 'Yes' : 'No',
+        data.source               || 'calculator'
       ]);
     }
 
@@ -91,9 +87,8 @@ function doPost(e) {
   }
 }
 
-// Health-check endpoint — visiting the URL directly returns { status: "ok" }
 function doGet() {
   return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok', service: 'Darren Tsai Mortgage Calculator' }))
+    .createTextOutput(JSON.stringify({ status: 'ok' }))
     .setMimeType(ContentService.MimeType.JSON);
 }
