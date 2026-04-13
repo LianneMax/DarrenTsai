@@ -24,9 +24,9 @@ export default function Hero() {
           </span>
 
           <h1 className="hero-headline hero-anim hero-anim-2">
-            Your mortgage should build{' '}
-            <em className="hero-headline-accent">wealth</em>
-            , not just house you.
+            Your mortgage should<br />
+            build <em className="hero-headline-accent">wealth</em>,<br />
+            not just house you.
           </h1>
 
           <p className="hero-sub hero-anim hero-anim-3">
@@ -100,7 +100,7 @@ export default function Hero() {
           </div>
 
           <button onClick={scrollToCalc} className="btn btn-rose btn-full hero-card-btn">
-            Run my free estimate
+            Run my <span className="hero-btn-free">FREE</span> Estimate
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>

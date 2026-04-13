@@ -719,6 +719,14 @@ p {
   border-radius: 10px;
 }
 
+.hero-btn-free {
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
 /* Entry animations */
 .hero-anim          { opacity: 0; animation: fadeUp 0.8s ease forwards; }
 .hero-anim-1        { animation-delay: 0.1s; }
