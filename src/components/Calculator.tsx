@@ -228,16 +228,19 @@ export default function Calculator({ inputs, setInputs, summary }: Props) {
                 label="Total Interest Paid"
                 value={summary.totalInterest}
                 color="var(--rose)"
+                size="1.55rem"
               />
               <StatCard
                 label="Total Cost of Loan"
                 value={summary.totalCost}
                 color="var(--navy)"
+                size="1.55rem"
               />
               <StatCard
                 label="Payoff Date"
                 value={summary.payoffDate}
                 color="var(--teal)"
+                size="1.55rem"
                 isString
               />
             </div>
