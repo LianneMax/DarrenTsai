@@ -443,14 +443,41 @@ p {
 }
 
 .nav-logo {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--white);
   display: flex;
   align-items: center;
   gap: 10px;
+  text-decoration: none;
+  color: var(--white);
+  transition: opacity 0.2s ease;
+}
+
+.nav-logo:hover { opacity: 0.85; }
+
+.nav-logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nav-logo-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.2;
   transition: color 0.3s ease;
 }
+
+.nav-logo-title {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  transition: color 0.3s ease;
+}
+
+.nav-scrolled .nav-logo-name  { color: var(--navy); }
+.nav-scrolled .nav-logo-title { color: var(--text-muted); }
 
 /* Avatar circle in nav */
 .nav-avatar {
@@ -511,7 +538,6 @@ p {
 
 .nav-link:hover::after { width: 100%; }
 .nav-link:hover { color: var(--white); }
-.nav-scrolled .nav-logo { color: var(--navy); }
 .nav-scrolled .nav-link { color: var(--text-dark); }
 .nav-scrolled .nav-link:hover { color: var(--teal); }
 

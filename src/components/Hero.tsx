@@ -24,9 +24,9 @@ export default function Hero() {
           </span>
 
           <h1 className="hero-headline hero-anim hero-anim-2">
-            Your mortgage should build{' '}
-            <em className="hero-headline-accent">wealth</em>,
-            not just house you.
+            Most mortgages cost you money.
+            Yours should build{' '}
+            <em className="hero-headline-accent">wealth</em>.
           </h1>
 
           <p className="hero-sub hero-anim hero-anim-3">

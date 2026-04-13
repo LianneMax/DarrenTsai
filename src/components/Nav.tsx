@@ -12,29 +12,34 @@ export default function Nav() {
   return (
     <nav className={`nav${scrolled ? ' nav-scrolled' : ''}`}>
       <div className="nav-inner container">
-        <span className="nav-logo">
+
+        <a href="#" className="nav-logo" aria-label="Darren Tsai — Home">
           <div className="nav-avatar">
             <img
               src="/darren.jpg"
-              alt="Darren Tsai"
+              alt=""
               className="nav-avatar-img"
               onError={(e) => {
-                // Fallback initials if photo not uploaded yet
                 (e.currentTarget as HTMLImageElement).style.display = 'none';
-                const next = e.currentTarget.nextElementSibling as HTMLElement | null;
-                if (next) next.style.display = 'flex';
+                const fb = e.currentTarget.nextElementSibling as HTMLElement | null;
+                if (fb) fb.style.display = 'flex';
               }}
             />
             <span className="nav-avatar-fallback" aria-hidden="true">DT</span>
           </div>
-          Darren Tsai
-        </span>
+          <div className="nav-logo-text">
+            <span className="nav-logo-name">Darren Tsai</span>
+            <span className="nav-logo-title">Mortgage &amp; Real Estate Broker</span>
+          </div>
+        </a>
+
         <div className="nav-links">
           <a href="#calculator" className="nav-link">Calculator</a>
           <a href="#education" className="nav-link">Education</a>
           <a href="#contact" className="nav-link">Contact</a>
           <a href="#contact" className="btn btn-rose btn-sm">Book a Call</a>
         </div>
+
       </div>
     </nav>
   );
