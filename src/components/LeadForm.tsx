@@ -35,12 +35,17 @@ const TERM_OPTIONS = [
   { value: '10', label: '10 Years' },
 ];
 
+const SUBMITTED_KEY = 'dt_lead_submitted';
+
 export default function LeadForm({ currentInputs }: Props) {
   const headingRef = useScrollReveal<HTMLDivElement>();
   const formCardRef = useScrollReveal<HTMLDivElement>(120);
 
+  const saved = localStorage.getItem(SUBMITTED_KEY);
+  const savedName = saved ? JSON.parse(saved).firstName : '';
+
   const [form, setForm] = useState<FormState>({
-    firstName: '',
+    firstName: savedName,
     lastName: '',
     email: '',
     phone: '',
@@ -52,7 +57,9 @@ export default function LeadForm({ currentInputs }: Props) {
   });
 
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
+    saved ? 'success' : 'idle'
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   const set = (key: keyof FormState) => (
@@ -103,6 +110,7 @@ export default function LeadForm({ currentInputs }: Props) {
       if (!GOOGLE_SHEET_WEBHOOK_URL) {
         // Simulate a short delay when no webhook is configured
         await new Promise((r) => setTimeout(r, 800));
+        localStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
         setStatus('success');
         return;
       }
@@ -115,6 +123,7 @@ export default function LeadForm({ currentInputs }: Props) {
         body: JSON.stringify(payload),
       });
 
+      localStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
       setStatus('success');
     } catch {
       setStatus('error');
