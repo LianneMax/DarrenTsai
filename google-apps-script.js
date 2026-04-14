@@ -45,6 +45,21 @@ function getOrCreateSheet(ss, name, headers) {
   return sheet;
 }
 
+function isDuplicateLead(sheet, email, phone) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return false; // only header row, no data yet
+  // Email is column 4 (index 3), Phone is column 5 (index 4)
+  const emails = sheet.getRange(2, 4, lastRow - 1, 1).getValues().flat();
+  const phones = sheet.getRange(2, 5, lastRow - 1, 1).getValues().flat();
+  const normalizedEmail = (email || '').toLowerCase().trim();
+  const normalizedPhone = (phone || '').replace(/\D/g, '');
+  for (var i = 0; i < emails.length; i++) {
+    if (normalizedEmail && emails[i].toLowerCase().trim() === normalizedEmail) return true;
+    if (normalizedPhone && phones[i].replace(/\D/g, '') === normalizedPhone) return true;
+  }
+  return false;
+}
+
 function doPost(e) {
   try {
     // Browser sends text/plain with no-cors mode — body is still valid JSON
@@ -61,6 +76,11 @@ function doPost(e) {
       ]);
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
+      if (isDuplicateLead(sheet, data.email, data.phone)) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ success: true, duplicate: true }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
       sheet.appendRow([
         data.timestamp            || new Date().toISOString(),
         data.firstName            || '',
@@ -72,7 +92,7 @@ function doPost(e) {
         data.annualRate           || '',
         data.message              || '',
         data.subscribeNewsletter  ? 'Yes' : 'No',
-        data.source               || 'calculator'
+        data.source               || 'SimpleMortgageCalculator'
       ]);
     }
 

@@ -95,7 +95,7 @@ export default function LeadForm({ currentInputs }: Props) {
       annualRate: parseFloat(form.annualRate) || 0,
       message: form.message.trim(),
       subscribeNewsletter: form.subscribeNewsletter,
-      source: 'calculator',
+      source: 'SimpleMortgageCalculator',
       timestamp: new Date().toISOString(),
     };
 
