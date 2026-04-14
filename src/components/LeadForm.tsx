@@ -37,15 +37,25 @@ const TERM_OPTIONS = [
 
 const SUBMITTED_KEY = 'dt_lead_submitted';
 
+function getSubmitted(): { firstName: string } | null {
+  try {
+    const raw = localStorage.getItem(SUBMITTED_KEY);
+    return raw ? (JSON.parse(raw) as { firstName: string }) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function LeadForm({ currentInputs }: Props) {
   const headingRef = useScrollReveal<HTMLDivElement>();
   const formCardRef = useScrollReveal<HTMLDivElement>(120);
 
-  const saved = localStorage.getItem(SUBMITTED_KEY);
-  const savedName = saved ? JSON.parse(saved).firstName : '';
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
+    () => (getSubmitted() ? 'success' : 'idle')
+  );
 
-  const [form, setForm] = useState<FormState>({
-    firstName: savedName,
+  const [form, setForm] = useState<FormState>(() => ({
+    firstName: getSubmitted()?.firstName ?? '',
     lastName: '',
     email: '',
     phone: '',
@@ -54,12 +64,9 @@ export default function LeadForm({ currentInputs }: Props) {
     termYears: currentInputs.termYears.toString(),
     message: '',
     subscribeNewsletter: true,
-  });
+  }));
 
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    saved ? 'success' : 'idle'
-  );
   const formRef = useRef<HTMLFormElement>(null);
 
   const set = (key: keyof FormState) => (
