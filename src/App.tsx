@@ -3,6 +3,7 @@ import type { MortgageInputs } from './types/mortgage';
 import { calculateMortgage } from './utils/mortgageCalc';
 import Nav from './components/Nav';
 import Hero from './components/Hero';
+import DebtSavingsCalculator from './components/DebtSavingsCalculator';
 import Calculator from './components/Calculator';
 import Education from './components/Education';
 import LeadForm from './components/LeadForm';
@@ -51,6 +52,7 @@ export default function App() {
     <>
       <Nav />
       <Hero />
+      <DebtSavingsCalculator />
       <Calculator inputs={inputs} setInputs={setInputs} summary={summary} />
       <Education />
       <LeadForm currentInputs={inputs} />

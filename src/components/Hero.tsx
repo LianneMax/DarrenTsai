@@ -3,7 +3,7 @@ import { NMLS, DRE, COMPANY } from '../config';
 export default function Hero() {
   const scrollToCalc = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
     e.preventDefault();
-    document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('savings')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const scrollToEducation = (e: React.MouseEvent<HTMLAnchorElement>) => {
