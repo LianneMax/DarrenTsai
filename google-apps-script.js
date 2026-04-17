@@ -23,8 +23,8 @@ const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
 
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
-  'Loan Amount', 'Term (Years)', 'Rate (%)', 'Message',
-  'Subscribe Newsletter', 'Source'
+  'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
+  'Target Outcome', 'Timeline', 'Subscribe Newsletter', 'Source'
 ];
 
 const NEWSLETTER_HEADERS = [
@@ -91,6 +91,8 @@ function doPost(e) {
         data.termYears            || '',
         data.annualRate           || '',
         data.message              || '',
+        data.target               || '',
+        data.timeline             || '',
         data.subscribeNewsletter  ? 'Yes' : 'No',
         data.source               || 'SimpleMortgageCalculator'
       ]);

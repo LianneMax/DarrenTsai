@@ -120,9 +120,9 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       loanAmount: parseFloat(form.loanAmount.replace(/[^0-9.]/g, '')) || 0,
       termYears:  parseInt(form.termYears) || 30,
       annualRate: parseFloat(form.annualRate) || 0,
-      goals:    form.goals.trim(),
-      timeline: form.timeline,
+      message:  form.goals.trim(),
       target:   form.target,
+      timeline: form.timeline,
       source: 'MortgageCalculator',
       timestamp: new Date().toISOString(),
     };
