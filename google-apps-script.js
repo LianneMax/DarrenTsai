@@ -24,12 +24,13 @@ const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
   'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
-  'Target Outcome', 'Timeline', 'Subscribe Newsletter', 'Source'
+  'Target Outcome', 'Timeline', 'Source'
 ];
 
 const NEWSLETTER_HEADERS = [
   'Timestamp', 'Email', 'Source'
 ];
+
 
 function getOrCreateSheet(ss, name, headers) {
   let sheet = ss.getSheetByName(name);
@@ -76,7 +77,7 @@ function doPost(e) {
       ]);
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
-      if (isDuplicateLead(sheet, data.email, data.phone)) {
+      if (data.source !== 'DebtConsolidation' && isDuplicateLead(sheet, data.email, data.phone)) {
         return ContentService
           .createTextOutput(JSON.stringify({ success: true, duplicate: true }))
           .setMimeType(ContentService.MimeType.JSON);
@@ -93,7 +94,6 @@ function doPost(e) {
         data.message              || '',
         data.target               || '',
         data.timeline             || '',
-        data.subscribeNewsletter  ? 'Yes' : 'No',
         data.source               || 'SimpleMortgageCalculator'
       ]);
     }

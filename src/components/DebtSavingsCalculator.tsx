@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import { ZAPIER_WEBHOOK_URL, FRED_API_KEY } from '../config';
+import { GOOGLE_SHEET_WEBHOOK_URL, FRED_API_KEY } from '../config';
 
 // Calendly URL — matches the one used across the site
 const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
@@ -220,22 +220,24 @@ export default function DebtSavingsCalculator() {
       return;
     }
     const payload = {
-      first_name: fname, last_name: lname, phone, email,
-      best_time_to_call: bestTime, lead_source: leadSrc,
-      monthly_savings: Math.round(bestSave),
-      home_value: hv, mortgage_balance: mb, mortgage_payment: mp,
-      total_debt_balance: totBal, total_debt_payment: totPmt,
-      refi_monthly_payment: Math.round(refiPmt),
-      refi_monthly_savings:  Math.round(refiSave),
-      heloan_monthly_payment: Math.round(heloanPmt),
-      heloan_monthly_savings:  Math.round(heloanSave),
+      firstName: fname, lastName: lname, phone, email,
+      bestTimeToCall: bestTime, leadSource: leadSrc,
+      monthlySavings: Math.round(bestSave),
+      homeValue: hv, mortgageBalance: mb, mortgagePayment: mp,
+      totalDebtBalance: totBal, totalDebtPayment: totPmt,
+      refiMonthlyPayment: Math.round(refiPmt),
+      refiMonthlySavings: Math.round(refiSave),
+      heloanMonthlyPayment: Math.round(heloanPmt),
+      heloanMonthlySavings: Math.round(heloanSave),
       debts,
-      loan_officer: 'Darren Tsai', nmls: '2438102', company: 'Saxton Mortgage',
+      source: 'DebtConsolidation',
+      timestamp: new Date().toISOString(),
     };
-    if (ZAPIER_WEBHOOK_URL) {
-      fetch(ZAPIER_WEBHOOK_URL, {
+    if (GOOGLE_SHEET_WEBHOOK_URL) {
+      fetch(GOOGLE_SHEET_WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
       }).catch(() => {});
     }
@@ -272,7 +274,7 @@ export default function DebtSavingsCalculator() {
               border: '1.5px solid rgba(81,118,134,0.3)',
               padding: '6px 22px', borderRadius: 20, fontSize: 14, fontWeight: 600,
             }}>
-              You could save {fmt(bestSave)}/mo
+              Most clients save $900 – $1,500/mo
             </span>
           )}
         </div>
@@ -681,9 +683,7 @@ export default function DebtSavingsCalculator() {
               Let's Get You Real Numbers
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 22 }}>
-              {bestSave > 0
-                ? `A 15-minute call could free up ${fmt(bestSave)} every month — no hard pull, no obligation.`
-                : 'A 15-minute call could free up real money every month — no hard pull, no obligation.'}
+              A 15-minute call could free up $900 – $1,500 every month — no hard pull, no obligation.
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>

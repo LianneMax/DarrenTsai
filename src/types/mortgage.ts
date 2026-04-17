@@ -44,7 +44,6 @@ export interface LeadFormData {
   termYears: number;
   annualRate: number;
   message: string;
-  subscribeNewsletter: boolean;
-  source: string;
+source: string;
   timestamp: string;
 }
