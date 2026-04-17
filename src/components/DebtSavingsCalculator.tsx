@@ -825,14 +825,21 @@ export default function DebtSavingsCalculator() {
 
       {/* Sticky savings bar */}
       {bestSave > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'var(--rose)', color: '#fff',
-          textAlign: 'center', padding: '12px 16px',
-          fontSize: 13, fontWeight: 600, zIndex: 99,
-          boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-        }}>
-          Best estimate: save {fmt(bestSave)}/month — talk to Darren today
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openCalendly}
+          onKeyDown={(e) => e.key === 'Enter' && openCalendly()}
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            background: 'var(--rose)', color: '#fff',
+            textAlign: 'center', padding: '12px 16px',
+            fontSize: 13, fontWeight: 600, zIndex: 99,
+            boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+            cursor: 'pointer',
+          }}
+        >
+          Most clients save $900 – $1,500/month — talk to Darren today →
         </div>
       )}
     </section>

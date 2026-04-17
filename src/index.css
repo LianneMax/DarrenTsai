@@ -1287,7 +1287,7 @@ p {
 .footer {
   background: var(--navy-dark);
   color: var(--white);
-  padding: 64px 0 0;
+  padding: 64px 0 52px;
   position: relative;
   overflow: hidden;
 }
@@ -1366,6 +1366,32 @@ p {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.footer-compliance {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.footer-compliance a {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.4);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-compliance a:hover {
+  color: rgba(255,255,255,0.75);
+}
+
+.footer-compliance span {
+  color: rgba(255,255,255,0.2);
+  font-size: 0.72rem;
 }
 
 .footer-copy {
