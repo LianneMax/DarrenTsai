@@ -124,6 +124,40 @@ p {
   margin-bottom: 14px;
 }
 
+/* Section divider */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+  background: var(--light-bg);
+}
+
+.section-divider-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(34,61,85,0.2), transparent);
+}
+
+.section-divider-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+.section-divider-label svg {
+  color: var(--navy);
+  opacity: 0.5;
+}
+
 /* ============================================================
    6. BUTTONS
    ============================================================ */
@@ -962,13 +996,16 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 13px 16px;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
 
-.amort-table th:not(:first-child),
+.amort-table th:first-child {
+  text-align: center;
+}
+
 .amort-table td.num {
-  text-align: right;
+  text-align: center;
   font-weight: 500;
 }
 
@@ -979,22 +1016,29 @@ p {
   white-space: nowrap;
 }
 
-.amort-table tbody tr:hover { background: rgba(81,118,134,0.08); transition: background 0.15s; }
-.row-stripe { background: rgba(81,118,134,0.04); }
+.amort-table tbody tr:hover { background: rgba(81,118,134,0.10); transition: background 0.15s; }
+.row-stripe { background: rgba(81,118,134,0.07); }
 
 .year-summary-row td {
-  background: rgba(34,61,85,0.06);
+  background: rgba(34,61,85,0.08);
   font-weight: 700;
-  border-top: 2px solid rgba(34,61,85,0.15);
-  border-bottom: 2px solid rgba(34,61,85,0.15);
+  border-bottom: none;
+}
+
+.year-summary-row {
+  border-bottom: 1px solid rgba(34,61,85,0.2);
 }
 
 .year-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  text-align: center;
   font-weight: 700;
   color: var(--navy);
+}
+
+.year-label-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .year-label svg { color: var(--teal); }
@@ -1474,7 +1518,303 @@ p {
 }
 
 /* ============================================================
-   13. PREFERS-REDUCED-MOTION OVERRIDE
+   13. MODAL
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,20,35,0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 24px 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-panel {
+  background: var(--white);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+  animation: fadeUp 0.25s ease;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 32px 0;
+  margin-bottom: 6px;
+}
+
+.modal-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.modal-close {
+  background: var(--light-bg);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.modal-close:hover { background: #e5e7eb; color: var(--navy); }
+
+.modal-body {
+  padding: 16px 32px 32px;
+}
+
+.modal-sub {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.modal-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.modal-note strong { color: var(--rose); }
+
+@media (max-width: 600px) {
+  .modal-header { padding: 20px 20px 0; }
+  .modal-body   { padding: 12px 20px 24px; }
+}
+
+/* ============================================================
+   14. REVIEWS CAROUSEL
+   ============================================================ */
+.reviews-carousel {
+  position: relative;
+  overflow: hidden;
+  width: 100vw;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 40px 28px;
+  margin-bottom: 40px;
+}
+
+.reviews-track {
+  display: flex;
+  will-change: transform;
+}
+
+.review-slide {
+  min-width: calc(100% / 3);
+  padding: 0 8px;
+}
+
+.review-card {
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.09);
+  padding: 24px 22px;
+  border-left: 4px solid var(--teal);
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .review-slide { min-width: 100%; }
+  .review-card  { padding: 28px 20px; height: 280px; }
+}
+
+.review-stars {
+  display: flex;
+  gap: 3px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.review-star { color: #f59e0b; font-size: 16px; }
+
+.review-quote-wrap {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+}
+
+.review-quote {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-dark);
+  line-height: 1.6;
+  font-style: normal;
+  font-family: 'Outfit', sans-serif;
+  margin: 0;
+  overflow: hidden;
+}
+
+.review-see-more {
+  background: none;
+  border: none;
+  padding: 4px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--teal);
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Outfit', sans-serif;
+  flex-shrink: 0;
+}
+.review-see-more:hover { text-decoration: underline; }
+
+.review-author {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+/* Review full-text modal */
+.review-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.review-modal {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  max-width: 520px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  border-left: 4px solid var(--teal);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.review-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.2s ease;
+}
+.review-modal-close:hover { color: var(--navy); }
+
+.review-modal-quote {
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--text-dark);
+  line-height: 1.7;
+  font-style: normal;
+  font-family: 'Outfit', sans-serif;
+  margin: 16px 0 0;
+}
+
+.review-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #4285F4; /* overridden per-card via inline style */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--white);
+  flex-shrink: 0;
+}
+
+.review-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.review-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.reviews-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.reviews-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.reviews-dot.active {
+  background: var(--teal);
+  transform: scale(1.3);
+}
+
+.reviews-nav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.reviews-nav-btn {
+  background: var(--white);
+  border: 1.5px solid #e2e5ed;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--navy);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.reviews-nav-btn:hover { background: var(--light-bg); border-color: var(--teal); }
+
+/* ============================================================
+   15. PREFERS-REDUCED-MOTION OVERRIDE
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   .reveal {

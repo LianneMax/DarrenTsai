@@ -1,14 +1,18 @@
 import { NMLS, DRE, COMPANY } from '../config';
 
-export default function Hero() {
-  const scrollToCalc = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+interface Props {
+  onOpenContact: () => void;
+}
+
+export default function Hero({ onOpenContact }: Props) {
+  const scrollToSavings = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
     e.preventDefault();
     document.getElementById('savings')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const scrollToEducation = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const scrollToReviews = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    document.getElementById('education')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -36,15 +40,8 @@ export default function Hero() {
           </p>
 
           <div className="hero-ctas hero-anim hero-anim-4">
-            <a href="#calculator" onClick={scrollToCalc} className="btn btn-rose btn-lg">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              See How Much You Could Save
-            </a>
-            <a href="#education" onClick={scrollToEducation} className="hero-text-link">
-              Learn about Darren
+            <a href="#reviews" onClick={scrollToReviews} className="hero-text-link">
+              See what clients are saying
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -68,44 +65,54 @@ export default function Hero() {
         </div>
 
         {/* ── Right column — Stats card ── */}
-        <div className="hero-card hero-anim hero-anim-card">
-          <p className="hero-card-eyebrow">What could you save?</p>
+        <div>
+          <div className="hero-card hero-anim hero-anim-card">
+            <p className="hero-card-eyebrow">What our clients are achieving</p>
 
-          <div className="hero-stat">
-            <span className="hero-stat-label">Average client monthly savings</span>
-            <div className="hero-stat-value">
-              <span className="hero-stat-num">$800</span>
-              <span className="hero-stat-range"> – $1,400/mo</span>
+            <div className="hero-stat">
+              <span className="hero-stat-label">Average client monthly savings</span>
+              <div className="hero-stat-value">
+                <span className="hero-stat-num">$900 – $1,500</span>
+                <span className="hero-stat-range">/mo</span>
+              </div>
             </div>
+
+            <div className="hero-stat-divider" />
+
+            <div className="hero-stat">
+              <span className="hero-stat-label">Client average satisfaction</span>
+              <div className="hero-stat-value" style={{ alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#f59e0b', fontSize: '1.6rem', letterSpacing: 2, lineHeight: 1 }}>★★★★★</span>
+                <span className="hero-stat-num" style={{ fontSize: '1.5rem' }}>5.0</span>
+              </div>
+            </div>
+
+            <button onClick={scrollToSavings} className="btn btn-rose btn-full hero-card-btn">
+              See How Much You Could Save
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            <button
+              onClick={(e) => { e.preventDefault(); onOpenContact(); }}
+              className="btn btn-outline btn-full"
+              style={{ marginTop: 10, padding: '11px 14px', fontSize: '0.9rem', borderRadius: 10 }}
+            >
+              Want Darren to review your numbers?
+            </button>
           </div>
 
-          <div className="hero-stat-divider" />
-
-          <div className="hero-stat">
-            <span className="hero-stat-label">Typical HELOAN rate range</span>
-            <div className="hero-stat-value">
-              <span className="hero-stat-num">8.99</span>
-              <span className="hero-stat-range"> – 13.99%</span>
-            </div>
-          </div>
-
-          <div className="hero-stat-divider" />
-
-          <div className="hero-stat">
-            <span className="hero-stat-label">Today's 30YR fixed rate</span>
-            <div className="hero-stat-value hero-stat-value-row">
-              <span className="hero-stat-num">6.41</span>
-              <span className="hero-stat-unit hero-stat-teal">%</span>
-            </div>
-          </div>
-
-          <button onClick={scrollToCalc} className="btn btn-rose btn-full hero-card-btn">
-            Run my <span className="hero-btn-free">FREE</span> Estimate
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+          {/* NMLS disclaimer below card */}
+          <p style={{
+            fontSize: '0.72rem', color: 'rgba(255,255,255,0.38)', marginTop: 12,
+            lineHeight: 1.7, textAlign: 'center', maxWidth: 360, margin: '12px auto 0',
+          }}>
+            * Results vary. Actual savings depend on credit profile, property value, and loan terms.
+            Not a commitment to lend. NMLS# {NMLS} · Equal Housing Opportunity.
+          </p>
         </div>
+
       </div>
 
       <div className="hero-scroll-indicator" aria-hidden="true">

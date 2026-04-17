@@ -1,25 +1,22 @@
 import { useEffect, useState } from 'react';
 
-declare global {
-  interface Window {
-    Calendly?: {
-      initPopupWidget: (opts: { url: string }) => void;
-    };
-  }
-}
-
 const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
 function openCalendly(e: React.MouseEvent) {
   e.preventDefault();
-  if (window.Calendly) {
-    window.Calendly.initPopupWidget({ url: CALENDLY_URL });
+  const cal = (window as Window & { Calendly?: { initPopupWidget: (o: { url: string }) => void } }).Calendly;
+  if (cal) {
+    cal.initPopupWidget({ url: CALENDLY_URL });
   } else {
     window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer');
   }
 }
 
-export default function Nav() {
+interface Props {
+  onOpenContact: () => void;
+}
+
+export default function Nav({ onOpenContact }: Props) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -27,6 +24,11 @@ export default function Nav() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const scrollTo = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <nav className={`nav${scrolled ? ' nav-scrolled' : ''}`}>
@@ -53,9 +55,10 @@ export default function Nav() {
         </a>
 
         <div className="nav-links">
-          <a href="#calculator" className="nav-link">Calculator</a>
-          <a href="#education" className="nav-link">Education</a>
-          <a href="#contact" className="nav-link">Contact</a>
+          <a href="#savings"    onClick={scrollTo('savings')}    className="nav-link">Debt Consolidation</a>
+          <a href="#calculator" onClick={scrollTo('calculator')} className="nav-link">Calculator</a>
+          <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
+          <button onClick={(e) => { e.preventDefault(); onOpenContact(); }} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
           <button onClick={openCalendly} className="btn btn-rose btn-sm">Book a Call</button>
         </div>
 

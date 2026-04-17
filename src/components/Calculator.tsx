@@ -15,6 +15,7 @@ interface Props {
   inputs: MortgageInputs;
   setInputs: React.Dispatch<React.SetStateAction<MortgageInputs>>;
   summary: MortgageSummary;
+  onOpenContact: () => void;
 }
 
 function StatCard({
@@ -58,7 +59,7 @@ function StatCard({
   );
 }
 
-export default function Calculator({ inputs, setInputs, summary }: Props) {
+export default function Calculator({ inputs, setInputs, summary, onOpenContact }: Props) {
   const sectionRef = useScrollReveal<HTMLDivElement>();
   const panelRef = useScrollReveal<HTMLDivElement>(80);
   const resultsRef = useScrollReveal<HTMLDivElement>(160);
@@ -86,14 +87,14 @@ export default function Calculator({ inputs, setInputs, summary }: Props) {
 
   const scrollToContact = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+    onOpenContact();
   };
 
   return (
     <section id="calculator" className="section section-light">
       <div className="container">
         <div ref={sectionRef} className="section-header reveal">
-          <h2 className="section-title">Mortgage Calculator</h2>
+          <h2 className="section-title" style={{ color: 'var(--teal)' }}>Mortgage Calculator</h2>
           <p className="section-sub">Adjust any input to see your full payment breakdown instantly.</p>
         </div>
 
@@ -221,19 +222,19 @@ export default function Calculator({ inputs, setInputs, summary }: Props) {
               <StatCard
                 label="Monthly Payment (P&I)"
                 value={summary.monthlyPayment}
-                color="var(--navy)"
+                color="var(--rose)"
                 size="2.4rem"
               />
               <StatCard
                 label="Total Interest Paid"
                 value={summary.totalInterest}
-                color="var(--rose)"
+                color="var(--teal)"
                 size="1.55rem"
               />
               <StatCard
                 label="Total Cost of Loan"
                 value={summary.totalCost}
-                color="var(--navy)"
+                color="var(--teal)"
                 size="1.55rem"
               />
               <StatCard

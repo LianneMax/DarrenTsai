@@ -7,7 +7,6 @@ import DebtSavingsCalculator from './components/DebtSavingsCalculator';
 import Calculator from './components/Calculator';
 import Education from './components/Education';
 import LeadForm from './components/LeadForm';
-import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 
 const SESSION_KEY = 'dt_mortgage_inputs';
@@ -36,6 +35,7 @@ function loadInputs(): MortgageInputs {
 
 export default function App() {
   const [inputs, setInputs] = useState<MortgageInputs>(loadInputs);
+  const [contactOpen, setContactOpen] = useState(false);
 
   // Persist inputs to sessionStorage whenever they change
   useEffect(() => {
@@ -46,18 +46,65 @@ export default function App() {
     }
   }, [inputs]);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = contactOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [contactOpen]);
+
   const summary = useMemo(() => calculateMortgage(inputs), [inputs]);
+
+  const openContact  = () => setContactOpen(true);
+  const closeContact = () => setContactOpen(false);
 
   return (
     <>
-      <Nav />
-      <Hero />
+      <Nav onOpenContact={openContact} />
+      <Hero onOpenContact={openContact} />
       <DebtSavingsCalculator />
-      <Calculator inputs={inputs} setInputs={setInputs} summary={summary} />
+
+      <div className="section-divider">
+        <span className="section-divider-line" />
+        <span className="section-divider-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          Mortgage Calculator
+        </span>
+        <span className="section-divider-line" />
+      </div>
+
+      <Calculator inputs={inputs} setInputs={setInputs} summary={summary} onOpenContact={openContact} />
       <Education />
-      <LeadForm currentInputs={inputs} />
-      <Newsletter />
       <Footer />
+
+      {/* Contact modal */}
+      {contactOpen && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+          onClick={closeContact}
+        >
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 id="modal-title" className="modal-title">Want Darren to Review Your Numbers?</h2>
+              <button className="modal-close" onClick={closeContact} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-sub">
+                No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.
+              </p>
+              <LeadForm currentInputs={inputs} onClose={closeContact} />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

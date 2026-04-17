@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { ZAPIER_WEBHOOK_URL } from '../config';
+import { useState, useEffect } from 'react';
+import { useScrollReveal } from '../hooks/useScrollReveal';
+import { ZAPIER_WEBHOOK_URL, FRED_API_KEY } from '../config';
 
 // Calendly URL — matches the one used across the site
 const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
-const RATE_30YR = 6.41;
-const RATE_15YR = 6.01;
+// Fallback rates — overridden by live FRED data on mount
+const _RATE_30YR = 6.41;
+const _RATE_15YR = 6.01;
 
 const DEBT_TYPES = [
   'Credit Card',
@@ -56,11 +58,13 @@ function openCalendly() {
 function Chip({ label, value, bg }: { label: string; value: string; bg: string }) {
   return (
     <div style={{
-      background: bg, color: '#fff', padding: '10px 18px',
+      background: '#fff', padding: '10px 18px',
       borderRadius: 10, flex: 1, minWidth: 140,
+      border: '2px solid #e2e5ed',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
     }}>
-      <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700 }}>{value}</div>
+      <div style={{ fontSize: 11, marginBottom: 3, color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: bg }}>{value}</div>
     </div>
   );
 }
@@ -81,7 +85,7 @@ function BreakdownRow({
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '8px 0', borderBottom: bold ? 'none' : '1px solid #e2e5ed',
       fontSize: 13, fontWeight: bold ? 600 : 400,
-      color: green ? '#059669' : 'inherit',
+      color: green ? '#35785C' : 'inherit',
     }}>
       <span>{label}</span>
       <span>{value}</span>
@@ -91,8 +95,53 @@ function BreakdownRow({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+const FRED_FALLBACK_30 = _RATE_30YR;
+const FRED_FALLBACK_15 = _RATE_15YR;
+
+async function fetchFredRate(seriesId: string): Promise<{ value: number; date: string } | null> {
+  if (!FRED_API_KEY) return null;
+  try {
+    const base = import.meta.env.DEV
+      ? '/fred-api'
+      : 'https://api.stlouisfed.org/fred';
+    const url =
+      `${base}/series/observations` +
+      `?series_id=${seriesId}&api_key=${FRED_API_KEY}&limit=1&sort_order=desc&file_type=json`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const obs = json?.observations?.[0];
+    if (!obs || obs.value === '.') return null;
+    return { value: parseFloat(obs.value), date: obs.date };
+  } catch {
+    return null;
+  }
+}
+
 export default function DebtSavingsCalculator() {
+  const headerRef  = useScrollReveal<HTMLDivElement>();
+  const stepsRef   = useScrollReveal<HTMLDivElement>(80);
+  const contentRef = useScrollReveal<HTMLDivElement>(160);
+
   const [step, setStep] = useState(1);
+
+  // Live rates from FRED
+  const [rate30, setRate30] = useState(FRED_FALLBACK_30);
+  const [rate15, setRate15] = useState(FRED_FALLBACK_15);
+  const [rateDate, setRateDate] = useState('');
+  const [ratesLive, setRatesLive] = useState(false);
+
+  useEffect(() => {
+    console.log('[FRED] API key present:', !!FRED_API_KEY, FRED_API_KEY?.slice(0, 6));
+    Promise.all([
+      fetchFredRate('MORTGAGE30US'),
+      fetchFredRate('MORTGAGE15US'),
+    ]).then(([r30, r15]) => {
+      console.log('[FRED] results:', r30, r15);
+      if (r30) { setRate30(r30.value); setRateDate(r30.date); setRatesLive(true); }
+      if (r15)   setRate15(r15.value);
+    });
+  }, []);
 
   // Debts
   const [debts, setDebts] = useState<Debt[]>([
@@ -134,7 +183,7 @@ export default function DebtSavingsCalculator() {
 
   const todayTotal = totPmt + mp;
   const newLoan    = mb + totBal;
-  const refiPmt    = calcPmt(newLoan, RATE_30YR, 30);
+  const refiPmt    = calcPmt(newLoan, rate30, 30);
   const refiSave   = todayTotal - refiPmt;
 
   const heloanAmt   = hv > 0 && mb > 0 ? Math.max(Math.min(totBal, hv * 0.85 - mb), 0) : 0;
@@ -209,9 +258,9 @@ export default function DebtSavingsCalculator() {
       <div className="container">
 
         {/* Section header */}
-        <div className="section-header">
-          <span className="section-eyebrow">Debt Consolidation Analysis</span>
-          <h2 className="section-title">See How Much You Could Save Each Month</h2>
+        <div ref={headerRef} className="section-header reveal">
+          <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Debt Consolidation Analysis</span>
+          <h2 className="section-title" style={{ color: 'var(--teal)' }}>See How Much You Could Save Each Month</h2>
           <p className="section-sub">
             You've built equity in your home. Let's put it to work. Compare your options
             side-by-side in under 3 minutes — no credit pull, no obligation.
@@ -219,7 +268,8 @@ export default function DebtSavingsCalculator() {
           {bestSave > 0 && (
             <span style={{
               display: 'inline-block', marginTop: 14,
-              background: 'var(--rose)', color: '#fff',
+              background: 'rgba(81,118,134,0.12)', color: 'var(--teal)',
+              border: '1.5px solid rgba(81,118,134,0.3)',
               padding: '6px 22px', borderRadius: 20, fontSize: 14, fontWeight: 600,
             }}>
               You could save {fmt(bestSave)}/mo
@@ -227,69 +277,51 @@ export default function DebtSavingsCalculator() {
           )}
         </div>
 
-        {/* Step indicator — PawSync style */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginBottom: 36 }}>
-          {STEPS.map(({ n, label }, i) => {
+        {/* Step indicator — pill tabs */}
+        <div ref={stepsRef} className="reveal" style={{
+          display: 'flex', gap: 8, marginBottom: 24,
+          background: '#e9ecf0', borderRadius: 14, padding: 5,
+        }}>
+          {STEPS.map(({ n, label }) => {
             const isDone   = step > n;
             const isActive = step === n;
-            const circleBg = isDone
-              ? 'var(--teal)'
-              : isActive
-                ? 'var(--navy)'
-                : '#e5e7eb';
-            const numColor = isDone || isActive ? '#fff' : '#9ca3af';
-            const labelColor = isActive ? 'var(--navy)' : isDone ? 'var(--teal)' : '#9ca3af';
-            const labelWeight = isActive ? 700 : 500;
-
             return (
-              <div key={n} style={{ display: 'flex', alignItems: 'flex-start' }}>
-                {/* Circle + label */}
-                <button
-                  onClick={() => goStep(n)}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 8, background: 'none', border: 'none', cursor: 'pointer',
-                    padding: 0, fontFamily: 'inherit',
-                  }}
-                >
-                  <div style={{
-                    width: 48, height: 48, borderRadius: '50%',
-                    background: circleBg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.4s ease',
-                    boxShadow: isActive ? '0 4px 14px rgba(34,61,85,0.25)' : 'none',
-                  }}>
-                    {isDone ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    ) : (
-                      <span style={{ color: numColor, fontWeight: 700, fontSize: 16, transition: 'color 0.4s ease' }}>
-                        {n}
-                      </span>
-                    )}
-                  </div>
+              <button
+                key={n}
+                onClick={() => goStep(n)}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 7, padding: '10px 8px', border: 'none', cursor: 'pointer',
+                  borderRadius: 10, fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                  transition: 'background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease',
+                  background: isActive ? 'var(--teal)' : isDone ? '#fff' : 'transparent',
+                  color: isActive ? '#fff' : isDone ? 'var(--teal)' : '#9ca3af',
+                  boxShadow: isActive ? '0 2px 8px rgba(81,118,134,0.25)' : 'none',
+                }}
+              >
+                {isDone ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : (
                   <span style={{
-                    fontSize: 12, fontWeight: labelWeight, color: labelColor,
-                    transition: 'color 0.4s ease', whiteSpace: 'nowrap',
+                    width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700,
+                    background: isActive ? 'rgba(255,255,255,0.2)' : isDone ? 'var(--teal)' : '#d1d5db',
+                    color: isActive ? '#fff' : isDone ? '#fff' : '#6b7280',
                   }}>
-                    {label}
+                    {n}
                   </span>
-                </button>
-
-                {/* Connector line (not after last step) */}
-                {i < STEPS.length - 1 && (
-                  <div style={{
-                    height: 3, width: 64, marginTop: 22, flexShrink: 0,
-                    background: step > n ? 'var(--teal)' : '#e5e7eb',
-                    transition: 'background 0.4s ease',
-                    borderRadius: 2,
-                  }} />
                 )}
-              </div>
+                {label}
+              </button>
             );
           })}
         </div>
+
+        {/* ── Step content ────────────────────────────────────────────────── */}
+        <div ref={contentRef} className="reveal">
 
         {/* ── STEP 1: Your Debts ─────────────────────────────────────────── */}
         {step === 1 && (
@@ -388,8 +420,8 @@ export default function DebtSavingsCalculator() {
             <button
               onClick={addDebt}
               style={{
-                background: 'none', border: '2px dashed var(--rose)',
-                color: 'var(--rose)', padding: '9px 16px', borderRadius: 8,
+                background: 'none', border: '2px dashed #9ca3af',
+                color: '#6b7280', padding: '9px 16px', borderRadius: 8,
                 cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 width: '100%', fontFamily: 'inherit', marginBottom: 16,
               }}
@@ -400,9 +432,9 @@ export default function DebtSavingsCalculator() {
             {/* Totals chips */}
             {debts.length > 0 && (
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                <Chip label="Total Monthly Payments" value={fmt(totPmt)} bg="var(--navy)" />
+                <Chip label="Total Monthly Payments" value={fmt(totPmt)} bg="var(--teal)" />
                 <Chip label="Total Debt Balance"      value={fmt(totBal)} bg="var(--rose)" />
-                <Chip label="Avg Interest Rate"       value={pct(wtRate)} bg="var(--teal)" />
+                <Chip label="Avg Interest Rate"       value={pct(wtRate)} bg="var(--rose)" />
               </div>
             )}
 
@@ -507,30 +539,38 @@ export default function DebtSavingsCalculator() {
               background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6,
               padding: '8px 14px', fontSize: 12, color: '#0369a1', marginBottom: 18,
             }}>
-              Using today's 30YR fixed rate: <strong>{RATE_30YR}%</strong> · 15YR: <strong>{RATE_15YR}%</strong>{' '}
-              (source: MortgageNewsDaily, Apr 3 2026) — update as rates change
+              30YR fixed: <strong>{rate30.toFixed(2)}%</strong> · 15YR: <strong>{rate15.toFixed(2)}%</strong>{' '}
+              &nbsp;·&nbsp;{ratesLive
+                ? <>Live via <a href="https://fred.stlouisfed.org" target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1' }}>FRED®</a> · Updated weekly · As of {rateDate}</>
+                : 'Source: FRED® / Federal Reserve — add VITE_FRED_API_KEY for live updates'
+              }
             </div>
 
             {/* Compare cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
               {/* Today */}
               <div style={{
-                border: '2px solid var(--rose)', borderRadius: 10, padding: 18, textAlign: 'center',
+                border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
               }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--rose)', marginBottom: 8 }}>Today</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--navy)' }}>{fmt(todayTotal)}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--rose)' }}>{fmt(todayTotal)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Mortgage + all debts</div>
               </div>
 
               {/* Cash-out Refi */}
               <div style={{
-                border: '2px solid var(--teal)', borderRadius: 10, padding: 18, textAlign: 'center',
+                border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
               }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Cash-Out Refi</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--navy)' }}>{fmt(refiPmt)}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiPmt)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New 30YR fixed</div>
                 {refiSave > 0 && (
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#059669', marginTop: 6 }}>
+                  <div style={{
+                    display: 'inline-block', marginTop: 8,
+                    background: '#D5F4D2', color: '#35785C',
+                    borderRadius: 20, padding: '3px 12px',
+                    fontSize: 12, fontWeight: 700,
+                  }}>
                     Save {fmt(refiSave)}/mo
                   </div>
                 )}
@@ -538,13 +578,18 @@ export default function DebtSavingsCalculator() {
 
               {/* HELOAN */}
               <div style={{
-                border: '2px solid var(--navy)', borderRadius: 10, padding: 18, textAlign: 'center',
+                border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
               }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--navy)', marginBottom: 8 }}>Est. Fixed HELOAN</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--navy)' }}>{fmt(heloanTotal)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Fixed HELOAN</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(heloanTotal)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Keep mortgage + HELOAN</div>
                 {heloanSave > 0 && (
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#059669', marginTop: 6 }}>
+                  <div style={{
+                    display: 'inline-block', marginTop: 8,
+                    background: '#D5F4D2', color: '#35785C',
+                    borderRadius: 20, padding: '3px 12px',
+                    fontSize: 12, fontWeight: 700,
+                  }}>
                     Save {fmt(heloanSave)}/mo
                   </div>
                 )}
@@ -591,7 +636,7 @@ export default function DebtSavingsCalculator() {
                 Estimated Cash-Out Refinance Breakdown
               </div>
               <BreakdownRow label="New Loan Amount"       value={newLoan > 0 ? fmt(newLoan)    : '—'} />
-              <BreakdownRow label="Rate (30YR fixed)"     value={pct(RATE_30YR)} />
+              <BreakdownRow label="Rate (30YR fixed)"     value={pct(rate30)} />
               <BreakdownRow label="Monthly P&I Payment"   value={refiPmt > 0 ? fmt(refiPmt)    : '—'} />
               <BreakdownRow
                 label="Monthly Savings vs. Today"
@@ -753,6 +798,8 @@ export default function DebtSavingsCalculator() {
             </p>
           </div>
         )}
+
+        </div>{/* end step content */}
 
         {/* Disclaimer */}
         <p style={{

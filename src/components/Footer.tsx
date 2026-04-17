@@ -8,15 +8,16 @@ export default function Footer() {
         <div className="footer-grid">
           <div className="footer-left">
             <div className="footer-brand">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                <path d="M9 22V12h6v10" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-              </svg>
+              <img
+                src="/darren.jpg"
+                alt="Darren Tsai"
+                style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+              />
               <span className="footer-name">Darren Tsai</span>
             </div>
             <p className="footer-title">Senior Loan Officer · {COMPANY}</p>
             <p className="footer-meta">NMLS# {NMLS} · DRE# {DRE}</p>
-            <p className="footer-meta">Licensed in CA</p>
+            <p className="footer-meta">Licensed in <strong>AZ · CA · FL · HI · OR · PA · TN · TX</strong></p>
           </div>
 
           <div className="footer-right">
@@ -34,7 +35,7 @@ export default function Footer() {
               {EMAIL}
             </a>
             <a
-              href="#"
+              href="https://www.linkedin.com/in/soldwithtsai/"
               className="footer-contact-link footer-linkedin"
               aria-label="Darren Tsai on LinkedIn"
               target="_blank"
