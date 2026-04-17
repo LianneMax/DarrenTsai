@@ -30,12 +30,6 @@ interface FieldErrors {
   target?: string;
 }
 
-const TERM_OPTIONS = [
-  { value: '30', label: '30 Years' },
-  { value: '20', label: '20 Years' },
-  { value: '15', label: '15 Years' },
-  { value: '10', label: '10 Years' },
-];
 
 const TIMELINE_OPTIONS = [
   { value: '', label: 'Select a timeframe…' },
