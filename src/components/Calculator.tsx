@@ -220,10 +220,17 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
 
             <div className="stats-grid">
               <StatCard
-                label="Monthly Payment (P&I)"
+                label="Est. Principal &amp; Interest"
                 value={summary.monthlyPayment}
                 color="var(--rose)"
                 size="2.4rem"
+              />
+              <StatCard
+                label="Estimated APR"
+                value={`${(inputs.annualRate + 0.20).toFixed(2)}%`}
+                color="var(--rose)"
+                size="2.4rem"
+                isString
               />
               <StatCard
                 label="Total Interest Paid"
@@ -277,6 +284,20 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
 
         {/* Table */}
         <AmortizationTable schedule={summary.schedule} yearlyData={summary.yearlyData} />
+
+        {/* Legal footnote */}
+        <p style={{
+          fontSize: 11, color: 'var(--text-muted)', marginTop: 24, lineHeight: 1.6,
+          borderTop: '1px solid #e2e5ed', paddingTop: 14,
+        }}>
+          <em>Estimated APR based on the interest rate entered plus an assumed 0.20% spread for
+          prepaid finance charges (origination, processing, and underwriting fees). This is an
+          estimate for educational purposes only. Actual APR will be based on final loan amount
+          and actual closing costs.</em>
+          <br />
+          CA DRE Broker License #02103705 · This is not a commitment to lend. All loans are
+          subject to credit approval.
+        </p>
       </div>
     </section>
   );

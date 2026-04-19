@@ -24,7 +24,7 @@ export default function Hero({ onOpenContact }: Props) {
 
           <span className="hero-tag hero-anim hero-anim-1">
             <span className="hero-tag-dot" aria-hidden="true" />
-            Mortgage &amp; Real Estate Broker · Southern California
+            Senior Loan Officer · Southern California
           </span>
 
           <h1 className="hero-headline hero-anim hero-anim-2">
@@ -53,7 +53,7 @@ export default function Hero({ onOpenContact }: Props) {
           <div className="hero-credentials hero-anim hero-anim-5">
             <span>NMLS# {NMLS}</span>
             <span className="hero-cred-dot" aria-hidden="true" />
-            <span>DRE# {DRE}</span>
+            <span>CA DRE Broker License #{DRE}</span>
             <span className="hero-cred-dot" aria-hidden="true" />
             <span>
               Licensed in{' '}

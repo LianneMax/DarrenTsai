@@ -16,3 +16,4 @@ export const EMAIL = "darrent@saxtonmortgage.com";
 export const NMLS = "2438102";
 export const DRE = "02103705";
 export const COMPANY = "Saxton Mortgage";
+export const COMPANY_NMLS = "1717191";

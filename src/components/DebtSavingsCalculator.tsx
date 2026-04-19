@@ -566,6 +566,9 @@ export default function DebtSavingsCalculator() {
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Cash-Out Refi</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiPmt)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New 30YR fixed</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                  Est. APR: {(rate30 + 0.20).toFixed(2)}%
+                </div>
                 {refiSave > 0 && (
                   <div style={{
                     display: 'inline-block', marginTop: 8,
@@ -585,6 +588,9 @@ export default function DebtSavingsCalculator() {
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Fixed HELOAN</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(heloanTotal)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Keep mortgage + HELOAN</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                  Est. APR: {(heloanTier + 0.20).toFixed(2)}%
+                </div>
                 {heloanSave > 0 && (
                   <div style={{
                     display: 'inline-block', marginTop: 8,
@@ -639,6 +645,7 @@ export default function DebtSavingsCalculator() {
               </div>
               <BreakdownRow label="New Loan Amount"       value={newLoan > 0 ? fmt(newLoan)    : '—'} />
               <BreakdownRow label="Rate (30YR fixed)"     value={pct(rate30)} />
+              <BreakdownRow label="Estimated APR"         value={pct(rate30 + 0.20)} />
               <BreakdownRow label="Monthly P&I Payment"   value={refiPmt > 0 ? fmt(refiPmt)    : '—'} />
               <BreakdownRow
                 label="Monthly Savings vs. Today"
@@ -657,6 +664,7 @@ export default function DebtSavingsCalculator() {
                 label="HELOAN Rate / Term"
                 value={heloanAmt > 0 ? `${pct(heloanTier)} / ${heloanTerm} yr` : '—'}
               />
+              <BreakdownRow label="Estimated APR"             value={pct(heloanTier + 0.20)} />
               <BreakdownRow label="HELOAN Monthly Payment"    value={heloanPmt > 0 ? fmt(heloanPmt)   : '—'} />
               <BreakdownRow label="Existing Mortgage Payment" value={mp > 0 ? fmt(mp) : '—'} />
               <BreakdownRow label="Combined CLTV"             value={cltv > 0 ? pct(cltv) : '—'} />

@@ -50,7 +50,7 @@ export default function Nav({ onOpenContact }: Props) {
           </div>
           <div className="nav-logo-text">
             <span className="nav-logo-name">Darren Tsai</span>
-            <span className="nav-logo-title">Mortgage &amp; Real Estate Broker</span>
+            <span className="nav-logo-title">Senior Loan Officer · Saxton Mortgage</span>
           </div>
         </a>
 
