@@ -24,12 +24,16 @@ function StatCard({
   color,
   size,
   isString,
+  style,
+  labelStyle,
 }: {
   label: string;
   value: number | string;
   color: string;
   size?: string;
   isString?: boolean;
+  style?: React.CSSProperties;
+  labelStyle?: React.CSSProperties;
 }) {
   const animated = useCountUp(typeof value === 'number' ? value : 0);
   const [pulse, setPulse] = useState(false);
@@ -45,8 +49,8 @@ function StatCard({
   }, [value]);
 
   return (
-    <div className="stat-card">
-      <span className="stat-label">{label}</span>
+    <div className="stat-card" style={style}>
+      <span className="stat-label" style={labelStyle}>{label}</span>
       <span
         className={`stat-value${pulse ? ' stat-pulse' : ''}`}
         style={{ color, fontSize: size }}
@@ -100,7 +104,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
 
         <div className="calc-grid">
           {/* Input Panel */}
-          <div ref={panelRef} className="card reveal">
+          <div ref={panelRef} className="card reveal" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <h3 className="card-heading">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" strokeWidth="2"/>
@@ -224,6 +228,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 value={summary.monthlyPayment}
                 color="var(--rose)"
                 size="2.4rem"
+                labelStyle={{ whiteSpace: 'nowrap' }}
               />
               <StatCard
                 label="Estimated APR"
@@ -250,6 +255,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 color="var(--teal)"
                 size="1.55rem"
                 isString
+                style={{ gridColumn: 'span 2' }}
               />
             </div>
 

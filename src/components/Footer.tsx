@@ -54,15 +54,19 @@ export default function Footer() {
             </a>
 
             {/* Equal Housing */}
-            <div className="footer-contact-link" style={{ alignItems: 'center', gap: 8, marginTop: 8 }}>
-              <svg width="28" height="28" viewBox="0 0 60 60" fill="none" aria-label="Equal Housing Lender" role="img">
-                <rect x="1" y="1" width="58" height="58" rx="4" stroke="currentColor" strokeWidth="2"/>
-                <polygon points="30,8 54,28 6,28" fill="currentColor"/>
-                <rect x="14" y="30" width="32" height="22" fill="currentColor"/>
-                <rect x="22" y="37" width="16" height="4" fill="white"/>
-                <rect x="22" y="44" width="16" height="4" fill="white"/>
+            <div className="footer-contact-link">
+              <svg width="16" height="16" viewBox="0 0 60 60" fill="none" aria-label="Equal Housing Lender" role="img">
+                <defs>
+                  <mask id="eho-mask">
+                    <rect width="60" height="60" fill="white"/>
+                    <rect x="17" y="35" width="26" height="5" fill="black"/>
+                    <rect x="17" y="44" width="26" height="5" fill="black"/>
+                  </mask>
+                </defs>
+                <polygon points="30,5 56,28 4,28" fill="currentColor"/>
+                <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#eho-mask)"/>
               </svg>
-              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Equal Housing Lender</span>
+              Equal Housing Lender
             </div>
           </div>
         </div>
