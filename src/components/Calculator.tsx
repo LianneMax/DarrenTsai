@@ -228,7 +228,6 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 value={summary.monthlyPayment}
                 color="var(--rose)"
                 size="2.4rem"
-                labelStyle={{ whiteSpace: 'nowrap' }}
               />
               <StatCard
                 label="Estimated APR"

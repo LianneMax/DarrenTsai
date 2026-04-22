@@ -280,10 +280,7 @@ export default function DebtSavingsCalculator() {
         </div>
 
         {/* Step indicator — pill tabs */}
-        <div ref={stepsRef} className="reveal" style={{
-          display: 'flex', gap: 8, marginBottom: 24,
-          background: '#e9ecf0', borderRadius: 14, padding: 5,
-        }}>
+        <div ref={stepsRef} className="reveal dsc-steps">
           {STEPS.map(({ n, label }) => {
             const isDone   = step > n;
             const isActive = step === n;
@@ -291,11 +288,8 @@ export default function DebtSavingsCalculator() {
               <button
                 key={n}
                 onClick={() => goStep(n)}
+                className="dsc-step-btn"
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 7, padding: '10px 8px', border: 'none', cursor: 'pointer',
-                  borderRadius: 10, fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
-                  transition: 'background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease',
                   background: isActive ? 'var(--teal)' : isDone ? '#fff' : 'transparent',
                   color: isActive ? '#fff' : isDone ? 'var(--teal)' : '#9ca3af',
                   boxShadow: isActive ? '0 2px 8px rgba(81,118,134,0.25)' : 'none',
@@ -306,17 +300,17 @@ export default function DebtSavingsCalculator() {
                     <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 ) : (
-                  <span style={{
-                    width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700,
-                    background: isActive ? 'rgba(255,255,255,0.2)' : isDone ? 'var(--teal)' : '#d1d5db',
-                    color: isActive ? '#fff' : isDone ? '#fff' : '#6b7280',
-                  }}>
+                  <span
+                    className="dsc-step-num"
+                    style={{
+                      background: isActive ? 'rgba(255,255,255,0.2)' : '#d1d5db',
+                      color: isActive ? '#fff' : '#6b7280',
+                    }}
+                  >
                     {n}
                   </span>
                 )}
-                {label}
+                <span className="dsc-step-label">{label}</span>
               </button>
             );
           })}
@@ -337,15 +331,8 @@ export default function DebtSavingsCalculator() {
             </h3>
 
             {debts.map((d) => (
-              <div key={d.id} style={{
-                background: 'var(--light-bg)', border: '1px solid #e2e5ed',
-                borderRadius: 10, padding: 14, marginBottom: 10,
-              }}>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.4fr 1fr 1fr 1fr 28px',
-                  gap: 10, alignItems: 'end',
-                }}>
+              <div key={d.id} className="dsc-debt-card">
+                <div className="dsc-debt-row">
                   {/* Type */}
                   <div>
                     <label className="input-label">Debt Type</label>
@@ -460,7 +447,7 @@ export default function DebtSavingsCalculator() {
               Your Home &amp; Mortgage
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div className="dsc-grid-2" style={{ marginBottom: 14 }}>
               <div>
                 <label className="input-label">Current Home Value</label>
                 <div className="input-prefix-wrap">
@@ -481,7 +468,7 @@ export default function DebtSavingsCalculator() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
+            <div className="dsc-grid-3" style={{ marginBottom: 16 }}>
               <div>
                 <label className="input-label">Monthly Payment (P&amp;I)</label>
                 <div className="input-prefix-wrap">
@@ -549,7 +536,7 @@ export default function DebtSavingsCalculator() {
             </div>
 
             {/* Compare cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
+            <div className="dsc-compare-grid" style={{ marginBottom: 18 }}>
               {/* Today */}
               <div style={{
                 border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
@@ -694,7 +681,7 @@ export default function DebtSavingsCalculator() {
               A 15-minute call could free up $900 – $1,500 every month — no hard pull, no obligation.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="dsc-grid-2" style={{ marginBottom: 12 }}>
               <div>
                 <label className="input-label">First Name</label>
                 <input type="text" className="form-input" placeholder="First name"
@@ -707,7 +694,7 @@ export default function DebtSavingsCalculator() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="dsc-grid-2" style={{ marginBottom: 12 }}>
               <div>
                 <label className="input-label">Phone Number</label>
                 <input type="tel" className="form-input" placeholder="(714) 000-0000"
@@ -720,7 +707,7 @@ export default function DebtSavingsCalculator() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+            <div className="dsc-grid-2" style={{ marginBottom: 20 }}>
               <div>
                 <label className="input-label">Best Time to Call</label>
                 <div className="select-wrap">
@@ -841,8 +828,10 @@ export default function DebtSavingsCalculator() {
           style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
             background: 'var(--rose)', color: '#fff',
-            textAlign: 'center', padding: '12px 16px',
-            fontSize: 13, fontWeight: 600, zIndex: 99,
+            textAlign: 'center',
+            padding: '12px 16px',
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+            fontSize: 13, fontWeight: 600, zIndex: 97,
             boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
             cursor: 'pointer',
           }}

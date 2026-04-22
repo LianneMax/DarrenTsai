@@ -33,6 +33,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -40,6 +41,7 @@ body {
   color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 img, svg {
@@ -573,6 +575,103 @@ p {
 .nav-link:hover { color: var(--white); }
 .nav-scrolled .nav-link { color: var(--text-dark); }
 .nav-scrolled .nav-link:hover { color: var(--teal); }
+
+/* ── Hamburger button (hidden on desktop) ── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.nav-hamburger-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--white);
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.2s ease, background 0.3s ease;
+  transform-origin: center;
+}
+
+.nav-scrolled .nav-hamburger-bar,
+.nav-menu-open .nav-hamburger-bar { background: var(--navy); }
+
+.nav-hamburger-bar.open:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger-bar.open:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-hamburger-bar.open:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Mobile slide-down menu ── */
+.nav-mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgba(0,0,0,0.3);
+}
+
+.nav-mobile-menu {
+  display: none;
+  position: fixed;
+  top: 76px;
+  right: 16px;
+  left: auto;
+  width: 280px;
+  z-index: 99;
+  background: var(--white);
+  border-radius: 16px;
+  padding: 8px 20px 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  flex-direction: column;
+  gap: 0;
+  transform: translateY(-8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.nav-mobile-menu--open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-mobile-link {
+  display: block;
+  padding: 14px 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  border-bottom: 1px solid #f0f2f5;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.nav-mobile-link--btn {
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f2f5;
+  text-align: left;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  width: 100%;
+  padding: 14px 0;
+  cursor: pointer;
+}
+
+.nav-mobile-link:hover,
+.nav-mobile-link--btn:hover { color: var(--teal); }
 
 /* ---- HERO ---- */
 .hero {
@@ -1380,7 +1479,94 @@ p {
 }
 
 /* ============================================================
-   12. MEDIA QUERIES
+   12. DEBT SAVINGS CALCULATOR LAYOUT CLASSES
+   ============================================================ */
+
+/* Step indicator pill tabs */
+.dsc-steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: #e9ecf0;
+  border-radius: 14px;
+  padding: 5px;
+}
+
+.dsc-step-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 8px;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.dsc-step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: #d1d5db;
+  color: #6b7280;
+}
+
+.dsc-step-btn[style*="var(--teal)"] .dsc-step-num {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+/* Debt entry card */
+.dsc-debt-card {
+  background: var(--light-bg);
+  border: 1px solid #e2e5ed;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+/* Debt row: 5-column grid (type · balance · payment · rate · remove) */
+.dsc-debt-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 28px;
+  gap: 10px;
+  align-items: end;
+}
+
+/* Responsive 2-col grids (Step 2 home, Step 4 lead form) */
+.dsc-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Responsive 3-col grid (Step 2 mortgage details) */
+.dsc-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+/* Comparison cards (Today · Cash-Out Refi · HELOAN) */
+.dsc-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* ============================================================
+   13. MEDIA QUERIES
    ============================================================ */
 @media (max-width: 900px) {
   .edu-grid {
@@ -1403,13 +1589,24 @@ p {
 @media (max-width: 768px) {
   .section { padding: 56px 0; }
 
-  .nav-links .nav-link { display: none; }
-  .nav-links { gap: 16px; }
+  /* Nav: hide desktop links, show hamburger */
+  .nav-links { display: none; }
+  .nav-hamburger { display: flex; }
+  .nav-mobile-overlay { display: block; }
+  .nav-mobile-menu { display: flex; }
+
+  /* Truncate logo subtitle on small screens */
+  .nav-logo-title {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* Hero: stack on mobile */
   .hero-inner {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: 32px;
   }
 
   .hero { padding: 100px 0 72px; }
@@ -1418,7 +1615,24 @@ p {
 
   .hero-ctas { flex-direction: column; align-items: flex-start; gap: 16px; }
 
+  /* Simplify credentials on mobile — hide separator dots, wrap naturally */
+  .hero-cred-dot { display: none; }
+  .hero-credentials {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 0.75rem;
+  }
+
+  /* Hero stat number sizing */
+  .hero-stat-num { font-size: 1.6rem; }
+
+  /* Calculator */
   .calc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .date-row {
     grid-template-columns: 1fr;
   }
 
@@ -1426,10 +1640,44 @@ p {
     grid-template-columns: 1fr 1fr;
   }
 
+  /* Prevent stat values from overflowing */
+  .stat-value {
+    white-space: normal;
+    font-size: 1.3rem;
+  }
+
+  /* Card padding: reduce from 32px to 20px on mobile */
+  .card { padding: 20px; }
+
+  /* Section header: tighten gap below title block */
+  .section-header { margin-bottom: 32px; }
+
+  /* Footer email: allow wrapping so it doesn't overflow */
+  .footer-contact-link {
+    word-break: break-all;
+  }
+
+  /* Forms */
   .form-row-2 {
     grid-template-columns: 1fr;
   }
 
+  .form-card {
+    padding: 28px 20px;
+  }
+
+  /* Enlarge touch targets for inputs and buttons */
+  .form-input,
+  .form-select {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .btn {
+    min-height: 48px;
+  }
+
+  /* Footer */
   .footer-grid {
     grid-template-columns: 1fr;
     gap: 32px;
@@ -1443,14 +1691,56 @@ p {
 
   .footer-disclaimer { text-align: left; }
 
-  .form-card {
-    padding: 28px 20px;
+  /* ── DebtSavingsCalculator mobile ── */
+
+  /* Debt row: collapse to 2-col grid
+     Row 1: [Debt Type — full width]
+     Row 2: [Balance] [Monthly Payment]
+     Row 3: [Rate]    [Remove ×]       */
+  .dsc-debt-row {
+    grid-template-columns: 1fr 1fr;
   }
+  .dsc-debt-row > *:first-child { grid-column: span 2; }
+  .dsc-debt-row > *:nth-child(4) { grid-column: 1; }
+  .dsc-debt-row > *:last-child {
+    grid-column: 2;
+    justify-self: end;
+    align-self: flex-end;
+  }
+
+  /* Home & lead form grids → single column */
+  .dsc-grid-2 { grid-template-columns: 1fr; gap: 10px; }
+  .dsc-grid-3 { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Comparison cards → single column */
+  .dsc-compare-grid { grid-template-columns: 1fr; }
+
+  /* Step tabs: smaller font, tighter padding */
+  .dsc-step-btn { font-size: 11px; padding: 9px 4px; gap: 4px; }
 }
 
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
-  .stat-value { font-size: 1.3rem; }
+  .stat-value { font-size: 1.2rem; }
+
+  /* Hero headline slightly smaller on very small phones */
+  .hero-headline { font-size: clamp(2rem, 8vw, 2.4rem); }
+
+  /* Section padding tighter */
+  .section { padding: 44px 0; }
+
+  /* Container side padding */
+  .container { padding-left: 16px; padding-right: 16px; }
+
+  /* Hide the nav logo subtitle on very small phones to prevent overflow */
+  .nav-logo-title { display: none; }
+
+  /* Review card height auto on tiny screens */
+  .review-card { height: auto; min-height: 220px; }
+
+  /* Step tabs: hide text labels, show only number/checkmark */
+  .dsc-step-label { display: none; }
+  .dsc-step-btn { padding: 10px 6px; gap: 0; }
 }
 
 /* ============================================================
@@ -1572,8 +1862,7 @@ p {
 }
 
 @media (max-width: 768px) {
-  .review-slide { min-width: 100%; }
-  .review-card  { padding: 28px 20px; height: 280px; }
+  .review-card { padding: 28px 20px; height: 280px; }
 }
 
 .review-stars {

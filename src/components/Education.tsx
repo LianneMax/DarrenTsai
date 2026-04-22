@@ -68,36 +68,58 @@ const REVIEWS = [
 ];
 
 const AVATAR_COLORS = [
-  '#4285F4', // Google blue
-  '#EA4335', // Google red
-  '#34A853', // Google green
-  '#9C27B0', // purple
-  '#FF5722', // deep orange
-  '#00ACC1', // cyan
-  '#E91E63', // pink
-  '#3F51B5', // indigo
-  '#F4511E', // burnt orange
+  '#4285F4',
+  '#EA4335',
+  '#34A853',
+  '#9C27B0',
+  '#FF5722',
+  '#00ACC1',
+  '#E91E63',
+  '#3F51B5',
+  '#F4511E',
 ];
 
 const STARS = '★★★★★';
 const INTERVAL_MS = 5000;
-const PER_PAGE = 3;
-const MAX_POS = Math.max(0, REVIEWS.length - PER_PAGE);
-const LOOP_SLIDES = [...REVIEWS, ...REVIEWS.slice(0, PER_PAGE)];
 
 // Characters visible before "See more" appears
 const CHAR_LIMIT = 190;
 
 type Review = typeof REVIEWS[number];
 
+function getPerPage() {
+  return typeof window !== 'undefined' && window.innerWidth <= 768 ? 1 : 3;
+}
+
 export default function Reviews() {
   const headerRef   = useScrollReveal<HTMLDivElement>();
   const carouselRef = useScrollReveal<HTMLDivElement>(80);
 
+  const [perPage, setPerPage] = useState(getPerPage);
   const [current, setCurrent] = useState(0);
   const [animated, setAnimated] = useState(true);
   const [expandedReview, setExpandedReview] = useState<Review | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Derived from perPage — recomputed whenever perPage changes
+  const maxPos    = Math.max(0, REVIEWS.length - perPage);
+  const loopSlides = [...REVIEWS, ...REVIEWS.slice(0, perPage)];
+
+  // Update perPage on resize, reset position to avoid out-of-bounds
+  useEffect(() => {
+    const handler = () => {
+      const next = getPerPage();
+      setPerPage(prev => {
+        if (prev !== next) {
+          setCurrent(0);
+          setAnimated(false);
+        }
+        return next;
+      });
+    };
+    window.addEventListener('resize', handler, { passive: true });
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   // Close modal on Escape
   useEffect(() => {
@@ -115,14 +137,14 @@ export default function Reviews() {
 
   // When we land on the clone zone, snap back silently
   useEffect(() => {
-    if (current > MAX_POS) {
+    if (current > maxPos) {
       const t = setTimeout(() => {
         setAnimated(false);
         setCurrent(0);
       }, 500);
       return () => clearTimeout(t);
     }
-  }, [current]);
+  }, [current, maxPos]);
 
   // Re-enable animation after the silent snap
   useEffect(() => {
@@ -138,7 +160,7 @@ export default function Reviews() {
 
   const resetTimer = (idx: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
-    const clamped = ((idx % (MAX_POS + 1)) + MAX_POS + 1) % (MAX_POS + 1);
+    const clamped = ((idx % (maxPos + 1)) + maxPos + 1) % (maxPos + 1);
     setCurrent(clamped);
     timerRef.current = setInterval(advance, INTERVAL_MS);
   };
@@ -167,18 +189,22 @@ export default function Reviews() {
               <div
                 className="reviews-track"
                 style={{
-                  transform: `translateX(-${current * (100 / PER_PAGE)}%)`,
+                  transform: `translateX(-${current * (100 / perPage)}%)`,
                   transition: animated ? 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
                 }}
               >
-                {LOOP_SLIDES.map((r, i) => {
+                {loopSlides.map((r, i) => {
                   const isTruncated = r.quote.length > CHAR_LIMIT;
                   const displayQuote = isTruncated
                     ? r.quote.slice(0, CHAR_LIMIT).trimEnd() + '…'
                     : r.quote;
 
                   return (
-                    <div key={`${r.id}-${i}`} className="review-slide">
+                    <div
+                      key={`${r.id}-${i}`}
+                      className="review-slide"
+                      style={{ minWidth: `${100 / perPage}%` }}
+                    >
                       <div className="review-card">
                         {/* Stars */}
                         <div className="review-stars" aria-label="5 out of 5 stars">
@@ -203,9 +229,9 @@ export default function Reviews() {
                         {/* Author */}
                         <div className="review-author">
                           <div
-                              className="review-avatar"
-                              style={{ background: AVATAR_COLORS[(r.id - 1) % AVATAR_COLORS.length] }}
-                            >{r.initials}</div>
+                            className="review-avatar"
+                            style={{ background: AVATAR_COLORS[(r.id - 1) % AVATAR_COLORS.length] }}
+                          >{r.initials}</div>
                           <div>
                             <p className="review-name">{r.name}</p>
                             <p className="review-meta">{r.meta}</p>
@@ -242,7 +268,7 @@ export default function Reviews() {
 
             {/* Dots */}
             <div className="reviews-dots" role="tablist" aria-label="Review slides">
-              {Array.from({ length: MAX_POS + 1 }, (_, i) => (
+              {Array.from({ length: maxPos + 1 }, (_, i) => (
                 <button
                   key={i}
                   role="tab"
@@ -286,7 +312,9 @@ export default function Reviews() {
             <p className="review-modal-quote">"{expandedReview.quote}"</p>
 
             <div className="review-author" style={{ marginTop: 20 }}>
-              <div className="review-avatar">{expandedReview.initials}</div>
+              <div className="review-avatar"
+                style={{ background: AVATAR_COLORS[(expandedReview.id - 1) % AVATAR_COLORS.length] }}
+              >{expandedReview.initials}</div>
               <div>
                 <p className="review-name">{expandedReview.name}</p>
                 <p className="review-meta">{expandedReview.meta}</p>
