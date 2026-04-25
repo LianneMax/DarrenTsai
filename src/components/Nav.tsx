@@ -83,7 +83,7 @@ export default function Nav({ onOpenContact }: Props) {
 
           {/* Desktop links */}
           <div className="nav-links">
-            <a href="#savings"    onClick={scrollTo('savings')}    className="nav-link">Debt Consolidation</a>
+            <a href="#savings"    onClick={scrollTo('savings')}    className="nav-link">Monthly Reset</a>
             <a href="#calculator" onClick={scrollTo('calculator')} className="nav-link">Calculator</a>
             <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
             <button onClick={handleContactClick} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
@@ -110,7 +110,7 @@ export default function Nav({ onOpenContact }: Props) {
         <div className="nav-mobile-overlay" onClick={() => setMenuOpen(false)} aria-hidden="true" />
       )}
       <div className={`nav-mobile-menu${menuOpen ? ' nav-mobile-menu--open' : ''}`} aria-hidden={!menuOpen}>
-        <a href="#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link">Debt Consolidation</a>
+        <a href="#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link">Monthly Reset</a>
         <a href="#calculator" onClick={scrollTo('calculator')} className="nav-mobile-link">Calculator</a>
         <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link">Reviews</a>
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn">Contact</button>

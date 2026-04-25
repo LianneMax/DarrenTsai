@@ -261,22 +261,27 @@ export default function DebtSavingsCalculator() {
 
         {/* Section header */}
         <div ref={headerRef} className="section-header reveal">
-          <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Debt Consolidation Analysis</span>
-          <h2 className="section-title" style={{ color: 'var(--teal)' }}>See How Much You Could Save Each Month</h2>
+          <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Monthly Reset</span>
+          <h2 className="section-title" style={{ color: 'var(--teal)' }}>Boost Your Monthly Cashflow</h2>
           <p className="section-sub">
-            You've built equity in your home. Let's put it to work. Compare your options
-            side-by-side in under 3 minutes — no credit pull, no obligation.
+            You have a low mortgage rate but "expensive" credit card and other debt.
+            This tool shows you how to use your home's value to get rid of those high-interest
+            bills and keep more cash every month.
           </p>
-          {bestSave > 0 && (
-            <span style={{
-              display: 'inline-block', marginTop: 14,
-              background: 'rgba(81,118,134,0.12)', color: 'var(--teal)',
-              border: '1.5px solid rgba(81,118,134,0.3)',
-              padding: '6px 22px', borderRadius: 20, fontSize: 14, fontWeight: 600,
-            }}>
-              Most clients save $900 – $1,500/mo
-            </span>
-          )}
+          <ul style={{
+            listStyle: 'none', padding: 0, margin: '16px auto 0',
+            display: 'inline-flex', flexDirection: 'column', gap: 6,
+            textAlign: 'left', color: 'var(--navy)', fontSize: '0.95rem',
+          }}>
+            {['Takes under 3 minutes.', 'Zero impact on your credit score.', 'No cost to see your numbers.'].map(item => (
+              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--teal)' }}>
+                  <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Step indicator — pill tabs */}

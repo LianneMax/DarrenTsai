@@ -22,11 +22,6 @@ export default function Hero({ onOpenContact }: Props) {
         {/* ── Left column ── */}
         <div className="hero-copy">
 
-          <span className="hero-tag hero-anim hero-anim-1">
-            <span className="hero-tag-dot" aria-hidden="true" />
-            Senior Loan Officer · Southern California
-          </span>
-
           <h1 className="hero-headline hero-anim hero-anim-2">
             Most mortgages cost you money.
             Yours should build{' '}
@@ -67,25 +62,19 @@ export default function Hero({ onOpenContact }: Props) {
         {/* ── Right column — Stats card ── */}
         <div>
           <div className="hero-card hero-anim hero-anim-card">
-            <p className="hero-card-eyebrow">What our clients are achieving</p>
+            <p className="hero-card-eyebrow">Estimated tool-calculated savings</p>
 
             <div className="hero-stat">
-              <span className="hero-stat-label">Average client monthly savings</span>
               <div className="hero-stat-value">
-                <span className="hero-stat-num">$900 – $1,500</span>
+                <span className="hero-stat-num">$1,500 – $3,000</span>
                 <span className="hero-stat-range">/mo</span>
               </div>
+              <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 6, display: 'block', lineHeight: 1.5 }}>
+                Based on consolidating $75,000–$150,000 in high-interest debt. Individual results will vary.
+              </span>
             </div>
 
             <div className="hero-stat-divider" />
-
-            <div className="hero-stat">
-              <span className="hero-stat-label">Client average satisfaction</span>
-              <div className="hero-stat-value" style={{ alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#f59e0b', fontSize: '1.6rem', letterSpacing: 2, lineHeight: 1 }}>★★★★★</span>
-                <span className="hero-stat-num" style={{ fontSize: '1.5rem' }}>5.0</span>
-              </div>
-            </div>
 
             <button onClick={scrollToSavings} className="btn btn-rose btn-full hero-card-btn">
               See How Much You Could Save
@@ -94,12 +83,17 @@ export default function Hero({ onOpenContact }: Props) {
               </svg>
             </button>
 
+            <div style={{ textAlign: 'center', marginTop: 10 }}>
+              <span style={{ color: '#f59e0b', fontSize: '1.3rem', letterSpacing: 2 }}>★★★★★</span>
+              <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '1rem', marginLeft: 6 }}>5.0</span>
+            </div>
+
             <button
               onClick={(e) => { e.preventDefault(); onOpenContact(); }}
               className="btn btn-outline btn-full"
               style={{ marginTop: 10, padding: '11px 14px', fontSize: '0.9rem', borderRadius: 10 }}
             >
-              Want Darren to review your numbers?
+              Request a Private Debt Analysis
             </button>
           </div>
 
