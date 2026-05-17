@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
+import { z } from 'zod';
+import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import type { MortgageInputs } from '../types/mortgage';
 import { GOOGLE_SHEET_WEBHOOK_URL, EMAIL, NMLS, DRE } from '../config';
+
+const emailSchema = z.string().email();
 
 interface Props {
   currentInputs: MortgageInputs;
@@ -89,16 +93,26 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = new AsYouType('US').input(e.target.value);
+    setForm((prev) => ({ ...prev, phone: formatted }));
+    setErrors((prev) => ({ ...prev, phone: undefined }));
+  };
+
   const validate = (): boolean => {
     const errs: FieldErrors = {};
     if (!form.firstName.trim()) errs.firstName = 'Required';
     if (!form.lastName.trim())  errs.lastName  = 'Required';
     if (!form.email.trim()) {
       errs.email = 'Required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    } else if (!emailSchema.safeParse(form.email.trim()).success) {
       errs.email = 'Enter a valid email';
     }
-    if (!form.phone.trim())    errs.phone    = 'Required';
+    if (!form.phone.trim()) {
+      errs.phone = 'Required';
+    } else if (!isValidPhoneNumber(form.phone.trim(), 'US')) {
+      errs.phone = 'Enter a valid US phone number';
+    }
     if (!form.goals.trim())    errs.goals    = 'Required';
     if (!form.timeline)        errs.timeline = 'Required';
     if (!form.target)          errs.target   = 'Required';
@@ -239,7 +253,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
           <input
             id="lf-phone" type="tel"
             className={`form-input${errors.phone ? ' input-error' : ''}`}
-            value={form.phone} onChange={set('phone')}
+            value={form.phone} onChange={handlePhoneChange}
             autoComplete="tel"
           />
           {errors.phone && <span className="field-error">{errors.phone}</span>}

@@ -31,6 +31,15 @@ const NEWSLETTER_HEADERS = [
   'Timestamp', 'Email', 'Source'
 ];
 
+const DEBT_CONSOLIDATION_HEADERS = [
+  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
+  'Best Time to Call', 'Lead Source',
+  'Home Value', 'Mortgage Balance', 'Mortgage Payment',
+  'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
+  'Refi Monthly Payment', 'Refi Monthly Savings',
+  'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
+];
+
 
 function getOrCreateSheet(ss, name, headers) {
   let sheet = ss.getSheetByName(name);
@@ -75,9 +84,30 @@ function doPost(e) {
         data.email     || '',
         'newsletter'
       ]);
+    } else if (data.source === 'DebtConsolidation') {
+      const sheet = getOrCreateSheet(ss, 'DebtConsolidation', DEBT_CONSOLIDATION_HEADERS);
+      sheet.appendRow([
+        data.timestamp            || new Date().toISOString(),
+        data.firstName            || '',
+        data.lastName             || '',
+        data.email                || '',
+        data.phone                || '',
+        data.bestTimeToCall       || '',
+        data.leadSource           || '',
+        data.homeValue            || 0,
+        data.mortgageBalance      || 0,
+        data.mortgagePayment      || 0,
+        data.totalDebtBalance     || 0,
+        data.totalDebtPayment     || 0,
+        data.monthlySavings       || 0,
+        data.refiMonthlyPayment   || 0,
+        data.refiMonthlySavings   || 0,
+        data.heloanMonthlyPayment || 0,
+        data.heloanMonthlySavings || 0,
+      ]);
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
-      if (data.source !== 'DebtConsolidation' && isDuplicateLead(sheet, data.email, data.phone)) {
+      if (isDuplicateLead(sheet, data.email, data.phone)) {
         return ContentService
           .createTextOutput(JSON.stringify({ success: true, duplicate: true }))
           .setMimeType(ContentService.MimeType.JSON);

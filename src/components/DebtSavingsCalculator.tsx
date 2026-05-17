@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
+import { z } from 'zod';
+import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { GOOGLE_SHEET_WEBHOOK_URL, FRED_API_KEY } from '../config';
+
+const emailSchema = z.string().email();
 
 // Calendly URL — matches the one used across the site
 const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
@@ -168,6 +172,7 @@ export default function DebtSavingsCalculator() {
   const [bestTime,  setBestTime]  = useState('Morning (8am–12pm)');
   const [leadSrc,   setLeadSrc]   = useState('YouTube');
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -216,7 +221,15 @@ export default function DebtSavingsCalculator() {
 
   const submitLead = () => {
     if (!fname || !phone || !email) {
-      alert('Please fill in your name, phone, and email.');
+      setErrorMsg('Please fill in your name, phone, and email.');
+      return;
+    }
+    if (!emailSchema.safeParse(email.trim()).success) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!isValidPhoneNumber(phone.trim(), 'US')) {
+      setErrorMsg('Please enter a valid US phone number.');
       return;
     }
     const payload = {
@@ -703,7 +716,7 @@ export default function DebtSavingsCalculator() {
               <div>
                 <label className="input-label">Phone Number</label>
                 <input type="tel" className="form-input" placeholder="(714) 000-0000"
-                  value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  value={phone} onChange={(e) => setPhone(new AsYouType('US').input(e.target.value))} />
               </div>
               <div>
                 <label className="input-label">Email Address</label>
@@ -842,6 +855,48 @@ export default function DebtSavingsCalculator() {
           }}
         >
           Most clients save $900 – $1,500/month — talk to Darren today →
+        </div>
+      )}
+
+      {errorMsg && (
+        <div
+          className="modal-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="dsc-error-title"
+          onClick={() => setErrorMsg(null)}
+        >
+          <div className="modal-panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: 'var(--rose)', flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <h2 id="dsc-error-title" className="modal-title" style={{ fontSize: '1.15rem' }}>
+                  Something's missing
+                </h2>
+              </div>
+              <button
+                className="modal-close"
+                onClick={() => setErrorMsg(null)}
+                aria-label="Close"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
+              <button
+                className="btn btn-rose btn-full"
+                onClick={() => setErrorMsg(null)}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
