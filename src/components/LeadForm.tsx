@@ -58,7 +58,7 @@ const SUBMITTED_KEY = 'dt_lead_submitted';
 
 function getSubmitted(): { firstName: string } | null {
   try {
-    const raw = localStorage.getItem(SUBMITTED_KEY);
+    const raw = sessionStorage.getItem(SUBMITTED_KEY);
     return raw ? (JSON.parse(raw) as { firstName: string }) : null;
   } catch {
     return null;
@@ -144,7 +144,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     try {
       if (!GOOGLE_SHEET_WEBHOOK_URL) {
         await new Promise((r) => setTimeout(r, 800));
-        localStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
+        sessionStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
         setStatus('success');
         return;
       }
@@ -156,7 +156,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
         body: JSON.stringify(payload),
       });
 
-      localStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
+      sessionStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
       setStatus('success');
     } catch {
       setStatus('error');
