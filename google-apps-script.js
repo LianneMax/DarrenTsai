@@ -107,11 +107,6 @@ function doPost(e) {
       ]);
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
-      if (isDuplicateLead(sheet, data.email, data.phone)) {
-        return ContentService
-          .createTextOutput(JSON.stringify({ success: true, duplicate: true }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
       sheet.appendRow([
         data.timestamp            || new Date().toISOString(),
         data.firstName            || '',
