@@ -61,7 +61,7 @@ export default function Nav({ onOpenContact }: Props) {
       <nav className={`nav${scrolled ? ' nav-scrolled' : ''}${menuOpen ? ' nav-menu-open' : ''}`}>
         <div className="nav-inner container">
 
-          <a href="#" className="nav-logo" aria-label="Darren Tsai — Home">
+          <a href="#" className="nav-logo" aria-label="Darren Tsai Home">
             <div className="nav-avatar">
               <img
                 src="/darren.jpg"

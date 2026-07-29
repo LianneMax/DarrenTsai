@@ -10,6 +10,13 @@ export const ZAPIER_WEBHOOK_URL: string =
 export const FRED_API_KEY: string =
   import.meta.env.VITE_FRED_API_KEY ?? "";
 
+// Home-value estimate (RentCast AVM). Point this at a SERVER-SIDE proxy that
+// holds the RentCast key — never expose the raw key in the client bundle.
+// The proxy should accept ?address=... and return RentCast's /avm/value JSON.
+// Add to .env as VITE_HOME_VALUE_PROXY_URL
+export const HOME_VALUE_PROXY_URL: string =
+  import.meta.env.VITE_HOME_VALUE_PROXY_URL ?? "";
+
 export const SITE_NAME = "Darren Tsai";
 export const PHONE = "(714) 887-5432";
 export const EMAIL = "darrent@saxtonmortgage.com";

@@ -190,7 +190,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
       {/* Note */}
       <p className="modal-note">
-        <strong>* Required</strong> — All starred fields must be filled in before submitting.
+        <strong>* Required</strong>: All starred fields must be filled in before submitting.
       </p>
 
       {status === 'error' && (

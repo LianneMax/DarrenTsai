@@ -30,7 +30,7 @@ export default function Hero({ onOpenContact }: Props) {
 
           <p className="hero-sub hero-anim hero-anim-3">
             I help homeowners and investors make sure their current mortgage
-            structure still makes sense. No pushy sales tactics —
+            structure still makes sense. No pushy sales tactics,
             just straight talk about your options and the data to back it up.
           </p>
 

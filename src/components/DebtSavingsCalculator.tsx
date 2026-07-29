@@ -549,7 +549,7 @@ export default function DebtSavingsCalculator() {
               30YR fixed: <strong>{rate30.toFixed(2)}%</strong> · 15YR: <strong>{rate15.toFixed(2)}%</strong>{' '}
               &nbsp;·&nbsp;{ratesLive
                 ? <>Live via <a href="https://fred.stlouisfed.org" target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1' }}>FRED®</a> · Updated weekly · As of {rateDate}</>
-                : 'Source: FRED® / Federal Reserve — add VITE_FRED_API_KEY for live updates'
+                : 'Source: FRED® / Federal Reserve, add VITE_FRED_API_KEY for live updates'
               }
             </div>
 
@@ -696,7 +696,7 @@ export default function DebtSavingsCalculator() {
               Let's Get You Real Numbers
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 22 }}>
-              A 15-minute call could free up $900 – $1,500 every month — no hard pull, no obligation.
+              A 15-minute call could free up $900 – $1,500 every month, no hard pull, no obligation.
             </p>
 
             <div className="dsc-grid-2" style={{ marginBottom: 12 }}>
@@ -766,7 +766,7 @@ export default function DebtSavingsCalculator() {
                 Book a call with Darren
               </strong>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
-                Skip the wait — pick a time that works for you and get your personalized
+                Skip the wait, pick a time that works for you and get your personalized
                 savings review in 15 minutes.
               </p>
               <button onClick={openCalendly} className="btn btn-rose btn-sm">
@@ -854,7 +854,7 @@ export default function DebtSavingsCalculator() {
             cursor: 'pointer',
           }}
         >
-          Most clients save $900 – $1,500/month — talk to Darren today →
+          Most clients save $900 – $1,500/month, talk to Darren today →
         </div>
       )}
 

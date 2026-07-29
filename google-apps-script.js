@@ -17,9 +17,18 @@
  * 7. Click Deploy → authorize → copy the Web App URL
  * 8. In Netlify → Environment variables:
  *    VITE_GOOGLE_SHEET_WEBHOOK_URL = <paste URL>
+ *
+ * BONZO SETUP (pushes every lead straight into Bonzo, no Zapier/manual step needed):
+ * 1. In this Apps Script editor: Project Settings (gear icon) → Script Properties
+ * 2. Add property: BONZO_API_KEY = <your Bonzo bearer token>
+ * 3. Add property: BONZO_CAMPAIGN_ID = <campaign id leads should land in — ask Bonzo
+ *    support or check dashboard if unsure, default campaign works if blank>
+ * 4. Never paste the token directly in this file — Script Properties keeps it out
+ *    of source control and off Netlify entirely.
  */
 
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
+const BONZO_BASE_URL = 'https://app.getbonzo.com/api/v3';
 
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
@@ -30,6 +39,21 @@ const LEAD_HEADERS = [
 const NEWSLETTER_HEADERS = [
   'Timestamp', 'Email', 'Source'
 ];
+
+const QUALIFY_HEADERS = [
+  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
+  'Loan Type', 'Timeline', 'Price Range', 'Credit Range',
+  'Employment', 'Notes', 'Source'
+];
+
+const LANDING_HEADERS = [
+  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
+  'Magnet', 'Source',
+  // Calculator context (blank for simple opt-in forms; populated by the DSCR calculator)
+  'DSCR', 'Down Payment', 'Loan Amount', 'Rate'
+];
+
+const LANDING_SOURCES = ['heloc-hei', 'dscr', 'self-employed', 'fha'];
 
 const DEBT_CONSOLIDATION_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
@@ -70,6 +94,55 @@ function isDuplicateLead(sheet, email, phone) {
   return false;
 }
 
+function pushToBonzo(data) {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('BONZO_API_KEY');
+  if (!token) return; // Bonzo not configured yet — skip silently, Sheets still logs the lead
+
+  const campaignId = props.getProperty('BONZO_CAMPAIGN_ID');
+  const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
+
+  const tags = [];
+  if (data.source === 'DebtConsolidation') tags.push('debt-consolidation', 'HELOC/cash-out interest');
+  else if (data.source === 'newsletter') tags.push('newsletter');
+  else if (data.source === 'QualifyForm') {
+    tags.push('qualify-form');
+    // Qualification answers as tags so they're filterable in Bonzo
+    if (data.loanType)   tags.push('loan:' + data.loanType);
+    if (data.timeline)   tags.push('timeline:' + data.timeline);
+    if (data.priceRange) tags.push('price:' + data.priceRange);
+    if (data.creditRange) tags.push('credit:' + data.creditRange);
+    if (data.employment) tags.push('employment:' + data.employment);
+  }
+  // Landing pages — each source routes to its own Bonzo campaign via tags
+  else if (data.source === 'heloc-hei') tags.push('heloc-hei', 'equity', 'loan:cash-out', 'priority:p1');
+  else if (data.source === 'dscr') tags.push('dscr', 'investor', 'priority:p2');
+  else if (data.source === 'self-employed') tags.push('self-employed', 'bank-statement', 'purchase', 'priority:p3');
+  else if (data.source === 'fha') tags.push('fha', 'fha-calculator', 'newsletter', 'priority:p4');
+  else tags.push('mortgage-calculator');
+
+  const body = {
+    first_name: data.firstName || '',
+    last_name: data.lastName || '',
+    email: data.email || '',
+    phone: data.phone || '',
+    source: data.source || 'website',
+    tags: tags,
+  };
+
+  try {
+    UrlFetchApp.fetch(BONZO_BASE_URL + path, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true, // don't let a Bonzo error break the Sheets write
+    });
+  } catch (err) {
+    // swallow — lead is already safe in Sheets even if Bonzo push fails
+  }
+}
+
 function doPost(e) {
   try {
     // Browser sends text/plain with no-cors mode — body is still valid JSON
@@ -83,6 +156,40 @@ function doPost(e) {
         data.timestamp || new Date().toISOString(),
         data.email     || '',
         'newsletter'
+      ]);
+    } else if (LANDING_SOURCES.indexOf(data.source) !== -1) {
+      // One tab per landing page (Heloc-hei, Dscr, Self-employed, Fha)
+      const tabName = data.source.charAt(0).toUpperCase() + data.source.slice(1);
+      const sheet = getOrCreateSheet(ss, tabName, LANDING_HEADERS);
+      sheet.appendRow([
+        data.timestamp || new Date().toISOString(),
+        data.firstName || '',
+        data.lastName  || '',
+        data.email     || '',
+        data.phone     || '',
+        data.state     || '',
+        data.magnet    || '',
+        data.source,
+        data.dscr        || '',
+        data.downPayment || '',
+        data.loanAmount  || '',
+        data.rate        || ''
+      ]);
+    } else if (data.source === 'QualifyForm') {
+      const sheet = getOrCreateSheet(ss, 'Qualify', QUALIFY_HEADERS);
+      sheet.appendRow([
+        data.timestamp   || new Date().toISOString(),
+        data.firstName   || '',
+        data.lastName    || '',
+        data.email       || '',
+        data.phone       || '',
+        data.loanType    || '',
+        data.timeline    || '',
+        data.priceRange  || '',
+        data.creditRange || '',
+        data.employment  || '',
+        data.notes       || '',
+        'QualifyForm'
       ]);
     } else if (data.source === 'DebtConsolidation') {
       const sheet = getOrCreateSheet(ss, 'DebtConsolidation', DEBT_CONSOLIDATION_HEADERS);
@@ -122,6 +229,8 @@ function doPost(e) {
         data.source               || 'SimpleMortgageCalculator'
       ]);
     }
+
+    pushToBonzo(data);
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))

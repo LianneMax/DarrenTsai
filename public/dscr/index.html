@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSCR Qualification Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --white:       #ffffff;
+    --teal:        #517686;
+    --navy:        #223d55;
+    --navy-dark:   #1a2f42;
+    --rose:        #d2566d;
+    --rose-glow:   rgba(210, 86, 109, 0.35);
+    --light-bg:    #f5f7f9;
+    --text-dark:   #1a1a2e;
+    --text-muted:  #6b7280;
+    --line:        #d1d5db;
+    --success:     #1e7a45;
+    --success-bg:  #dcf1e3;
+    --radius:8px;
+    --card-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--white);
+    color:var(--text-dark);
+    font-family:'Outfit', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:32px 16px 64px;
+  }
+
+  .wrap{max-width:760px;margin:0 auto;}
+
+  /* ---------- Header ---------- */
+  .eyebrow{
+    font-family:'Outfit', sans-serif;
+    font-size:0.78rem;
+    font-weight:600;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:16px;height:1px;background:var(--teal);
+  }
+  h1{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:clamp(1.7rem, 5vw, 2.6rem);
+    line-height:1.15;
+    letter-spacing:-0.01em;
+    color:var(--navy);
+    margin:0 0 12px;
+  }
+  h1 em{
+    font-style:italic;
+    color:var(--rose);
+  }
+  .sub{
+    font-size:1.05rem;
+    line-height:1.6;
+    color:var(--text-muted);
+    max-width:56ch;
+    margin:0 0 32px;
+  }
+
+  /* ---------- Card ---------- */
+  .card{
+    background:var(--white);
+    border:1px solid #eef1f4;
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    overflow:hidden;
+  }
+  .card-section{
+    padding:28px;
+    border-bottom:1px solid #eef1f4;
+  }
+  .card-section:last-child{border-bottom:none;}
+  .section-label{
+    font-family:'Outfit', sans-serif;
+    font-size:0.78rem;
+    font-weight:600;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--navy);
+    margin:0 0 18px;
+  }
+
+  /* ---------- Inputs ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px 20px;
+  }
+  @media (max-width:520px){ .grid{grid-template-columns:1fr;} }
+
+  .field label{
+    display:block;
+    font-size:0.875rem;
+    font-weight:500;
+    color:var(--navy);
+    margin-bottom:8px;
+  }
+  .field .hint{
+    font-size:0.8rem;
+    color:var(--text-muted);
+    font-weight:400;
+    margin-left:4px;
+  }
+  .input-shell{
+    display:flex;
+    align-items:center;
+    border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--white);
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .input-shell:focus-within{
+    border-color:var(--teal);
+    box-shadow:0 0 0 3px rgba(81,118,134,0.2);
+  }
+  .input-shell span{
+    padding:0 0 0 16px;
+    color:var(--text-muted);
+    font-family:'Outfit', sans-serif;
+    font-weight:500;
+    font-size:1rem;
+  }
+  .input-shell input{
+    width:100%;
+    border:none;
+    background:transparent;
+    padding:11px 16px;
+    font-family:'Outfit', sans-serif;
+    font-size:1rem;
+    color:var(--text-dark);
+    outline:none;
+  }
+  .input-shell input::-webkit-outer-spin-button,
+  .input-shell input::-webkit-inner-spin-button{
+    -webkit-appearance:none;margin:0;
+  }
+  .input-shell select{
+    width:100%;
+    border:none;
+    background:transparent;
+    padding:11px 40px 11px 16px;
+    font-family:'Outfit', sans-serif;
+    font-size:1rem;
+    color:var(--text-dark);
+    outline:none;
+    appearance:none;
+    -webkit-appearance:none;
+    cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 14px center;
+    background-size:14px;
+  }
+  .input-shell.error{
+    border-color:var(--rose);
+    box-shadow:0 0 0 3px rgba(210,86,109,0.15);
+  }
+  .field-error{
+    display:block;
+    font-size:0.8rem;
+    font-weight:500;
+    color:var(--rose);
+    margin-top:6px;
+  }
+
+  /* ---------- Down payment slider ---------- */
+  .dp-row{margin-top:22px;}
+  .dp-row label{
+    font-size:0.875rem;font-weight:500;color:var(--navy);
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-bottom:10px;
+  }
+  .dp-value{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:1rem;
+    color:var(--rose);
+  }
+  input[type="range"]{
+    -webkit-appearance:none;
+    width:100%;
+    height:4px;
+    background:var(--line);
+    border-radius:4px;
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:var(--rose);
+    border:3px solid var(--white);
+    box-shadow:0 0 0 1px var(--rose);
+    cursor:pointer;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--rose);border:3px solid var(--white);
+    box-shadow:0 0 0 1px var(--rose);cursor:pointer;
+  }
+
+  /* ---------- Rate ladder (signature element) ---------- */
+  .ladder{
+    margin-top:20px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .rung{
+    display:grid;
+    grid-template-columns:120px 1fr 90px;
+    align-items:center;
+    padding:12px 16px;
+    font-family:'Outfit', sans-serif;
+    font-size:0.85rem;
+    color:var(--text-muted);
+    background:var(--light-bg);
+    border-bottom:1px solid var(--line);
+    transition:background .2s ease, color .2s ease;
+    position:relative;
+  }
+  .rung:last-child{border-bottom:none;}
+  .rung .bar{
+    height:6px;
+    background:var(--line);
+    border-radius:3px;
+    position:relative;
+    overflow:hidden;
+  }
+  .rung .bar::after{
+    content:"";
+    position:absolute;left:0;top:0;bottom:0;
+    width:var(--fill, 30%);
+    background:var(--line);
+  }
+  .rung .rate{
+    text-align:right;
+    font-weight:600;
+  }
+  .rung.active{
+    background:var(--navy);
+    color:var(--white);
+  }
+  .rung.active .bar{background:rgba(255,255,255,0.15);}
+  .rung.active .bar::after{background:var(--rose);}
+  .rung.active .rate{color:var(--rose);}
+  .rung .tag{
+    font-size:0.65rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:2px 6px;
+    border-radius:4px;
+    margin-left:8px;
+    background:var(--rose);
+    color:var(--white);
+    display:none;
+  }
+  .rung.active .tag{display:inline-block;}
+
+  /* ---------- Results ---------- */
+  .result-hero{
+    display:flex;
+    align-items:flex-end;
+    gap:28px;
+    flex-wrap:wrap;
+  }
+  .dscr-number{
+    font-family:'Outfit', sans-serif;
+    font-size:clamp(2.5rem, 10vw, 4rem);
+    line-height:1;
+    font-weight:800;
+    letter-spacing:-0.02em;
+    color:var(--navy);
+  }
+  .dscr-number .unit{
+    font-family:'Outfit', sans-serif;
+    font-size:0.85rem;
+    color:var(--text-muted);
+    font-weight:500;
+    display:block;
+    margin-top:6px;
+    letter-spacing:0;
+  }
+  .status-pill{
+    font-family:'Outfit', sans-serif;
+    font-size:0.85rem;
+    font-weight:600;
+    letter-spacing:.02em;
+    padding:8px 14px;
+    border-radius:20px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .status-pill.pass{background:var(--success-bg);color:var(--success);}
+  .status-pill.fail{background:rgba(210,86,109,0.1);color:var(--rose);}
+  .status-pill::before{
+    content:"";
+    width:7px;height:7px;border-radius:50%;
+    background:currentColor;
+  }
+  .result-note{
+    margin-top:16px;
+    font-size:0.95rem;
+    line-height:1.6;
+    color:var(--text-muted);
+    max-width:60ch;
+  }
+  .pitia-breakdown{
+    margin-top:20px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  @media (max-width:520px){ .pitia-breakdown{grid-template-columns:repeat(2,1fr);} }
+  .pitia-cell{
+    background:var(--light-bg);
+    padding:12px 14px;
+  }
+  .pitia-cell .k{
+    font-size:0.68rem;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--text-muted);
+    margin-bottom:4px;
+  }
+  .pitia-cell .v{
+    font-family:'Outfit', sans-serif;
+    font-size:0.95rem;
+    font-weight:700;
+    color:var(--navy);
+  }
+
+  /* ---------- Lock module ---------- */
+  .lock{
+    position:relative;
+    background:var(--navy);
+    color:rgba(255,255,255,0.85);
+    padding:28px;
+  }
+  .lock-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .lock-icon{
+    width:18px;height:18px;
+    flex-shrink:0;
+  }
+  .lock h3{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:1.25rem;
+    color:var(--white);
+    margin:0;
+  }
+  .lock p{
+    font-size:0.95rem;
+    line-height:1.6;
+    color:rgba(255,255,255,0.7);
+    max-width:56ch;
+    margin:0 0 20px;
+  }
+  .lock ul{
+    margin:0 0 22px;
+    padding:0 0 0 18px;
+    font-size:0.9rem;
+    line-height:1.9;
+    color:rgba(255,255,255,0.75);
+  }
+  .cta{
+    background:var(--rose);
+    color:var(--white);
+    border:none;
+    font-family:'Outfit', sans-serif;
+    font-weight:600;
+    font-size:0.95rem;
+    padding:12px 28px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    transition:transform .2s ease, box-shadow .2s ease;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .cta:hover{transform:scale(1.03);box-shadow:0 8px 24px var(--rose-glow);}
+  .cta:active{transform:scale(1);}
+  .cta:focus-visible{outline:3px solid var(--teal);outline-offset:2px;}
+  .cta:disabled{opacity:0.7;transform:none;cursor:not-allowed;}
+
+  .microdisclaimer{
+    font-size:0.75rem;
+    color:var(--text-muted);
+    margin-top:14px;
+  }
+
+  /* ---------- Modal (matches site-wide modal styling) ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(10,20,35,0.65);
+    -webkit-backdrop-filter:blur(4px);
+    backdrop-filter:blur(4px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:24px 16px;
+    z-index:500;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-panel{
+    background:var(--white);
+    border-radius:20px;
+    max-width:460px;
+    width:100%;
+    max-height:90vh;
+    overflow-y:auto;
+    box-shadow:0 24px 80px rgba(0,0,0,0.3);
+    position:relative;
+  }
+  .modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:28px 32px 0;
+    margin-bottom:6px;
+  }
+  .modal-header h3{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:1.3rem;
+    color:var(--navy);
+    margin:0;
+  }
+  .modal-close-x{
+    background:var(--light-bg);
+    border:none;
+    border-radius:50%;
+    width:36px;height:36px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    color:var(--text-muted);
+    flex-shrink:0;
+    transition:background .2s ease, color .2s ease;
+  }
+  .modal-close-x:hover{background:#e5e7eb;color:var(--navy);}
+  .modal-body{
+    padding:16px 32px 32px;
+  }
+  .modal-body p.modal-sub{
+    font-size:0.92rem;
+    color:var(--text-muted);
+    line-height:1.6;
+    margin:0 0 20px;
+  }
+  .modal-panel .field{margin-bottom:16px;}
+  .modal-success{display:none;text-align:center;}
+  .modal-success.show{display:block;}
+  .modal-form.hide{display:none;}
+  .success-check{width:56px;margin:0 auto;}
+  .success-heading{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:1.3rem;
+    color:var(--navy);
+    margin-top:16px;
+  }
+  .success-body{
+    font-size:0.95rem;
+    color:var(--text-muted);
+    line-height:1.6;
+    margin-top:8px;
+  }
+
+  /* ---------- Footer disclaimer ---------- */
+  .footer-disclaimer{
+    font-size:0.75rem;
+    line-height:1.6;
+    color:var(--text-muted);
+    margin-top:24px;
+    padding-top:20px;
+    border-top:1px solid #eef1f4;
+  }
+
+  @media (max-width:600px){
+    .modal-header{padding:20px 20px 0;}
+    .modal-body{padding:12px 20px 24px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="eyebrow">DSCR Qualification Check</div>
+  <h1>Find out if your property <em>actually</em> qualifies,<br>before a lender tells you no.</h1>
+  <p class="sub">Enter your numbers below. This tool runs the same debt-service coverage math lenders use, so you know where you stand before you ever submit an application.</p>
+
+  <div class="card">
+
+    <!-- INPUTS -->
+    <div class="card-section">
+      <p class="section-label">Property &amp; Loan Details</p>
+      <div class="grid">
+        <div class="field">
+          <label for="rent">Monthly Market Rent</label>
+          <div class="input-shell"><span>$</span><input type="number" id="rent" value="2400" min="0"></div>
+        </div>
+        <div class="field">
+          <label for="price">Purchase Price</label>
+          <div class="input-shell"><span>$</span><input type="number" id="price" value="320000" min="0"></div>
+        </div>
+        <div class="field">
+          <label for="tax">Annual Property Tax</label>
+          <div class="input-shell"><span>$</span><input type="number" id="tax" value="3600" min="0"></div>
+        </div>
+        <div class="field">
+          <label for="insurance">Annual Insurance</label>
+          <div class="input-shell"><span>$</span><input type="number" id="insurance" value="1800" min="0"></div>
+        </div>
+        <div class="field">
+          <label for="hoa">Monthly HOA <span class="hint">(if any)</span></label>
+          <div class="input-shell"><span>$</span><input type="number" id="hoa" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="dp-row">
+        <label for="dp">Down Payment <span class="dp-value" id="dpValue">25%</span></label>
+        <input type="range" id="dp" min="20" max="50" step="1" value="25">
+      </div>
+
+      <div class="ladder" id="ladder">
+        <div class="rung" data-min="20" data-max="24">
+          <span>20% down</span>
+          <span class="bar" style="--fill:33%"></span>
+          <span class="rate">7.50%<span class="tag">You</span></span>
+        </div>
+        <div class="rung" data-min="25" data-max="29">
+          <span>25–30% down</span>
+          <span class="bar" style="--fill:66%"></span>
+          <span class="rate">7.00%<span class="tag">You</span></span>
+        </div>
+        <div class="rung" data-min="30" data-max="50">
+          <span>30–50% down</span>
+          <span class="bar" style="--fill:100%"></span>
+          <span class="rate">6.75%<span class="tag">You</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="card-section">
+      <p class="section-label">Your Result</p>
+      <div id="statusPillWrap">
+        <span class="status-pill pass" id="statusPill">Qualifies for a DSCR loan</span>
+      </div>
+      <div class="result-hero">
+        <div class="dscr-number" id="dscrNumber">1.18<span class="unit">DSCR ratio</span></div>
+      </div>
+      <p class="result-note" id="resultNote">Your monthly rent covers your estimated mortgage payment with room to spare. Most DSCR lenders qualify properties at 1.00 or above. The rate and terms you actually get still depend on credit, reserves, and property type.</p>
+
+      <div class="pitia-breakdown">
+        <div class="pitia-cell"><div class="k">Loan Amount</div><div class="v" id="outLoan">$240,000</div></div>
+        <div class="pitia-cell"><div class="k">Rate Used</div><div class="v" id="outRate">7.00%</div></div>
+        <div class="pitia-cell"><div class="k">Est. Monthly P&amp;I</div><div class="v" id="outPI">$1,597</div></div>
+        <div class="pitia-cell"><div class="k">Est. Monthly PITIA</div><div class="v" id="outPitia">$2,047</div></div>
+      </div>
+      <div class="microdisclaimer">Estimate only, based on 30-yr amortization and the rate range for your down payment tier. Not a rate lock or quote.</div>
+    </div>
+
+    <!-- LOCK MODULE -->
+    <div class="lock">
+      <div class="lock-head">
+        <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="#d2566d" stroke-width="1.8"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <h3>Get Your Actual Rate &amp; Terms</h3>
+      </div>
+      <p>The rate shown above is a general market range for your down payment tier, not a quote. Your real rate depends on factors this calculator can't see:</p>
+      <ul>
+        <li>Your credit profile and how it shifts your pricing tier</li>
+        <li>Reserve requirements for your specific loan amount</li>
+        <li>Whether a rate buydown or interest-only structure improves your DSCR</li>
+        <li>Which lenders are most flexible for deals like yours right now</li>
+      </ul>
+      <button class="cta" id="openModalBtn">
+        Get My Real Rate
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+  </div>
+
+  <div class="footer-disclaimer">
+    This calculator is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and qualification figures shown are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, reserves, and other factors. This is not a guarantee of financing. Darren Tsai, DRE #02103705 | NMLS #2438102. Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-panel">
+    <div class="modal-form" id="modalForm">
+      <div class="modal-header">
+        <h3>Get your real rate</h3>
+        <button class="modal-close-x" id="closeModal" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-sub">Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile.</p>
+        <div class="field">
+          <label for="mName">Full Name</label>
+          <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Investor"></div>
+          <span class="field-error" id="mNameError"></span>
+        </div>
+        <div class="field">
+          <label for="mEmail">Email</label>
+          <div class="input-shell" id="mEmailShell"><input type="email" id="mEmail" placeholder="jane@email.com"></div>
+          <span class="field-error" id="mEmailError"></span>
+        </div>
+        <div class="field">
+          <label for="mPhone">Phone <span class="hint">US numbers only</span></label>
+          <div class="input-shell" id="mPhoneShell"><input type="tel" id="mPhone" placeholder="(555) 555-5555" maxlength="14"></div>
+          <span class="field-error" id="mPhoneError"></span>
+        </div>
+        <div class="field">
+          <label for="mState">State</label>
+          <div class="input-shell" id="mStateShell">
+            <select id="mState">
+              <option value="">Select your state</option>
+            </select>
+          </div>
+          <span class="field-error" id="mStateError"></span>
+        </div>
+        <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send Me My Rate</button>
+      </div>
+    </div>
+    <div class="modal-success" id="modalSuccess">
+      <div class="modal-body">
+        <svg class="success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
+          <circle cx="26" cy="26" r="24" stroke="#2ecc71" stroke-width="3"/>
+          <path d="M14 26l9 9 16-16" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3 class="success-heading">You're all set.</h3>
+        <p class="success-body">Check your email for your DSCR breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
+        <button class="cta" id="closeSuccess" style="margin-top:20px;">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------------------------------------------------------
+  // Lead capture wiring:
+  // Set WEBHOOK_URL to the deployed Google Apps Script web-app URL
+  // (same one the Vite site uses as VITE_GOOGLE_SHEET_WEBHOOK_URL).
+  // Submissions post source:"dscr" and are written to the Dscr sheet
+  // + pushed to Bonzo (tagged dscr/investor) by the Apps Script.
+  // ---------------------------------------------------------
+  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzh7G3HwRfJzaNkMIKK_E1kmDDz1SwWZTyxoSWLKRri-h_G4CdxuwMRFJM_IBEtR9zsZQ/exec";
+
+  const $ = (id) => document.getElementById(id);
+
+  const rentEl = $('rent'), priceEl = $('price'), taxEl = $('tax'),
+        insuranceEl = $('insurance'), hoaEl = $('hoa'), dpEl = $('dp');
+
+  const rateBuckets = [
+    { min:20, max:24, rate:0.075, label:'20% down' },
+    { min:25, max:29, rate:0.070, label:'25–30% down' },
+    { min:30, max:50, rate:0.0675, label:'30–50% down' },
+  ];
+
+  function getBucket(dp){
+    return rateBuckets.find(b => dp >= b.min && dp <= b.max) || rateBuckets[rateBuckets.length-1];
+  }
+
+  function monthlyPI(loanAmount, annualRate, years=30){
+    const r = annualRate/12;
+    const n = years*12;
+    if (r === 0) return loanAmount/n;
+    return loanAmount * (r*Math.pow(1+r,n)) / (Math.pow(1+r,n)-1);
+  }
+
+  function fmt(num){
+    return '$' + Math.round(num).toLocaleString('en-US');
+  }
+
+  function calculate(){
+    const rent = parseFloat(rentEl.value) || 0;
+    const price = parseFloat(priceEl.value) || 0;
+    const tax = parseFloat(taxEl.value) || 0;
+    const insurance = parseFloat(insuranceEl.value) || 0;
+    const hoa = parseFloat(hoaEl.value) || 0;
+    const dp = parseInt(dpEl.value, 10);
+
+    $('dpValue').textContent = dp + '%';
+
+    const bucket = getBucket(dp);
+    const downAmount = price * (dp/100);
+    const loanAmount = price - downAmount;
+
+    const pi = monthlyPI(loanAmount, bucket.rate);
+    const monthlyTax = tax/12;
+    const monthlyIns = insurance/12;
+    const pitia = pi + monthlyTax + monthlyIns + hoa;
+
+    const dscr = pitia > 0 ? (rent / pitia) : 0;
+    const qualifies = dscr >= 1.00;
+
+    // Update ladder active state
+    document.querySelectorAll('.rung').forEach(r => {
+      const min = parseInt(r.dataset.min,10), max = parseInt(r.dataset.max,10);
+      r.classList.toggle('active', dp >= min && dp <= max);
+    });
+
+    // Update DSCR display
+    $('dscrNumber').innerHTML = dscr.toFixed(2) + '<span class="unit">DSCR ratio</span>';
+
+    const pill = $('statusPill');
+    const note = $('resultNote');
+    if (qualifies){
+      pill.className = 'status-pill pass';
+      pill.textContent = 'Qualifies for a DSCR loan';
+      note.textContent = 'Your monthly rent covers your estimated mortgage payment. Most DSCR lenders qualify properties at 1.00 or above. The rate and terms you actually get still depend on credit, reserves, and property type.';
+    } else {
+      pill.className = 'status-pill fail';
+      pill.textContent = 'Below standard qualification';
+      note.textContent = "This is a common spot for investors to hear \u201cno\u201d \u2014 but it doesn't automatically mean no. Some lenders will still approve deals in this range using reserves, credit strength, or loan restructuring. This calculator can't factor those in, but a quick call can.";
+    }
+
+    $('outLoan').textContent = fmt(loanAmount);
+    $('outRate').textContent = (bucket.rate*100).toFixed(2) + '%';
+    $('outPI').textContent = fmt(pi);
+    $('outPitia').textContent = fmt(pitia);
+  }
+
+  [rentEl, priceEl, taxEl, insuranceEl, hoaEl, dpEl].forEach(el => {
+    el.addEventListener('input', calculate);
+  });
+
+  calculate();
+
+  // ---------------- Modal logic ----------------
+  const overlay = $('modalOverlay');
+  const modalForm = $('modalForm');
+  const modalSuccess = $('modalSuccess');
+
+  // US states — full name shown, 2-letter abbreviation stored/sent
+  const US_STATES = [
+    ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+    ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
+    ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
+    ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+    ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
+    ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
+    ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
+    ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+    ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
+    ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
+  ];
+  const stateSelect = $('mState');
+  US_STATES.forEach(([abbr, name]) => {
+    const opt = document.createElement('option');
+    opt.value = abbr;
+    opt.textContent = name;
+    stateSelect.appendChild(opt);
+  });
+
+  // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1"
+  function formatUSPhone(raw) {
+    let digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+    digits = digits.slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  }
+  $('mPhone').addEventListener('input', (e) => {
+    e.target.value = formatUSPhone(e.target.value);
+  });
+
+  function setError(field, msg) {
+    $(`m${field}Error`).textContent = msg;
+    $(`m${field}Shell`).classList.toggle('error', !!msg);
+  }
+  function clearErrors() {
+    ['Name','Email','Phone','State'].forEach(f => setError(f, ''));
+  }
+
+  $('openModalBtn').addEventListener('click', () => {
+    overlay.classList.add('open');
+    modalForm.classList.remove('hide');
+    modalSuccess.classList.remove('show');
+  });
+  $('closeModal').addEventListener('click', () => overlay.classList.remove('open'));
+  $('closeSuccess').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+
+  $('submitLead').addEventListener('click', async () => {
+    clearErrors();
+    const name = $('mName').value.trim();
+    const email = $('mEmail').value.trim();
+    const phoneDigits = $('mPhone').value.replace(/\D/g, '');
+    const phone = $('mPhone').value.trim();
+    const state = stateSelect.value;
+
+    let valid = true;
+    if (!name) { setError('Name', 'Required'); valid = false; }
+    if (!email) { setError('Email', 'Required'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
+    if (!phone) { setError('Phone', 'Required'); valid = false; }
+    else if (phoneDigits.length !== 10) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
+    if (!state) { setError('State', 'Required'); valid = false; }
+    if (!valid) return;
+
+    const firstSpace = name.indexOf(' ');
+    const firstName = firstSpace === -1 ? name : name.slice(0, firstSpace);
+    const lastName  = firstSpace === -1 ? '' : name.slice(firstSpace + 1);
+
+    const payload = {
+      firstName, lastName, email, phone, state,
+      source: 'dscr',
+      magnet: 'DSCR Rate & Cash Flow Guide',
+      dscr: $('dscrNumber').textContent.replace('DSCR ratio', '').trim(),
+      downPayment: dpEl.value + '%',
+      rate: $('outRate').textContent,
+      loanAmount: $('outLoan').textContent,
+      timestamp: new Date().toISOString(),
+    };
+
+    const btn = $('submitLead');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      if (WEBHOOK_URL) {
+        await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload),
+        });
+      }
+      modalForm.classList.add('hide');
+      modalSuccess.classList.add('show');
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Send Me My Rate';
+      alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
+    }
+  });
+</script>
+
+</body>
+</html>
