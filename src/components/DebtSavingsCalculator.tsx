@@ -797,6 +797,7 @@ export default function DebtSavingsCalculator() {
               rel="noopener noreferrer"
               className="btn btn-rose btn-full"
               style={{ marginBottom: 18 }}
+              onClick={submitLead}
             >
               Get My Free Savings Analysis
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
