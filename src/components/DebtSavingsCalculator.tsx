@@ -9,9 +9,26 @@ const emailSchema = z.string().email();
 // Calendly URL — matches the one used across the site
 const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
+// HELOC registration URL
+const HELOC_URL = 'https://heloc.saxtonmortgage.com/account/heloc/register?referrer=9f491c72-43fa-41d7-b949-cc339ea5e6ee';
+
 // Fallback rates — overridden by live FRED data on mount
 const _RATE_30YR = 6.41;
 const _RATE_15YR = 6.01;
+
+// US states — full name shown, 2-letter abbreviation stored/sent
+const US_STATES: [string, string][] = [
+  ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
+  ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'], ['FL', 'Florida'], ['GA', 'Georgia'],
+  ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'],
+  ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'], ['MD', 'Maryland'],
+  ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'], ['MO', 'Missouri'],
+  ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'],
+  ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'],
+  ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'], ['SC', 'South Carolina'],
+  ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'],
+  ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'],
+];
 
 const DEBT_TYPES = [
   'Credit Card',
@@ -171,6 +188,7 @@ export default function DebtSavingsCalculator() {
   const [email,     setEmail]     = useState('');
   const [bestTime,  setBestTime]  = useState('Morning (8am–12pm)');
   const [leadSrc,   setLeadSrc]   = useState('YouTube');
+  const [usState,   setUsState]   = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
 
@@ -234,6 +252,7 @@ export default function DebtSavingsCalculator() {
     }
     const payload = {
       firstName: fname, lastName: lname, phone, email,
+      state: usState,
       bestTimeToCall: bestTime, leadSource: leadSrc,
       monthlySavings: Math.round(bestSave),
       homeValue: hv, mortgageBalance: mb, mortgagePayment: mp,
@@ -725,7 +744,7 @@ export default function DebtSavingsCalculator() {
               </div>
             </div>
 
-            <div className="dsc-grid-2" style={{ marginBottom: 20 }}>
+            <div className="dsc-grid-3" style={{ marginBottom: 20 }}>
               <div>
                 <label className="input-label">Best Time to Call</label>
                 <div className="select-wrap">
@@ -755,12 +774,40 @@ export default function DebtSavingsCalculator() {
                   </svg>
                 </div>
               </div>
+              <div>
+                <label className="input-label">State</label>
+                <div className="select-wrap">
+                  <select className="form-select" value={usState}
+                    onChange={(e) => setUsState(e.target.value)}>
+                    <option value="">Select…</option>
+                    {US_STATES.map(([abbr, name]) => (
+                      <option key={abbr} value={abbr}>{name}</option>
+                    ))}
+                  </select>
+                  <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </div>
             </div>
+
+            <a
+              href={HELOC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-rose btn-full"
+              style={{ marginBottom: 18 }}
+            >
+              Get My Free Savings Analysis
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </a>
 
             {/* Book a call block */}
             <div style={{
               background: 'var(--light-bg)', border: '1px solid #e2e5ed',
-              borderRadius: 10, padding: 18, marginBottom: 18,
+              borderRadius: 10, padding: 18,
             }}>
               <strong style={{ color: 'var(--navy)', display: 'block', marginBottom: 6 }}>
                 Book a call with Darren
@@ -777,13 +824,6 @@ export default function DebtSavingsCalculator() {
                 </svg>
               </button>
             </div>
-
-            <button className="btn btn-rose btn-full" onClick={submitLead}>
-              Get My Free Savings Analysis
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
           </div>
         )}
 

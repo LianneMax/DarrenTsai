@@ -31,7 +31,7 @@ const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
 const BONZO_BASE_URL = 'https://app.getbonzo.com/api/v3';
 
 const LEAD_HEADERS = [
-  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
+  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
   'Target Outcome', 'Timeline', 'Source'
 ];
@@ -56,7 +56,7 @@ const LANDING_HEADERS = [
 const LANDING_SOURCES = ['heloc-hei', 'dscr', 'self-employed', 'fha'];
 
 const DEBT_CONSOLIDATION_HEADERS = [
-  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
+  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Best Time to Call', 'Lead Source',
   'Home Value', 'Mortgage Balance', 'Mortgage Payment',
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
@@ -199,6 +199,7 @@ function doPost(e) {
         data.lastName             || '',
         data.email                || '',
         data.phone                || '',
+        data.state                || '',
         data.bestTimeToCall       || '',
         data.leadSource           || '',
         data.homeValue            || 0,
@@ -220,6 +221,7 @@ function doPost(e) {
         data.lastName             || '',
         data.email                || '',
         data.phone                || '',
+        data.state                || '',
         data.loanAmount           || '',
         data.termYears            || '',
         data.annualRate           || '',
