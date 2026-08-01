@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
@@ -19,6 +19,20 @@ interface Props {
 export default function Nav({ onOpenContact }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const calcDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close calculator dropdown on outside click
+  useEffect(() => {
+    if (!calcOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (calcDropdownRef.current && !calcDropdownRef.current.contains(e.target as Node)) {
+        setCalcOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [calcOpen]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
@@ -84,7 +98,24 @@ export default function Nav({ onOpenContact }: Props) {
           {/* Desktop links */}
           <div className="nav-links">
             <a href="#savings"    onClick={scrollTo('savings')}    className="nav-link">Monthly Reset</a>
-            <a href="#calculator" onClick={scrollTo('calculator')} className="nav-link">Calculator</a>
+            <div className={`nav-dropdown${calcOpen ? ' nav-dropdown--open' : ''}`} ref={calcDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setCalcOpen(o => !o)}
+                aria-expanded={calcOpen}
+                className="nav-link nav-dropdown-trigger"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
+              >
+                Calculator
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <div className="nav-dropdown-menu">
+                <a href="#savings" onClick={(e) => { scrollTo('savings')(e); setCalcOpen(false); }} className="nav-dropdown-item">Debt Consolidation</a>
+                <a href="/dscr/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">DSCR</a>
+              </div>
+            </div>
             <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
             <button onClick={handleContactClick} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
             <button onClick={openCalendly} className="btn btn-rose btn-sm">Book a Call</button>
@@ -112,6 +143,8 @@ export default function Nav({ onOpenContact }: Props) {
       <div className={`nav-mobile-menu${menuOpen ? ' nav-mobile-menu--open' : ''}`} aria-hidden={!menuOpen}>
         <a href="#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link">Monthly Reset</a>
         <a href="#calculator" onClick={scrollTo('calculator')} className="nav-mobile-link">Calculator</a>
+        <a href="#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink">Debt Consolidation</a>
+        <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink">DSCR</a>
         <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link">Reviews</a>
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn">Contact</button>
         <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }}>Book a Call</button>

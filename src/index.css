@@ -576,6 +576,66 @@ p {
 .nav-scrolled .nav-link { color: var(--text-dark); }
 .nav-scrolled .nav-link:hover { color: var(--teal); }
 
+/* ── Calculator hover dropdown ── */
+.nav-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-dropdown-trigger svg { transition: transform 0.2s ease; }
+.nav-dropdown--open .nav-dropdown-trigger svg { transform: rotate(180deg); }
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  margin-top: 14px;
+  min-width: 190px;
+  background: var(--white);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 50;
+}
+
+.nav-dropdown--open .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.nav-dropdown-item {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-dropdown-item:hover {
+  background: var(--light-bg);
+  color: var(--teal);
+}
+
 /* ── Hamburger button (hidden on desktop) ── */
 .nav-hamburger {
   display: none;
@@ -672,6 +732,13 @@ p {
 
 .nav-mobile-link:hover,
 .nav-mobile-link--btn:hover { color: var(--teal); }
+
+.nav-mobile-sublink {
+  padding-left: 20px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
 
 /* ---- HERO ---- */
 .hero {
