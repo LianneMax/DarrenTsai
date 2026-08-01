@@ -192,7 +192,7 @@ function doPost(e) {
         'QualifyForm'
       ]);
     } else if (data.source === 'DebtConsolidation') {
-      const sheet = getOrCreateSheet(ss, 'DebtConsolidation', DEBT_CONSOLIDATION_HEADERS);
+      const sheet = getOrCreateSheet(ss, 'Debt Consolidation', DEBT_CONSOLIDATION_HEADERS);
       sheet.appendRow([
         data.timestamp            || new Date().toISOString(),
         data.firstName            || '',

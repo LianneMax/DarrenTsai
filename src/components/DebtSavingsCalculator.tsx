@@ -252,9 +252,9 @@ export default function DebtSavingsCalculator() {
   };
 
   const submitLead = (e: MouseEvent<HTMLAnchorElement>) => {
-    if (!fname || !phone || !email) {
+    if (!fname || !phone || !email || !usState) {
       e.preventDefault();
-      setErrorMsg('Please fill in your name, phone, and email.');
+      setErrorMsg('Please fill in your name, phone, email, and state.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
