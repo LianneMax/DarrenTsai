@@ -21,9 +21,11 @@
  * BONZO SETUP (pushes every lead straight into Bonzo, no Zapier/manual step needed):
  * 1. In this Apps Script editor: Project Settings (gear icon) → Script Properties
  * 2. Add property: BONZO_API_KEY = <your Bonzo bearer token>
- * 3. Add property: BONZO_CAMPAIGN_ID = <campaign id leads should land in — ask Bonzo
+ * 3. Add property: BONZO_CAMPAIGN_ID = <default campaign id leads should land in — ask Bonzo
  *    support or check dashboard if unsure, default campaign works if blank>
- * 4. Never paste the token directly in this file — Script Properties keeps it out
+ * 4. Add property: BONZO_DSCR_CAMPAIGN_ID = <the "DSCR Campaign" id in Bonzo — DSCR leads
+ *    route here instead of the default campaign. Falls back to BONZO_CAMPAIGN_ID if blank.>
+ * 5. Never paste tokens/ids directly in this file — Script Properties keeps them out
  *    of source control and off Netlify entirely.
  */
 
@@ -99,7 +101,10 @@ function pushToBonzo(data) {
   const token = props.getProperty('BONZO_API_KEY');
   if (!token) return; // Bonzo not configured yet — skip silently, Sheets still logs the lead
 
-  const campaignId = props.getProperty('BONZO_CAMPAIGN_ID');
+  // DSCR leads route to their own Bonzo campaign; everything else falls back to the default campaign
+  const campaignId = data.source === 'dscr'
+    ? (props.getProperty('BONZO_DSCR_CAMPAIGN_ID') || props.getProperty('BONZO_CAMPAIGN_ID'))
+    : props.getProperty('BONZO_CAMPAIGN_ID');
   const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
 
   const tags = [];
