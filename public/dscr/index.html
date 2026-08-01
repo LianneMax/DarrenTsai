@@ -809,6 +809,15 @@
     e.target.value = formatUSPhone(e.target.value);
   });
 
+  // NANP validation: area code + exchange code must start 2-9 and can't be an N11 code (211/311/.../911)
+  function isValidUSPhone(digits) {
+    if (digits.length !== 10) return false;
+    const area = digits.slice(0, 3);
+    const exch = digits.slice(3, 6);
+    const validBlock = (b) => /^[2-9]\d{2}$/.test(b) && !/^[2-9]11$/.test(b);
+    return validBlock(area) && validBlock(exch);
+  }
+
   function setError(field, msg) {
     $(`m${field}Error`).textContent = msg;
     $(`m${field}Shell`).classList.toggle('error', !!msg);
@@ -839,7 +848,7 @@
     if (!email) { setError('Email', 'Required'); valid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
     if (!phone) { setError('Phone', 'Required'); valid = false; }
-    else if (phoneDigits.length !== 10) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
+    else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
     if (!state) { setError('State', 'Required'); valid = false; }
     if (!valid) return;
 
