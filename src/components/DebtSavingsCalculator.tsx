@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
@@ -11,6 +11,20 @@ const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
 // HELOC registration URL
 const HELOC_URL = 'https://heloc.saxtonmortgage.com/account/heloc/register?referrer=9f491c72-43fa-41d7-b949-cc339ea5e6ee';
+
+// Appends lead info as query params so the (external) HELOC registration
+// page can prefill — param names are a best guess, not confirmed against
+// Saxton's app since it's a separate JS-rendered app we can't inspect.
+function buildHelocUrl(fname: string, lname: string, email: string): string {
+  const initials = `${fname.trim().charAt(0)}${lname.trim().charAt(0)}`.toUpperCase();
+  const params = new URLSearchParams();
+  if (initials.trim()) params.set('initials', initials);
+  if (fname.trim())    params.set('first_name', fname.trim());
+  if (lname.trim())    params.set('last_name', lname.trim());
+  if (email.trim())    params.set('email', email.trim());
+  const qs = params.toString();
+  return qs ? `${HELOC_URL}&${qs}` : HELOC_URL;
+}
 
 // Fallback rates — overridden by live FRED data on mount
 const _RATE_30YR = 6.41;
@@ -237,16 +251,19 @@ export default function DebtSavingsCalculator() {
     }, 0);
   };
 
-  const submitLead = () => {
+  const submitLead = (e: MouseEvent<HTMLAnchorElement>) => {
     if (!fname || !phone || !email) {
+      e.preventDefault();
       setErrorMsg('Please fill in your name, phone, and email.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
+      e.preventDefault();
       setErrorMsg('Please enter a valid email address.');
       return;
     }
     if (!isValidPhoneNumber(phone.trim(), 'US')) {
+      e.preventDefault();
       setErrorMsg('Please enter a valid US phone number.');
       return;
     }
@@ -792,7 +809,7 @@ export default function DebtSavingsCalculator() {
             </div>
 
             <a
-              href={HELOC_URL}
+              href={buildHelocUrl(fname, lname, email)}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-rose btn-full"

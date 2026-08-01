@@ -113,6 +113,7 @@ export default function Nav({ onOpenContact }: Props) {
               </button>
               <div className="nav-dropdown-menu">
                 <a href="#savings" onClick={(e) => { scrollTo('savings')(e); setCalcOpen(false); }} className="nav-dropdown-item">Debt Consolidation</a>
+                <a href="#calculator" onClick={(e) => { scrollTo('calculator')(e); setCalcOpen(false); }} className="nav-dropdown-item">Mortgage Calculator</a>
                 <a href="/dscr/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">DSCR</a>
               </div>
             </div>
