@@ -32,6 +32,26 @@
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
 const BONZO_BASE_URL = 'https://app.getbonzo.com/api/v3';
 
+// States Darren is licensed in. A lead outside these is logged in the sheet
+// but NOT added to the Bonzo campaign (he can't serve them).
+const LICENSED_STATES = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'];
+
+// Landing leads in a licensed state route into these specific Bonzo campaigns.
+// "FHA Calculator Campaign: Licensed" — platform.getbonzo.com/campaigns/145797
+const FHA_CAMPAIGN_ID = '145797';
+// "DSCR" campaign — platform.getbonzo.com/campaigns/258025
+const DSCR_CAMPAIGN_ID = '258025';
+
+function isLicensedState(state) {
+  if (!state) return false;
+  return LICENSED_STATES.indexOf(String(state).trim().toUpperCase()) !== -1;
+}
+
+// FHA licensed campaign id (script-property override wins, else the known id above).
+function getFhaCampaignId(props) {
+  return props.getProperty('BONZO_FHA_CAMPAIGN_ID') || FHA_CAMPAIGN_ID;
+}
+
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
@@ -52,7 +72,11 @@ const LANDING_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Magnet', 'Source',
   // Calculator context (blank for simple opt-in forms; populated by the DSCR calculator)
-  'DSCR', 'Down Payment', 'Loan Amount', 'Rate'
+  'DSCR', 'Down Payment', 'Loan Amount', 'Rate',
+  // Credit score estimate (FHA page); blank for funnels that don't ask
+  'Credit Score',
+  // Whether the lead's state is one Darren is licensed in
+  'Licensed?'
 ];
 
 const LANDING_SOURCES = ['heloc-hei', 'dscr', 'self-employed', 'fha'];
@@ -101,10 +125,19 @@ function pushToBonzo(data) {
   const token = props.getProperty('BONZO_API_KEY');
   if (!token) return; // Bonzo not configured yet — skip silently, Sheets still logs the lead
 
-  // DSCR leads route to their own Bonzo campaign; everything else falls back to the default campaign
-  const campaignId = data.source === 'dscr'
-    ? (props.getProperty('BONZO_DSCR_CAMPAIGN_ID') || props.getProperty('BONZO_CAMPAIGN_ID'))
-    : props.getProperty('BONZO_CAMPAIGN_ID');
+  // Landing funnels: only leads in a state Darren is licensed in enter a campaign.
+  // Out-of-area leads are already logged in the sheet — just don't push them to Bonzo.
+  if (LANDING_SOURCES.indexOf(data.source) !== -1 && !isLicensedState(data.state)) return;
+
+  // Campaign routing per source; everything else falls back to the default campaign.
+  var campaignId;
+  if (data.source === 'dscr') {
+    campaignId = props.getProperty('BONZO_DSCR_CAMPAIGN_ID') || DSCR_CAMPAIGN_ID;
+  } else if (data.source === 'fha') {
+    campaignId = getFhaCampaignId(props); // "FHA Calculator Campaign: Licensed" (145797)
+  } else {
+    campaignId = props.getProperty('BONZO_CAMPAIGN_ID');
+  }
   const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
 
   const tags = [];
@@ -123,8 +156,17 @@ function pushToBonzo(data) {
   else if (data.source === 'heloc-hei') tags.push('heloc-hei', 'equity', 'loan:cash-out', 'priority:p1');
   else if (data.source === 'dscr') tags.push('dscr', 'investor', 'priority:p2');
   else if (data.source === 'self-employed') tags.push('self-employed', 'bank-statement', 'purchase', 'priority:p3');
-  else if (data.source === 'fha') tags.push('fha', 'fha-calculator', 'newsletter', 'priority:p4');
+  else if (data.source === 'fha') {
+    tags.push('fha', 'fha-calculator', 'newsletter', 'priority:p4');
+    if (data.creditScore) tags.push('credit:' + data.creditScore);
+  }
   else tags.push('mortgage-calculator');
+
+  // All landing funnels reaching this point are in a licensed state (gated above) — tag it.
+  if (LANDING_SOURCES.indexOf(data.source) !== -1) {
+    tags.push('licensed-state');
+    if (data.state) tags.push('state:' + String(data.state).trim().toUpperCase());
+  }
 
   const body = {
     first_name: data.firstName || '',
@@ -178,7 +220,9 @@ function doPost(e) {
         data.dscr        || '',
         data.downPayment || '',
         data.loanAmount  || '',
-        data.rate        || ''
+        data.rate        || '',
+        data.creditScore || '',
+        isLicensedState(data.state) ? 'Yes' : 'No'
       ]);
     } else if (data.source === 'QualifyForm') {
       const sheet = getOrCreateSheet(ss, 'Qualify', QUALIFY_HEADERS);

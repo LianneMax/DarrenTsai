@@ -20,8 +20,22 @@ export interface LandingConfig {
   extra?: ReactNode;         // optional block above the form (e.g. home value search)
 }
 
-interface FormState { firstName: string; lastName: string; email: string; phone: string; }
+interface FormState { firstName: string; lastName: string; email: string; phone: string; state: string; }
 type Errors = Partial<Record<keyof FormState, string>>;
+
+// 2-letter value stored/sent; full name shown.
+const US_STATES: [string, string][] = [
+  ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+  ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
+  ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
+  ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+  ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
+  ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
+  ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
+  ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+  ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
+  ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
+];
 
 export default function LandingPage({ config }: { config: LandingConfig }) {
   const submittedKey = `dt_landing_${config.source}`;
@@ -29,10 +43,10 @@ export default function LandingPage({ config }: { config: LandingConfig }) {
     try { return sessionStorage.getItem(submittedKey) ? 'success' : 'idle'; } catch { return 'idle'; }
   });
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState<FormState>({ firstName: '', lastName: '', email: '', phone: '' });
+  const [form, setForm] = useState<FormState>({ firstName: '', lastName: '', email: '', phone: '', state: '' });
   const [errors, setErrors] = useState<Errors>({});
 
-  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((p) => ({ ...p, [key]: e.target.value }));
     setErrors((p) => ({ ...p, [key]: undefined }));
   };
@@ -49,6 +63,7 @@ export default function LandingPage({ config }: { config: LandingConfig }) {
     else if (!emailSchema.safeParse(form.email.trim()).success) errs.email = 'Enter a valid email';
     if (!form.phone.trim()) errs.phone = 'Required';
     else if (!isValidPhoneNumber(form.phone.trim(), 'US')) errs.phone = 'Enter a valid US phone number';
+    if (!form.state) errs.state = 'Required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -62,6 +77,7 @@ export default function LandingPage({ config }: { config: LandingConfig }) {
       lastName: form.lastName.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
+      state: form.state,
       magnet: config.magnetName,
       source: config.source,
       timestamp: new Date().toISOString(),
@@ -221,6 +237,15 @@ export default function LandingPage({ config }: { config: LandingConfig }) {
                           value={form.phone} onChange={handlePhone} autoComplete="tel" placeholder="(555) 555-5555" />
                         {errors.phone && <span className="field-error">{errors.phone}</span>}
                       </div>
+                    </div>
+                    <div className="input-group" style={{ marginBottom: 16 }}>
+                      <label htmlFor="l-state" className="input-label">State <span style={{ color: 'var(--rose)' }}>*</span></label>
+                      <select id="l-state" className={`form-input${errors.state ? ' input-error' : ''}`}
+                        value={form.state} onChange={set('state')} autoComplete="address-level1">
+                        <option value="">Select your state…</option>
+                        {US_STATES.map(([abbr, name]) => <option key={abbr} value={abbr}>{name}</option>)}
+                      </select>
+                      {errors.state && <span className="field-error">{errors.state}</span>}
                     </div>
                     <button type="submit" className="btn btn-rose btn-full submit-btn" style={{ marginTop: 8 }} disabled={status === 'loading'}>
                       {status === 'loading' ? (<><span className="btn-spinner" aria-hidden="true" />Sending…</>) : (config.ctaLabel ?? 'Get Instant Access')}

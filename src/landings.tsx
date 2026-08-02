@@ -60,17 +60,22 @@ export const LANDINGS: Record<string, LandingConfig> = {
   },
 
   // P4 — FHA calculator (lowest priority; feeds monthly newsletter)
+  // NOTE: like DSCR, the primary FHA experience is the standalone interactive
+  // calculator at /fha (public/fha/index.html), which has its own lead capture.
+  // This React landing is a simple intro whose CTA sends people into that
+  // calculator. Point YouTube links directly at /fha to skip this intro.
   'fha': {
     source: 'fha',
     headline: 'Free FHA Mortgage Calculator',
-    subheadline: 'Estimate your FHA monthly payment and how much home you can afford, stress-free.',
-    body: 'FHA loans make homeownership possible with as little as 3.5% down. Use the free calculator to run your numbers, then get on the monthly newsletter for rate updates and tips.',
+    subheadline: 'Estimate your FHA monthly payment (MIP included) and how much home you can afford.',
+    body: 'FHA loans make homeownership possible with as little as 3.5% down. Run the free calculator to see your real numbers, then get on the monthly newsletter for rate updates and tips.',
     bullets: [
       'Estimate your full FHA monthly payment (incl. MIP)',
       'See how much home you can afford',
       'Plus: monthly rate & market updates from Darren',
     ],
     magnetName: 'FHA Mortgage Calculator',
-    ctaLabel: 'Download the FHA Calculator',
+    ctaLabel: 'Open the FHA Calculator',
+    ctaHref: '/fha',
   },
 };
