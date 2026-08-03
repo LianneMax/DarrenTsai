@@ -31,10 +31,10 @@
     color:var(--text-dark);
     font-family:'Outfit', sans-serif;
     -webkit-font-smoothing:antialiased;
-    padding:32px 16px 64px;
+    padding:0 0 64px;
   }
 
-  .wrap{max-width:760px;margin:0 auto;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px;}
 
   /* ---------- Header ---------- */
   .eyebrow{
@@ -512,6 +512,179 @@
     .modal-body{padding:12px 20px 24px;}
   }
 
+  /* --- Client reviews carousel (mirrors main-site Reviews component) --- */
+  .reviews-section{margin-top:40px;}
+  .section-header{text-align:center;margin-bottom:36px;}
+  .section-eyebrow{display:block;font-size:0.78rem;font-weight:600;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px;}
+  .section-title{font-family:'Outfit',sans-serif;font-weight:700;font-size:clamp(1.5rem,3.2vw,2rem);color:var(--navy);margin:0 0 12px;}
+  .section-sub{font-size:0.98rem;color:var(--text-muted);line-height:1.7;max-width:520px;margin:0 auto;}
+
+  .reviews-carousel{position:relative;overflow:hidden;width:100vw;left:50%;transform:translateX(-50%);padding:16px 40px 4px;}
+  .reviews-track{display:flex;will-change:transform;}
+  .review-slide{min-width:calc(100% / 3);padding:0 8px;box-sizing:border-box;}
+  @media(max-width:768px){ .review-slide{min-width:100%;} }
+
+  .review-card{
+    background:var(--white);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.09);
+    padding:24px 22px;border-left:4px solid var(--teal);height:260px;
+    display:flex;flex-direction:column;gap:12px;box-sizing:border-box;
+  }
+  @media(max-width:768px){ .review-card{padding:28px 20px;height:280px;} }
+
+  .review-stars{display:flex;gap:3px;margin:0;flex-shrink:0;}
+  .review-star{color:#f59e0b;font-size:16px;}
+  .review-quote-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:0;}
+  .review-quote{font-size:0.85rem;font-weight:400;color:var(--text-dark);line-height:1.6;margin:0;overflow:hidden;}
+  .review-see-more{background:none;border:none;padding:4px 0 0;font-size:0.8rem;font-weight:600;color:var(--teal);cursor:pointer;text-align:left;font-family:'Outfit',sans-serif;flex-shrink:0;}
+  .review-see-more:hover{text-decoration:underline;}
+  .review-author{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+  .review-avatar{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--white);flex-shrink:0;}
+  .review-name{font-size:0.9rem;font-weight:600;color:var(--navy);margin:0;}
+  .review-meta{font-size:0.78rem;color:var(--text-muted);margin:2px 0 0;}
+
+  .reviews-nav{display:flex;justify-content:center;gap:12px;margin-top:16px;}
+  .reviews-nav-btn{
+    background:var(--white);border:1.5px solid #e2e5ed;border-radius:50%;width:40px;height:40px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--navy);
+    transition:background .2s ease,border-color .2s ease;
+  }
+  .reviews-nav-btn:hover{background:var(--light-bg);border-color:var(--teal);}
+
+  .reviews-dots{display:flex;justify-content:center;gap:8px;margin-top:20px;}
+  .reviews-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;border:none;cursor:pointer;padding:0;transition:background .3s ease,transform .2s ease;}
+  .reviews-dot.active{background:var(--teal);transform:scale(1.3);}
+
+  .review-modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .review-modal-overlay.open{display:flex;}
+  .review-modal{
+    background:var(--white);border-radius:20px;padding:32px 28px 28px;max-width:520px;width:100%;
+    position:relative;box-shadow:0 20px 60px rgba(0,0,0,.2);border-left:4px solid var(--teal);
+    max-height:80vh;overflow-y:auto;
+  }
+  .review-modal-close{position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:color .2s ease;}
+  .review-modal-close:hover{color:var(--navy);}
+  .review-modal-quote{font-size:0.95rem;font-weight:400;color:var(--text-dark);line-height:1.7;margin:16px 0 0;}
+
+  /* --- Gradient two-column hero --- */
+  /* --- Full-bleed gradient hero (top half of page) --- */
+  .hero{
+    position:relative;width:100%;min-height:100vh;
+    background:var(--white);
+    overflow:hidden;display:flex;align-items:center;
+  }
+  /* Blob art (public/fha-illustrations/hero-blob-flat.png, shadow stripped) carves
+     the navy left side. Layer order back-to-front: white page bg, carousel,
+     blob, text — the carousel swipes in/out from underneath the blob's curve,
+     and text always sits directly on top of it. Sized to the hero's own height
+     (not a fixed % width) and pinned to the true left edge — not a centered,
+     max-width inner wrapper — so it never drifts out of sync with the text on
+     wide viewports. */
+  .hero-blob{position:absolute;top:0;left:0;height:100%;width:100%;z-index:2;pointer-events:none;overflow:hidden;}
+  .hero-blob img{display:block;width:100%;height:100%;object-fit:cover;object-position:left center;}
+  .hero-inner{
+    position:relative;z-index:3;max-width:1520px;margin:0 auto;width:100%;
+    display:grid;grid-template-columns:1.05fr 0.95fr;gap:44px;align-items:center;
+    padding:32px 40px;
+  }
+  .hero-left{color:#fff;}
+  .hero-eyebrow{
+    display:inline-block;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;
+    letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:16px;
+  }
+  .hero-title{
+    font-family:'Outfit',sans-serif;font-weight:800;font-size:clamp(2.6rem,5.8vw,4rem);
+    line-height:1.08;letter-spacing:-.01em;color:#fff;margin:0 0 20px;
+  }
+  .hero-sub{font-size:1.28rem;line-height:1.6;color:rgba(255,255,255,.9);max-width:44ch;margin:0 0 32px;}
+  .hero-right{position:relative;}
+
+  /* Pinned directly to .hero (not the text grid column) so its position is
+     independent of hero-inner. Sits below the blob in stacking order (z-index 1). */
+  .hero-carousel-wrap{
+    position:absolute;top:50%;right:6%;transform:translateY(-50%);
+    width:clamp(240px,min(30vw,55vh),520px);z-index:1;
+  }
+
+  /* --- Swipe illustration carousel (no card background) --- */
+  .hero-carousel{
+    position:relative;width:100%;
+    aspect-ratio:1 / 1;overflow:hidden;
+  }
+  .carousel-track{display:flex;height:100%;transition:transform .55s cubic-bezier(.4,0,.2,1);}
+  .carousel-track .slide{flex:0 0 100%;width:100%;height:100%;object-fit:contain;}
+  .carousel-dots{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+  .carousel-dots button{
+    width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;
+    background:#cdd5db;transition:background .2s ease,transform .2s ease;
+  }
+  .carousel-dots button.on{background:var(--rose,#d2566d);transform:scale(1.25);}
+
+  @media(max-width:1100px){
+    .hero-blob{width:115%;}
+  }
+
+  @media(max-width:820px){
+    .hero{min-height:auto;background:#345368;flex-direction:column;padding:36px 0 8px;}
+    .hero-carousel-wrap{position:static;transform:none;width:min(80vw,320px);max-width:320px;margin:8px auto 0;order:2;}
+    .hero-blob{display:none;}
+    .hero-inner{grid-template-columns:1fr;text-align:center;gap:16px;padding:0 20px 32px;order:1;}
+    .hero-title{font-size:clamp(1.9rem,8vw,2.6rem);}
+    .hero-sub{margin-left:auto;margin-right:auto;}
+  }
+
+  /* --- GetResponse-style persona / trust blocks --- */
+  .persona-top{text-align:center;margin-bottom:20px;}
+  .persona-top img{width:80px;height:80px;border-radius:50%;object-fit:cover;box-shadow:0 4px 16px rgba(0,0,0,.12);}
+  .bio{display:flex;gap:20px;align-items:center;background:var(--white);border:1px solid #e5e8eb;border-radius:16px;padding:24px;margin-top:28px;box-shadow:0 1px 3px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.04);}
+  .bio img{width:92px;height:92px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  .bio h2{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0 0 6px;}
+  .bio p{margin:0;color:var(--text-muted);line-height:1.6;font-size:0.98rem;}
+  .bio-social{display:grid;grid-template-columns:repeat(2,40px);grid-template-rows:repeat(2,40px);gap:10px;flex-shrink:0;}
+  .bio-social a{
+    width:40px;height:40px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:#eef2f5;color:#517686;transition:background .2s ease,color .2s ease;
+  }
+  .bio-social a:hover{background:#517686;color:#fff;}
+  .bio-social svg{width:18px;height:18px;}
+  .clients{margin-top:32px;text-align:center;}
+  .clients h2{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0 0 16px;}
+  .client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .client-grid img{width:100%;border-radius:12px;border:1px solid #eef1f4;display:block;}
+  .clients .placeholder-note{color:var(--text-muted);font-size:0.85rem;margin-top:12px;}
+  @media(max-width:520px){.bio{flex-direction:column;text-align:center;}}
+
+  /* --- Site footer (mirrors the main-site Footer component) --- */
+  .site-footer{background:var(--navy-dark);color:var(--white);padding:64px 0 52px;margin-top:56px;position:relative;overflow:hidden;}
+  .footer-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.07) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+  .footer-inner{max-width:900px;margin:0 auto;padding:0 24px;position:relative;}
+  .footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;}
+  .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .footer-name{font-family:'Outfit',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
+  .footer-title{font-size:0.875rem;color:var(--teal);margin:0 0 14px;}
+  .footer-meta{font-size:0.82rem;opacity:0.65;margin:0 0 4px;}
+  .footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
+  .footer-contact-link{display:flex;align-items:center;gap:8px;font-size:0.92rem;color:rgba(255,255,255,0.8);font-weight:400;text-decoration:none;transition:color .2s ease;}
+  .footer-contact-link:hover{color:var(--teal);}
+  .footer-contact-link svg{color:var(--teal);flex-shrink:0;}
+  .footer-linkedin{margin-top:4px;}
+  .footer-bottom{border-top:1px solid rgba(255,255,255,0.1);padding:20px 0;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .footer-copy{font-size:0.82rem;opacity:0.6;margin:0;}
+  .footer-disclaimer{font-size:0.75rem;opacity:0.5;line-height:1.6;text-align:right;margin:0;}
+  .footer-compliance{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);}
+  .footer-compliance a{font-size:0.72rem;color:rgba(255,255,255,0.4);text-decoration:none;transition:color .2s ease;}
+  .footer-compliance a:hover{color:rgba(255,255,255,0.75);}
+  .footer-compliance span{color:rgba(255,255,255,0.2);font-size:0.72rem;}
+  @media(max-width:700px){
+    .footer-grid{grid-template-columns:1fr;gap:32px;}
+    .footer-right{align-items:flex-start;}
+    .footer-bottom{grid-template-columns:1fr;}
+    .footer-disclaimer{text-align:left;}
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
@@ -519,13 +692,41 @@
 </head>
 <body>
 
+<header class="hero">
+  <div class="hero-blob" aria-hidden="true">
+    <img src="/fha-illustrations/hero-blob.png" alt="">
+  </div>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <span class="hero-eyebrow">Free FHA Mortgage Calculator</span>
+      <h1 class="hero-title">Figure out your FHA Payment: <span style="color:#219ebc;">Stress-free</span></h1>
+      <p class="hero-sub">Get my free FHA calculator and see your real monthly payment (mortgage insurance included) plus how much home you can actually afford. Enter your info and I'll send it straight to your inbox.</p>
+      <button class="cta" id="openModalBtn">
+        Get the Free FHA Calculator
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <div class="hero-right"></div>
+  </div>
+  <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png) -->
+  <div class="hero-carousel-wrap">
+    <div class="hero-carousel" id="heroCarousel">
+      <div class="carousel-track" id="carouselTrack">
+        <img class="slide" src="/fha-illustrations/1.png" alt="" onerror="this.remove()">
+        <img class="slide" src="/fha-illustrations/2.png" alt="" onerror="this.remove()">
+        <img class="slide" src="/fha-illustrations/3.png" alt="" onerror="this.remove()">
+        <img class="slide" src="/fha-illustrations/4.png" alt="" onerror="this.remove()">
+        <img class="slide" src="/fha-illustrations/5.png" alt="" onerror="this.remove()">
+        <img class="slide" src="/fha-illustrations/6.png" alt="" onerror="this.remove()">
+      </div>
+    </div>
+    <div class="carousel-dots" id="carouselDots"></div>
+  </div>
+</header>
+
 <div class="wrap">
 
-  <div class="eyebrow">FHA Mortgage Calculator</div>
-  <h1>See your <em>real</em> FHA payment, MIP included, before you fall for a lowball estimate.</h1>
-  <p class="sub">Most online calculators skip mortgage insurance and lowball your payment. This one runs the actual FHA math, upfront MIP, annual MIP, taxes and insurance, so the number you see is the number you'll actually pay.</p>
-
-  <div class="card">
+  <div class="card" style="display:none">
 
     <!-- INPUTS -->
     <div class="card-section">
@@ -613,11 +814,358 @@
 
   </div>
 
-  <div class="footer-disclaimer">
-    This calculator is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, MIP, and payment figures shown are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, and other factors. This is not a guarantee of financing. Darren Tsai, DRE #02103705 | NMLS #2438102. Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.
+  <!-- BIO -->
+  <section class="bio">
+    <img src="/darren.jpg" alt="Darren Tsai" onerror="this.style.display='none'">
+    <div>
+      <h2>Hi, I'm Darren Tsai</h2>
+      <p>I believe owning a home brings stability and helps people grow wealth. Many people tell me their agent or lender didn't fully help them. But I'm here to help!</p>
+    </div>
+    <div class="bio-social">
+      <a href="https://www.onereal.com/" target="_blank" rel="noopener" aria-label="Website" title="Website">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </a>
+      <a href="https://www.linkedin.com/in/soldwithtsai/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+      </a>
+      <a href="https://www.instagram.com/darrentsai_/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+      </a>
+      <a href="https://www.youtube.com/@DarrenTsai_" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- CLIENT REVIEWS (mirrors the main-site reviews carousel) -->
+  <section class="reviews-section">
+    <div class="section-header">
+      <span class="section-eyebrow">Client Reviews</span>
+      <h2 class="section-title">What Homeowners Are Saying</h2>
+      <p class="section-sub">Real results from real clients. Straight talk, no pressure, and savings that actually show up on your bank statement.</p>
+    </div>
+
+    <div class="reviews-carousel">
+      <div class="reviews-track" id="reviewsTrack"></div>
+    </div>
+
+    <div class="reviews-nav">
+      <button class="reviews-nav-btn" id="reviewsPrev" aria-label="Previous review">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="reviews-nav-btn" id="reviewsNext" aria-label="Next review">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div class="reviews-dots" id="reviewsDots" role="tablist" aria-label="Review slides"></div>
+  </section>
+
+  <!-- Full-review modal -->
+  <div class="review-modal-overlay" id="reviewModalOverlay">
+    <div class="review-modal" id="reviewModalPanel">
+      <button class="review-modal-close" id="reviewModalClose" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="review-stars" aria-label="5 out of 5 stars"><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span></div>
+      <p class="review-modal-quote" id="reviewModalQuote"></p>
+      <div class="review-author" style="margin-top:20px">
+        <div class="review-avatar" id="reviewModalAvatar"></div>
+        <div>
+          <p class="review-name" id="reviewModalName"></p>
+          <p class="review-meta" id="reviewModalMeta"></p>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
+
+<!-- FOOTER (mirrors the main-site Footer component) -->
+<footer class="site-footer">
+  <div class="footer-dots" aria-hidden="true"></div>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-left">
+        <div class="footer-brand">
+          <img src="/darren.jpg" alt="Darren Tsai" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <span class="footer-name">Darren Tsai</span>
+        </div>
+        <p class="footer-title">Senior Loan Officer &middot; Saxton Mortgage</p>
+        <p class="footer-meta">Darren Tsai | NMLS #2438102 | CA DRE Broker #02103705</p>
+        <p class="footer-meta">Saxton Mortgage, LLC | NMLS #1717191</p>
+        <p class="footer-meta">Licensed in <strong>AZ &middot; CA &middot; FL &middot; HI &middot; OR &middot; PA &middot; TN &middot; TX</strong></p>
+        <p class="footer-meta" style="margin-top:6px;line-height:1.5;">Real Estate Broker, California Department of Real Estate. Loans made or arranged pursuant to California Department of Real Estate License.</p>
+      </div>
+
+      <div class="footer-right">
+        <a href="tel:+17148875432" class="footer-contact-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.07 1.18 2 2 0 012.07 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          (714) 887-5432
+        </a>
+        <a href="mailto:darrent@saxtonmortgage.com" class="footer-contact-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          darrent@saxtonmortgage.com
+        </a>
+        <a href="https://www.linkedin.com/in/soldwithtsai/" class="footer-contact-link footer-linkedin" aria-label="Darren Tsai on LinkedIn" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4" cy="4" r="2" stroke="currentColor" stroke-width="2"/></svg>
+          LinkedIn
+        </a>
+        <div class="footer-contact-link">
+          <svg width="16" height="16" viewBox="0 0 60 60" fill="none" aria-label="Equal Housing Lender" role="img">
+            <defs>
+              <mask id="eho-mask">
+                <rect width="60" height="60" fill="white"/>
+                <rect x="17" y="35" width="26" height="5" fill="black"/>
+                <rect x="17" y="44" width="26" height="5" fill="black"/>
+              </mask>
+            </defs>
+            <polygon points="30,5 56,28 4,28" fill="currentColor"/>
+            <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#eho-mask)"/>
+          </svg>
+          Equal Housing Lender
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copy">&copy; 2026 Darren Tsai. All rights reserved.</p>
+      <p class="footer-disclaimer">
+        This tool is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, MIP, and payment figures are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, and other factors. This is not a guarantee of financing.
+      </p>
+      <div class="footer-compliance">
+        <a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/2438102" target="_blank" rel="noopener">Check my license at NMLS Consumer Access</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener">Legal</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/terms-of-use" target="_blank" rel="noopener">Terms of Use</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/accessibility-statement" target="_blank" rel="noopener">Accessibility</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/site-map" target="_blank" rel="noopener">Site Map</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Auto-cycling hero illustration carousel (homepage-reviews style).
+  window.addEventListener('load', function () {
+    var carousel = document.getElementById('heroCarousel');
+    var track = document.getElementById('carouselTrack');
+    if (!carousel || !track) return;
+    var slides = Array.prototype.slice.call(track.querySelectorAll('.slide'));
+    if (slides.length === 0) { carousel.style.display = 'none'; return; }
+
+    var dotsWrap = document.getElementById('carouselDots');
+    var current = 0;
+    slides.forEach(function (s, i) {
+      if (dotsWrap) {
+        var b = document.createElement('button');
+        b.setAttribute('aria-label', 'Slide ' + (i + 1));
+        if (i === 0) b.classList.add('on');
+        b.addEventListener('click', function () { go(i); });
+        dotsWrap.appendChild(b);
+      }
+    });
+    var dots = dotsWrap ? Array.prototype.slice.call(dotsWrap.children) : [];
+
+    // Clone the first slide onto the end so the last -> first transition
+    // keeps sliding forward instead of snapping backward through the deck.
+    if (slides.length > 1) {
+      var clone = slides[0].cloneNode(true);
+      track.appendChild(clone);
+    }
+
+    function setDot(i) {
+      if (dots[current]) dots[current].classList.remove('on');
+      current = i;
+      if (dots[current]) dots[current].classList.add('on');
+    }
+
+    function go(n) {
+      setDot((n + slides.length) % slides.length);
+      track.style.transition = 'transform .55s cubic-bezier(.4,0,.2,1)';
+      track.style.transform = 'translateX(' + (-n * 100) + '%)';
+    }
+
+    if (slides.length > 1) {
+      var step = 0;
+      setInterval(function () {
+        step++;
+        track.style.transition = 'transform .55s cubic-bezier(.4,0,.2,1)';
+        track.style.transform = 'translateX(' + (-step * 100) + '%)';
+        setDot(step % slides.length);
+        if (step === slides.length) {
+          track.addEventListener('transitionend', function reset() {
+            track.removeEventListener('transitionend', reset);
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0%)';
+            step = 0;
+          });
+        }
+      }, 3500);
+    }
+  });
+
+  // Client reviews carousel — mirrors the main-site Reviews component
+  // (3-per-page desktop / 1-per-page mobile, loop clones, See more modal).
+  window.addEventListener('load', function () {
+    var REVIEWS = [
+      { id:1, initials:'EW', name:'Edward W.', meta:'Home Purchase', quote:"Darren went above and beyond to help us with a home purchase. He gave us quality time, and ran multiple scenarios to find what worked best for us. There were complications with our close on the sellers side, and he handled the obstacles easily. Everything he did for us was extremely transparent, and purposeful. Darren is super trustworthy, and honest. Thanks Darren!" },
+      { id:2, initials:'ES', name:'Ernesto S.', meta:'Purchase Loan', quote:"Darren, went above and beyond to get us the best rate. He is honest and straightforward. Darren kept communication open throughout the process. I highly recommend Darren to anyone looking for a broker and will be working with Darren in the future." },
+      { id:3, initials:'DA', name:'Donovan A.', meta:'Home Purchase & Refinance', quote:"Darren is the man! Darren is someone who has helped my wife & I a couple times now. First was our first home buying experience & from the jump, he made things easy to understand & was easy to work with. Darren has now recently assisted my wife & I with our refinance & again, service was great. He's patient, knowledgeable & makes you feel like you're always in good hands. I recommend working with Darren as I will continue to do so myself." },
+      { id:4, initials:'AW', name:'Angela W.', meta:'Purchase Loan', quote:"Worked with Darren because I found him on YouTube! He has some good content on there. Anyways, he's amazing! And will go above and beyond to have all questions answered and if he doesn't know, he will find out and get back to you promptly. He's responsive and very knowledgeable. I will definitely work with him again and have referred my parents for an upcoming ADU project." },
+      { id:5, initials:'FY', name:'Fen Y C.', meta:'Refinance', quote:"Just closed on a refinance with Darren. He was so helpful throughout the whole process to my wife and I. Darren was very transparent and let us know everything that was going on. Ran into a few hiccups along the way, but Darren and Kim were able to take care of it without hassling us too much, which was a blessing. Thanks, Darren and Kim!" },
+      { id:6, initials:'LJ', name:'Lety J.', meta:'Broker Services', quote:"It was great working with Darren. I highly recommend him, as he was very quick to respond to all the questions we had. He would always keep us in the loop in every step of the process and was also straightforward with everything that we needed to know. He has a great attitude and made us work comfortable with him." },
+      { id:7, initials:'PP', name:'Paul P.', meta:'Transaction · REALTOR®', quote:"I recently worked with Darren Tsai at Saxton Mortgage on a transaction, and the entire process was very smooth from start to finish. Darren was professional, responsive, and proactive throughout escrow. Communication was clear and consistent, which helped ensure we stayed on track and closed without issues. It's always a pleasure working with a lender who understands timelines and works efficiently with all parties involved. I look forward to working together again on future transactions. — Paul Phan, REALTOR®" },
+      { id:8, initials:'LP', name:'Lauren P.', meta:'Home Purchase · 18-day close', quote:"Darren and his team were great to work with! They were communicative and efficient. They helped us close in 18 days! I would recommend them to anyone looking to buy a new home." },
+      { id:9, initials:'ZB', name:'Zenebe B.', meta:'Birdeye Review', quote:"I'm so honored and blessed to have met and worked with Darren Tsai, Sam Hsu and Kim Miller. Honestly one of the best group of people to work with. The process was so smooth and effortless. They never pressure you and always there to answer all my questions. I will definitely be working with them in the near future and I would highly recommend them. Don't waste your time looking elsewhere. This is the company to work with." },
+    ];
+    var AVATAR_COLORS = ['#4285F4','#EA4335','#34A853','#9C27B0','#FF5722','#00ACC1','#E91E63','#3F51B5','#F4511E'];
+    var CHAR_LIMIT = 190;
+    var INTERVAL_MS = 5000;
+
+    var track = document.getElementById('reviewsTrack');
+    var dotsWrap = document.getElementById('reviewsDots');
+    var prevBtn = document.getElementById('reviewsPrev');
+    var nextBtn = document.getElementById('reviewsNext');
+    var overlay = document.getElementById('reviewModalOverlay');
+    if (!track) return;
+
+    function getPerPage() { return window.innerWidth <= 768 ? 1 : 3; }
+    var perPage = getPerPage();
+    var current = 0;
+    var animated = true;
+    var timer = null;
+    var maxPos = Math.max(0, REVIEWS.length - perPage);
+    var loopSlides = REVIEWS.concat(REVIEWS.slice(0, perPage));
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderSlides() {
+      loopSlides = REVIEWS.concat(REVIEWS.slice(0, perPage));
+      track.innerHTML = loopSlides.map(function (r) {
+        var truncated = r.quote.length > CHAR_LIMIT;
+        var displayQuote = truncated ? r.quote.slice(0, CHAR_LIMIT).trimEnd() + '…' : r.quote;
+        var color = AVATAR_COLORS[(r.id - 1) % AVATAR_COLORS.length];
+        return (
+          '<div class="review-slide" style="min-width:' + (100 / perPage) + '%">' +
+            '<div class="review-card">' +
+              '<div class="review-stars" aria-label="5 out of 5 stars">' +
+                '<span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span><span class="review-star">★</span>' +
+              '</div>' +
+              '<div class="review-quote-wrap">' +
+                '<p class="review-quote">"' + escapeHtml(displayQuote) + '"</p>' +
+                (truncated ? '<button class="review-see-more" data-id="' + r.id + '">See more</button>' : '') +
+              '</div>' +
+              '<div class="review-author">' +
+                '<div class="review-avatar" style="background:' + color + '">' + r.initials + '</div>' +
+                '<div><p class="review-name">' + r.name + '</p><p class="review-meta">' + r.meta + '</p></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+      track.querySelectorAll('.review-see-more').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var review = REVIEWS.filter(function (r) { return r.id === Number(btn.dataset.id); })[0];
+          if (review) openModal(review);
+        });
+      });
+    }
+
+    function renderDots() {
+      if (!dotsWrap) return;
+      var html = '';
+      for (var i = 0; i <= maxPos; i++) {
+        html += '<button role="tab" aria-label="Go to position ' + (i + 1) + '" class="reviews-dot' + (i === current ? ' active' : '') + '" data-i="' + i + '"></button>';
+      }
+      dotsWrap.innerHTML = html;
+      dotsWrap.querySelectorAll('.reviews-dot').forEach(function (dot) {
+        dot.addEventListener('click', function () { resetTimer(Number(dot.dataset.i)); });
+      });
+    }
+
+    function updateTrack() {
+      track.style.transition = animated ? 'transform 0.5s cubic-bezier(0.4,0,0.2,1)' : 'none';
+      track.style.transform = 'translateX(-' + (current * (100 / perPage)) + '%)';
+      if (dotsWrap) {
+        var dots = Array.prototype.slice.call(dotsWrap.children);
+        dots.forEach(function (d, i) { d.classList.toggle('active', i === (current > maxPos ? 0 : current)); });
+      }
+    }
+
+    function advance() {
+      current += 1;
+      updateTrack();
+      if (current > maxPos) {
+        setTimeout(function () {
+          animated = false;
+          current = 0;
+          updateTrack();
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () { animated = true; });
+          });
+        }, 500);
+      }
+    }
+
+    function resetTimer(idx) {
+      if (timer) clearInterval(timer);
+      current = ((idx % (maxPos + 1)) + (maxPos + 1)) % (maxPos + 1);
+      updateTrack();
+      timer = setInterval(advance, INTERVAL_MS);
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', function () { resetTimer(current - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { resetTimer(current + 1); });
+
+    window.addEventListener('resize', function () {
+      var next = getPerPage();
+      if (next !== perPage) {
+        perPage = next;
+        maxPos = Math.max(0, REVIEWS.length - perPage);
+        current = 0;
+        animated = false;
+        renderSlides();
+        renderDots();
+        updateTrack();
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { animated = true; });
+        });
+      }
+    }, { passive: true });
+
+    function openModal(review) {
+      document.getElementById('reviewModalQuote').textContent = '"' + review.quote + '"';
+      var avatar = document.getElementById('reviewModalAvatar');
+      avatar.textContent = review.initials;
+      avatar.style.background = AVATAR_COLORS[(review.id - 1) % AVATAR_COLORS.length];
+      document.getElementById('reviewModalName').textContent = review.name;
+      document.getElementById('reviewModalMeta').textContent = review.meta;
+      overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    var closeBtn = document.getElementById('reviewModalClose');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (overlay) overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+    window.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+    renderSlides();
+    renderDots();
+    updateTrack();
+    timer = setInterval(advance, INTERVAL_MS);
+  });
+</script>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay">
@@ -632,7 +1180,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <p class="modal-sub">Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile.</p>
+        <p class="modal-sub">Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile. If you don't see the email right away, check your promotions or spam folder.</p>
         <div class="field">
           <label for="mName">Full Name</label>
           <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Homebuyer"></div>
@@ -851,9 +1399,6 @@
       firstName, lastName, email, phone, state, creditScore,
       source: 'fha',
       magnet: 'FHA Mortgage Calculator',
-      downPayment: dpEl.value + '%',
-      rate: rateEl.value + '%',
-      loanAmount: $('outLoan').textContent,
       timestamp: new Date().toISOString(),
     };
 

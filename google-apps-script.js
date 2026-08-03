@@ -68,18 +68,47 @@ const QUALIFY_HEADERS = [
   'Employment', 'Notes', 'Source'
 ];
 
-const LANDING_HEADERS = [
-  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
-  'Magnet', 'Source',
-  // Calculator context (blank for simple opt-in forms; populated by the DSCR calculator)
-  'DSCR', 'Down Payment', 'Loan Amount', 'Rate',
-  // Credit score estimate (FHA page); blank for funnels that don't ask
-  'Credit Score',
-  // Whether the lead's state is one Darren is licensed in
-  'Licensed?'
-];
+// Each landing funnel gets its OWN sheet tab with columns matching its actual
+// inputs/outputs — no shared blank columns. `row(d)` returns cells in header order.
+const COMMON_LEAD = ['Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State'];
+function commonLeadRow(d) {
+  return [
+    d.timestamp || new Date().toISOString(),
+    d.firstName || '', d.lastName || '', d.email || '', d.phone || '', d.state || ''
+  ];
+}
+function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 
-const LANDING_SOURCES = ['heloc-hei', 'dscr', 'self-employed', 'fha'];
+const SOURCE_SCHEMAS = {
+  'heloc-hei': {
+    tab: 'HELOC vs HEI',
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?']),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)]); }
+  },
+  'dscr': {
+    tab: 'DSCR',
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?']),
+    row: function (d) {
+      return commonLeadRow(d).concat([
+        d.magnet || '', d.source, d.dscr || '', d.downPayment || '', d.loanAmount || '', d.rate || '', licensedCell(d)
+      ]);
+    }
+  },
+  'self-employed': {
+    tab: 'Self-Employed',
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?']),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)]); }
+  },
+  'fha': {
+    tab: 'FHA',
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Credit Score', 'Licensed?']),
+    row: function (d) {
+      return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)]);
+    }
+  }
+};
+
+const LANDING_SOURCES = Object.keys(SOURCE_SCHEMAS);
 
 const DEBT_CONSOLIDATION_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
@@ -204,26 +233,11 @@ function doPost(e) {
         data.email     || '',
         'newsletter'
       ]);
-    } else if (LANDING_SOURCES.indexOf(data.source) !== -1) {
-      // One tab per landing page (Heloc-hei, Dscr, Self-employed, Fha)
-      const tabName = data.source.charAt(0).toUpperCase() + data.source.slice(1);
-      const sheet = getOrCreateSheet(ss, tabName, LANDING_HEADERS);
-      sheet.appendRow([
-        data.timestamp || new Date().toISOString(),
-        data.firstName || '',
-        data.lastName  || '',
-        data.email     || '',
-        data.phone     || '',
-        data.state     || '',
-        data.magnet    || '',
-        data.source,
-        data.dscr        || '',
-        data.downPayment || '',
-        data.loanAmount  || '',
-        data.rate        || '',
-        data.creditScore || '',
-        isLicensedState(data.state) ? 'Yes' : 'No'
-      ]);
+    } else if (SOURCE_SCHEMAS[data.source]) {
+      // Each landing funnel writes to its OWN tab with its own columns.
+      const schema = SOURCE_SCHEMAS[data.source];
+      const sheet = getOrCreateSheet(ss, schema.tab, schema.headers);
+      sheet.appendRow(schema.row(data));
     } else if (data.source === 'QualifyForm') {
       const sheet = getOrCreateSheet(ss, 'Qualify', QUALIFY_HEADERS);
       sheet.appendRow([
