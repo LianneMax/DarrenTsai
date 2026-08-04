@@ -637,6 +637,15 @@
               <div class="input-shell" id="lEmailShell"><input type="email" id="lEmail" placeholder="jane@email.com"></div>
               <span class="field-error" id="lEmailError"></span>
             </div>
+            <div class="field">
+              <label for="lState">State</label>
+              <div class="input-shell" id="lStateShell">
+                <select id="lState">
+                  <option value="">Select your state…</option>
+                </select>
+              </div>
+              <span class="field-error" id="lStateError"></span>
+            </div>
             <button class="cta" id="submitLead">Send Me The Case Study</button>
             <p class="form-note">Free forever. Unsubscribe anytime.</p>
           </div>
@@ -941,23 +950,51 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // US states — full name shown, 2-letter abbreviation stored/sent. Shared by
+  // both the case-study form (#lState) and the contact modal (#cState) below,
+  // so the licensed-state gate in pushToBonzo() has something to check.
+  const US_STATES = [
+    ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+    ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
+    ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
+    ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+    ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
+    ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
+    ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
+    ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+    ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
+    ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
+  ];
+  function fillStateSelect(select) {
+    US_STATES.forEach(([abbr, name]) => {
+      const opt = document.createElement('option');
+      opt.value = abbr;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+  }
+  const lStateSelect = $('lState');
+  fillStateSelect(lStateSelect);
+
   function setError(field, msg) {
     $(`l${field}Error`).textContent = msg;
     $(`l${field}Shell`).classList.toggle('error', !!msg);
   }
   function clearErrors() {
-    ['Name', 'Email'].forEach(f => setError(f, ''));
+    ['Name', 'Email', 'State'].forEach(f => setError(f, ''));
   }
 
   $('submitLead').addEventListener('click', async () => {
     clearErrors();
     const name = $('lName').value.trim();
     const email = $('lEmail').value.trim();
+    const state = lStateSelect.value;
 
     let valid = true;
     if (!name) { setError('Name', 'Required'); valid = false; }
     if (!email) { setError('Email', 'Required'); valid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
+    if (!state) { setError('State', 'Required'); valid = false; }
     if (!valid) return;
 
     const firstSpace = name.indexOf(' ');
@@ -965,7 +1002,7 @@
     const lastName  = firstSpace === -1 ? '' : name.slice(firstSpace + 1);
 
     const payload = {
-      firstName, lastName, email,
+      firstName, lastName, email, state,
       source: 'real-estate-investing',
       magnet: 'Real Estate Investing Case Study',
       timestamp: new Date().toISOString(),
@@ -1048,25 +1085,8 @@
     return validBlock(area) && validBlock(exch);
   }
 
-  const US_STATES = [
-    ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
-    ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
-    ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
-    ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
-    ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
-    ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
-    ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
-    ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
-    ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
-    ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
-  ];
   const cStateSelect = $('cState');
-  US_STATES.forEach(([abbr, name]) => {
-    const opt = document.createElement('option');
-    opt.value = abbr;
-    opt.textContent = name;
-    cStateSelect.appendChild(opt);
-  });
+  fillStateSelect(cStateSelect);
 
   $('submitContact').addEventListener('click', async () => {
     clearContactErrors();
