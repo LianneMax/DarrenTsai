@@ -1369,7 +1369,7 @@ p {
 
 /* ---- FOOTER ---- */
 .footer {
-  background: var(--navy-dark);
+  background: var(--teal);
   color: var(--white);
   padding: 64px 0 52px;
   position: relative;
@@ -1401,7 +1401,7 @@ p {
   margin-bottom: 8px;
 }
 
-.footer-brand svg { color: var(--teal); }
+.footer-brand svg { color: rgba(255,255,255,0.85); }
 
 .footer-name {
   font-size: 1.4rem;
@@ -1411,13 +1411,13 @@ p {
 
 .footer-title {
   font-size: 0.875rem;
-  color: var(--teal);
+  color: rgba(255,255,255,0.8);
   margin-bottom: 14px;
 }
 
 .footer-meta {
   font-size: 0.82rem;
-  opacity: 0.65;
+  opacity: 0.7;
   margin-bottom: 4px;
 }
 
@@ -1433,60 +1433,58 @@ p {
   align-items: center;
   gap: 8px;
   font-size: 0.92rem;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.85);
   font-weight: 400;
   transition: color 0.2s ease;
 }
 
-.footer-contact-link:hover { color: var(--teal); }
-.footer-contact-link svg { color: var(--teal); flex-shrink: 0; }
+.footer-contact-link:hover { color: var(--white); }
+.footer-contact-link svg { color: rgba(255,255,255,0.85); flex-shrink: 0; }
 
 .footer-linkedin { margin-top: 4px; }
 
 .footer-bottom {
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255,255,255,0.18);
   padding: 20px 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .footer-compliance {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.12);
 }
 
 .footer-compliance a {
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.55);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .footer-compliance a:hover {
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.9);
 }
 
 .footer-compliance span {
-  color: rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.3);
   font-size: 0.72rem;
 }
 
 .footer-copy {
   font-size: 0.82rem;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .footer-disclaimer {
   font-size: 0.75rem;
-  opacity: 0.5;
-  text-align: right;
+  opacity: 0.6;
+  text-align: left;
   line-height: 1.6;
 }
 
@@ -1751,12 +1749,6 @@ p {
   }
 
   .footer-right { align-items: flex-start; }
-
-  .footer-bottom {
-    grid-template-columns: 1fr;
-  }
-
-  .footer-disclaimer { text-align: left; }
 
   /* ── DebtSavingsCalculator mobile ── */
 

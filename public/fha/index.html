@@ -472,6 +472,14 @@
   .modal-body{
     padding:16px 32px 32px;
   }
+  .modal-body p.modal-desc{
+    font-family:'Outfit',sans-serif;
+    font-size:0.98rem;
+    font-weight:600;
+    color:var(--navy);
+    line-height:1.5;
+    margin:0 0 8px;
+  }
   .modal-body p.modal-sub{
     font-size:0.92rem;
     color:var(--text-muted);
@@ -571,7 +579,7 @@
   /* --- Gradient two-column hero --- */
   /* --- Full-bleed gradient hero (top half of page) --- */
   .hero{
-    position:relative;width:100%;min-height:100vh;
+    position:relative;width:100%;
     background:var(--white);
     overflow:hidden;display:flex;align-items:center;
   }
@@ -582,17 +590,35 @@
      (not a fixed % width) and pinned to the true left edge — not a centered,
      max-width inner wrapper — so it never drifts out of sync with the text on
      wide viewports. */
-  .hero-blob{position:absolute;top:0;left:0;height:100%;width:100%;z-index:2;pointer-events:none;overflow:hidden;}
+  /* inset:0 (not top/left + height:100%): .hero only sets min-height:100vh,
+     not an explicit height, so a %-height child can't reliably resolve
+     against it per spec and locks to the image's intrinsic size instead of
+     tracking .hero's real box on zoom/resize. inset:0 pins all four edges
+     explicitly, sidestepping that. */
+  .hero-blob{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
   .hero-blob img{display:block;width:100%;height:100%;object-fit:cover;object-position:left center;}
+  /* No max-width cap: this grid must always span the same 100% of .hero
+     that hero-blob does, so the text/carousel column and the blob's curve
+     stay locked together at every viewport width and zoom level instead of
+     the blob (full-bleed) drifting away from a capped, centered text box. */
   .hero-inner{
-    position:relative;z-index:3;max-width:1520px;margin:0 auto;width:100%;
+    position:relative;width:100%;
     display:grid;grid-template-columns:1.05fr 0.95fr;gap:44px;align-items:center;
-    padding:32px 40px;
+    padding:32px 56px;
   }
-  .hero-left{color:#fff;}
+  /* No z-index on .hero-inner itself: it must NOT become its own stacking
+     context, or the whole grid (text + carousel) paints as one unit above
+     .hero-blob regardless of children's z-index. Left un-contexted, .hero-left
+     and .hero-carousel-wrap compare directly against .hero-blob (z-index 2)
+     in .hero's stacking context, so the carousel can sit below the blob
+     while the text stays above it. */
+  .hero-left{color:#fff;position:relative;z-index:3;}
   .hero-eyebrow{
-    display:inline-block;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;
+    display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;
     letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:16px;
+  }
+  .hero-eyebrow::before{
+    content:"";width:16px;height:1px;background:rgba(255,255,255,.82);
   }
   .hero-title{
     font-family:'Outfit',sans-serif;font-weight:800;font-size:clamp(2.6rem,5.8vw,4rem);
@@ -601,11 +627,12 @@
   .hero-sub{font-size:1.28rem;line-height:1.6;color:rgba(255,255,255,.9);max-width:44ch;margin:0 0 32px;}
   .hero-right{position:relative;}
 
-  /* Pinned directly to .hero (not the text grid column) so its position is
-     independent of hero-inner. Sits below the blob in stacking order (z-index 1). */
+  /* Lives inside hero-right, the same centered/max-width grid column as the
+     text — so it scales and repositions in lockstep with the headline at
+     every viewport width and browser zoom level, instead of drifting
+     independently. Sits below the blob in stacking order (z-index 1). */
   .hero-carousel-wrap{
-    position:absolute;top:50%;right:6%;transform:translateY(-50%);
-    width:clamp(240px,min(30vw,55vh),520px);z-index:1;
+    position:relative;width:100%;max-width:520px;margin-left:auto;z-index:1;
   }
 
   /* --- Swipe illustration carousel (no card background) --- */
@@ -627,12 +654,18 @@
   }
 
   @media(max-width:820px){
-    .hero{min-height:auto;background:#345368;flex-direction:column;padding:36px 0 8px;}
-    .hero-carousel-wrap{position:static;transform:none;width:min(80vw,320px);max-width:320px;margin:8px auto 0;order:2;}
+    .hero{flex-direction:column;padding:36px 0 8px;}
+    .hero-carousel-wrap{width:min(80vw,320px);max-width:320px;margin:8px auto 0;}
     .hero-blob{display:none;}
     .hero-inner{grid-template-columns:1fr;text-align:center;gap:16px;padding:0 20px 32px;order:1;}
-    .hero-title{font-size:clamp(1.9rem,8vw,2.6rem);}
-    .hero-sub{margin-left:auto;margin-right:auto;}
+    /* Blob (the only source of a dark backdrop) is hidden below this width, and
+       the page bg is plain white here now that .hero no longer paints its own
+       navy block — so the hero text, hardcoded white/near-white for contrast
+       against the blob, needs to switch to dark navy or it reads white-on-white. */
+    .hero-title{font-size:clamp(1.9rem,8vw,2.6rem);color:var(--navy);}
+    .hero-eyebrow{justify-content:center;color:var(--navy);}
+    .hero-eyebrow::before{background:var(--navy);}
+    .hero-sub{margin-left:auto;margin-right:auto;color:var(--text-muted);}
   }
 
   /* --- GetResponse-style persona / trust blocks --- */
@@ -658,31 +691,29 @@
   @media(max-width:520px){.bio{flex-direction:column;text-align:center;}}
 
   /* --- Site footer (mirrors the main-site Footer component) --- */
-  .site-footer{background:var(--navy-dark);color:var(--white);padding:64px 0 52px;margin-top:56px;position:relative;overflow:hidden;}
-  .footer-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.07) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+  .site-footer{background:var(--teal);color:var(--white);padding:64px 0 52px;margin-top:56px;position:relative;overflow:hidden;}
+  .footer-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
   .footer-inner{max-width:900px;margin:0 auto;padding:0 24px;position:relative;}
   .footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;}
   .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .footer-name{font-family:'Outfit',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
-  .footer-title{font-size:0.875rem;color:var(--teal);margin:0 0 14px;}
-  .footer-meta{font-size:0.82rem;opacity:0.65;margin:0 0 4px;}
+  .footer-title{font-size:0.875rem;color:rgba(255,255,255,0.8);margin:0 0 14px;}
+  .footer-meta{font-size:0.82rem;opacity:0.7;margin:0 0 4px;}
   .footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
-  .footer-contact-link{display:flex;align-items:center;gap:8px;font-size:0.92rem;color:rgba(255,255,255,0.8);font-weight:400;text-decoration:none;transition:color .2s ease;}
-  .footer-contact-link:hover{color:var(--teal);}
-  .footer-contact-link svg{color:var(--teal);flex-shrink:0;}
+  .footer-contact-link{display:flex;align-items:center;gap:8px;font-size:0.92rem;color:rgba(255,255,255,0.85);font-weight:400;text-decoration:none;transition:color .2s ease;}
+  .footer-contact-link:hover{color:var(--white);}
+  .footer-contact-link svg{color:rgba(255,255,255,0.85);flex-shrink:0;}
   .footer-linkedin{margin-top:4px;}
-  .footer-bottom{border-top:1px solid rgba(255,255,255,0.1);padding:20px 0;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
-  .footer-copy{font-size:0.82rem;opacity:0.6;margin:0;}
-  .footer-disclaimer{font-size:0.75rem;opacity:0.5;line-height:1.6;text-align:right;margin:0;}
-  .footer-compliance{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);}
-  .footer-compliance a{font-size:0.72rem;color:rgba(255,255,255,0.4);text-decoration:none;transition:color .2s ease;}
-  .footer-compliance a:hover{color:rgba(255,255,255,0.75);}
-  .footer-compliance span{color:rgba(255,255,255,0.2);font-size:0.72rem;}
+  .footer-bottom{border-top:1px solid rgba(255,255,255,0.18);padding:20px 0;display:flex;flex-direction:column;gap:12px;}
+  .footer-copy{font-size:0.82rem;opacity:0.7;margin:0;}
+  .footer-disclaimer{font-size:0.75rem;opacity:0.6;line-height:1.6;text-align:left;margin:0;max-width:none;}
+  .footer-compliance{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
+  .footer-compliance a{font-size:0.72rem;color:rgba(255,255,255,0.55);text-decoration:none;transition:color .2s ease;}
+  .footer-compliance a:hover{color:rgba(255,255,255,0.9);}
+  .footer-compliance span{color:rgba(255,255,255,0.3);font-size:0.72rem;}
   @media(max-width:700px){
     .footer-grid{grid-template-columns:1fr;gap:32px;}
     .footer-right{align-items:flex-start;}
-    .footer-bottom{grid-template-columns:1fr;}
-    .footer-disclaimer{text-align:left;}
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -706,21 +737,22 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </div>
-    <div class="hero-right"></div>
-  </div>
-  <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png) -->
-  <div class="hero-carousel-wrap">
-    <div class="hero-carousel" id="heroCarousel">
-      <div class="carousel-track" id="carouselTrack">
-        <img class="slide" src="/fha-illustrations/1.png" alt="" onerror="this.remove()">
-        <img class="slide" src="/fha-illustrations/2.png" alt="" onerror="this.remove()">
-        <img class="slide" src="/fha-illustrations/3.png" alt="" onerror="this.remove()">
-        <img class="slide" src="/fha-illustrations/4.png" alt="" onerror="this.remove()">
-        <img class="slide" src="/fha-illustrations/5.png" alt="" onerror="this.remove()">
-        <img class="slide" src="/fha-illustrations/6.png" alt="" onerror="this.remove()">
+    <div class="hero-right">
+      <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png) -->
+      <div class="hero-carousel-wrap">
+        <div class="hero-carousel" id="heroCarousel">
+          <div class="carousel-track" id="carouselTrack">
+            <img class="slide" src="/fha-illustrations/1.png" alt="" onerror="this.remove()">
+            <img class="slide" src="/fha-illustrations/2.png" alt="" onerror="this.remove()">
+            <img class="slide" src="/fha-illustrations/3.png" alt="" onerror="this.remove()">
+            <img class="slide" src="/fha-illustrations/4.png" alt="" onerror="this.remove()">
+            <img class="slide" src="/fha-illustrations/5.png" alt="" onerror="this.remove()">
+            <img class="slide" src="/fha-illustrations/6.png" alt="" onerror="this.remove()">
+          </div>
+        </div>
+        <div class="carousel-dots" id="carouselDots"></div>
       </div>
     </div>
-    <div class="carousel-dots" id="carouselDots"></div>
   </div>
 </header>
 
@@ -1172,7 +1204,7 @@
   <div class="modal-panel">
     <div class="modal-form" id="modalForm">
       <div class="modal-header">
-        <h3>Get your real rate</h3>
+        <h3>Get Free FHA Calculator</h3>
         <button class="modal-close-x" id="closeModal" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1180,6 +1212,7 @@
         </button>
       </div>
       <div class="modal-body">
+        <p class="modal-desc">Your free personalized FHA payment estimate, sent straight to your inbox.</p>
         <p class="modal-sub">Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile. If you don't see the email right away, check your promotions or spam folder.</p>
         <div class="field">
           <label for="mName">Full Name</label>

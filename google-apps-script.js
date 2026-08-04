@@ -105,6 +105,11 @@ const SOURCE_SCHEMAS = {
     row: function (d) {
       return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)]);
     }
+  },
+  'real-estate-investing': {
+    tab: 'Real Estate Investing',
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?']),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)]); }
   }
 };
 
@@ -189,6 +194,7 @@ function pushToBonzo(data) {
     tags.push('fha', 'fha-calculator', 'newsletter', 'priority:p4');
     if (data.creditScore) tags.push('credit:' + data.creditScore);
   }
+  else if (data.source === 'real-estate-investing') tags.push('real-estate-investing', 'case-study', 'priority:p5');
   else tags.push('mortgage-calculator');
 
   // All landing funnels reaching this point are in a licensed state (gated above) — tag it.
