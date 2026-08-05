@@ -116,7 +116,6 @@ export default function Nav({ onOpenContact }: Props) {
                 <a href="#calculator" onClick={(e) => { scrollTo('calculator')(e); setCalcOpen(false); }} className="nav-dropdown-item">Mortgage Calculator</a>
                 <a href="/dscr/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">DSCR</a>
                 <a href="/fha/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">FHA Calculator</a>
-                <a href="/realestateinvesting/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">Real Estate Investing</a>
               </div>
             </div>
             <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
@@ -149,7 +148,6 @@ export default function Nav({ onOpenContact }: Props) {
         <a href="#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink">Debt Consolidation</a>
         <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink">DSCR</a>
         <a href="/fha/" className="nav-mobile-link nav-mobile-sublink">FHA Calculator</a>
-        <a href="/realestateinvesting/" className="nav-mobile-link nav-mobile-sublink">Real Estate Investing</a>
         <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link">Reviews</a>
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn">Contact</button>
         <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }}>Book a Call</button>
