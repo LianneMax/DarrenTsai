@@ -54,54 +54,91 @@ function escapeHtml(s: string) {
 // standard practice for email client compatibility (no external stylesheets).
 function buildEmailHtml(lead: {
   firstName?: string;
+  lastName?: string;
   dscr?: string;
   downPayment?: string;
   rate?: string;
   loanAmount?: string;
 }) {
   const firstName = escapeHtml(lead.firstName || "there");
+  const fullName = escapeHtml(`${lead.firstName || ""} ${lead.lastName || ""}`.trim() || "there");
   const FONT = "'Outfit',Helvetica,Arial,sans-serif";
-  const stat = (label: string, value?: string) =>
-    `<tr><td style="padding:5px 0;color:#517686;font-family:${FONT};font-size:12px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;">${label}</td>` +
-    `<td align="right" style="padding:5px 0;font-weight:700;color:#223d55;font-family:${FONT};font-size:14px;">${escapeHtml(value || "—")}</td></tr>`;
+  const stat = (label: string, value?: string, first?: boolean) =>
+    `<tr>` +
+    `<td style="padding:9px 0;${first ? "" : "border-top:1px solid #eef1f4;"}font-family:${FONT};font-size:14px;font-weight:500;color:#6b7280;">${label}</td>` +
+    `<td align="right" style="padding:9px 0;${first ? "" : "border-top:1px solid #eef1f4;"}font-family:${FONT};font-size:17px;font-weight:700;color:#517686;">${escapeHtml(value || "—")}</td>` +
+    `</tr>`;
+  const insideItem = (n: string, text: string, last?: boolean) =>
+    `<tr><td width="28" valign="top" style="font-family:${FONT};font-size:13px;font-weight:700;color:#517686;line-height:25px;">${n}</td>` +
+    `<td valign="top" style="font-family:${FONT};font-size:15px;color:#6b7280;line-height:25px;${last ? "" : "padding-bottom:8px;"}">${text}</td></tr>`;
 
   return `<!doctype html>
 <html><head><meta charset="utf-8">
-<style>@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');</style>
+<style>@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');</style>
 </head>
 <body style="margin:0;padding:0;background:#f5f7f9;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7f9;padding:32px 16px;font-family:${FONT};">
 <tr><td align="center">
 <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #eef1f4;">
-  <tr><td style="padding:32px 32px 24px;border-bottom:1px solid #eef1f4;">
-    <div style="font-family:${FONT};font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#517686;margin-bottom:10px;">&#8212;&nbsp; DSCR Qualification Follow-Up</div>
-    <div style="font-size:26px;font-weight:700;color:#223d55;letter-spacing:-0.01em;font-family:${FONT};">Your Rate &amp; Cash Flow Guide</div>
+
+  <tr><td style="padding:28px 32px 24px;border-bottom:1px solid #eef1f4;">
+    <div style="font-family:${FONT};font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#517686;margin-bottom:10px;">DSCR Qualification Follow-Up</div>
+    <div style="font-size:26px;font-weight:700;color:#223d55;letter-spacing:-0.01em;">Your Rate &amp; Cash Flow Guide</div>
+    <div style="font-size:14px;color:#6b7280;padding-top:8px;">Prepared for ${fullName}</div>
   </td></tr>
-  <tr><td style="padding:28px 32px;">
+
+  <tr><td style="padding:28px 32px 8px;">
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#1a1a2e;">Hi ${firstName},</p>
-    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#6b7280;">Attached is your DSCR Rate &amp; Cash Flow Guide, personalized to the numbers you just ran:</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7f9;border:1px solid #eef1f4;border-radius:8px;margin-bottom:20px;">
-      <tr><td style="padding:16px 20px;">
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#6b7280;">Attached is your DSCR Rate &amp; Cash Flow Guide, personalized to the numbers you just ran.</p>
+  </td></tr>
+
+  <tr><td style="padding:0 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7f9;border:1px solid #eef1f4;border-radius:10px;">
+      <tr><td style="padding:18px 20px;">
+        <div style="font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#517686;padding-bottom:12px;">Your Scenario</div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${stat("DSCR Ratio", lead.dscr)}
+          ${stat("DSCR Ratio", lead.dscr, true)}
           ${stat("Down Payment", lead.downPayment)}
           ${stat("Est. Rate", lead.rate)}
           ${stat("Est. Loan Amount", lead.loanAmount)}
         </table>
       </td></tr>
     </table>
-    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#6b7280;">Inside: the 6 levers that actually move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+  </td></tr>
+
+  <tr><td style="padding:26px 32px 0;">
+    <div style="font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#517686;padding-bottom:12px;">Inside the Guide</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${insideItem("01", "The 6 levers that actually move your rate")}
+      ${insideItem("02", "5 ways to raise cash flow on the same property")}
+      ${insideItem("03", "Where your down-payment bracket comes from", true)}
+    </table>
+  </td></tr>
+
+  <tr><td style="padding:26px 32px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0">
       <tr><td style="background:#d2566d;border-radius:8px;">
-        <a href="https://calendly.com/realdarrentsai/15min" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;font-family:${FONT};color:#ffffff;text-decoration:none;">Book Your Free 15-Min Strategy Call</a>
+        <a href="https://calendly.com/realdarrentsai/15min" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Book Your Free 15-Min Strategy Call</a>
       </td></tr>
     </table>
-    <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
-    <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:#1a1a2e;">&mdash; Darren Tsai<br/>714-887-5432 &middot; darren@realdarrentsai.com</p>
+    <p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#6b7280;">A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
   </td></tr>
-  <tr><td style="padding:20px 32px;border-top:1px solid #eef1f4;">
+
+  <tr><td style="padding:22px 32px 30px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="border-top:1px solid #eef1f4;padding-top:18px;">
+        <div style="font-size:15px;font-weight:700;color:#517686;">Darren Tsai</div>
+        <div style="font-size:13px;color:#6b7280;padding-top:2px;">Senior Loan Officer &middot; Saxton Mortgage</div>
+        <div style="font-size:13px;color:#6b7280;padding-top:4px;">714-887-5432 &middot; <a href="mailto:darren@realdarrentsai.com" style="color:#517686;text-decoration:none;">darren@realdarrentsai.com</a></div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="background:#f5f7f9;border-top:1px solid #eef1f4;padding:20px 32px 24px;">
     <p style="margin:0;font-size:11px;line-height:1.6;color:#6b7280;">This guide is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and figures shown are estimates; actual eligibility and pricing are determined by underwriting. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.</p>
+    <p style="margin:12px 0 0;font-size:11px;line-height:1.6;color:#6b7280;">Sent because you requested the DSCR guide at realdarrentsai.com &middot; reply to this email or contact darren@realdarrentsai.com if you'd rather not receive follow-ups.<br/>1 City Blvd W, Orange, CA 92868</p>
   </td></tr>
+
 </table>
 </td></tr>
 </table>
