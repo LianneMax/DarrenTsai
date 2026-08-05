@@ -6,6 +6,8 @@
 <title>Real Estate Investing For Beginners 2026 — Free Case Study | Darren Tsai</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
 <style>
   :root{
     --white:       #ffffff;
@@ -566,9 +568,8 @@
   <div class="hero-blob hero-blob-3" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div>
-      <p class="eyebrow anim anim-1">Free case study — companion to the video</p>
       <h1 class="anim anim-2">You have the down payment.<br>You don't have the <em>system.</em></h1>
-      <p class="sub anim anim-3">Grab this free gift I made for you detailing the numbers, my biggest mistakes, and what I learned, behind my first real estate investment.</p>
+      <p class="sub anim anim-3">Just do one thing right now: download the case study and see the numbers. I share the real budget, timeline, and mistakes.</p>
       <div class="hero-meta anim anim-4">
         <span>Real out-of-state BRRRR deal</span>
         <span>Full timeline &amp; numbers</span>
@@ -653,7 +654,7 @@
             <div class="check">✓</div>
             <h3>Check your inbox</h3>
             <p>Your case study PDF is on its way. If you want to talk through your own numbers, book a free 15-minute call any time.</p>
-            <a class="cta outline" style="width:100%;" href="https://calendly.com/realdarrentsai/15min" target="_blank" rel="noopener">Book a Free Strategy Call</a>
+            <button type="button" class="cta outline" style="width:100%;" id="openLeadCalendlyBtn">Book a Free Strategy Call</button>
           </div>
         </div>
       </div>
@@ -661,32 +662,20 @@
   </div>
 </section>
 
-<div class="wrap">
-  <!-- BIO -->
-  <section class="reveal" style="padding:0 0 80px;">
-    <div class="bio">
-      <img src="/darren.jpg" alt="Darren Tsai" onerror="this.style.display='none'">
-      <div>
-        <h2>Hi, I'm Darren Tsai</h2>
-        <p>I believe owning a home brings stability and helps people grow wealth. Many people tell me their agent or lender didn't fully help them. But I'm here to help!</p>
-      </div>
-      <div class="bio-social">
-        <a href="https://www.onereal.com/" target="_blank" rel="noopener" aria-label="Website" title="Website">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        </a>
-        <a href="https://www.linkedin.com/in/soldwithtsai/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
-        </a>
-        <a href="https://www.instagram.com/darrentsai_/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-        </a>
-        <a href="https://www.youtube.com/@DarrenTsai_" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none"/></svg>
-        </a>
-      </div>
-    </div>
-  </section>
-</div>
+<!-- BRIDGE -->
+<section class="reveal" style="background:var(--light-bg);">
+  <div class="wrap">
+    <p class="section-label">This is the playbook I use for the investors I work with</p>
+    <h2>The BRRRR you just read about wasn't a one-off.</h2>
+    <p class="lede">It's how I analyze deals whether it be mine or a client's: what's the real number, what's the real risk, and how do we structure the financing so the deal actually cash flows. That's what I help investors do:</p>
+    <ul class="cs-list" style="color:var(--navy);">
+      <li><span class="tag" style="color:var(--rose);">01</span><span class="txt"><b style="color:var(--navy);">Qualify without the full-doc headache.</b></span></li>
+      <li><span class="tag" style="color:var(--rose);">02</span><span class="txt"><b style="color:var(--navy);">Find the levers most people miss.</b><span style="color:var(--text-muted);">Rate structure, reserves, interest-only options, and the stuff that gets you closer to your goals.</span></span></li>
+      <li><span class="tag" style="color:var(--rose);">03</span><span class="txt"><b style="color:var(--navy);">Keep scaling.</b><span style="color:var(--text-muted);">Most lenders help you close one deal. I help you figure out what the next one looks like while we're still working on this one.</span></span></li>
+    </ul>
+    <button type="button" id="openBridgeCalendlyBtn" class="cta" style="width:auto;display:inline-flex;margin-top:20px;">Book a free 15-minute call →</button>
+  </div>
+</section>
 
 <!-- CLIENT REVIEWS -->
 <section class="reviews-section reveal">
@@ -1051,8 +1040,21 @@
     document.body.style.overflow = '';
   }
   $('openContactBtn').addEventListener('click', openContact);
-  $('openCalendlyBtn').addEventListener('click', () => {
-    window.open('https://calendly.com/realdarrentsai/15min', '_blank', 'noopener');
+  // ---------------------------------------------------------
+  // Calendly — official popup widget (same as main-site Nav.tsx),
+  // opens an in-page overlay instead of a new tab.
+  // ---------------------------------------------------------
+  const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
+  function openCalendly() {
+    if (window.Calendly) {
+      window.Calendly.initPopupWidget({ url: CALENDLY_URL });
+    } else {
+      window.open(CALENDLY_URL, '_blank', 'noopener');
+    }
+  }
+  ['openCalendlyBtn', 'openBridgeCalendlyBtn', 'openLeadCalendlyBtn'].forEach((id) => {
+    const btn = $(id);
+    if (btn) btn.addEventListener('click', openCalendly);
   });
   $('closeContactModal').addEventListener('click', closeContact);
   $('closeContactSuccess').addEventListener('click', closeContact);
