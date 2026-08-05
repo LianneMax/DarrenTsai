@@ -27,6 +27,12 @@
  *    route here instead of the default campaign. Falls back to BONZO_CAMPAIGN_ID if blank.>
  * 5. Never paste tokens/ids directly in this file — Script Properties keeps them out
  *    of source control and off Netlify entirely.
+ *
+ * DSCR PDF EMAIL SETUP (sends the personalized DSCR guide via the Netlify function):
+ * 1. Add property: NETLIFY_DSCR_PDF_URL = https://realdarrentsai.com/api/send-dscr-guide
+ * 2. Add property: NETLIFY_DSCR_PDF_KEY = <same random string set as DSCR_GUIDE_API_KEY
+ *    in Netlify's environment variables>
+ * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
  */
 
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
@@ -157,11 +163,14 @@ function isDuplicateLead(sheet, email, phone) {
 function pushToBonzo(data) {
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('BONZO_API_KEY');
-  if (!token) return; // Bonzo not configured yet — skip silently, Sheets still logs the lead
+  if (!token) { Logger.log('pushToBonzo: no BONZO_API_KEY set, skipping'); return; } // Bonzo not configured yet — skip silently, Sheets still logs the lead
 
   // Landing funnels: only leads in a state Darren is licensed in enter a campaign.
   // Out-of-area leads are already logged in the sheet — just don't push them to Bonzo.
-  if (LANDING_SOURCES.indexOf(data.source) !== -1 && !isLicensedState(data.state)) return;
+  if (LANDING_SOURCES.indexOf(data.source) !== -1 && !isLicensedState(data.state)) {
+    Logger.log('pushToBonzo: source=' + data.source + ' state=' + data.state + ' not licensed, skipping');
+    return;
+  }
 
   // Campaign routing per source; everything else falls back to the default campaign.
   var campaignId;
@@ -213,15 +222,47 @@ function pushToBonzo(data) {
   };
 
   try {
-    UrlFetchApp.fetch(BONZO_BASE_URL + path, {
+    Logger.log('pushToBonzo: POST ' + BONZO_BASE_URL + path + ' body=' + JSON.stringify(body));
+    const resp = UrlFetchApp.fetch(BONZO_BASE_URL + path, {
       method: 'post',
       contentType: 'application/json',
       headers: { Authorization: 'Bearer ' + token },
       payload: JSON.stringify(body),
       muteHttpExceptions: true, // don't let a Bonzo error break the Sheets write
     });
+    Logger.log('pushToBonzo: response ' + resp.getResponseCode() + ' ' + resp.getContentText());
   } catch (err) {
+    Logger.log('pushToBonzo: threw ' + err.toString());
     // swallow — lead is already safe in Sheets even if Bonzo push fails
+  }
+}
+
+function sendDscrGuide(data) {
+  if (data.source !== 'dscr') return; // only the DSCR funnel has a guide to send
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty('NETLIFY_DSCR_PDF_URL');
+  const key = props.getProperty('NETLIFY_DSCR_PDF_KEY');
+  if (!url || !key) { Logger.log('sendDscrGuide: NETLIFY_DSCR_PDF_URL/KEY not set, skipping'); return; }
+
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-api-key': key },
+      payload: JSON.stringify({
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        email: data.email || '',
+        dscr: data.dscr || '',
+        downPayment: data.downPayment || '',
+        rate: data.rate || '',
+        loanAmount: data.loanAmount || '',
+      }),
+      muteHttpExceptions: true, // never let an email failure break the lead flow
+    });
+    Logger.log('sendDscrGuide: response ' + resp.getResponseCode() + ' ' + resp.getContentText());
+  } catch (err) {
+    Logger.log('sendDscrGuide: threw ' + err.toString());
   }
 }
 
@@ -302,6 +343,7 @@ function doPost(e) {
     }
 
     pushToBonzo(data);
+    sendDscrGuide(data);
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))
