@@ -19,7 +19,7 @@ export const HOME_VALUE_PROXY_URL: string =
 
 export const SITE_NAME = "Darren Tsai";
 export const PHONE = "(714) 887-5432";
-export const EMAIL = "darrent@saxtonmortgage.com";
+export const EMAIL = "darren@realdarrentsai.com";
 export const NMLS = "2438102";
 export const DRE = "02103705";
 export const COMPANY = "Saxton Mortgage";
