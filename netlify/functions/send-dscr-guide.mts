@@ -92,7 +92,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
 <style>@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');</style>
 </head>
 <body style="margin:0;padding:0;background:#ffffff;">
-<span style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Your personalized DSCR guide is attached.</span>
+<span style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Your personalized rate snapshot and DSCR guide are attached.</span>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
 <tr><td align="center" style="padding:32px 16px;">
@@ -103,7 +103,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
   </td></tr>
 
   <tr><td style="padding-bottom:16px;">
-    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">Attached is your DSCR Rate &amp; Cash Flow Guide, personalized to the numbers you just ran &mdash; the 6 levers that move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.</p>
+    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">Attached are two PDFs: your personalized rate snapshot (the exact numbers you just ran), and the full DSCR Rate &amp; Cash Flow Guide &mdash; the 6 levers that move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.</p>
   </td></tr>
 
   <tr><td style="padding-bottom:24px;">
@@ -221,7 +221,21 @@ async function buildPersonalizedPdf(lead: {
     });
   }
 
-  return pdfDoc.save();
+  // Split into two separate PDFs: page 0 (the personalized "Your Scenario"
+  // cover) is the standalone "Rate" attachment; pages 1-5 (hero + 6 levers +
+  // cash flow + CTA) are the "Guide" attachment.
+  const rateDoc = await PDFDocument.create();
+  const [ratePage] = await rateDoc.copyPages(pdfDoc, [0]);
+  rateDoc.addPage(ratePage);
+
+  const guideDoc = await PDFDocument.create();
+  const guidePages = await guideDoc.copyPages(pdfDoc, [1, 2, 3, 4, 5]);
+  guidePages.forEach((p) => guideDoc.addPage(p));
+
+  return {
+    rateBytes: await rateDoc.save(),
+    guideBytes: await guideDoc.save(),
+  };
 }
 
 export default async (req: Request, context: Context) => {
@@ -245,8 +259,9 @@ export default async (req: Request, context: Context) => {
   if (!lead.email) return jsonResponse(400, { error: "email required" });
 
   try {
-    const pdfBytes = await buildPersonalizedPdf(lead);
-    const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
+    const { rateBytes, guideBytes } = await buildPersonalizedPdf(lead);
+    const rateBase64 = Buffer.from(rateBytes).toString("base64");
+    const guideBase64 = Buffer.from(guideBytes).toString("base64");
 
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -260,10 +275,8 @@ export default async (req: Request, context: Context) => {
         subject: `${lead.firstName ? lead.firstName + ", your" : "Your"} DSCR Rate & Cash Flow Guide`,
         html: buildEmailHtml(lead),
         attachments: [
-          {
-            filename: "dscr-rate-cashflow-guide.pdf",
-            content: pdfBase64,
-          },
+          { filename: "your-dscr-rate.pdf", content: rateBase64 },
+          { filename: "dscr-cashflow-guide.pdf", content: guideBase64 },
         ],
       }),
     });
