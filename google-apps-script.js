@@ -236,12 +236,29 @@ function pushToBonzo(data) {
   }
 }
 
-function sendDscrGuide(data) {
+// Writes to a "Debug" sheet tab instead of (or alongside) Logger.log — Apps
+// Script's Cloud Logging for web-app-triggered executions is unreliable
+// (frequently shows "No logs are available" even on completed runs), so this
+// is the trustworthy way to see what happened. Safe to delete this tab and
+// stop calling logDebug() once the DSCR email flow is confirmed stable.
+function logDebug(ss, message) {
+  try {
+    const sheet = getOrCreateSheet(ss, 'Debug', ['Timestamp', 'Message']);
+    sheet.appendRow([new Date().toISOString(), message]);
+  } catch (err) {
+    // never let debug logging itself break the lead flow
+  }
+}
+
+function sendDscrGuide(ss, data) {
   if (data.source !== 'dscr') return; // only the DSCR funnel has a guide to send
   const props = PropertiesService.getScriptProperties();
   const url = props.getProperty('NETLIFY_DSCR_PDF_URL');
   const key = props.getProperty('NETLIFY_DSCR_PDF_KEY');
-  if (!url || !key) { Logger.log('sendDscrGuide: NETLIFY_DSCR_PDF_URL/KEY not set, skipping'); return; }
+  if (!url || !key) {
+    logDebug(ss, 'sendDscrGuide: NETLIFY_DSCR_PDF_URL/KEY not set, skipping');
+    return;
+  }
 
   try {
     const resp = UrlFetchApp.fetch(url, {
@@ -259,9 +276,9 @@ function sendDscrGuide(data) {
       }),
       muteHttpExceptions: true, // never let an email failure break the lead flow
     });
-    Logger.log('sendDscrGuide: response ' + resp.getResponseCode() + ' ' + resp.getContentText());
+    logDebug(ss, 'sendDscrGuide: url=' + url + ' response ' + resp.getResponseCode() + ' ' + resp.getContentText().slice(0, 500));
   } catch (err) {
-    Logger.log('sendDscrGuide: threw ' + err.toString());
+    logDebug(ss, 'sendDscrGuide: threw ' + err.toString());
   }
 }
 
@@ -342,7 +359,7 @@ function doPost(e) {
     }
 
     pushToBonzo(data);
-    sendDscrGuide(data);
+    sendDscrGuide(ss, data);
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))
