@@ -165,12 +165,10 @@ function pushToBonzo(data) {
   const token = props.getProperty('BONZO_API_KEY');
   if (!token) { Logger.log('pushToBonzo: no BONZO_API_KEY set, skipping'); return; } // Bonzo not configured yet — skip silently, Sheets still logs the lead
 
-  // Landing funnels: only leads in a state Darren is licensed in enter a campaign.
-  // Out-of-area leads are already logged in the sheet — just don't push them to Bonzo.
-  if (LANDING_SOURCES.indexOf(data.source) !== -1 && !isLicensedState(data.state)) {
-    Logger.log('pushToBonzo: source=' + data.source + ' state=' + data.state + ' not licensed, skipping');
-    return;
-  }
+  // Every landing lead pushes to Bonzo regardless of state — licensed vs.
+  // unlicensed is surfaced via the licensed-state/unlicensed-state tag below,
+  // not by gating the push. (Previously out-of-area leads were skipped
+  // entirely; still logged in Sheets either way.)
 
   // Campaign routing per source; everything else falls back to the default campaign.
   var campaignId;
@@ -206,9 +204,10 @@ function pushToBonzo(data) {
   else if (data.source === 'real-estate-investing') tags.push('real-estate-investing', 'case-study', 'priority:p5');
   else tags.push('mortgage-calculator');
 
-  // All landing funnels reaching this point are in a licensed state (gated above) — tag it.
+  // Every landing lead gets a licensed-state / unlicensed-state tag so Darren
+  // can filter workable leads from out-of-area ones in Bonzo.
   if (LANDING_SOURCES.indexOf(data.source) !== -1) {
-    tags.push('licensed-state');
+    tags.push(isLicensedState(data.state) ? 'licensed-state' : 'unlicensed-state');
     if (data.state) tags.push('state:' + String(data.state).trim().toUpperCase());
   }
 
