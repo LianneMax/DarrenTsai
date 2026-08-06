@@ -364,11 +364,12 @@ def draw_title(c: canvas_mod.Canvas, doc):
         c.drawString(COVER_MARGIN, PAGE_H - 348 - i * 21, line)
 
     c.setFont("Outfit-SemiBold", 9.5)
-    c.setFillColor(CTA_BLUE)
+    c.setFillColor(HEADER_TEXT)  # same color as the "DSCR QUALIFICATION FOLLOW-UP" eyebrow above
     c.drawString(COVER_MARGIN, 186, "PREPARED FOR AN INVESTOR WHO ALREADY RAN THE NUMBERS")
 
-    # TEAL_DEEP, not TEAL — a TEAL stroke would be invisible against the now-TEAL background.
-    c.setStrokeColor(TEAL_DEEP)
+    # CTA_BLUE, not literal TEAL — a TEAL stroke would be invisible against the
+    # TEAL background; CTA_BLUE matches the other accent rules on this page.
+    c.setStrokeColor(CTA_BLUE)
     c.setLineWidth(0.75)
     c.line(COVER_MARGIN, 166, PAGE_W - COVER_MARGIN, 166)
 
