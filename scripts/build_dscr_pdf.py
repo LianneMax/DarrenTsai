@@ -338,7 +338,9 @@ TITLE_SUB = [
 def draw_title(c: canvas_mod.Canvas, doc):
     c.saveState()
 
-    c.setFillColor(NAVY)
+    # Matches the rate PDF's header block color (TEAL) so the guide's opening
+    # page ties visually to the rate PDF it's sent alongside.
+    c.setFillColor(TEAL)
     c.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
     c.setFillColor(CTA_BLUE)
     c.rect(0, PAGE_H - 7, PAGE_W, 7, fill=1, stroke=0)
@@ -365,7 +367,8 @@ def draw_title(c: canvas_mod.Canvas, doc):
     c.setFillColor(CTA_BLUE)
     c.drawString(COVER_MARGIN, 186, "PREPARED FOR AN INVESTOR WHO ALREADY RAN THE NUMBERS")
 
-    c.setStrokeColor(TEAL)
+    # TEAL_DEEP, not TEAL — a TEAL stroke would be invisible against the now-TEAL background.
+    c.setStrokeColor(TEAL_DEEP)
     c.setLineWidth(0.75)
     c.line(COVER_MARGIN, 166, PAGE_W - COVER_MARGIN, 166)
 
