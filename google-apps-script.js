@@ -25,12 +25,22 @@
  *    support or check dashboard if unsure, default campaign works if blank>
  * 4. Add property: BONZO_DSCR_CAMPAIGN_ID = <the "DSCR Campaign" id in Bonzo — DSCR leads
  *    route here instead of the default campaign. Falls back to BONZO_CAMPAIGN_ID if blank.>
- * 5. Never paste tokens/ids directly in this file — Script Properties keeps them out
+ * 5. Add property: BONZO_REI_CAMPAIGN_ID = <the "Real Estate Investing" campaign id in
+ *    Bonzo (platform.getbonzo.com/campaigns/261737) — REI leads route here instead of
+ *    the default campaign. Falls back to REI_CAMPAIGN_ID constant below if blank.>
+ * 6. Never paste tokens/ids directly in this file — Script Properties keeps them out
  *    of source control and off Netlify entirely.
  *
  * DSCR PDF EMAIL SETUP (sends the personalized DSCR guide via the Netlify function):
  * 1. Add property: NETLIFY_DSCR_PDF_URL = https://realdarrentsai.com/api/send-dscr-guide
  * 2. Add property: NETLIFY_DSCR_PDF_KEY = <same random string set as DSCR_GUIDE_API_KEY
+ *    in Netlify's environment variables>
+ * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
+ *
+ * REAL ESTATE INVESTING PDF EMAIL SETUP (sends the static case-study PDF via the
+ * Netlify function):
+ * 1. Add property: NETLIFY_REI_PDF_URL = https://realdarrentsai.com/api/send-rei-guide
+ * 2. Add property: NETLIFY_REI_PDF_KEY = <same random string set as REI_GUIDE_API_KEY
  *    in Netlify's environment variables>
  * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
  */
@@ -47,6 +57,8 @@ const LICENSED_STATES = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'];
 const FHA_CAMPAIGN_ID = '145797';
 // "DSCR" campaign — platform.getbonzo.com/campaigns/258025
 const DSCR_CAMPAIGN_ID = '258025';
+// "Real Estate Investing" campaign — platform.getbonzo.com/campaigns/261737
+const REI_CAMPAIGN_ID = '261737';
 
 function isLicensedState(state) {
   if (!state) return false;
@@ -176,6 +188,8 @@ function pushToBonzo(data) {
     campaignId = props.getProperty('BONZO_DSCR_CAMPAIGN_ID') || DSCR_CAMPAIGN_ID;
   } else if (data.source === 'fha') {
     campaignId = getFhaCampaignId(props); // "FHA Calculator Campaign: Licensed" (145797)
+  } else if (data.source === 'real-estate-investing') {
+    campaignId = props.getProperty('BONZO_REI_CAMPAIGN_ID') || REI_CAMPAIGN_ID;
   } else {
     campaignId = props.getProperty('BONZO_CAMPAIGN_ID');
   }
@@ -282,6 +296,34 @@ function sendDscrGuide(ss, data) {
   }
 }
 
+function sendReiGuide(ss, data) {
+  if (data.source !== 'real-estate-investing') return; // only the REI funnel has a guide to send
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty('NETLIFY_REI_PDF_URL');
+  const key = props.getProperty('NETLIFY_REI_PDF_KEY');
+  if (!url || !key) {
+    logDebug(ss, 'sendReiGuide: NETLIFY_REI_PDF_URL/KEY not set, skipping');
+    return;
+  }
+
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-api-key': key },
+      payload: JSON.stringify({
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        email: data.email || '',
+      }),
+      muteHttpExceptions: true, // never let an email failure break the lead flow
+    });
+    logDebug(ss, 'sendReiGuide: url=' + url + ' response ' + resp.getResponseCode() + ' ' + resp.getContentText().slice(0, 500));
+  } catch (err) {
+    logDebug(ss, 'sendReiGuide: threw ' + err.toString());
+  }
+}
+
 function doPost(e) {
   try {
     // Browser sends text/plain with no-cors mode — body is still valid JSON
@@ -360,6 +402,7 @@ function doPost(e) {
 
     pushToBonzo(data);
     sendDscrGuide(ss, data);
+    sendReiGuide(ss, data);
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))
