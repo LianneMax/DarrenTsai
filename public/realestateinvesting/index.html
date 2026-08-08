@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real Estate Investing For Beginners 2026 — Free Case Study | Darren Tsai</title>
+<link rel="icon" type="image/jpeg" href="/darren.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
@@ -222,6 +223,43 @@
   }
   .input-shell.error{border-color:var(--rose);box-shadow:0 0 0 3px rgba(210,86,109,0.15);}
   .field-error{display:block;font-size:0.8rem;font-weight:500;color:var(--rose);margin-top:6px;}
+
+  /* ---------- Custom state select (reui c-select-4 style combobox) ---------- */
+  .cselect{position:relative;}
+  .cselect-native{position:absolute;top:0;left:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;}
+  .cselect-trigger{
+    width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    border:none;background:transparent;cursor:pointer;text-align:left;
+    padding:11px 14px;font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;color:var(--text-muted);
+  }
+  .cselect-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .cselect-value.has-value{color:var(--navy);}
+  .cselect-chevron{flex-shrink:0;color:var(--text-muted);transition:transform .2s ease;}
+  .cselect.open .cselect-chevron{transform:rotate(180deg);}
+  .cselect-panel{
+    position:fixed;z-index:700;background:var(--white);
+    border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:0 16px 40px rgba(0,0,0,0.16);
+    opacity:0;visibility:hidden;transform:translateY(-6px);
+    transition:opacity .15s ease, transform .15s ease, visibility .15s;
+    overflow:hidden;
+  }
+  .cselect-panel.open{opacity:1;visibility:visible;transform:translateY(0);}
+  .cselect-search{border-bottom:1px solid var(--line);padding:6px;}
+  .cselect-search input{
+    width:100%;border:none;outline:none;background:var(--light-bg);border-radius:6px;
+    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:0.9rem;color:var(--navy);
+  }
+  .cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
+  .cselect-option{
+    display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
+    font-size:0.92rem;color:var(--navy);cursor:pointer;
+  }
+  .cselect-option:hover{background:var(--light-bg);}
+  .cselect-option .cselect-check{flex-shrink:0;opacity:0;color:var(--accent);}
+  .cselect-option.selected{font-weight:600;}
+  .cselect-option.selected .cselect-check{opacity:1;}
+  .cselect-empty{padding:14px 10px;text-align:center;font-size:0.85rem;color:var(--text-muted);}
   .input-shell input{
     width:100%;
     border:none;
@@ -265,6 +303,8 @@
   .cta.outline:hover{background:var(--teal);color:var(--white);box-shadow:none;}
   .cta.outline-rose{background:transparent;border:2px solid var(--rose);color:var(--rose);}
   .cta.outline-rose:hover{background:var(--rose);color:var(--white);box-shadow:0 8px 24px var(--rose-glow);}
+  .cta.solid-teal{background:var(--teal);color:var(--white);}
+  .cta.solid-teal:hover{background:var(--teal);box-shadow:0 8px 24px rgba(81,118,134,0.35);}
   .form-note{font-size:0.78rem;color:var(--text-muted);margin-top:10px;text-align:center;}
 
   .lead-success{display:none;text-align:center;padding:8px 0;}
@@ -555,8 +595,8 @@
       </span>
     </a>
     <div class="site-nav-actions">
-      <button type="button" id="openContactBtn" class="cta outline-rose" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
-      <button type="button" id="openCalendlyBtn" class="cta" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Book a Call</button>
+      <button type="button" id="openContactBtn" class="cta outline" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
+      <button type="button" id="openCalendlyBtn" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Book a Call</button>
     </div>
   </div>
 </header>
@@ -668,7 +708,7 @@
 </section>
 
 <!-- BRIDGE -->
-<section class="reveal" style="background:var(--light-bg);">
+<section class="reveal" style="background:#ffffff;">
   <div class="wrap">
     <p class="section-label">This is the playbook I use for the investors I work with</p>
     <h2>The BRRRR you just read about wasn't a one-off.</h2>
@@ -967,8 +1007,124 @@
       select.appendChild(opt);
     });
   }
+
+  // ---------------------------------------------------------
+  // Custom select — replaces any native <select>'s chrome with a
+  // reui c-select-4-style combobox (trigger + panel + checkmark). Search
+  // input only shows when there are 10+ real options. The native <select>
+  // stays in the DOM (hidden) as the source of truth, so every existing
+  // .value read / validation / error-toggle keeps working unchanged.
+  // Same implementation as /fha and /dscr.
+  // ---------------------------------------------------------
+  function enhanceSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const shell = select.closest('.input-shell');
+    if (!shell) return;
+    shell.classList.add('cselect');
+    select.tabIndex = -1;
+    select.classList.add('cselect-native');
+
+    const itemCount = Array.prototype.filter.call(select.options, (o) => o.value).length;
+    const searchable = itemCount >= 10;
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'cselect-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    const placeholder = select.options[0] ? select.options[0].textContent : 'Select…';
+    trigger.innerHTML = '<span class="cselect-value">' + placeholder + '</span>' +
+      '<svg class="cselect-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    shell.insertBefore(trigger, select);
+
+    const panel = document.createElement('div');
+    panel.className = 'cselect-panel';
+    panel.setAttribute('role', 'listbox');
+    panel.innerHTML = (searchable ? '<div class="cselect-search"><input type="text" placeholder="Search…" autocomplete="off"></div>' : '') + '<div class="cselect-options"></div>';
+    document.body.appendChild(panel); // fixed-position — escapes modal overflow clipping
+
+    const valueEl = trigger.querySelector('.cselect-value');
+    const searchEl = panel.querySelector('.cselect-search input');
+    const optionsEl = panel.querySelector('.cselect-options');
+
+    function buildOptions(filter) {
+      optionsEl.innerHTML = '';
+      const q = (filter || '').trim().toLowerCase();
+      let shown = 0;
+      Array.prototype.forEach.call(select.options, (opt) => {
+        if (!opt.value) return;
+        if (q && opt.textContent.toLowerCase().indexOf(q) === -1) return;
+        shown++;
+        const row = document.createElement('div');
+        row.className = 'cselect-option' + (opt.value === select.value ? ' selected' : '');
+        row.setAttribute('role', 'option');
+        row.innerHTML = '<svg class="cselect-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg><span>' + opt.textContent + '</span>';
+        row.addEventListener('click', () => {
+          select.value = opt.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          valueEl.textContent = opt.textContent;
+          valueEl.classList.add('has-value');
+          close();
+          trigger.focus();
+        });
+        optionsEl.appendChild(row);
+      });
+      if (!shown) optionsEl.innerHTML = '<div class="cselect-empty">No matches</div>';
+    }
+
+    function positionPanel() {
+      const r = trigger.getBoundingClientRect();
+      panel.style.left = r.left + 'px';
+      panel.style.top = (r.bottom + 6) + 'px';
+      panel.style.width = r.width + 'px';
+    }
+
+    function onDocClick(e) { if (!shell.contains(e.target) && !panel.contains(e.target)) close(); }
+    function onKeydown(e) { if (e.key === 'Escape') { close(); trigger.focus(); } }
+    function onScroll(e) { if (panel.contains(e.target)) return; close(); }
+
+    function open() {
+      if (shell.classList.contains('open')) return;
+      document.querySelectorAll('.cselect-panel.open').forEach((p) => p.classList.remove('open'));
+      buildOptions('');
+      positionPanel();
+      panel.classList.add('open');
+      shell.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      if (searchEl) { searchEl.value = ''; setTimeout(() => searchEl.focus(), 0); }
+      document.addEventListener('click', onDocClick, true);
+      document.addEventListener('keydown', onKeydown, true);
+      window.addEventListener('scroll', onScroll, true);
+      window.addEventListener('resize', positionPanel);
+    }
+    function close() {
+      panel.classList.remove('open');
+      shell.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('keydown', onKeydown, true);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', positionPanel);
+    }
+
+    trigger.addEventListener('click', () => { shell.classList.contains('open') ? close() : open(); });
+    if (searchEl) {
+      searchEl.addEventListener('input', () => buildOptions(searchEl.value));
+      searchEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { const first = optionsEl.querySelector('.cselect-option'); if (first) first.click(); }
+      });
+    }
+
+    if (select.value) {
+      const sel = Array.prototype.filter.call(select.options, (o) => o.value === select.value)[0];
+      if (sel) { valueEl.textContent = sel.textContent; valueEl.classList.add('has-value'); }
+    }
+  }
+
   const lStateSelect = $('lState');
   fillStateSelect(lStateSelect);
+  enhanceSelect('lState');
 
   // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1".
   // Same formatUSPhone/isValidUSPhone used by the contact modal below —
@@ -1103,6 +1259,9 @@
 
   const cStateSelect = $('cState');
   fillStateSelect(cStateSelect);
+  enhanceSelect('cState');
+  enhanceSelect('cTarget');
+  enhanceSelect('cTimeline');
 
   $('submitContact').addEventListener('click', async () => {
     clearContactErrors();

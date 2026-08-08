@@ -354,6 +354,81 @@ p {
   color: var(--text-muted);
 }
 
+/* ---------- Custom state select (reui c-select-4 style combobox) ---------- */
+/* Used by <StateSelect> in place of a native <select> for state fields —
+   same visual language as the static /fha, /dscr, /realestateinvesting
+   pages' enhanceStateSelect(). */
+.cselect { position: relative; }
+.cselect-trigger {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 16px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  background: var(--white);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.cselect-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cselect-trigger:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(81,118,134,0.2);
+}
+.cselect-trigger.input-error {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(210,86,109,0.15);
+}
+.cselect-value.has-value { color: var(--text-dark); }
+.cselect-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 0.2s ease; }
+.cselect.open .cselect-chevron { transform: rotate(180deg); }
+.cselect-panel {
+  position: fixed;
+  z-index: 1200;
+  background: var(--white);
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.16);
+  overflow: hidden;
+}
+.cselect-search { border-bottom: 1px solid #e5e7eb; padding: 6px; }
+.cselect-search input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: #f5f7f9;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+.cselect-options { max-height: 220px; overflow-y: auto; padding: 4px; }
+.cselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+.cselect-option:hover { background: #f5f7f9; }
+.cselect-option .cselect-check { flex-shrink: 0; opacity: 0; color: var(--rose); }
+.cselect-option.selected { font-weight: 600; }
+.cselect-option.selected .cselect-check { opacity: 1; }
+.cselect-empty { padding: 14px 10px; text-align: center; font-size: 0.85rem; color: var(--text-muted); }
+
 /* Field error */
 .field-error {
   display: block;

@@ -3,22 +3,10 @@ import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import type { MortgageInputs } from '../types/mortgage';
 import { GOOGLE_SHEET_WEBHOOK_URL, EMAIL, NMLS, DRE } from '../config';
+import StateSelect from './StateSelect';
+import CustomSelect from './CustomSelect';
 
 const emailSchema = z.string().email();
-
-// US states — full name shown, 2-letter abbreviation stored/sent
-const US_STATES: [string, string][] = [
-  ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
-  ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'], ['FL', 'Florida'], ['GA', 'Georgia'],
-  ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'],
-  ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'], ['MD', 'Maryland'],
-  ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'], ['MO', 'Missouri'],
-  ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'],
-  ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'],
-  ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'], ['SC', 'South Carolina'],
-  ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'],
-  ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'],
-];
 
 interface Props {
   currentInputs: MortgageInputs;
@@ -284,21 +272,15 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
         <label htmlFor="lf-state" className="input-label">
           State <span style={{ color: 'var(--rose)' }}>*</span>
         </label>
-        <div className="select-wrap">
-          <select
-            id="lf-state"
-            className={`form-select${errors.state ? ' input-error' : ''}`}
-            value={form.state} onChange={set('state')}
-          >
-            <option value="" disabled>Select your state…</option>
-            {US_STATES.map(([abbr, name]) => (
-              <option key={abbr} value={abbr}>{name}</option>
-            ))}
-          </select>
-          <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
+        <StateSelect
+          id="lf-state"
+          value={form.state}
+          hasError={!!errors.state}
+          onChange={(abbr) => {
+            setForm((prev) => ({ ...prev, state: abbr }));
+            setErrors((prev) => ({ ...prev, state: undefined }));
+          }}
+        />
         {errors.state && <span className="field-error">{errors.state}</span>}
       </div>
 
@@ -324,40 +306,34 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
           <label htmlFor="lf-target" className="input-label">
             Target Outcome <span style={{ color: 'var(--rose)' }}>*</span>
           </label>
-          <div className="select-wrap">
-            <select
-              id="lf-target"
-              className={`form-select${errors.target ? ' input-error' : ''}`}
-              value={form.target} onChange={set('target')}
-            >
-              {TARGET_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value} disabled={!o.value}>{o.label}</option>
-              ))}
-            </select>
-            <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+          <CustomSelect
+            id="lf-target"
+            value={form.target}
+            hasError={!!errors.target}
+            placeholder={TARGET_OPTIONS[0].label}
+            options={TARGET_OPTIONS.filter((o) => o.value)}
+            onChange={(v) => {
+              setForm((prev) => ({ ...prev, target: v }));
+              setErrors((prev) => ({ ...prev, target: undefined }));
+            }}
+          />
           {errors.target && <span className="field-error">{errors.target}</span>}
         </div>
         <div className="input-group" style={{ marginBottom: 0 }}>
           <label htmlFor="lf-timeline" className="input-label">
             Timeline <span style={{ color: 'var(--rose)' }}>*</span>
           </label>
-          <div className="select-wrap">
-            <select
-              id="lf-timeline"
-              className={`form-select${errors.timeline ? ' input-error' : ''}`}
-              value={form.timeline} onChange={set('timeline')}
-            >
-              {TIMELINE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value} disabled={!o.value}>{o.label}</option>
-              ))}
-            </select>
-            <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+          <CustomSelect
+            id="lf-timeline"
+            value={form.timeline}
+            hasError={!!errors.timeline}
+            placeholder={TIMELINE_OPTIONS[0].label}
+            options={TIMELINE_OPTIONS.filter((o) => o.value)}
+            onChange={(v) => {
+              setForm((prev) => ({ ...prev, timeline: v }));
+              setErrors((prev) => ({ ...prev, timeline: undefined }));
+            }}
+          />
           {errors.timeline && <span className="field-error">{errors.timeline}</span>}
         </div>
       </div>

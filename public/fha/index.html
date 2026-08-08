@@ -4,28 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FHA Mortgage Calculator</title>
+<link rel="icon" type="image/jpeg" href="/darren.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
 <style>
   :root{
     --white:       #ffffff;
-    --teal:        #517686;
-    --navy:        #223d55;
-    --navy-dark:   #1a2f42;
-    --rose:        #d2566d;
+    --teal:        #517686;   /* secondary background */
+    --accent:      #219ebc;   /* highlight text */
+    --rose:        #d2566d;   /* buttons */
     --rose-glow:   rgba(210, 86, 109, 0.35);
-    --light-bg:    #f5f7f9;
+    --accent-glow: rgba(33, 158, 188, 0.25);
+    --light-bg:    #f5f8fa;
+    --navy:        #223d55;   /* dark blue body/heading text */
     --text-dark:   #1a1a2e;
     --text-muted:  #6b7280;
-    --line:        #d1d5db;
+    --line:        #e2e5ea;
     --success:     #1e7a45;
     --success-bg:  #dcf1e3;
-    --radius:8px;
+    --radius:10px;
     --card-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    --card-shadow-hover: 0 16px 40px rgba(0,0,0,0.12);
   }
 
   *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
   html,body{margin:0;padding:0;}
+  a{color:inherit;text-decoration:none;}
   body{
     background:var(--white);
     color:var(--text-dark);
@@ -34,7 +41,18 @@
     padding:0 0 64px;
   }
 
-  .wrap{max-width:760px;margin:0 auto;padding:0 16px;}
+  /* ---------- Motion (mirrors realestateinvesting/index.html) ---------- */
+  @keyframes fadeUp{ from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
+  .anim{opacity:0;animation:fadeUp 0.8s ease forwards;}
+  .anim-1{animation-delay:.05s;}
+  .anim-2{animation-delay:.18s;}
+  .anim-3{animation-delay:.32s;}
+  .anim-4{animation-delay:.46s;}
+  .reveal{opacity:0;transform:translateY(32px);transition:opacity .6s ease, transform .6s ease;}
+  .reveal.revealed{opacity:1;transform:translateY(0);}
+
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px;}
+  section{padding:80px 0;}
 
   /* ---------- Header ---------- */
   .eyebrow{
@@ -78,14 +96,14 @@
   /* ---------- Card ---------- */
   .card{
     background:var(--white);
-    border:1px solid #eef1f4;
+    border:1px solid var(--line);
     border-radius:16px;
     box-shadow:var(--card-shadow);
     overflow:hidden;
   }
   .card-section{
     padding:28px;
-    border-bottom:1px solid #eef1f4;
+    border-bottom:1px solid var(--line);
   }
   .card-section:last-child{border-bottom:none;}
   .section-label{
@@ -172,6 +190,98 @@
   .input-shell.error{
     border-color:var(--rose);
     box-shadow:0 0 0 3px rgba(210,86,109,0.15);
+  }
+
+  /* ---------- Custom state select (reui c-select-4 style combobox) ---------- */
+  .cselect{position:relative;}
+  .cselect-native{position:absolute;top:0;left:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;}
+  .cselect-trigger{
+    width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    border:none;background:transparent;cursor:pointer;text-align:left;
+    padding:11px 14px;font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;color:var(--text-muted);
+  }
+  .cselect-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .cselect-value.has-value{color:var(--text-dark);}
+  .cselect-chevron{flex-shrink:0;color:var(--text-muted);transition:transform .2s ease;}
+  .cselect.open .cselect-chevron{transform:rotate(180deg);}
+  .cselect-panel{
+    position:fixed;z-index:700;background:var(--white);
+    border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:0 16px 40px rgba(0,0,0,0.16);
+    opacity:0;visibility:hidden;transform:translateY(-6px);
+    transition:opacity .15s ease, transform .15s ease, visibility .15s;
+    overflow:hidden;
+  }
+  .cselect-panel.open{opacity:1;visibility:visible;transform:translateY(0);}
+  .cselect-search{border-bottom:1px solid var(--line);padding:6px;}
+  .cselect-search input{
+    width:100%;border:none;outline:none;background:var(--light-bg);border-radius:6px;
+    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:0.9rem;color:var(--text-dark);
+  }
+  .cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
+  .cselect-option{
+    display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
+    font-size:0.92rem;color:var(--text-dark);cursor:pointer;
+  }
+  .cselect-option:hover{background:var(--light-bg);}
+  .cselect-option .cselect-check{flex-shrink:0;opacity:0;color:var(--rose);}
+  .cselect-option.selected{font-weight:600;}
+  .cselect-option.selected .cselect-check{opacity:1;}
+  .cselect-empty{padding:14px 10px;text-align:center;font-size:0.85rem;color:var(--text-muted);}
+
+  h2{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:clamp(1.6rem, 3.4vw, 2.1rem);
+    line-height:1.2;
+    letter-spacing:-0.01em;
+    color:var(--navy);
+    margin:0 0 16px;
+  }
+  .lede{font-size:1rem;line-height:1.6;color:var(--text-muted);max-width:62ch;margin:0 0 36px;}
+
+  /* ---------- Inline opt-in / lead form (mirrors realestateinvesting/index.html, no modal) ---------- */
+  .final-cta{background:var(--white);}
+  .final-cta-inner{display:flex;gap:48px;align-items:center;flex-wrap:wrap;}
+  .final-cta-copy{flex:1;min-width:280px;}
+  .final-cta-form{width:460px;max-width:100%;}
+  .lead-form{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    padding:28px;
+    transition:box-shadow .3s ease;
+  }
+  .lead-form:hover{box-shadow:var(--card-shadow-hover);}
+  .lead-form h3{
+    font-family:'Outfit', sans-serif;
+    font-weight:700;
+    font-size:1.3rem;
+    margin:0 0 6px;
+    color:var(--navy);
+  }
+  .lead-form p{
+    font-size:0.92rem;
+    color:var(--text-muted);
+    line-height:1.5;
+    margin:0 0 18px;
+  }
+  .lead-form-fields.hide{display:none;}
+  .lead-form-fields .field{margin-bottom:14px;}
+  .lead-success{display:none;text-align:center;padding:8px 0;}
+  .lead-success.show{display:block;}
+  .input-shell textarea{
+    width:100%;
+    border:none;
+    background:transparent;
+    padding:11px 16px;
+    font-family:'Outfit', sans-serif;
+    font-size:1rem;
+    color:var(--text-dark);
+    outline:none;
+    resize:vertical;
+    min-height:72px;
   }
   .field-error{
     display:block;
@@ -405,12 +515,24 @@
     transition:transform .2s ease, box-shadow .2s ease;
     display:inline-flex;
     align-items:center;
+    justify-content:center;
+    text-decoration:none;
     gap:8px;
   }
   .cta:hover{transform:scale(1.03);box-shadow:0 8px 24px var(--rose-glow);}
   .cta:active{transform:scale(1);}
-  .cta:focus-visible{outline:3px solid var(--teal);outline-offset:2px;}
+  .cta:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
   .cta:disabled{opacity:0.7;transform:none;cursor:not-allowed;}
+  .cta.outline{background:transparent;border:2px solid var(--teal);color:var(--teal);}
+  .cta.outline:hover{background:var(--teal);color:var(--white);box-shadow:none;}
+  .cta.outline-rose{background:transparent;border:2px solid var(--rose);color:var(--rose);}
+  .cta.outline-rose:hover{background:var(--rose);color:var(--white);box-shadow:0 8px 24px var(--rose-glow);}
+  .cta.outline-navy{background:transparent;border:2px solid var(--navy);color:var(--navy);}
+  .cta.outline-navy:hover{background:var(--navy);color:var(--white);box-shadow:none;}
+  .cta.solid-navy{background:var(--navy);color:var(--white);}
+  .cta.solid-navy:hover{background:var(--navy);box-shadow:0 8px 24px rgba(34,61,85,0.35);}
+  .cta.solid-teal{background:var(--teal);color:var(--white);}
+  .cta.solid-teal:hover{background:var(--teal);box-shadow:0 8px 24px rgba(81,118,134,0.35);}
 
   .microdisclaimer{
     font-size:0.75rem;
@@ -468,7 +590,7 @@
     flex-shrink:0;
     transition:background .2s ease, color .2s ease;
   }
-  .modal-close-x:hover{background:#e5e7eb;color:var(--navy);}
+  .modal-close-x:hover{background:var(--line);color:var(--navy);}
   .modal-body{
     padding:16px 32px 32px;
   }
@@ -487,6 +609,16 @@
     margin:0 0 20px;
   }
   .modal-panel .field{margin-bottom:16px;}
+  .modal-note{font-size:0.78rem;color:var(--text-muted);margin:0 0 16px;}
+  .form-note{font-size:0.78rem;color:var(--text-muted);margin-top:10px;text-align:center;}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:480px){ .form-row-2{grid-template-columns:1fr;} }
+  .check{
+    width:48px;height:48px;border-radius:50%;
+    background:var(--success-bg);color:var(--success);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 14px;font-size:22px;
+  }
   .modal-success{display:none;text-align:center;}
   .modal-success.show{display:block;}
   .modal-form.hide{display:none;}
@@ -512,7 +644,7 @@
     color:var(--text-muted);
     margin-top:24px;
     padding-top:20px;
-    border-top:1px solid #eef1f4;
+    border-top:1px solid var(--line);
   }
 
   @media (max-width:600px){
@@ -552,14 +684,14 @@
 
   .reviews-nav{display:flex;justify-content:center;gap:12px;margin-top:16px;}
   .reviews-nav-btn{
-    background:var(--white);border:1.5px solid #e2e5ed;border-radius:50%;width:40px;height:40px;
+    background:var(--white);border:1.5px solid var(--line);border-radius:50%;width:40px;height:40px;
     display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--navy);
     transition:background .2s ease,border-color .2s ease;
   }
   .reviews-nav-btn:hover{background:var(--light-bg);border-color:var(--teal);}
 
   .reviews-dots{display:flex;justify-content:center;gap:8px;margin-top:20px;}
-  .reviews-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;border:none;cursor:pointer;padding:0;transition:background .3s ease,transform .2s ease;}
+  .reviews-dot{width:8px;height:8px;border-radius:50%;background:var(--line);border:none;cursor:pointer;padding:0;transition:background .3s ease,transform .2s ease;}
   .reviews-dot.active{background:var(--teal);transform:scale(1.3);}
 
   .review-modal-overlay{
@@ -645,7 +777,7 @@
   .carousel-dots{display:flex;gap:8px;justify-content:center;margin-top:12px;}
   .carousel-dots button{
     width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;
-    background:#cdd5db;transition:background .2s ease,transform .2s ease;
+    background:var(--line);transition:background .2s ease,transform .2s ease;
   }
   .carousel-dots button.on{background:var(--rose,#d2566d);transform:scale(1.25);}
 
@@ -668,27 +800,11 @@
     .hero-sub{margin-left:auto;margin-right:auto;color:var(--text-muted);}
   }
 
-  /* --- GetResponse-style persona / trust blocks --- */
-  .persona-top{text-align:center;margin-bottom:20px;}
-  .persona-top img{width:80px;height:80px;border-radius:50%;object-fit:cover;box-shadow:0 4px 16px rgba(0,0,0,.12);}
-  .bio{display:flex;gap:20px;align-items:center;background:var(--white);border:1px solid #e5e8eb;border-radius:16px;padding:24px;margin-top:28px;box-shadow:0 1px 3px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.04);}
-  .bio img{width:92px;height:92px;border-radius:50%;object-fit:cover;flex-shrink:0;}
-  .bio h2{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0 0 6px;}
-  .bio p{margin:0;color:var(--text-muted);line-height:1.6;font-size:0.98rem;}
-  .bio-social{display:grid;grid-template-columns:repeat(2,40px);grid-template-rows:repeat(2,40px);gap:10px;flex-shrink:0;}
-  .bio-social a{
-    width:40px;height:40px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    background:#eef2f5;color:#517686;transition:background .2s ease,color .2s ease;
-  }
-  .bio-social a:hover{background:#517686;color:#fff;}
-  .bio-social svg{width:18px;height:18px;}
   .clients{margin-top:32px;text-align:center;}
   .clients h2{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0 0 16px;}
   .client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
-  .client-grid img{width:100%;border-radius:12px;border:1px solid #eef1f4;display:block;}
+  .client-grid img{width:100%;border-radius:12px;border:1px solid var(--line);display:block;}
   .clients .placeholder-note{color:var(--text-muted);font-size:0.85rem;margin-top:12px;}
-  @media(max-width:520px){.bio{flex-direction:column;text-align:center;}}
 
   /* --- Site footer (mirrors the main-site Footer component) --- */
   .site-footer{background:var(--teal);color:var(--white);padding:64px 0 52px;margin-top:56px;position:relative;overflow:hidden;}
@@ -717,11 +833,60 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    *{transition:none !important;}
+    *{animation:none !important;transition:none !important;}
+    .anim,.reveal{opacity:1 !important;transform:none !important;}
+  }
+
+  /* ---------- Site nav (name · contact · book a call) — mirrors REI page ---------- */
+  .site-nav{
+    position:sticky;top:0;z-index:50;
+    background:var(--white);
+    border-bottom:1px solid var(--line);
+    padding:12px 0;
+  }
+  .site-nav-inner{max-width:980px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;}
+  .site-nav-logo{display:flex;align-items:center;gap:10px;}
+  .site-nav-avatar{
+    width:38px;height:38px;border-radius:50%;
+    position:relative;flex-shrink:0;overflow:hidden;
+    background:var(--teal);
+  }
+  .site-nav-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .site-nav-avatar-fallback{
+    display:none;position:absolute;inset:0;
+    align-items:center;justify-content:center;
+    color:var(--white);font-weight:700;font-size:0.8rem;
+  }
+  .site-nav-logo-text{display:flex;flex-direction:column;line-height:1.3;}
+  .site-nav-name{font-weight:700;font-size:0.95rem;color:var(--text-dark);}
+  .site-nav-title{font-size:0.72rem;color:var(--text-muted);}
+  .site-nav-actions{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+  @media(max-width:520px){
+    .site-nav-title{display:none;}
   }
 </style>
 </head>
 <body>
+
+<!-- NAV -->
+<header class="site-nav">
+  <div class="site-nav-inner">
+    <a href="https://www.realdarrentsai.com/" class="site-nav-logo">
+      <span class="site-nav-avatar">
+        <img src="/darren.jpg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <span class="site-nav-avatar-fallback" aria-hidden="true">DT</span>
+      </span>
+      <span class="site-nav-logo-text">
+        <span class="site-nav-name">Darren Tsai</span>
+        <span class="site-nav-title">Senior Loan Officer · Saxton Mortgage</span>
+      </span>
+    </a>
+    <div class="site-nav-actions">
+      <button type="button" id="openContactBtn" class="cta outline" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
+      <button type="button" id="openCalendlyBtn" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Book a Call</button>
+    </div>
+  </div>
+</header>
 
 <header class="hero">
   <div class="hero-blob" aria-hidden="true">
@@ -729,13 +894,13 @@
   </div>
   <div class="hero-inner">
     <div class="hero-left">
-      <span class="hero-eyebrow">Free FHA Mortgage Calculator</span>
-      <h1 class="hero-title">Figure out your FHA Payment: <span style="color:#219ebc;">Stress-free</span></h1>
-      <p class="hero-sub">Get my free FHA calculator and see your real monthly payment (mortgage insurance included) plus how much home you can actually afford. Enter your info and I'll send it straight to your inbox.</p>
-      <button class="cta" id="openModalBtn">
+      <span class="hero-eyebrow anim anim-1">Free FHA Mortgage Calculator</span>
+      <h1 class="hero-title anim anim-2">Figure out your FHA Payment: <span style="color:var(--accent);">Stress-free</span></h1>
+      <p class="hero-sub anim anim-3">Get my free FHA calculator and see your real monthly payment (mortgage insurance included) plus how much home you can actually afford. Enter your info and I'll send it straight to your inbox.</p>
+      <a href="#get-fha-estimate" class="cta anim anim-4">
         Get the Free FHA Calculator
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
+      </a>
     </div>
     <div class="hero-right">
       <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png) -->
@@ -755,6 +920,77 @@
     </div>
   </div>
 </header>
+
+<!-- OPT-IN / LEAD FORM (inline, mirrors realestateinvesting/index.html's final-cta — no modal) -->
+<section class="final-cta reveal" id="get-fha-estimate">
+  <div class="wrap">
+    <div class="final-cta-inner">
+      <div class="final-cta-copy">
+        <p class="section-label">Free estimate</p>
+        <h2>Get your free FHA payment estimate.</h2>
+        <p class="lede" style="margin-bottom:0;">Enter your info and I'll send your personalized FHA payment breakdown straight to your inbox — principal, interest, mortgage insurance, taxes, and insurance included.</p>
+      </div>
+      <div class="final-cta-form">
+        <div class="lead-form">
+          <div class="lead-form-fields" id="formFields">
+            <h3>Get Free FHA Calculator</h3>
+            <p>Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile.</p>
+            <div class="form-row-2">
+              <div class="field">
+                <label for="mName">Full Name</label>
+                <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Homebuyer"></div>
+                <span class="field-error" id="mNameError"></span>
+              </div>
+              <div class="field">
+                <label for="mEmail">Email</label>
+                <div class="input-shell" id="mEmailShell"><input type="email" id="mEmail" placeholder="jane@email.com"></div>
+                <span class="field-error" id="mEmailError"></span>
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="field">
+                <label for="mPhone">Phone <span class="hint">US numbers only</span></label>
+                <div class="input-shell" id="mPhoneShell"><input type="tel" id="mPhone" placeholder="(555) 555-5555" maxlength="14"></div>
+                <span class="field-error" id="mPhoneError"></span>
+              </div>
+              <div class="field">
+                <label for="mState">State</label>
+                <div class="input-shell" id="mStateShell">
+                  <select id="mState">
+                    <option value="">Select your state</option>
+                  </select>
+                </div>
+                <span class="field-error" id="mStateError"></span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="mCredit">Credit Score (Estimate)</label>
+              <div class="input-shell" id="mCreditShell">
+                <select id="mCredit">
+                  <option value="">Select a range</option>
+                  <option value="740+">740+</option>
+                  <option value="700-739">700 – 739</option>
+                  <option value="660-699">660 – 699</option>
+                  <option value="620-659">620 – 659</option>
+                  <option value="under-620">Under 620</option>
+                  <option value="not-sure">Not sure</option>
+                </select>
+              </div>
+              <span class="field-error" id="mCreditError"></span>
+            </div>
+            <button class="cta" id="submitLead" style="width:100%;justify-content:center;">Send Me My Rate</button>
+            <p class="form-note">Free forever. Your info is never sold or shared.</p>
+          </div>
+          <div class="lead-success" id="leadSuccess">
+            <div class="check">✓</div>
+            <h3>You're all set.</h3>
+            <p>Check your email for your FHA payment breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <div class="wrap">
 
@@ -838,39 +1074,16 @@
         <li>Seller credits or rate buydowns that could lower your payment</li>
         <li>Your exact debt-to-income ratio and how much home you can afford</li>
       </ul>
-      <button class="cta" id="openModalBtn">
+      <a href="#get-fha-estimate" class="cta">
         Get My Real Rate
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
+      </a>
     </div>
 
   </div>
 
-  <!-- BIO -->
-  <section class="bio">
-    <img src="/darren.jpg" alt="Darren Tsai" onerror="this.style.display='none'">
-    <div>
-      <h2>Hi, I'm Darren Tsai</h2>
-      <p>I believe owning a home brings stability and helps people grow wealth. Many people tell me their agent or lender didn't fully help them. But I'm here to help!</p>
-    </div>
-    <div class="bio-social">
-      <a href="https://www.onereal.com/" target="_blank" rel="noopener" aria-label="Website" title="Website">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      </a>
-      <a href="https://www.linkedin.com/in/soldwithtsai/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
-      </a>
-      <a href="https://www.instagram.com/darrentsai_/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-      </a>
-      <a href="https://www.youtube.com/@DarrenTsai_" target="_blank" rel="noopener" aria-label="YouTube" title="YouTube">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="currentColor" stroke="none"/></svg>
-      </a>
-    </div>
-  </section>
-
   <!-- CLIENT REVIEWS (mirrors the main-site reviews carousel) -->
-  <section class="reviews-section">
+  <section class="reviews-section reveal">
     <div class="section-header">
       <span class="section-eyebrow">Client Reviews</span>
       <h2 class="section-title">What Homeowners Are Saying</h2>
@@ -981,6 +1194,23 @@
     </div>
   </div>
 </footer>
+
+<script>
+  // Scroll-reveal — mirrors the main-site useScrollReveal hook (IntersectionObserver, fade+rise),
+  // same as realestateinvesting/index.html.
+  window.addEventListener('load', function () {
+    var targets = document.querySelectorAll('.reveal');
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    targets.forEach(function (el) { observer.observe(el); });
+  });
+</script>
 
 <script>
   // Auto-cycling hero illustration carousel (homepage-reviews style).
@@ -1199,72 +1429,106 @@
   });
 </script>
 
-<!-- MODAL -->
-<div class="modal-overlay" id="modalOverlay">
+<!-- CONTACT MODAL (mirrors realestateinvesting/index.html's Contact modal / LeadForm.tsx) -->
+<div class="modal-overlay" id="contactOverlay">
   <div class="modal-panel">
-    <div class="modal-form" id="modalForm">
+    <div class="modal-form" id="contactForm">
       <div class="modal-header">
-        <h3>Get Free FHA Calculator</h3>
-        <button class="modal-close-x" id="closeModal" aria-label="Close">
+        <h3>Want Darren to Review Your Numbers?</h3>
+        <button class="modal-close-x" id="closeContactModal" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">Your free personalized FHA payment estimate, sent straight to your inbox.</p>
-        <p class="modal-sub">Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile. If you don't see the email right away, check your promotions or spam folder.</p>
-        <div class="field">
-          <label for="mName">Full Name</label>
-          <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Homebuyer"></div>
-          <span class="field-error" id="mNameError"></span>
+        <p class="modal-sub">No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.</p>
+        <p class="modal-note"><strong>* Required</strong>: All starred fields must be filled in before submitting.</p>
+
+        <div class="form-row-2" style="margin-bottom:14px;">
+          <div class="field" style="margin-bottom:0;">
+            <label for="cFirstName">First Name *</label>
+            <div class="input-shell" id="cFirstNameShell"><input type="text" id="cFirstName"></div>
+            <span class="field-error" id="cFirstNameError"></span>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="cLastName">Last Name *</label>
+            <div class="input-shell" id="cLastNameShell"><input type="text" id="cLastName"></div>
+            <span class="field-error" id="cLastNameError"></span>
+          </div>
         </div>
-        <div class="field">
-          <label for="mEmail">Email</label>
-          <div class="input-shell" id="mEmailShell"><input type="email" id="mEmail" placeholder="jane@email.com"></div>
-          <span class="field-error" id="mEmailError"></span>
+
+        <div class="form-row-2" style="margin-bottom:14px;">
+          <div class="field" style="margin-bottom:0;">
+            <label for="cEmail">Email *</label>
+            <div class="input-shell" id="cEmailShell"><input type="email" id="cEmail"></div>
+            <span class="field-error" id="cEmailError"></span>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="cPhone">Phone *</label>
+            <div class="input-shell" id="cPhoneShell"><input type="tel" id="cPhone" placeholder="(555) 555-5555" maxlength="14"></div>
+            <span class="field-error" id="cPhoneError"></span>
+          </div>
         </div>
+
         <div class="field">
-          <label for="mPhone">Phone <span class="hint">US numbers only</span></label>
-          <div class="input-shell" id="mPhoneShell"><input type="tel" id="mPhone" placeholder="(555) 555-5555" maxlength="14"></div>
-          <span class="field-error" id="mPhoneError"></span>
-        </div>
-        <div class="field">
-          <label for="mState">State</label>
-          <div class="input-shell" id="mStateShell">
-            <select id="mState">
-              <option value="">Select your state</option>
+          <label for="cState">State *</label>
+          <div class="input-shell" id="cStateShell">
+            <select id="cState">
+              <option value="">Select your state…</option>
             </select>
           </div>
-          <span class="field-error" id="mStateError"></span>
+          <span class="field-error" id="cStateError"></span>
         </div>
+
         <div class="field">
-          <label for="mCredit">Credit Score (Estimate)</label>
-          <div class="input-shell" id="mCreditShell">
-            <select id="mCredit">
-              <option value="">Select a range</option>
-              <option value="740+">740+</option>
-              <option value="700-739">700 – 739</option>
-              <option value="660-699">660 – 699</option>
-              <option value="620-659">620 – 659</option>
-              <option value="under-620">Under 620</option>
-              <option value="not-sure">Not sure</option>
-            </select>
-          </div>
-          <span class="field-error" id="mCreditError"></span>
+          <label for="cGoals">Your Goals *</label>
+          <div class="input-shell" id="cGoalsShell"><textarea id="cGoals" placeholder="e.g. Lower my monthly payments, pay off credit card debt, save for a rental property…"></textarea></div>
+          <span class="field-error" id="cGoalsError"></span>
         </div>
-        <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send Me My Rate</button>
+
+        <div class="form-row-2" style="margin-bottom:14px;">
+          <div class="field" style="margin-bottom:0;">
+            <label for="cTarget">Target Outcome *</label>
+            <div class="input-shell" id="cTargetShell">
+              <select id="cTarget">
+                <option value="">Select a target…</option>
+                <option value="lower-payment">Lower my monthly payment</option>
+                <option value="pay-off-debt">Pay off high-interest debt</option>
+                <option value="buy-home">Purchase a home</option>
+                <option value="refinance">Refinance my existing mortgage</option>
+                <option value="invest">Investment property</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <span class="field-error" id="cTargetError"></span>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="cTimeline">Timeline *</label>
+            <div class="input-shell" id="cTimelineShell">
+              <select id="cTimeline">
+                <option value="">Select a timeframe…</option>
+                <option value="immediately">As soon as possible</option>
+                <option value="1-3mo">1 – 3 months</option>
+                <option value="3-6mo">3 – 6 months</option>
+                <option value="6-12mo">6 – 12 months</option>
+                <option value="12mo+">More than 12 months</option>
+              </select>
+            </div>
+            <span class="field-error" id="cTimelineError"></span>
+          </div>
+        </div>
+
+        <button class="cta" id="submitContact">Send My Info to Darren</button>
+        <p class="form-note">Your info is never sold or shared. NMLS# 2438102 · DRE# 02103705 · Equal Housing Opportunity.</p>
       </div>
     </div>
-    <div class="modal-success" id="modalSuccess">
+    <div class="modal-success" id="contactSuccess">
       <div class="modal-body">
-        <svg class="success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
-          <circle cx="26" cy="26" r="24" stroke="#2ecc71" stroke-width="3"/>
-          <path d="M14 26l9 9 16-16" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <h3 class="success-heading">You're all set.</h3>
-        <p class="success-body">Check your email for your FHA payment breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
-        <button class="cta" id="closeSuccess" style="margin-top:20px;">Done</button>
+        <div class="check" style="margin:0 auto 14px;">✓</div>
+        <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.3rem;color:var(--navy);margin:0 0 8px;">You're all set.</h3>
+        <p class="modal-sub" style="margin:0;">Darren will review your numbers and be in touch shortly.</p>
+        <button class="cta" id="closeContactSuccess" style="margin-top:20px;">Done</button>
       </div>
     </div>
   </div>
@@ -1340,10 +1604,9 @@
 
   calculate();
 
-  // ---------------- Modal logic ----------------
-  const overlay = $('modalOverlay');
-  const modalForm = $('modalForm');
-  const modalSuccess = $('modalSuccess');
+  // ---------------- Inline lead form logic (no modal) ----------------
+  const formFields = $('formFields');
+  const leadSuccess = $('leadSuccess');
 
   // US states — full name shown, 2-letter abbreviation stored/sent
   const US_STATES = [
@@ -1365,6 +1628,121 @@
     opt.textContent = name;
     stateSelect.appendChild(opt);
   });
+
+  // ---------------------------------------------------------
+  // Custom select — replaces any native <select>'s chrome with a
+  // reui c-select-4-style combobox (trigger + panel + checkmark). Search
+  // input only shows when there are 10+ real options. The native <select>
+  // stays in the DOM (hidden) as the source of truth, so every existing
+  // .value read / validation / error-toggle keeps working unchanged.
+  // ---------------------------------------------------------
+  function enhanceSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const shell = select.closest('.input-shell');
+    if (!shell) return;
+    shell.classList.add('cselect');
+    select.tabIndex = -1;
+    select.classList.add('cselect-native');
+
+    const itemCount = Array.prototype.filter.call(select.options, (o) => o.value).length;
+    const searchable = itemCount >= 10;
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'cselect-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    const placeholder = select.options[0] ? select.options[0].textContent : 'Select…';
+    trigger.innerHTML = '<span class="cselect-value">' + placeholder + '</span>' +
+      '<svg class="cselect-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    shell.insertBefore(trigger, select);
+
+    const panel = document.createElement('div');
+    panel.className = 'cselect-panel';
+    panel.setAttribute('role', 'listbox');
+    panel.innerHTML = (searchable ? '<div class="cselect-search"><input type="text" placeholder="Search…" autocomplete="off"></div>' : '') + '<div class="cselect-options"></div>';
+    document.body.appendChild(panel); // fixed-position — escapes modal overflow clipping
+
+    const valueEl = trigger.querySelector('.cselect-value');
+    const searchEl = panel.querySelector('.cselect-search input');
+    const optionsEl = panel.querySelector('.cselect-options');
+
+    function buildOptions(filter) {
+      optionsEl.innerHTML = '';
+      const q = (filter || '').trim().toLowerCase();
+      let shown = 0;
+      Array.prototype.forEach.call(select.options, (opt) => {
+        if (!opt.value) return;
+        if (q && opt.textContent.toLowerCase().indexOf(q) === -1) return;
+        shown++;
+        const row = document.createElement('div');
+        row.className = 'cselect-option' + (opt.value === select.value ? ' selected' : '');
+        row.setAttribute('role', 'option');
+        row.innerHTML = '<svg class="cselect-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg><span>' + opt.textContent + '</span>';
+        row.addEventListener('click', () => {
+          select.value = opt.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          valueEl.textContent = opt.textContent;
+          valueEl.classList.add('has-value');
+          close();
+          trigger.focus();
+        });
+        optionsEl.appendChild(row);
+      });
+      if (!shown) optionsEl.innerHTML = '<div class="cselect-empty">No matches</div>';
+    }
+
+    function positionPanel() {
+      const r = trigger.getBoundingClientRect();
+      panel.style.left = r.left + 'px';
+      panel.style.top = (r.bottom + 6) + 'px';
+      panel.style.width = r.width + 'px';
+    }
+
+    function onDocClick(e) { if (!shell.contains(e.target) && !panel.contains(e.target)) close(); }
+    function onKeydown(e) { if (e.key === 'Escape') { close(); trigger.focus(); } }
+    function onScroll(e) { if (panel.contains(e.target)) return; close(); }
+
+    function open() {
+      if (shell.classList.contains('open')) return;
+      document.querySelectorAll('.cselect-panel.open').forEach((p) => p.classList.remove('open'));
+      buildOptions('');
+      positionPanel();
+      panel.classList.add('open');
+      shell.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      if (searchEl) { searchEl.value = ''; setTimeout(() => searchEl.focus(), 0); }
+      document.addEventListener('click', onDocClick, true);
+      document.addEventListener('keydown', onKeydown, true);
+      window.addEventListener('scroll', onScroll, true);
+      window.addEventListener('resize', positionPanel);
+    }
+    function close() {
+      panel.classList.remove('open');
+      shell.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('keydown', onKeydown, true);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', positionPanel);
+    }
+
+    trigger.addEventListener('click', () => { shell.classList.contains('open') ? close() : open(); });
+    if (searchEl) {
+      searchEl.addEventListener('input', () => buildOptions(searchEl.value));
+      searchEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { const first = optionsEl.querySelector('.cselect-option'); if (first) first.click(); }
+      });
+    }
+
+    if (select.value) {
+      const sel = Array.prototype.filter.call(select.options, (o) => o.value === select.value)[0];
+      if (sel) { valueEl.textContent = sel.textContent; valueEl.classList.add('has-value'); }
+    }
+  }
+  enhanceSelect('mState');
+  enhanceSelect('mCredit');
 
   // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1"
   function formatUSPhone(raw) {
@@ -1395,15 +1773,6 @@
   function clearErrors() {
     ['Name','Email','Phone','State','Credit'].forEach(f => setError(f, ''));
   }
-
-  $('openModalBtn').addEventListener('click', () => {
-    overlay.classList.add('open');
-    modalForm.classList.remove('hide');
-    modalSuccess.classList.remove('show');
-  });
-  $('closeModal').addEventListener('click', () => overlay.classList.remove('open'));
-  $('closeSuccess').addEventListener('click', () => overlay.classList.remove('open'));
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
 
   $('submitLead').addEventListener('click', async () => {
     clearErrors();
@@ -1447,11 +1816,125 @@
           body: JSON.stringify(payload),
         });
       }
-      modalForm.classList.add('hide');
-      modalSuccess.classList.add('show');
+      formFields.classList.add('hide');
+      leadSuccess.classList.add('show');
     } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Send Me My Rate';
+      alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
+    }
+  });
+
+  // ---------------------------------------------------------
+  // Calendly — official popup widget (same as main-site Nav.tsx and
+  // realestateinvesting/index.html), opens an in-page overlay instead of a new tab.
+  // ---------------------------------------------------------
+  const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
+  function openCalendly() {
+    if (window.Calendly) {
+      window.Calendly.initPopupWidget({ url: CALENDLY_URL });
+    } else {
+      window.open(CALENDLY_URL, '_blank', 'noopener');
+    }
+  }
+  $('openCalendlyBtn').addEventListener('click', openCalendly);
+
+  // ---------------------------------------------------------
+  // Nav "Contact" modal — same form/fields as the main site's Contact modal
+  // (LeadForm.tsx) and realestateinvesting/index.html. Submissions post
+  // source:"MortgageCalculator", so the Apps Script routes them to the
+  // "Leads" tab (see the doPost else-branch in google-apps-script.js).
+  // ---------------------------------------------------------
+  const contactOverlay = $('contactOverlay');
+  const contactForm = $('contactForm');
+  const contactSuccess = $('contactSuccess');
+
+  function openContact() {
+    contactOverlay.classList.add('open');
+    contactForm.classList.remove('hide');
+    contactSuccess.classList.remove('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeContact() {
+    contactOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  $('openContactBtn').addEventListener('click', openContact);
+  $('closeContactModal').addEventListener('click', closeContact);
+  $('closeContactSuccess').addEventListener('click', closeContact);
+  contactOverlay.addEventListener('click', (e) => { if (e.target === contactOverlay) closeContact(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && contactOverlay.classList.contains('open')) closeContact(); });
+
+  function setContactError(field, msg) {
+    $(`c${field}Error`).textContent = msg;
+    $(`c${field}Shell`).classList.toggle('error', !!msg);
+  }
+  function clearContactErrors() {
+    ['FirstName', 'LastName', 'Email', 'Phone', 'State', 'Goals', 'Target', 'Timeline'].forEach(f => setContactError(f, ''));
+  }
+
+  const cStateSelect = $('cState');
+  US_STATES.forEach(([abbr, name]) => {
+    const opt = document.createElement('option');
+    opt.value = abbr;
+    opt.textContent = name;
+    cStateSelect.appendChild(opt);
+  });
+  enhanceSelect('cState');
+  enhanceSelect('cTarget');
+  enhanceSelect('cTimeline');
+  $('cPhone').addEventListener('input', (e) => { e.target.value = formatUSPhone(e.target.value); });
+
+  $('submitContact').addEventListener('click', async () => {
+    clearContactErrors();
+    const firstName = $('cFirstName').value.trim();
+    const lastName = $('cLastName').value.trim();
+    const email = $('cEmail').value.trim();
+    const phoneDigits = $('cPhone').value.replace(/\D/g, '');
+    const phone = $('cPhone').value.trim();
+    const state = cStateSelect.value;
+    const goals = $('cGoals').value.trim();
+    const target = $('cTarget').value;
+    const timeline = $('cTimeline').value;
+
+    let valid = true;
+    if (!firstName) { setContactError('FirstName', 'Required'); valid = false; }
+    if (!lastName) { setContactError('LastName', 'Required'); valid = false; }
+    if (!email) { setContactError('Email', 'Required'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setContactError('Email', 'Enter a valid email'); valid = false; }
+    if (!phone) { setContactError('Phone', 'Required'); valid = false; }
+    else if (!isValidUSPhone(phoneDigits)) { setContactError('Phone', 'Enter a valid US phone number'); valid = false; }
+    if (!state) { setContactError('State', 'Required'); valid = false; }
+    if (!goals) { setContactError('Goals', 'Required'); valid = false; }
+    if (!target) { setContactError('Target', 'Required'); valid = false; }
+    if (!timeline) { setContactError('Timeline', 'Required'); valid = false; }
+    if (!valid) return;
+
+    const payload = {
+      firstName, lastName, email, phone, state,
+      message: goals,
+      target, timeline,
+      source: 'MortgageCalculator',
+      timestamp: new Date().toISOString(),
+    };
+
+    const cBtn = $('submitContact');
+    cBtn.disabled = true;
+    cBtn.textContent = 'Sending…';
+    try {
+      if (WEBHOOK_URL) {
+        await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload),
+        });
+      }
+      contactForm.classList.add('hide');
+      contactSuccess.classList.add('show');
+    } catch (e) {
+      cBtn.disabled = false;
+      cBtn.textContent = 'Send My Info to Darren';
       alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
     }
   });
