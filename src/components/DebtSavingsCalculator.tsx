@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { GOOGLE_SHEET_WEBHOOK_URL, FRED_API_KEY } from '../config';
+import CustomSelect from './CustomSelect';
+import StateSelect from './StateSelect';
 
 const emailSchema = z.string().email();
 
@@ -29,20 +31,6 @@ function buildHelocUrl(fname: string, lname: string, email: string): string {
 // Fallback rates — overridden by live FRED data on mount
 const _RATE_30YR = 6.41;
 const _RATE_15YR = 6.01;
-
-// US states — full name shown, 2-letter abbreviation stored/sent
-const US_STATES: [string, string][] = [
-  ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
-  ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'], ['FL', 'Florida'], ['GA', 'Georgia'],
-  ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'],
-  ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'], ['MD', 'Maryland'],
-  ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'], ['MO', 'Missouri'],
-  ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'],
-  ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'],
-  ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'], ['SC', 'South Carolina'],
-  ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'],
-  ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'],
-];
 
 const DEBT_TYPES = [
   'Credit Card',
@@ -390,18 +378,13 @@ export default function DebtSavingsCalculator() {
                   {/* Type */}
                   <div>
                     <label className="input-label">Debt Type</label>
-                    <div className="select-wrap">
-                      <select
-                        className="form-select"
-                        value={d.type}
-                        onChange={(e) => updateDebt(d.id, 'type', e.target.value)}
-                      >
-                        {DEBT_TYPES.map(t => <option key={t}>{t}</option>)}
-                      </select>
-                      <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
+                    <CustomSelect
+                      id={`debt-type-${d.id}`}
+                      value={d.type}
+                      options={DEBT_TYPES.map(t => ({ value: t, label: t }))}
+                      onChange={(v) => updateDebt(d.id, 'type', v)}
+                      placeholder="Select debt type…"
+                    />
                   </div>
 
                   {/* Balance */}
@@ -649,33 +632,33 @@ export default function DebtSavingsCalculator() {
             <div style={{ display: 'flex', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <label className="input-label">HELOAN Credit Tier</label>
-                <div className="select-wrap">
-                  <select className="form-select" value={heloanTier}
-                    onChange={(e) => setHeloanTier(parseFloat(e.target.value))}>
-                    <option value="13.99">580–619 (est. 13.99%)</option>
-                    <option value="11.99">620–659 (est. 11.99%)</option>
-                    <option value="10.49">660–679 (est. 10.49%)</option>
-                    <option value="8.99">680+ (est. 8.99%)</option>
-                  </select>
-                  <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <CustomSelect
+                  id="heloan-tier"
+                  value={String(heloanTier)}
+                  options={[
+                    { value: '13.99', label: '580–619 (est. 13.99%)' },
+                    { value: '11.99', label: '620–659 (est. 11.99%)' },
+                    { value: '10.49', label: '660–679 (est. 10.49%)' },
+                    { value: '8.99',  label: '680+ (est. 8.99%)' },
+                  ]}
+                  onChange={(v) => setHeloanTier(parseFloat(v))}
+                  placeholder="Select credit tier…"
+                />
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <label className="input-label">HELOAN Term</label>
-                <div className="select-wrap">
-                  <select className="form-select" value={heloanTerm}
-                    onChange={(e) => setHeloanTerm(parseInt(e.target.value))}>
-                    <option value="5">5 Years</option>
-                    <option value="10">10 Years</option>
-                    <option value="15">15 Years</option>
-                    <option value="30">30 Years</option>
-                  </select>
-                  <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <CustomSelect
+                  id="heloan-term"
+                  value={String(heloanTerm)}
+                  options={[
+                    { value: '5',  label: '5 Years' },
+                    { value: '10', label: '10 Years' },
+                    { value: '15', label: '15 Years' },
+                    { value: '30', label: '30 Years' },
+                  ]}
+                  onChange={(v) => setHeloanTerm(parseInt(v, 10))}
+                  placeholder="Select term…"
+                />
               </div>
             </div>
 
@@ -764,47 +747,36 @@ export default function DebtSavingsCalculator() {
             <div className="dsc-grid-3" style={{ marginBottom: 20 }}>
               <div>
                 <label className="input-label">Best Time to Call</label>
-                <div className="select-wrap">
-                  <select className="form-select" value={bestTime}
-                    onChange={(e) => setBestTime(e.target.value)}>
-                    <option>Morning (8am–12pm)</option>
-                    <option>Afternoon (12pm–5pm)</option>
-                    <option>Evening (5pm–8pm)</option>
-                  </select>
-                  <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <CustomSelect
+                  id="best-time"
+                  value={bestTime}
+                  options={[
+                    { value: 'Morning (8am–12pm)',   label: 'Morning (8am–12pm)' },
+                    { value: 'Afternoon (12pm–5pm)', label: 'Afternoon (12pm–5pm)' },
+                    { value: 'Evening (5pm–8pm)',    label: 'Evening (5pm–8pm)' },
+                  ]}
+                  onChange={setBestTime}
+                  placeholder="Select a time…"
+                />
               </div>
               <div>
                 <label className="input-label">How Did You Find Me?</label>
-                <div className="select-wrap">
-                  <select className="form-select" value={leadSrc}
-                    onChange={(e) => setLeadSrc(e.target.value)}>
-                    <option>YouTube</option>
-                    <option>Google</option>
-                    <option>Referral</option>
-                    <option>Other</option>
-                  </select>
-                  <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <CustomSelect
+                  id="lead-src"
+                  value={leadSrc}
+                  options={[
+                    { value: 'YouTube',  label: 'YouTube' },
+                    { value: 'Google',   label: 'Google' },
+                    { value: 'Referral', label: 'Referral' },
+                    { value: 'Other',    label: 'Other' },
+                  ]}
+                  onChange={setLeadSrc}
+                  placeholder="Select…"
+                />
               </div>
               <div>
                 <label className="input-label">State</label>
-                <div className="select-wrap">
-                  <select className="form-select" value={usState}
-                    onChange={(e) => setUsState(e.target.value)}>
-                    <option value="">Select…</option>
-                    {US_STATES.map(([abbr, name]) => (
-                      <option key={abbr} value={abbr}>{name}</option>
-                    ))}
-                  </select>
-                  <svg className="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <StateSelect id="us-state" value={usState} onChange={setUsState} placeholder="Select…" />
               </div>
             </div>
 
