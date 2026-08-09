@@ -13,18 +13,23 @@
   :root{
     --white:       #ffffff;
     --teal:        #517686;   /* secondary background */
-    --accent:      #219ebc;   /* highlight text */
-    --rose:        #d2566d;   /* buttons */
+    --teal-deep:   #274654;   /* dividers, rules on teal */
+    --navy-dark:   #1a2f42;
+    --header-text: #c8e2e8;   /* copy on teal backgrounds */
+    --accent:      #219ebc;   /* CTA blue — buttons only */
+    --rose:        #d2566d;   /* legacy — kept for out-of-scope modal only, not used below */
     --rose-glow:   rgba(210, 86, 109, 0.35);
     --accent-glow: rgba(33, 158, 188, 0.25);
-    --light-bg:    #f5f8fa;
+    --light-bg:    #f5f7f9;
     --navy:        #223d55;   /* dark blue body/heading text */
     --text-dark:   #1a1a2e;
     --text-muted:  #6b7280;
-    --line:        #e2e5ea;
+    --line:        #e6ebf0;
+    --line-input:  #d1d5db;
     --success:     #1e7a45;
     --success-bg:  #dcf1e3;
     --radius:10px;
+    --radius-input:8px;
     --card-shadow: 0 2px 16px rgba(0,0,0,0.08);
     --card-shadow-hover: 0 16px 40px rgba(0,0,0,0.12);
   }
@@ -108,13 +113,16 @@
   .card-section:last-child{border-bottom:none;}
   .section-label{
     font-family:'Outfit', sans-serif;
-    font-size:0.78rem;
+    font-size:11px;
     font-weight:600;
-    letter-spacing:0.1em;
+    letter-spacing:.14em;
     text-transform:uppercase;
-    color:var(--navy);
-    margin:0 0 18px;
+    color:var(--teal);
+    margin:0 0 12px;
   }
+  .container-1080{max-width:1080px;margin:0 auto;padding:0 40px;}
+  .cta.solid-accent{background:var(--accent);color:var(--white);}
+  .cta.solid-accent:hover{background:var(--accent);box-shadow:0 8px 24px var(--accent-glow);}
 
   /* ---------- Inputs ---------- */
   .grid{
@@ -241,10 +249,6 @@
   .lede{font-size:1rem;line-height:1.6;color:var(--text-muted);max-width:62ch;margin:0 0 36px;}
 
   /* ---------- Inline opt-in / lead form (mirrors realestateinvesting/index.html, no modal) ---------- */
-  .final-cta{background:var(--white);}
-  .final-cta-inner{display:flex;gap:48px;align-items:center;flex-wrap:wrap;}
-  .final-cta-copy{flex:1;min-width:280px;}
-  .final-cta-form{width:460px;max-width:100%;}
   .lead-form{
     background:var(--white);
     border:1px solid var(--line);
@@ -291,217 +295,6 @@
     margin-top:6px;
   }
 
-  /* ---------- Down payment slider ---------- */
-  .dp-row{margin-top:22px;}
-  .dp-row label{
-    font-size:0.875rem;font-weight:500;color:var(--navy);
-    display:flex;justify-content:space-between;align-items:baseline;
-    margin-bottom:10px;
-  }
-  .dp-value{
-    font-family:'Outfit', sans-serif;
-    font-weight:700;
-    font-size:1rem;
-    color:var(--rose);
-  }
-  input[type="range"]{
-    -webkit-appearance:none;
-    width:100%;
-    height:4px;
-    background:var(--line);
-    border-radius:4px;
-    outline:none;
-  }
-  input[type="range"]::-webkit-slider-thumb{
-    -webkit-appearance:none;
-    width:18px;height:18px;
-    border-radius:50%;
-    background:var(--rose);
-    border:3px solid var(--white);
-    box-shadow:0 0 0 1px var(--rose);
-    cursor:pointer;
-  }
-  input[type="range"]::-moz-range-thumb{
-    width:18px;height:18px;border-radius:50%;
-    background:var(--rose);border:3px solid var(--white);
-    box-shadow:0 0 0 1px var(--rose);cursor:pointer;
-  }
-
-  /* ---------- MIP tier ladder (signature element) ---------- */
-  .ladder{
-    margin-top:20px;
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    overflow:hidden;
-  }
-  .rung{
-    display:grid;
-    grid-template-columns:140px 1fr 110px;
-    align-items:center;
-    padding:12px 16px;
-    font-family:'Outfit', sans-serif;
-    font-size:0.85rem;
-    color:var(--text-muted);
-    background:var(--light-bg);
-    border-bottom:1px solid var(--line);
-    transition:background .2s ease, color .2s ease;
-    position:relative;
-  }
-  .rung:last-child{border-bottom:none;}
-  .rung .bar{
-    height:6px;
-    background:var(--line);
-    border-radius:3px;
-    position:relative;
-    overflow:hidden;
-  }
-  .rung .bar::after{
-    content:"";
-    position:absolute;left:0;top:0;bottom:0;
-    width:var(--fill, 30%);
-    background:var(--line);
-  }
-  .rung .rate{
-    text-align:right;
-    font-weight:600;
-  }
-  .rung.active{
-    background:var(--navy);
-    color:var(--white);
-  }
-  .rung.active .bar{background:rgba(255,255,255,0.15);}
-  .rung.active .bar::after{background:var(--rose);}
-  .rung.active .rate{color:var(--rose);}
-  .rung .tag{
-    font-size:0.65rem;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    padding:2px 6px;
-    border-radius:4px;
-    margin-left:8px;
-    background:var(--rose);
-    color:var(--white);
-    display:none;
-  }
-  .rung.active .tag{display:inline-block;}
-
-  /* ---------- Results ---------- */
-  .result-hero{
-    display:flex;
-    align-items:flex-end;
-    gap:28px;
-    flex-wrap:wrap;
-  }
-  .payment-number{
-    font-family:'Outfit', sans-serif;
-    font-size:clamp(2.5rem, 10vw, 4rem);
-    line-height:1;
-    font-weight:800;
-    letter-spacing:-0.02em;
-    color:var(--navy);
-  }
-  .payment-number .unit{
-    font-family:'Outfit', sans-serif;
-    font-size:0.85rem;
-    color:var(--text-muted);
-    font-weight:500;
-    display:block;
-    margin-top:6px;
-    letter-spacing:0;
-  }
-  .status-pill{
-    font-family:'Outfit', sans-serif;
-    font-size:0.85rem;
-    font-weight:600;
-    letter-spacing:.02em;
-    padding:8px 14px;
-    border-radius:20px;
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    margin-bottom:10px;
-  }
-  .status-pill.pass{background:var(--success-bg);color:var(--success);}
-  .status-pill.fail{background:rgba(210,86,109,0.1);color:var(--rose);}
-  .status-pill::before{
-    content:"";
-    width:7px;height:7px;border-radius:50%;
-    background:currentColor;
-  }
-  .result-note{
-    margin-top:16px;
-    font-size:0.95rem;
-    line-height:1.6;
-    color:var(--text-muted);
-    max-width:60ch;
-  }
-  .pitia-breakdown{
-    margin-top:20px;
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:1px;
-    background:var(--line);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    overflow:hidden;
-  }
-  @media (max-width:520px){ .pitia-breakdown{grid-template-columns:repeat(2,1fr);} }
-  .pitia-cell{
-    background:var(--light-bg);
-    padding:12px 14px;
-  }
-  .pitia-cell .k{
-    font-size:0.68rem;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    color:var(--text-muted);
-    margin-bottom:4px;
-  }
-  .pitia-cell .v{
-    font-family:'Outfit', sans-serif;
-    font-size:0.95rem;
-    font-weight:700;
-    color:var(--navy);
-  }
-
-  /* ---------- Lock module ---------- */
-  .lock{
-    position:relative;
-    background:var(--navy);
-    color:rgba(255,255,255,0.85);
-    padding:28px;
-  }
-  .lock-head{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    margin-bottom:12px;
-  }
-  .lock-icon{
-    width:18px;height:18px;
-    flex-shrink:0;
-  }
-  .lock h3{
-    font-family:'Outfit', sans-serif;
-    font-weight:700;
-    font-size:1.25rem;
-    color:var(--white);
-    margin:0;
-  }
-  .lock p{
-    font-size:0.95rem;
-    line-height:1.6;
-    color:rgba(255,255,255,0.7);
-    max-width:56ch;
-    margin:0 0 20px;
-  }
-  .lock ul{
-    margin:0 0 22px;
-    padding:0 0 0 18px;
-    font-size:0.9rem;
-    line-height:1.9;
-    color:rgba(255,255,255,0.75);
-  }
   .cta{
     background:var(--rose);
     color:var(--white);
@@ -533,12 +326,6 @@
   .cta.solid-navy:hover{background:var(--navy);box-shadow:0 8px 24px rgba(34,61,85,0.35);}
   .cta.solid-teal{background:var(--teal);color:var(--white);}
   .cta.solid-teal:hover{background:var(--teal);box-shadow:0 8px 24px rgba(81,118,134,0.35);}
-
-  .microdisclaimer{
-    font-size:0.75rem;
-    color:var(--text-muted);
-    margin-top:14px;
-  }
 
   /* ---------- Modal (matches site-wide modal styling) ---------- */
   .modal-overlay{
@@ -708,64 +495,28 @@
   .review-modal-close:hover{color:var(--navy);}
   .review-modal-quote{font-size:0.95rem;font-weight:400;color:var(--text-dark);line-height:1.7;margin:16px 0 0;}
 
-  /* --- Gradient two-column hero --- */
-  /* --- Full-bleed gradient hero (top half of page) --- */
-  .hero{
-    position:relative;width:100%;
-    background:var(--white);
-    overflow:hidden;display:flex;align-items:center;
-  }
-  /* Blob art (public/fha-illustrations/hero-blob-flat.png, shadow stripped) carves
-     the navy left side. Layer order back-to-front: white page bg, carousel,
-     blob, text — the carousel swipes in/out from underneath the blob's curve,
-     and text always sits directly on top of it. Sized to the hero's own height
-     (not a fixed % width) and pinned to the true left edge — not a centered,
-     max-width inner wrapper — so it never drifts out of sync with the text on
-     wide viewports. */
-  /* inset:0 (not top/left + height:100%): .hero only sets min-height:100vh,
-     not an explicit height, so a %-height child can't reliably resolve
-     against it per spec and locks to the image's intrinsic size instead of
-     tracking .hero's real box on zoom/resize. inset:0 pins all four edges
-     explicitly, sidestepping that. */
-  .hero-blob{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
-  .hero-blob img{display:block;width:100%;height:100%;object-fit:cover;object-position:left center;}
-  /* No max-width cap: this grid must always span the same 100% of .hero
-     that hero-blob does, so the text/carousel column and the blob's curve
-     stay locked together at every viewport width and zoom level instead of
-     the blob (full-bleed) drifting away from a capped, centered text box. */
-  .hero-inner{
-    position:relative;width:100%;
-    display:grid;grid-template-columns:1.05fr 0.95fr;gap:44px;align-items:center;
-    padding:32px 56px;
-  }
-  /* No z-index on .hero-inner itself: it must NOT become its own stacking
-     context, or the whole grid (text + carousel) paints as one unit above
-     .hero-blob regardless of children's z-index. Left un-contexted, .hero-left
-     and .hero-carousel-wrap compare directly against .hero-blob (z-index 2)
-     in .hero's stacking context, so the carousel can sit below the blob
-     while the text stays above it. */
-  .hero-left{color:#fff;position:relative;z-index:3;}
+  /* --- Hero: solid teal block, two columns --- */
+  .hero{background:var(--teal);padding:64px 0;}
+  .hero-inner{display:grid;grid-template-columns:1.05fr 0.95fr;gap:44px;align-items:center;}
+  .hero-left{color:var(--white);}
   .hero-eyebrow{
-    display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;
-    letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:16px;
-  }
-  .hero-eyebrow::before{
-    content:"";width:16px;height:1px;background:rgba(255,255,255,.82);
+    display:block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--header-text);margin-bottom:16px;
   }
   .hero-title{
-    font-family:'Outfit',sans-serif;font-weight:800;font-size:clamp(2.6rem,5.8vw,4rem);
-    line-height:1.08;letter-spacing:-.01em;color:#fff;margin:0 0 20px;
+    font-family:'Outfit',sans-serif;font-weight:700;font-size:3.1rem;
+    line-height:1.12;letter-spacing:-.02em;color:var(--white);margin:0 0 18px;
   }
-  .hero-sub{font-size:1.28rem;line-height:1.6;color:rgba(255,255,255,.9);max-width:44ch;margin:0 0 32px;}
-  .hero-right{position:relative;}
-
-  /* Lives inside hero-right, the same centered/max-width grid column as the
-     text — so it scales and repositions in lockstep with the headline at
-     every viewport width and browser zoom level, instead of drifting
-     independently. Sits below the blob in stacking order (z-index 1). */
-  .hero-carousel-wrap{
-    position:relative;width:100%;max-width:520px;margin-left:auto;z-index:1;
-  }
+  .hero-sub{font-size:1.1rem;line-height:1.6;color:var(--header-text);max-width:46ch;margin:0 0 28px;}
+  .hero-cta-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:32px;}
+  .hero-cta-note{font-size:0.85rem;font-weight:500;color:var(--header-text);}
+  .hero-stats-divider{height:1px;background:rgba(200,226,232,.28);margin-bottom:24px;}
+  .hero-stats{display:flex;gap:40px;flex-wrap:wrap;}
+  .hero-stat{display:flex;flex-direction:column;gap:6px;}
+  .hero-stat-value{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.4rem;color:var(--white);}
+  .hero-stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.14em;color:var(--header-text);}
+  .hero-right{display:flex;justify-content:flex-end;}
+  .hero-carousel-wrap{width:100%;max-width:520px;}
 
   /* --- Swipe illustration carousel (no card background) --- */
   .hero-carousel{
@@ -777,34 +528,100 @@
   .carousel-dots{display:flex;gap:8px;justify-content:center;margin-top:12px;}
   .carousel-dots button{
     width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;
-    background:var(--line);transition:background .2s ease,transform .2s ease;
+    background:rgba(200,226,232,.4);transition:background .2s ease,transform .2s ease;
   }
-  .carousel-dots button.on{background:var(--rose,#d2566d);transform:scale(1.25);}
+  .carousel-dots button.on{background:var(--accent);transform:scale(1.25);}
 
-  @media(max-width:1100px){
-    .hero-blob{width:115%;}
+  .hero-divider{height:3px;width:100%;background:var(--teal-deep);}
+
+  /* --- Licensed-in strip --- */
+  .licensed-strip{background:var(--light-bg);border-bottom:1px solid var(--line);box-shadow:var(--card-shadow);}
+  .licensed-strip-inner{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;gap:20px;flex-wrap:nowrap;}
+  .licensed-item{display:flex;align-items:center;gap:8px;font-size:0.9rem;color:var(--text-muted);white-space:nowrap;}
+  .licensed-divider{width:1px;height:24px;background:var(--line);flex-shrink:0;}
+  .licensed-item svg{color:var(--navy);flex-shrink:0;}
+
+  /* --- Explainer + form grid --- */
+  .explainer-section{padding-top:72px;padding-bottom:64px;}
+  .explainer-grid{display:grid;grid-template-columns:1fr 460px;gap:56px;align-items:end;}
+  .explainer-left h2{margin-bottom:14px;}
+  .explainer-lede{font-size:1rem;line-height:1.6;color:var(--text-muted);max-width:60ch;margin:0 0 36px;}
+  .explainer-numbered{display:grid;grid-template-columns:1fr 1fr;gap:28px 32px;}
+  .explainer-num{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.4rem;color:var(--teal);margin-bottom:8px;}
+  .explainer-item-title{font-weight:600;color:var(--navy);margin:0 0 6px;font-size:1rem;white-space:nowrap;}
+  .explainer-item-body{font-size:0.92rem;line-height:1.6;color:var(--text-muted);margin:0;text-align:justify;}
+
+  .explainer-form{position:sticky;top:24px;}
+  .explainer-form .lead-form{border-radius:16px;}
+  .explainer-form .lead-form .input-shell{border-radius:var(--radius-input);border-color:var(--line-input);}
+  .explainer-form .lead-form .field label{font-weight:600;font-size:0.82rem;color:var(--navy);}
+  .explainer-form .lead-form .field-error{color:#dc2626;}
+  .explainer-form .lead-form .input-shell.error{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,0.12);}
+
+  /* --- Assumptions panel --- */
+  .assumptions-section{padding-top:0;padding-bottom:64px;}
+  .assumptions-panel{background:var(--light-bg);border:1px solid var(--line);border-radius:10px;padding:26px 28px;}
+  .assumptions-grid{display:grid;grid-template-columns:repeat(4,1fr);column-gap:40px;row-gap:22px;margin-top:20px;}
+  .assumptions-cell{padding-bottom:12px;border-bottom:1px solid var(--line);}
+  .assumptions-cell .k{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:6px;}
+  .assumptions-cell .v{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:var(--teal);line-height:1.4;}
+  .assumptions-footnote{font-size:0.75rem;color:var(--text-muted);margin:20px 0 0;}
+
+  /* --- Call CTA panel --- */
+  .cta-panel-section{padding-top:0;padding-bottom:0;}
+  .cta-panel{
+    background:var(--teal);border-radius:16px;padding:48px 44px;
+    display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;
   }
+  .cta-panel-copy{max-width:56ch;}
+  .cta-panel-rule{width:96px;height:3px;background:var(--teal-deep);margin-bottom:20px;}
+  .cta-panel-copy h2{color:var(--white);margin:0 0 12px;}
+  .cta-panel-copy p{font-size:1rem;line-height:1.6;color:var(--header-text);margin:0;}
+  .cta-panel .cta{flex-shrink:0;}
+
+  /* --- Mobile sticky bottom bar --- */
+  .mobile-sticky-bar{
+    display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;
+    background:var(--white);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,0.08);
+    padding:10px 16px;gap:10px;align-items:center;
+  }
+  .mobile-sticky-bar .cta{flex:1;padding:11px 14px;font-size:0.88rem;}
 
   @media(max-width:820px){
-    .hero{flex-direction:column;padding:36px 0 8px;}
-    .hero-carousel-wrap{width:min(80vw,320px);max-width:320px;margin:8px auto 0;}
-    .hero-blob{display:none;}
-    .hero-inner{grid-template-columns:1fr;text-align:center;gap:16px;padding:0 20px 32px;order:1;}
-    /* Blob (the only source of a dark backdrop) is hidden below this width, and
-       the page bg is plain white here now that .hero no longer paints its own
-       navy block — so the hero text, hardcoded white/near-white for contrast
-       against the blob, needs to switch to dark navy or it reads white-on-white. */
-    .hero-title{font-size:clamp(1.9rem,8vw,2.6rem);color:var(--navy);}
-    .hero-eyebrow{justify-content:center;color:var(--navy);}
-    .hero-eyebrow::before{background:var(--navy);}
-    .hero-sub{margin-left:auto;margin-right:auto;color:var(--text-muted);}
+    .hero{padding:40px 0;}
+    .hero-inner{grid-template-columns:1fr;text-align:center;gap:28px;}
+    .hero-title{font-size:clamp(2rem,8vw,2.6rem);}
+    .hero-sub{margin-left:auto;margin-right:auto;}
+    .hero-cta-row{justify-content:center;}
+    .hero-stats{justify-content:center;gap:28px;}
+    .hero-right{justify-content:center;}
+    .hero-carousel-wrap{max-width:320px;}
+
+    .licensed-strip-inner{flex-direction:column;align-items:flex-start;gap:14px;padding:22px 20px;}
+    .licensed-divider{display:none;}
+
+    .container-1080{padding:0 20px;}
+
+    .explainer-section{padding-top:48px;padding-bottom:40px;}
+    .explainer-grid{grid-template-columns:1fr;gap:32px;}
+    .explainer-form{order:-1;position:static;}
+    .explainer-numbered{grid-template-columns:1fr;}
+
+    .assumptions-section{padding-bottom:40px;}
+    .assumptions-grid{grid-template-columns:repeat(2,1fr);}
+
+    .cta-panel-section{padding-bottom:0;}
+    .cta-panel{flex-direction:column;align-items:flex-start;text-align:left;padding:36px 28px;}
+    .cta-panel .cta{width:100%;justify-content:center;}
+
+    body{padding-bottom:78px;}
+    .mobile-sticky-bar{display:flex;}
   }
 
-  .clients{margin-top:32px;text-align:center;}
-  .clients h2{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0 0 16px;}
-  .client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
-  .client-grid img{width:100%;border-radius:12px;border:1px solid var(--line);display:block;}
-  .clients .placeholder-note{color:var(--text-muted);font-size:0.85rem;margin-top:12px;}
+  @media(max-width:520px){
+    .assumptions-grid{grid-template-columns:1fr;}
+    .explainer-item-title{white-space:normal;}
+  }
 
   /* --- Site footer (mirrors the main-site Footer component) --- */
   .site-footer{background:var(--teal);color:var(--white);padding:64px 0 52px;margin-top:56px;position:relative;overflow:hidden;}
@@ -822,7 +639,7 @@
   .footer-linkedin{margin-top:4px;}
   .footer-bottom{border-top:1px solid rgba(255,255,255,0.18);padding:20px 0;display:flex;flex-direction:column;gap:12px;}
   .footer-copy{font-size:0.82rem;opacity:0.7;margin:0;}
-  .footer-disclaimer{font-size:0.75rem;opacity:0.6;line-height:1.6;text-align:left;margin:0;max-width:none;}
+  .footer-disclaimer{font-size:0.75rem;opacity:0.6;line-height:1.6;text-align:left;margin:0;max-width:none;color:var(--white);}
   .footer-compliance{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
   .footer-compliance a{font-size:0.72rem;color:rgba(255,255,255,0.55);text-decoration:none;transition:color .2s ease;}
   .footer-compliance a:hover{color:rgba(255,255,255,0.9);}
@@ -889,18 +706,21 @@
 </header>
 
 <header class="hero">
-  <div class="hero-blob" aria-hidden="true">
-    <img src="/fha-illustrations/hero-blob.png" alt="">
-  </div>
-  <div class="hero-inner">
+  <div class="hero-inner container-1080">
     <div class="hero-left">
       <span class="hero-eyebrow anim anim-1">Free FHA Mortgage Calculator</span>
-      <h1 class="hero-title anim anim-2">Figure out your FHA Payment: <span style="color:var(--accent);">Stress-free</span></h1>
-      <p class="hero-sub anim anim-3">Get my free FHA calculator and see your real monthly payment (mortgage insurance included) plus how much home you can actually afford. Enter your info and I'll send it straight to your inbox.</p>
-      <a href="#get-fha-estimate" class="cta anim anim-4">
-        Get the Free FHA Calculator
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
+      <h1 class="hero-title anim anim-2">Know your real FHA payment before you shop.</h1>
+      <p class="hero-sub anim anim-3">Mortgage insurance, taxes, and homeowners insurance included, not the payment most calculators show you. Tell me where to send it and the full breakdown lands in your inbox.</p>
+      <div class="hero-cta-row anim anim-4">
+        <a href="#get-fha-estimate" class="cta solid-accent">Get the free calculator</a>
+        <span class="hero-cta-note">No credit pull. No cost.</span>
+      </div>
+      <div class="hero-stats-divider anim anim-4"></div>
+      <div class="hero-stats anim anim-4">
+        <div class="hero-stat"><span class="hero-stat-value">3.5%</span><span class="hero-stat-label">Minimum down</span></div>
+        <div class="hero-stat"><span class="hero-stat-value">580</span><span class="hero-stat-label">FICO floor typical</span></div>
+        <div class="hero-stat"><span class="hero-stat-value">8 states</span><span class="hero-stat-label">Licensed to lend</span></div>
+      </div>
     </div>
     <div class="hero-right">
       <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png) -->
@@ -920,21 +740,74 @@
     </div>
   </div>
 </header>
+<div class="hero-divider" aria-hidden="true"></div>
 
-<!-- OPT-IN / LEAD FORM (inline, mirrors realestateinvesting/index.html's final-cta — no modal) -->
-<section class="final-cta reveal" id="get-fha-estimate">
-  <div class="wrap">
-    <div class="final-cta-inner">
-      <div class="final-cta-copy">
-        <p class="section-label">Free estimate</p>
-        <h2>Get your free FHA payment estimate.</h2>
-        <p class="lede" style="margin-bottom:0;">Enter your info and I'll send your personalized FHA payment breakdown straight to your inbox — principal, interest, mortgage insurance, taxes, and insurance included.</p>
+<!-- LICENSED-IN STRIP -->
+<div class="licensed-strip reveal">
+  <div class="licensed-strip-inner container-1080">
+    <div class="licensed-item">Licensed in</div>
+    <div class="licensed-divider"></div>
+    <div class="licensed-item">AZ, CA, FL, HI, OR, PA, TN, TX</div>
+    <div class="licensed-divider"></div>
+    <div class="licensed-item">NMLS #2438102</div>
+    <div class="licensed-divider"></div>
+    <div class="licensed-item">CA DRE #02103705</div>
+    <div class="licensed-divider"></div>
+    <div class="licensed-item">
+      <svg width="18" height="18" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+        <defs>
+          <mask id="eho-mask-strip">
+            <rect width="60" height="60" fill="white"/>
+            <rect x="17" y="35" width="26" height="5" fill="black"/>
+            <rect x="17" y="44" width="26" height="5" fill="black"/>
+          </mask>
+        </defs>
+        <polygon points="30,5 56,28 4,28" fill="currentColor"/>
+        <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#eho-mask-strip)"/>
+      </svg>
+      Equal Housing Opportunity
+    </div>
+  </div>
+</div>
+
+<!-- EXPLAINER + LEAD FORM -->
+<section class="explainer-section reveal" id="get-fha-estimate">
+  <div class="container-1080">
+    <div class="explainer-grid">
+      <div class="explainer-left">
+        <p class="section-label">How FHA works</p>
+        <h2>Four things decide your FHA payment.</h2>
+        <p class="explainer-lede">These are the numbers underwriting actually runs. Here is what moves each one.</p>
+        <div class="explainer-numbered">
+          <div class="explainer-item">
+            <div class="explainer-num">01</div>
+            <p class="explainer-item-title">Down payment tier</p>
+            <p class="explainer-item-body">On a $400,000 purchase, 5% down is $20,000 and leaves a $380,000 loan. Below 5% down, annual MIP rises from 0.50% to 0.55%.</p>
+          </div>
+          <div class="explainer-item">
+            <div class="explainer-num">02</div>
+            <p class="explainer-item-title">Upfront MIP is added to the loan</p>
+            <p class="explainer-item-body">Upfront MIP is 1.75%, or $6,650, financed straight into the loan, so the real balance becomes $386,650.</p>
+          </div>
+          <div class="explainer-item">
+            <div class="explainer-num">03</div>
+            <p class="explainer-item-title">Escrow, HOA, and monthly MIP</p>
+            <p class="explainer-item-body">Principal and interest is $2,572. Taxes add $410, MIP adds $177, insurance adds $125, and HOA adds $350, pushing the payment to $3,635.</p>
+          </div>
+          <div class="explainer-item">
+            <div class="explainer-num">04</div>
+            <p class="explainer-item-title">Both debt to income ratios</p>
+            <p class="explainer-item-body">Front end DTI weighs housing cost against income. Back end DTI adds car, student, card, and support payments. Both have to pass.</p>
+          </div>
+        </div>
       </div>
-      <div class="final-cta-form">
+
+      <div class="explainer-form">
         <div class="lead-form">
           <div class="lead-form-fields" id="formFields">
-            <h3>Get Free FHA Calculator</h3>
-            <p>Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile.</p>
+            <p class="section-label">Free estimate</p>
+            <h3>Get the Free Calculator</h3>
+            <p>Principal, interest, mortgage insurance, taxes, and insurance, in one number you can actually use.</p>
             <div class="form-row-2">
               <div class="field">
                 <label for="mName">Full Name</label>
@@ -969,17 +842,17 @@
                 <select id="mCredit">
                   <option value="">Select a range</option>
                   <option value="740+">740+</option>
-                  <option value="700-739">700 – 739</option>
-                  <option value="660-699">660 – 699</option>
-                  <option value="620-659">620 – 659</option>
+                  <option value="700-739">700 to 739</option>
+                  <option value="660-699">660 to 699</option>
+                  <option value="620-659">620 to 659</option>
                   <option value="under-620">Under 620</option>
                   <option value="not-sure">Not sure</option>
                 </select>
               </div>
               <span class="field-error" id="mCreditError"></span>
             </div>
-            <button class="cta" id="submitLead" style="width:100%;justify-content:center;">Send Me My Rate</button>
-            <p class="form-note">Free forever. Your info is never sold or shared.</p>
+            <button class="cta solid-accent" id="submitLead" style="width:100%;justify-content:center;">Get the Free Calculator</button>
+            <p class="form-note">No credit pull. Your info is never sold or shared.</p>
           </div>
           <div class="lead-success" id="leadSuccess">
             <div class="check">✓</div>
@@ -992,95 +865,47 @@
   </div>
 </section>
 
-<div class="wrap">
-
-  <div class="card" style="display:none">
-
-    <!-- INPUTS -->
-    <div class="card-section">
-      <p class="section-label">Home &amp; Loan Details</p>
-      <div class="grid">
-        <div class="field">
-          <label for="price">Home Price</label>
-          <div class="input-shell"><span>$</span><input type="number" id="price" value="380000" min="0"></div>
-        </div>
-        <div class="field">
-          <label for="rate">Interest Rate <span class="hint">(annual)</span></label>
-          <div class="input-shell"><input type="number" id="rate" value="6.50" min="0" step="0.01"><span style="padding:0 16px 0 0;">%</span></div>
-        </div>
-        <div class="field">
-          <label for="tax">Annual Property Tax</label>
-          <div class="input-shell"><span>$</span><input type="number" id="tax" value="4200" min="0"></div>
-        </div>
-        <div class="field">
-          <label for="insurance">Annual Homeowners Insurance</label>
-          <div class="input-shell"><span>$</span><input type="number" id="insurance" value="1500" min="0"></div>
-        </div>
-        <div class="field">
-          <label for="hoa">Monthly HOA <span class="hint">(if any)</span></label>
-          <div class="input-shell"><span>$</span><input type="number" id="hoa" value="0" min="0"></div>
-        </div>
+<!-- WHAT THE ESTIMATE ASSUMES -->
+<section class="assumptions-section reveal">
+  <div class="container-1080">
+    <div class="assumptions-panel">
+      <p class="section-label" style="margin:0;">What the estimate assumes</p>
+      <div class="assumptions-grid">
+        <div class="assumptions-cell"><div class="k">Loan type</div><div class="v">30-year fixed FHA</div></div>
+        <div class="assumptions-cell"><div class="k">Term</div><div class="v">360 payments</div></div>
+        <div class="assumptions-cell"><div class="k">Upfront MIP</div><div class="v">1.75%, financed</div></div>
+        <div class="assumptions-cell"><div class="k">Annual MIP</div><div class="v">0.50% to 0.55%</div></div>
+        <div class="assumptions-cell"><div class="k">Rate basis</div><div class="v">Market range</div></div>
+        <div class="assumptions-cell"><div class="k">Property tax</div><div class="v">Escrowed</div></div>
+        <div class="assumptions-cell"><div class="k">HOA dues</div><div class="v">Your amount</div></div>
+        <div class="assumptions-cell"><div class="k">Income basis</div><div class="v">Salary or hourly</div></div>
       </div>
-
-      <div class="dp-row">
-        <label for="dp">Down Payment <span class="dp-value" id="dpValue">3.5%</span></label>
-        <input type="range" id="dp" min="3.5" max="20" step="0.5" value="3.5">
-      </div>
-
-      <div class="ladder" id="ladder">
-        <div class="rung" data-min="3.5" data-max="4.99">
-          <span>3.5%&ndash;4.99% down</span>
-          <span class="bar" style="--fill:50%"></span>
-          <span class="rate">0.55% MIP<span class="tag">You</span></span>
-        </div>
-        <div class="rung" data-min="5" data-max="20">
-          <span>5%+ down</span>
-          <span class="bar" style="--fill:100%"></span>
-          <span class="rate">0.50% MIP<span class="tag">You</span></span>
-        </div>
-      </div>
+      <p class="assumptions-footnote">Illustration only, based on a current market range. Actual figures are determined by underwriting.</p>
     </div>
-
-    <!-- RESULTS -->
-    <div class="card-section">
-      <p class="section-label">Your Estimated Payment</p>
-      <div id="statusPillWrap">
-        <span class="status-pill pass" id="statusPill">FHA eligible at 3.5% down</span>
-      </div>
-      <div class="result-hero">
-        <div class="payment-number" id="paymentNumber">$0<span class="unit">est. monthly payment</span></div>
-      </div>
-      <p class="result-note" id="resultNote">This includes principal, interest, upfront and annual mortgage insurance (MIP), property tax, and homeowners insurance &mdash; the full picture most calculators leave out.</p>
-
-      <div class="pitia-breakdown">
-        <div class="pitia-cell"><div class="k">Loan Amount</div><div class="v" id="outLoan">$0</div></div>
-        <div class="pitia-cell"><div class="k">Est. Monthly P&amp;I</div><div class="v" id="outPI">$0</div></div>
-        <div class="pitia-cell"><div class="k">Monthly MIP</div><div class="v" id="outMip">$0</div></div>
-        <div class="pitia-cell"><div class="k">Est. Total PITIA</div><div class="v" id="outPitia">$0</div></div>
-      </div>
-      <div class="microdisclaimer">Estimate only, based on a 30-yr fixed FHA loan with upfront MIP (1.75%) financed into the loan balance. Not a rate lock or quote.</div>
-    </div>
-
-    <!-- LOCK MODULE -->
-    <div class="lock">
-      <div class="lock-head">
-        <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="#d2566d" stroke-width="1.8"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <h3>Get Your Actual Rate &amp; Payment</h3>
-      </div>
-      <p>The rate above is a general market estimate, not a quote. Your real numbers depend on factors this calculator can't see:</p>
-      <ul>
-        <li>Your credit score and how it shifts your FHA pricing</li>
-        <li>Whether you qualify for down payment assistance programs</li>
-        <li>Seller credits or rate buydowns that could lower your payment</li>
-        <li>Your exact debt-to-income ratio and how much home you can afford</li>
-      </ul>
-      <a href="#get-fha-estimate" class="cta">
-        Get My Real Rate
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
-    </div>
-
   </div>
+</section>
+
+<!-- CALL CTA PANEL -->
+<section class="cta-panel-section reveal">
+  <div class="container-1080">
+    <div class="cta-panel">
+      <div class="cta-panel-copy">
+        <div class="cta-panel-rule"></div>
+        <h2>Still want a person to check the math?</h2>
+        <p>Book a 15-minute call. We will look at your actual numbers, your credit range, and what down payment assistance you may qualify for.</p>
+      </div>
+      <button type="button" id="ctaCalendlyBtn" class="cta solid-accent">Book a 15-min call</button>
+    </div>
+  </div>
+</section>
+
+<!-- MOBILE STICKY BAR -->
+<div class="mobile-sticky-bar" id="mobileStickyBar">
+  <a href="#get-fha-estimate" class="cta solid-accent">Get the free calculator</a>
+  <button type="button" id="mobileStickyCallBtn" class="cta outline">Call</button>
+</div>
+
+<div class="wrap">
 
   <!-- CLIENT REVIEWS (mirrors the main-site reviews carousel) -->
   <section class="reviews-section reveal">
@@ -1546,64 +1371,6 @@
 
   const $ = (id) => document.getElementById(id);
 
-  const priceEl = $('price'), rateEl = $('rate'), taxEl = $('tax'),
-        insuranceEl = $('insurance'), hoaEl = $('hoa'), dpEl = $('dp');
-
-  function monthlyPI(loanAmount, annualRate, years=30){
-    const r = annualRate/12;
-    const n = years*12;
-    if (r === 0) return loanAmount/n;
-    return loanAmount * (r*Math.pow(1+r,n)) / (Math.pow(1+r,n)-1);
-  }
-
-  function fmt(num){
-    return '$' + Math.round(num).toLocaleString('en-US');
-  }
-
-  function calculate(){
-    const price = parseFloat(priceEl.value) || 0;
-    const rate = parseFloat(rateEl.value) || 0;
-    const tax = parseFloat(taxEl.value) || 0;
-    const insurance = parseFloat(insuranceEl.value) || 0;
-    const hoa = parseFloat(hoaEl.value) || 0;
-    const dp = parseFloat(dpEl.value);
-
-    $('dpValue').textContent = dp.toFixed(1).replace(/\.0$/, '') + '%';
-
-    const downAmount = price * (dp/100);
-    const baseLoan = price - downAmount;
-    const upfrontMip = baseLoan * 0.0175;
-    const loanAmount = baseLoan + upfrontMip; // financed into the loan
-
-    const annualMipRate = dp < 5 ? 0.0055 : 0.0050;
-    const monthlyMip = (loanAmount * annualMipRate) / 12;
-
-    const pi = monthlyPI(loanAmount, rate/100);
-    const monthlyTax = tax/12;
-    const monthlyIns = insurance/12;
-    const pitia = pi + monthlyMip + monthlyTax + monthlyIns + hoa;
-
-    // Update ladder active state
-    document.querySelectorAll('.rung').forEach(r => {
-      const min = parseFloat(r.dataset.min), max = parseFloat(r.dataset.max);
-      r.classList.toggle('active', dp >= min && dp <= max);
-    });
-
-    $('paymentNumber').innerHTML = fmt(pitia) + '<span class="unit">est. monthly payment</span>';
-    $('statusPill').textContent = 'FHA eligible at ' + dp.toFixed(1).replace(/\.0$/, '') + '% down';
-
-    $('outLoan').textContent = fmt(loanAmount);
-    $('outPI').textContent = fmt(pi);
-    $('outMip').textContent = fmt(monthlyMip);
-    $('outPitia').textContent = fmt(pitia);
-  }
-
-  [priceEl, rateEl, taxEl, insuranceEl, hoaEl, dpEl].forEach(el => {
-    el.addEventListener('input', calculate);
-  });
-
-  calculate();
-
   // ---------------- Inline lead form logic (no modal) ----------------
   const formFields = $('formFields');
   const leadSuccess = $('leadSuccess');
@@ -1820,7 +1587,7 @@
       leadSuccess.classList.add('show');
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = 'Send Me My Rate';
+      btn.textContent = 'Get the Free Calculator';
       alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
     }
   });
@@ -1838,6 +1605,10 @@
     }
   }
   $('openCalendlyBtn').addEventListener('click', openCalendly);
+  const ctaCalendlyBtn = $('ctaCalendlyBtn');
+  if (ctaCalendlyBtn) ctaCalendlyBtn.addEventListener('click', openCalendly);
+  const mobileStickyCallBtn = $('mobileStickyCallBtn');
+  if (mobileStickyCallBtn) mobileStickyCallBtn.addEventListener('click', openCalendly);
 
   // ---------------------------------------------------------
   // Nav "Contact" modal — same form/fields as the main site's Contact modal
