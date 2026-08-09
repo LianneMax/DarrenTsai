@@ -43,6 +43,13 @@
  * 2. Add property: NETLIFY_REI_PDF_KEY = <same random string set as REI_GUIDE_API_KEY
  *    in Netlify's environment variables>
  * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
+ *
+ * FHA CALCULATOR EMAIL SETUP (sends the static fha-affordability-calculator.xlsx via
+ * the Netlify function):
+ * 1. Add property: NETLIFY_FHA_PDF_URL = https://realdarrentsai.com/api/send-fha-guide
+ * 2. Add property: NETLIFY_FHA_PDF_KEY = <same random string set as FHA_GUIDE_API_KEY
+ *    in Netlify's environment variables>
+ * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
  */
 
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
@@ -324,6 +331,34 @@ function sendReiGuide(ss, data) {
   }
 }
 
+function sendFhaGuide(ss, data) {
+  if (data.source !== 'fha') return; // only the FHA funnel has a guide to send
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty('NETLIFY_FHA_PDF_URL');
+  const key = props.getProperty('NETLIFY_FHA_PDF_KEY');
+  if (!url || !key) {
+    logDebug(ss, 'sendFhaGuide: NETLIFY_FHA_PDF_URL/KEY not set, skipping');
+    return;
+  }
+
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-api-key': key },
+      payload: JSON.stringify({
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        email: data.email || '',
+      }),
+      muteHttpExceptions: true, // never let an email failure break the lead flow
+    });
+    logDebug(ss, 'sendFhaGuide: url=' + url + ' response ' + resp.getResponseCode() + ' ' + resp.getContentText().slice(0, 500));
+  } catch (err) {
+    logDebug(ss, 'sendFhaGuide: threw ' + err.toString());
+  }
+}
+
 function doPost(e) {
   try {
     // Browser sends text/plain with no-cors mode — body is still valid JSON
@@ -403,6 +438,7 @@ function doPost(e) {
     pushToBonzo(data);
     sendDscrGuide(ss, data);
     sendReiGuide(ss, data);
+    sendFhaGuide(ss, data);
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))
