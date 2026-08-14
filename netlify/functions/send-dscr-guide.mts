@@ -81,47 +81,91 @@ function escapeHtml(s: string) {
 // for email client compatibility (no external stylesheets).
 function buildEmailHtml(lead: { firstName?: string }) {
   const firstName = escapeHtml(lead.firstName || "there");
-  const FONT = "'Outfit',Helvetica,Arial,sans-serif";
+  const FONT = "'Outfit',Arial,Helvetica,sans-serif";
 
   return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Your DSCR Rate &amp; Cash Flow Guide</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');</style>
+<meta name="supported-color-schemes" content="light dark">
+<title>Your DSCR Rate Snapshot and Guide</title>
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>@media only screen and (max-width:620px){.wrap{width:100% !important;}.pad{padding-left:24px !important;padding-right:24px !important;}.h1{font-size:24px !important;line-height:30px !important;}}</style>
 </head>
-<body style="margin:0;padding:0;background:#ffffff;">
-<span style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Your personalized rate snapshot and DSCR guide are attached.</span>
+<body style="margin:0;padding:0;background-color:#f5f7f9;">
+<span style="display:none;font-size:1px;color:#f5f7f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Your DSCR Rate &amp; Cash Flow Guide is attached, personalized to the numbers you just ran.</span>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
-<tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;font-family:${FONT};">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5f7f9;">
+<tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" class="wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e6ebf0;">
 
-  <tr><td style="padding-bottom:20px;">
-    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">Hi ${firstName},</p>
-  </td></tr>
+  <tr>
+    <td style="background-color:#517686;padding:26px 40px 22px 40px;" class="pad">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr><td style="font-family:${FONT};font-size:10px;line-height:14px;mso-line-height-rule:exactly;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:#c8e2e8;padding-bottom:8px;">DSCR Investor Financing</td></tr>
+        <tr><td style="font-family:${FONT};font-size:21px;line-height:27px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.01em;color:#ffffff;">Darren Tsai</td></tr>
+        <tr><td style="font-family:${FONT};font-size:13px;line-height:18px;mso-line-height-rule:exactly;color:#c8e2e8;padding-top:4px;">Mortgage &amp; Real Estate Broker, Saxton Mortgage</td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr><td style="background-color:#274654;font-size:0;line-height:0;height:3px;">&nbsp;</td></tr>
 
-  <tr><td style="padding-bottom:16px;">
-    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">Attached is your DSCR Rate &amp; Cash Flow Guide, personalized to the numbers you just ran: the 6 levers that move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.</p>
-  </td></tr>
+  <tr>
+    <td class="pad" style="padding:36px 40px 8px 40px;font-family:${FONT};">
+      <div class="h1" style="font-size:28px;line-height:34px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.02em;color:#223d55;">Your DSCR rate snapshot and guide</div>
+    </td>
+  </tr>
 
-  <tr><td style="padding-bottom:24px;">
-    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">A loan officer will also reach out shortly to walk through your actual rate and terms. In the meantime, feel free to <a href="https://calendly.com/realdarrentsai/15min" style="color:#517686;font-weight:600;">book a free 15-minute strategy call</a>.</p>
-  </td></tr>
+  <tr>
+    <td class="pad" style="padding:20px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
+      Hi ${firstName},
+    </td>
+  </tr>
+  <tr>
+    <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
+      Attached is your DSCR Rate &amp; Cash Flow Guide, personalized to the numbers you just ran: the 6 levers that move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.
+    </td>
+  </tr>
+  <tr>
+    <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
+      A loan officer will also reach out shortly to walk through your actual rate and terms. In the meantime, feel free to book a free 15-minute strategy call.
+    </td>
+  </tr>
 
-  <tr><td style="padding-top:8px;border-top:1px solid #eef1f4;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
-      <tr><td style="font-size:14px;font-weight:700;color:#517686;font-family:${FONT};">Darren Tsai</td></tr>
-      <tr><td style="font-size:13px;color:#6b7280;font-family:${FONT};padding-top:2px;">Mortgage &amp; Real Estate Broker &middot; Saxton Mortgage</td></tr>
-      <tr><td style="font-size:13px;color:#6b7280;font-family:${FONT};padding-top:2px;">714-887-5432 &middot; <a href="mailto:darren@realdarrentsai.com" style="color:#517686;text-decoration:none;">darren@realdarrentsai.com</a></td></tr>
-    </table>
-  </td></tr>
+  <tr>
+    <td class="pad" align="left" style="padding:28px 40px 0 40px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="#219ebc" style="border-radius:8px;">
+            <a href="https://calendly.com/realdarrentsai/15min" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Book a free 15-minute strategy call</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td class="pad" style="padding:12px 40px 0 40px;font-family:${FONT};font-size:13px;line-height:20px;mso-line-height-rule:exactly;color:#6b7280;">
+      Or use this link: calendly.com/realdarrentsai/15min
+    </td>
+  </tr>
 
-  <tr><td style="padding-top:28px;">
-    <p style="margin:0;font-size:11px;line-height:1.6;color:#6b7280;">This guide is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and figures shown are estimates; actual eligibility and pricing are determined by underwriting. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.</p>
-    <p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:#6b7280;">Sent because you requested the DSCR guide at realdarrentsai.com &middot; <a href="mailto:darren@realdarrentsai.com?subject=Unsubscribe" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a><br>1 City Blvd W, Orange, CA 92868</p>
-  </td></tr>
+  <tr>
+    <td class="pad" style="padding:28px 40px 36px 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
+      Darren Tsai<br>
+      <span style="color:#6b7280;">Mortgage &amp; Real Estate Broker &middot; Saxton Mortgage</span><br>
+      <span style="color:#6b7280;">714-887-5432 &middot; <a href="mailto:darren@realdarrentsai.com" style="color:#517686;text-decoration:none;">darren@realdarrentsai.com</a></span>
+    </td>
+  </tr>
+
+  <tr><td style="border-top:1px solid #e6ebf0;font-size:0;line-height:0;">&nbsp;</td></tr>
+  <tr>
+    <td class="pad" style="padding:24px 40px 30px 40px;font-family:${FONT};">
+      <div style="font-size:11px;line-height:18px;mso-line-height-rule:exactly;color:#6b7280;">This guide is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and figures shown are estimates; actual eligibility and pricing are determined by underwriting. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.</div>
+      <div style="font-size:11px;line-height:18px;mso-line-height-rule:exactly;color:#6b7280;padding-top:12px;">Sent because you requested the DSCR guide at realdarrentsai.com &middot; <a href="mailto:darren@realdarrentsai.com?subject=Unsubscribe" style="color:#517686;text-decoration:underline;">Unsubscribe</a><br>1 City Blvd W, Orange, CA 92868</div>
+    </td>
+  </tr>
 
 </table>
 </td></tr>
