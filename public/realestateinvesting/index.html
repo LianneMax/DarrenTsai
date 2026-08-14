@@ -1270,9 +1270,26 @@
   enhanceSelect('lState');
 
   // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1".
-  // Same formatUSPhone/isValidUSPhone used by the contact modal below —
-  // function declarations hoist, so they're callable here too.
+  // Same implementation as /fha and /dscr. The contact modal at the bottom of
+  // this file has its own copy (formatPhone) because it lives inside an IIFE.
+  function formatUSPhone(raw) {
+    let digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+    digits = digits.slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  }
   $('lPhone').addEventListener('input', (e) => { e.target.value = formatUSPhone(e.target.value); });
+
+  // NANP validation: area code + exchange code must start 2-9 and can't be an N11 code (211/311/.../911)
+  function isValidUSPhone(digits) {
+    if (digits.length !== 10) return false;
+    const area = digits.slice(0, 3);
+    const exch = digits.slice(3, 6);
+    const validBlock = (b) => /^[2-9]\d{2}$/.test(b) && !/^[2-9]11$/.test(b);
+    return validBlock(area) && validBlock(exch);
+  }
 
   function setError(field, msg) {
     $(`l${field}Error`).textContent = msg;
