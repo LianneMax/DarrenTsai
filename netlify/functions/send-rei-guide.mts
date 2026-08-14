@@ -39,7 +39,7 @@ function escapeHtml(s: string) {
 
 function buildEmailHtml(lead: { firstName?: string }) {
   const firstName = escapeHtml(lead.firstName || "there");
-  const FONT = "'Outfit',Arial,Helvetica,sans-serif";
+  const FONT = "Arial,Helvetica,sans-serif";
 
   return `<!doctype html>
 <html lang="en"><head>
@@ -49,7 +49,6 @@ function buildEmailHtml(lead: { firstName?: string }) {
 <meta name="supported-color-schemes" content="light dark">
 <title>The real numbers plus my out-of-state BRRRR mistake</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>@media only screen and (max-width:620px){.wrap{width:100% !important;}.pad{padding-left:24px !important;padding-right:24px !important;}.h1{font-size:24px !important;line-height:30px !important;}}</style>
 </head>
 <body style="margin:0;padding:0;background-color:#f5f7f9;">
@@ -57,10 +56,10 @@ function buildEmailHtml(lead: { firstName?: string }) {
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5f7f9;">
 <tr><td align="center" style="padding:32px 12px;">
-<table role="presentation" class="wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e6ebf0;">
+<table role="presentation" class="wrap" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e6ebf0;border-radius:12px;">
 
   <tr>
-    <td style="background-color:#517686;padding:26px 40px 22px 40px;" class="pad">
+    <td style="background-color:#517686;padding:26px 40px 22px 40px;border-radius:12px 12px 0 0;" class="pad">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
         <tr><td style="font-family:${FONT};font-size:10px;line-height:14px;mso-line-height-rule:exactly;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:#c8e2e8;padding-bottom:8px;">Investor Case Study</td></tr>
         <tr><td style="font-family:${FONT};font-size:21px;line-height:27px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.01em;color:#ffffff;">Darren Tsai</td></tr>
@@ -119,7 +118,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
 
   <tr><td style="border-top:1px solid #e6ebf0;font-size:0;line-height:0;">&nbsp;</td></tr>
   <tr>
-    <td class="pad" style="padding:24px 40px 30px 40px;font-family:${FONT};">
+    <td class="pad" style="padding:24px 40px 30px 40px;font-family:${FONT};background-color:#ffffff;border-radius:0 0 12px 12px;">
       <div style="font-size:11px;line-height:18px;mso-line-height-rule:exactly;color:#6b7280;">This case study reflects one investor's personal experience and results. Results like these aren't typical and aren't a guarantee or projection of future performance. Provided for general educational purposes only. It doesn't constitute a loan offer, prequalification, preapproval, investment advice, or tax advice. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.</div>
       <div style="font-size:11px;line-height:18px;mso-line-height-rule:exactly;color:#6b7280;padding-top:12px;">Sent because you requested the case study at realdarrentsai.com &middot; <a href="mailto:darren@realdarrentsai.com?subject=Unsubscribe" style="color:#517686;text-decoration:underline;">Unsubscribe</a><br>1 City Blvd W, Orange, CA 92868</div>
     </td>
