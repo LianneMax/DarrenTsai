@@ -812,13 +812,17 @@
         <div class="pitia-cell"><div class="k">Est. Monthly PITIA</div><div class="v" id="outPitia">$2,047</div></div>
       </div>
       <div class="microdisclaimer">Estimate only, based on 30-yr amortization and the rate range for your down payment tier. Not a rate lock or quote.</div>
+      <button class="cta solid-teal" id="resultGetRateBtn" style="width:100%;justify-content:center;margin-top:16px;">
+        Get My Real Rate
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
     </div>
 
   </div>
 
   <!-- CREDIBILITY -->
   <div class="dscr-panel">
-    <p style="margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);max-width:60ch;">I'm a senior loan officer at Saxton Mortgage and an investor myself. This calculator runs the same DSCR math lenders use to qualify investment properties. That's how I help clients buy rentals without providing every document under the sun.</p>
+    <p style="margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);">I'm a senior loan officer at Saxton Mortgage and an investor myself. This calculator runs the same DSCR math lenders use to qualify investment properties. That's how I help clients buy rentals without providing every document under the sun.</p>
   </div>
 
   <!-- LOCK MODULE -->
@@ -1228,6 +1232,7 @@
     modalSuccess.classList.remove('show');
   }
   $('openModalBtn').addEventListener('click', openRateModal);
+  $('resultGetRateBtn').addEventListener('click', openRateModal);
   // Nav "Contact" and the mobile sticky bar's "Get My Real Rate" open the
   // same rate modal via the same code path as #openModalBtn — no separate
   // contact form on this page.

@@ -80,7 +80,7 @@ function getFhaCampaignId(props) {
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
-  'Target Outcome', 'Timeline', 'Source'
+  'Target Outcome', 'Timeline', 'Source', 'Licensed?'
 ];
 
 const NEWSLETTER_HEADERS = [
@@ -226,8 +226,10 @@ function pushToBonzo(data) {
   else tags.push('mortgage-calculator');
 
   // Every landing lead gets a licensed-state / unlicensed-state tag so Darren
-  // can filter workable leads from out-of-area ones in Bonzo.
-  if (LANDING_SOURCES.indexOf(data.source) !== -1) {
+  // can filter workable leads from out-of-area ones in Bonzo. Covers the named
+  // landing pages plus the plain mortgage-calculator fallback (LeadForm.tsx on
+  // the main site) — anything with a state on it.
+  if (LANDING_SOURCES.indexOf(data.source) !== -1 || tags.indexOf('mortgage-calculator') !== -1) {
     tags.push(isLicensedState(data.state) ? 'licensed-state' : 'unlicensed-state');
     if (data.state) tags.push('state:' + String(data.state).trim().toUpperCase());
   }
@@ -431,7 +433,8 @@ function doPost(e) {
         data.message              || '',
         data.target               || '',
         data.timeline             || '',
-        data.source               || 'SimpleMortgageCalculator'
+        data.source               || 'SimpleMortgageCalculator',
+        licensedCell(data)
       ]);
     }
 
