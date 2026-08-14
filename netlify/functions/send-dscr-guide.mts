@@ -103,7 +103,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
   </td></tr>
 
   <tr><td style="padding-bottom:16px;">
-    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">Attached are two PDFs: your personalized rate snapshot (the exact numbers you just ran), and the full DSCR Rate &amp; Cash Flow Guide &mdash; the 6 levers that move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.</p>
+    <p style="margin:0;font-size:15px;line-height:1.6;color:#1a1a2e;">Attached is your DSCR Rate &amp; Cash Flow Guide, personalized to the numbers you just ran: the 6 levers that move your rate, 5 ways to raise cash flow on the same property, and where your down-payment bracket comes from.</p>
   </td></tr>
 
   <tr><td style="padding-bottom:24px;">
@@ -119,8 +119,8 @@ function buildEmailHtml(lead: { firstName?: string }) {
   </td></tr>
 
   <tr><td style="padding-top:28px;">
-    <p style="margin:0;font-size:11px;line-height:1.6;color:#6b7280;">This guide is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and figures shown are estimates; actual eligibility and pricing are determined by underwriting. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913. Dream Home Development Corporation is a subsidiary of Saxton Mortgage, LLC, operating only in California. Dream Home Development Corporation DBA Saxton Mortgage. Equal Housing Opportunity.</p>
-    <p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:#6b7280;">Sent because you requested the DSCR guide at realdarrentsai.com &middot; <a href="mailto:darren@realdarrentsai.com?subject=Unsubscribe" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a><br>Saxton Mortgage &middot; 9191 Towne Centre Drive, Suite 400, San Diego, CA 92122 &middot; (858) 925-2102 &middot; info@saxtonmortgage.com &middot; <a href="https://www.nmlsconsumeraccess.org" style="color:#6b7280;text-decoration:underline;">NMLS Consumer Access</a> &middot; NMLS #2525913 | CA DRE #02205650</p>
+    <p style="margin:0;font-size:11px;line-height:1.6;color:#6b7280;">This guide is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and figures shown are estimates; actual eligibility and pricing are determined by underwriting. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.</p>
+    <p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:#6b7280;">Sent because you requested the DSCR guide at realdarrentsai.com &middot; <a href="mailto:darren@realdarrentsai.com?subject=Unsubscribe" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a><br>1 City Blvd W, Orange, CA 92868</p>
   </td></tr>
 
 </table>
@@ -272,7 +272,7 @@ export default async (req: Request, context: Context) => {
       body: JSON.stringify({
         from: FROM,
         to: [lead.email],
-        subject: `${lead.firstName ? lead.firstName + ", your" : "Your"} DSCR Rate & Cash Flow Guide`,
+        subject: "[PDF] Your DSCR Rate Snapshot and Guide",
         html: buildEmailHtml(lead),
         attachments: [
           { filename: "your-dscr-rate.pdf", content: rateBase64 },

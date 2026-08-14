@@ -129,7 +129,7 @@ export default async (req: Request, context: Context) => {
       body: JSON.stringify({
         from: FROM,
         to: [lead.email],
-        subject: `${lead.firstName ? lead.firstName + ", your" : "Your"} FHA Affordability Calculator`,
+        subject: "The real FHA payment number (no hidden fees)",
         html: buildEmailHtml(lead),
         attachments: [
           { filename: "fha-affordability-calculator.xlsx", content: base64 },
