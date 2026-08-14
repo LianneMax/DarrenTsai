@@ -207,6 +207,7 @@
   }
   .input-shell select{
     width:100%;
+    min-width:0; /* flex item defaults to min-content = longest option text */
     border:none;
     background:transparent;
     padding:11px 40px 11px 16px;
@@ -666,6 +667,135 @@
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
+
+  /* ============================================================
+     CONTACT MODAL — canonical copy of the main site's Contact modal
+     (App.tsx modal shell + LeadForm.tsx). This block is byte-identical
+     on /dscr, /fha and /realestateinvesting: same fields, same styling,
+     same payload. Everything is lf-* prefixed and self-contained (no
+     var() tokens, no shared class names) so each host page's own form
+     and modal CSS can never bleed into it — that's what kept the three
+     pages looking different before. Edit it in one page, paste to all three.
+     ============================================================ */
+  .lf-overlay{
+    position:fixed;inset:0;
+    background:rgba(10,20,35,0.65);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;
+    z-index:900;padding:24px 16px;
+    font-family:'Outfit', sans-serif;
+  }
+  .lf-overlay.open{display:flex;}
+  .lf-panel{
+    background:#ffffff;border-radius:20px;width:100%;max-width:580px;
+    max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.3);
+    position:relative;
+  }
+  .lf-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:28px 32px 0;margin-bottom:6px;}
+  .lf-title{font-family:'Outfit', sans-serif;font-size:1.4rem;font-weight:700;color:#223d55;margin:0;line-height:1.3;}
+  .lf-close{
+    background:#f5f7f9;border:none;border-radius:50%;width:36px;height:36px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    color:#6b7280;flex-shrink:0;transition:background .2s ease,color .2s ease;
+  }
+  .lf-close:hover{background:#e5e7eb;color:#223d55;}
+  .lf-body{padding:16px 32px 32px;}
+  .lf-sub{font-size:0.92rem;color:#6b7280;line-height:1.6;margin:0 0 24px;}
+  .lf-note{font-size:0.8rem;color:#6b7280;margin:0 0 20px;}
+  .lf-note strong{color:#d2566d;}
+  .lf-req{color:#d2566d;}
+  .lf-group{margin-bottom:20px;}
+  .lf-row-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px;}
+  .lf-row-2 .lf-group{margin-bottom:0;}
+  .lf-label{display:block;font-family:'Outfit', sans-serif;font-size:0.875rem;font-weight:500;color:#223d55;margin-bottom:8px;}
+  .lf-optional{font-weight:400;color:#6b7280;font-size:0.8rem;}
+  .lf-input{
+    width:100%;padding:11px 16px;border:1.5px solid #d1d5db;border-radius:8px;
+    font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;
+    color:#1a1a2e;background:#ffffff;outline:none;appearance:none;
+    transition:border-color .2s ease,box-shadow .2s ease;
+  }
+  .lf-input:focus{border-color:#517686;box-shadow:0 0 0 3px rgba(81,118,134,0.2);}
+  .lf-input.lf-input-error{border-color:#d2566d;box-shadow:0 0 0 3px rgba(210,86,109,0.15);}
+  .lf-textarea{resize:vertical;min-height:90px;}
+  .lf-input[type=number]::-webkit-outer-spin-button,
+  .lf-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .lf-prefix-wrap,.lf-suffix-wrap{position:relative;display:flex;align-items:center;}
+  .lf-prefix{position:absolute;left:14px;font-size:1rem;color:#6b7280;pointer-events:none;font-weight:500;z-index:1;}
+  .lf-suffix{position:absolute;right:14px;font-size:1rem;color:#6b7280;pointer-events:none;font-weight:500;}
+  .lf-input.lf-has-prefix{padding-left:30px;}
+  .lf-input.lf-has-suffix{padding-right:36px;}
+  .lf-error{display:block;font-size:0.8rem;color:#d2566d;margin-top:5px;font-weight:500;}
+  .lf-submit{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:15px;margin-top:8px;border:none;border-radius:8px;
+    background:#d2566d;color:#ffffff;
+    font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
+    transition:transform .2s ease,box-shadow .2s ease;
+  }
+  .lf-submit:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(210,86,109,0.35);}
+  .lf-submit:disabled{opacity:0.7;transform:none;cursor:not-allowed;}
+  .lf-footnote{font-size:0.75rem;color:#6b7280;margin:14px 0 0;text-align:center;line-height:1.6;}
+  .lf-form.hide{display:none;}
+  .lf-success{display:none;text-align:center;padding:20px 0;}
+  .lf-success.show{display:block;}
+  .lf-success-check{width:72px;height:72px;margin:0 auto 24px;display:block;}
+  .lf-success-heading{font-family:'Outfit', sans-serif;font-size:1.5rem;font-weight:700;color:#223d55;margin:0 0 12px;}
+  .lf-success-body{font-size:0.95rem;color:#6b7280;line-height:1.7;margin:0;}
+  .lf-success-close{
+    margin-top:24px;display:inline-flex;align-items:center;justify-content:center;
+    padding:12px 28px;border:none;border-radius:8px;background:#517686;color:#ffffff;
+    font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
+    transition:transform .2s ease,box-shadow .2s ease;
+  }
+  .lf-success-close:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(81,118,134,0.4);}
+
+  /* Searchable combobox — same trigger/panel/checkmark as StateSelect.tsx
+     and CustomSelect.tsx. The panel is appended to <body> so a modal's
+     overflow:auto can't clip it. */
+  .lf-cselect{position:relative;}
+  .lf-cselect-native{position:absolute;top:0;left:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;}
+  .lf-cselect-trigger{
+    width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:11px 16px;border:1.5px solid #d1d5db;border-radius:8px;
+    font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;color:#6b7280;
+    background:#ffffff;cursor:pointer;text-align:left;
+    transition:border-color .2s ease,box-shadow .2s ease;
+  }
+  .lf-cselect-trigger:focus{outline:none;border-color:#517686;box-shadow:0 0 0 3px rgba(81,118,134,0.2);}
+  .lf-cselect-trigger.lf-input-error{border-color:#d2566d;box-shadow:0 0 0 3px rgba(210,86,109,0.15);}
+  .lf-cselect-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .lf-cselect-value.has-value{color:#1a1a2e;}
+  .lf-cselect-chevron{flex-shrink:0;color:#6b7280;transition:transform .2s ease;}
+  .lf-cselect.open .lf-cselect-chevron{transform:rotate(180deg);}
+  .lf-cselect-panel{
+    position:fixed;z-index:1200;background:#ffffff;
+    border:1.5px solid #d1d5db;border-radius:8px;
+    box-shadow:0 16px 40px rgba(0,0,0,0.16);
+    overflow:hidden;display:none;font-family:'Outfit', sans-serif;
+  }
+  .lf-cselect-panel.open{display:block;}
+  .lf-cselect-search{border-bottom:1px solid #e5e7eb;padding:6px;}
+  .lf-cselect-search input{
+    width:100%;border:none;outline:none;background:#f5f7f9;border-radius:6px;
+    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:0.9rem;color:#1a1a2e;
+  }
+  .lf-cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
+  .lf-cselect-option{
+    display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
+    font-size:0.92rem;color:#1a1a2e;cursor:pointer;
+  }
+  .lf-cselect-option:hover{background:#f5f7f9;}
+  .lf-cselect-option .lf-cselect-check{flex-shrink:0;opacity:0;color:#d2566d;}
+  .lf-cselect-option.selected{font-weight:600;}
+  .lf-cselect-option.selected .lf-cselect-check{opacity:1;}
+  .lf-cselect-empty{padding:14px 10px;text-align:center;font-size:0.85rem;color:#6b7280;}
+
+  @media(max-width:600px){
+    .lf-header{padding:20px 20px 0;}
+    .lf-body{padding:12px 20px 24px;}
+    .lf-row-2{grid-template-columns:1fr;}
+  }
 </style>
 </head>
 <body>
@@ -1077,23 +1207,26 @@
     ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
     ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
   ];
+  function fillStateSelect(select) {
+    US_STATES.forEach(([abbr, name]) => {
+      const opt = document.createElement('option');
+      opt.value = abbr;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+  }
   const stateSelect = $('mState');
-  US_STATES.forEach(([abbr, name]) => {
-    const opt = document.createElement('option');
-    opt.value = abbr;
-    opt.textContent = name;
-    stateSelect.appendChild(opt);
-  });
+  fillStateSelect(stateSelect);
 
   // ---------------------------------------------------------
-  // Custom state select — replaces the native <select> chrome with a
-  // reui c-select-4-style searchable combobox (trigger + panel + search +
+  // Custom select — replaces the native <select> chrome with a
+  // reui c-select-4-style combobox (trigger + panel + optional search +
   // checkmark). The native <select> stays in the DOM (hidden) as the source
   // of truth, so every existing .value read / validation / error-toggle
   // keeps working unchanged. Same implementation as /fha and
-  // /realestateinvesting.
+  // /realestateinvesting. Search box only appears for long lists (states).
   // ---------------------------------------------------------
-  function enhanceStateSelect(selectId) {
+  function enhanceSelect(selectId) {
     const select = document.getElementById(selectId);
     if (!select) return;
     const shell = select.closest('.input-shell');
@@ -1101,6 +1234,9 @@
     shell.classList.add('cselect');
     select.tabIndex = -1;
     select.classList.add('cselect-native');
+
+    const itemCount = Array.prototype.filter.call(select.options, (o) => o.value).length;
+    const searchable = itemCount >= 10;
 
     const trigger = document.createElement('button');
     trigger.type = 'button';
@@ -1115,7 +1251,7 @@
     const panel = document.createElement('div');
     panel.className = 'cselect-panel';
     panel.setAttribute('role', 'listbox');
-    panel.innerHTML = '<div class="cselect-search"><input type="text" placeholder="Search state…" autocomplete="off"></div><div class="cselect-options"></div>';
+    panel.innerHTML = (searchable ? '<div class="cselect-search"><input type="text" placeholder="Search…" autocomplete="off"></div>' : '') + '<div class="cselect-options"></div>';
     document.body.appendChild(panel); // fixed-position — escapes modal overflow clipping
 
     const valueEl = trigger.querySelector('.cselect-value');
@@ -1166,8 +1302,7 @@
       panel.classList.add('open');
       shell.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
-      searchEl.value = '';
-      setTimeout(() => searchEl.focus(), 0);
+      if (searchEl) { searchEl.value = ''; setTimeout(() => searchEl.focus(), 0); }
       document.addEventListener('click', onDocClick, true);
       document.addEventListener('keydown', onKeydown, true);
       window.addEventListener('scroll', onScroll, true);
@@ -1184,17 +1319,19 @@
     }
 
     trigger.addEventListener('click', () => { shell.classList.contains('open') ? close() : open(); });
-    searchEl.addEventListener('input', () => buildOptions(searchEl.value));
-    searchEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { const first = optionsEl.querySelector('.cselect-option'); if (first) first.click(); }
-    });
+    if (searchEl) {
+      searchEl.addEventListener('input', () => buildOptions(searchEl.value));
+      searchEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { const first = optionsEl.querySelector('.cselect-option'); if (first) first.click(); }
+      });
+    }
 
     if (select.value) {
       const sel = Array.prototype.filter.call(select.options, (o) => o.value === select.value)[0];
       if (sel) { valueEl.textContent = sel.textContent; valueEl.classList.add('has-value'); }
     }
   }
-  enhanceStateSelect('mState');
+  enhanceSelect('mState');
 
   // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1"
   function formatUSPhone(raw) {
@@ -1233,10 +1370,9 @@
   }
   $('openModalBtn').addEventListener('click', openRateModal);
   $('resultGetRateBtn').addEventListener('click', openRateModal);
-  // Nav "Contact" and the mobile sticky bar's "Get My Real Rate" open the
-  // same rate modal via the same code path as #openModalBtn — no separate
-  // contact form on this page.
-  $('openContactBtn').addEventListener('click', openRateModal);
+  // Mobile sticky bar's "Get My Real Rate" opens the rate modal via the same
+  // code path as #openModalBtn. Nav "Contact" opens the separate contact
+  // modal below.
   $('stickyGetRateBtn').addEventListener('click', openRateModal);
   $('closeModal').addEventListener('click', () => overlay.classList.remove('open'));
   $('closeSuccess').addEventListener('click', () => overlay.classList.remove('open'));
@@ -1294,6 +1430,425 @@
       alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
     }
   });
+
+  // The canonical contact modal (bottom of this file) prefills its two
+  // optional loan fields from whatever the calculator is currently showing —
+  // same behaviour as the main site, which seeds LeadForm from its calculator.
+  window.LF_CONTACT_PREFILL = function () {
+    return {
+      loanAmount: $('outLoan').textContent.replace(/[^0-9]/g, ''),
+      annualRate: $('outRate').textContent.replace(/[^0-9.]/g, ''),
+    };
+  };
+</script>
+
+<!-- CONTACT MODAL — canonical copy of the main site's Contact modal
+     (App.tsx shell + LeadForm.tsx fields). Identical markup on /dscr,
+     /fha and /realestateinvesting. Submits source:"MortgageCalculator"
+     so the Apps Script writes it to the "Leads" tab and Bonzo tags it
+     mortgage-calculator + licensed-state/unlicensed-state + state:XX. -->
+<div class="lf-overlay" id="contactOverlay" role="dialog" aria-modal="true" aria-labelledby="lfTitle">
+  <div class="lf-panel">
+    <div class="lf-form" id="contactForm">
+      <div class="lf-header">
+        <h2 class="lf-title" id="lfTitle">Want Darren to Review Your Numbers?</h2>
+        <button type="button" class="lf-close" id="closeContactModal" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="lf-body">
+        <p class="lf-sub">No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.</p>
+        <p class="lf-note"><strong>* Required</strong>: All starred fields must be filled in before submitting.</p>
+
+        <div class="lf-row-2">
+          <div class="lf-group">
+            <label class="lf-label" for="cFirstName">First Name <span class="lf-req">*</span></label>
+            <input class="lf-input" type="text" id="cFirstName" autocomplete="given-name">
+            <span class="lf-error" id="cFirstNameError"></span>
+          </div>
+          <div class="lf-group">
+            <label class="lf-label" for="cLastName">Last Name <span class="lf-req">*</span></label>
+            <input class="lf-input" type="text" id="cLastName" autocomplete="family-name">
+            <span class="lf-error" id="cLastNameError"></span>
+          </div>
+        </div>
+
+        <div class="lf-row-2">
+          <div class="lf-group">
+            <label class="lf-label" for="cEmail">Email <span class="lf-req">*</span></label>
+            <input class="lf-input" type="email" id="cEmail" autocomplete="email">
+            <span class="lf-error" id="cEmailError"></span>
+          </div>
+          <div class="lf-group">
+            <label class="lf-label" for="cPhone">Phone <span class="lf-req">*</span></label>
+            <input class="lf-input" type="tel" id="cPhone" autocomplete="tel" maxlength="14">
+            <span class="lf-error" id="cPhoneError"></span>
+          </div>
+        </div>
+
+        <div class="lf-group" style="margin-bottom:16px;">
+          <label class="lf-label" for="cState">State <span class="lf-req">*</span></label>
+          <select class="lf-input" id="cState">
+            <option value="">Select your state…</option>
+          </select>
+          <span class="lf-error" id="cStateError"></span>
+        </div>
+
+        <div class="lf-group">
+          <label class="lf-label" for="cGoals">Your Goals <span class="lf-req">*</span></label>
+          <textarea class="lf-input lf-textarea" id="cGoals" rows="3" placeholder="e.g. Lower my monthly payments, pay off credit card debt, save for a rental property…"></textarea>
+          <span class="lf-error" id="cGoalsError"></span>
+        </div>
+
+        <div class="lf-row-2">
+          <div class="lf-group">
+            <label class="lf-label" for="cTarget">Target Outcome <span class="lf-req">*</span></label>
+            <select class="lf-input" id="cTarget">
+              <option value="">Select a target…</option>
+              <option value="lower-payment">Lower my monthly payment</option>
+              <option value="pay-off-debt">Pay off high-interest debt</option>
+              <option value="buy-home">Purchase a home</option>
+              <option value="refinance">Refinance my existing mortgage</option>
+              <option value="invest">Investment property</option>
+              <option value="other">Other</option>
+            </select>
+            <span class="lf-error" id="cTargetError"></span>
+          </div>
+          <div class="lf-group">
+            <label class="lf-label" for="cTimeline">Timeline <span class="lf-req">*</span></label>
+            <select class="lf-input" id="cTimeline">
+              <option value="">Select a timeframe…</option>
+              <option value="immediately">As soon as possible</option>
+              <option value="1-3mo">1 – 3 months</option>
+              <option value="3-6mo">3 – 6 months</option>
+              <option value="6-12mo">6 – 12 months</option>
+              <option value="12mo+">More than 12 months</option>
+            </select>
+            <span class="lf-error" id="cTimelineError"></span>
+          </div>
+        </div>
+
+        <div class="lf-row-2">
+          <div class="lf-group">
+            <label class="lf-label" for="cLoanAmount">Loan Amount <span class="lf-optional">(optional)</span></label>
+            <div class="lf-prefix-wrap">
+              <span class="lf-prefix">$</span>
+              <input class="lf-input lf-has-prefix" type="text" id="cLoanAmount" inputmode="numeric">
+            </div>
+          </div>
+          <div class="lf-group">
+            <label class="lf-label" for="cRate">Interest Rate <span class="lf-optional">(optional)</span></label>
+            <div class="lf-suffix-wrap">
+              <input class="lf-input lf-has-suffix" type="number" step="0.01" min="0.1" max="30" id="cRate">
+              <span class="lf-suffix">%</span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="lf-submit" id="submitContact">
+          Send My Info to Darren
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <p class="lf-footnote">Your info is never sold or shared. NMLS# 2438102 · DRE# 02103705 · Equal Housing Opportunity.</p>
+      </div>
+    </div>
+
+    <div class="lf-success" id="contactSuccess">
+      <div class="lf-body">
+        <svg class="lf-success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
+          <circle cx="26" cy="26" r="24" stroke="#2ecc71" stroke-width="3"/>
+          <path d="M14 26l9 9 16-16" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3 class="lf-success-heading" id="contactSuccessHeading">You're all set!</h3>
+        <p class="lf-success-body">Darren will review your numbers and be in touch shortly.</p>
+        <button type="button" class="lf-success-close" id="closeContactSuccess">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONTACT MODAL — canonical copy of the main site's Contact modal
+// (LeadForm.tsx). Identical on /dscr, /fha and /realestateinvesting:
+// same validation, same payload, same success state. Wrapped in an IIFE
+// with lf-prefixed markup so it shares nothing with the host page's own
+// form code. Any nav/hamburger "Contact" button opens it via the
+// data-lf-contact attribute or the #openContactBtn id.
+//
+// Payload posts source:"MortgageCalculator" — the Apps Script doPost
+// else-branch writes it to the "Leads" tab, and pushToBonzo tags it
+// mortgage-calculator + licensed-state/unlicensed-state + state:XX.
+// A page can prefill the two optional loan fields by defining
+// window.LF_CONTACT_PREFILL = () => ({ loanAmount, annualRate }).
+// ============================================================
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  var overlay = el('contactOverlay');
+  if (!overlay) return;
+  var form = el('contactForm');
+  var success = el('contactSuccess');
+
+  // US states — full name shown, 2-letter abbreviation stored/sent.
+  var US_STATES = [
+    ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+    ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
+    ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
+    ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+    ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
+    ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
+    ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
+    ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+    ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
+    ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming']
+  ];
+  var stateSelect = el('cState');
+  US_STATES.forEach(function (s) {
+    var opt = document.createElement('option');
+    opt.value = s[0];
+    opt.textContent = s[1];
+    stateSelect.appendChild(opt);
+  });
+
+  // Searchable combobox over the native <select>, which stays in the DOM
+  // as the source of truth. Search box only on long lists (states).
+  function enhance(selectId) {
+    var select = el(selectId);
+    if (!select) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'lf-cselect';
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    select.tabIndex = -1;
+    select.classList.add('lf-cselect-native');
+
+    var count = Array.prototype.filter.call(select.options, function (o) { return o.value; }).length;
+    var searchable = count >= 10;
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'lf-cselect-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    var placeholder = select.options[0] ? select.options[0].textContent : 'Select…';
+    trigger.innerHTML = '<span class="lf-cselect-value">' + placeholder + '</span>' +
+      '<svg class="lf-cselect-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    wrap.insertBefore(trigger, select);
+
+    var panel = document.createElement('div');
+    panel.className = 'lf-cselect-panel';
+    panel.setAttribute('role', 'listbox');
+    panel.innerHTML = (searchable ? '<div class="lf-cselect-search"><input type="text" placeholder="Search…" autocomplete="off"></div>' : '') + '<div class="lf-cselect-options"></div>';
+    document.body.appendChild(panel); // fixed-position — escapes the panel's overflow clipping
+
+    var valueEl = trigger.querySelector('.lf-cselect-value');
+    var searchEl = panel.querySelector('.lf-cselect-search input');
+    var optionsEl = panel.querySelector('.lf-cselect-options');
+
+    function build(filter) {
+      optionsEl.innerHTML = '';
+      var q = (filter || '').trim().toLowerCase();
+      var shown = 0;
+      Array.prototype.forEach.call(select.options, function (opt) {
+        if (!opt.value) return;
+        if (q && opt.textContent.toLowerCase().indexOf(q) === -1) return;
+        shown++;
+        var row = document.createElement('div');
+        row.className = 'lf-cselect-option' + (opt.value === select.value ? ' selected' : '');
+        row.setAttribute('role', 'option');
+        row.innerHTML = '<svg class="lf-cselect-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg><span>' + opt.textContent + '</span>';
+        row.addEventListener('click', function () {
+          select.value = opt.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          valueEl.textContent = opt.textContent;
+          valueEl.classList.add('has-value');
+          close();
+          trigger.focus();
+        });
+        optionsEl.appendChild(row);
+      });
+      if (!shown) optionsEl.innerHTML = '<div class="lf-cselect-empty">No matches</div>';
+    }
+    function position() {
+      var r = trigger.getBoundingClientRect();
+      panel.style.left = r.left + 'px';
+      panel.style.top = (r.bottom + 6) + 'px';
+      panel.style.width = r.width + 'px';
+    }
+    function onDocClick(e) { if (!wrap.contains(e.target) && !panel.contains(e.target)) close(); }
+    function onKey(e) { if (e.key === 'Escape') { close(); trigger.focus(); } }
+    function onScroll(e) { if (panel.contains(e.target)) return; close(); }
+    function open() {
+      if (wrap.classList.contains('open')) return;
+      Array.prototype.forEach.call(document.querySelectorAll('.lf-cselect-panel.open'), function (p) { p.classList.remove('open'); });
+      build('');
+      position();
+      panel.classList.add('open');
+      wrap.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      if (searchEl) { searchEl.value = ''; setTimeout(function () { searchEl.focus(); }, 0); }
+      document.addEventListener('click', onDocClick, true);
+      document.addEventListener('keydown', onKey, true);
+      window.addEventListener('scroll', onScroll, true);
+      window.addEventListener('resize', position);
+    }
+    function close() {
+      panel.classList.remove('open');
+      wrap.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', position);
+    }
+    trigger.addEventListener('click', function () { wrap.classList.contains('open') ? close() : open(); });
+    if (searchEl) {
+      searchEl.addEventListener('input', function () { build(searchEl.value); });
+      searchEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { var first = optionsEl.querySelector('.lf-cselect-option'); if (first) first.click(); }
+      });
+    }
+    select._lfTrigger = trigger;
+  }
+  enhance('cState');
+  enhance('cTarget');
+  enhance('cTimeline');
+
+  // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1"
+  function formatPhone(raw) {
+    var digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+    digits = digits.slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+    return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+  }
+  el('cPhone').addEventListener('input', function (e) { e.target.value = formatPhone(e.target.value); });
+
+  // NANP: area code + exchange must start 2-9 and can't be an N11 code
+  function validPhone(digits) {
+    if (digits.length !== 10) return false;
+    var block = function (b) { return /^[2-9]\d{2}$/.test(b) && !/^[2-9]11$/.test(b); };
+    return block(digits.slice(0, 3)) && block(digits.slice(3, 6));
+  }
+
+  el('cLoanAmount').addEventListener('input', function (e) {
+    var num = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10) || 0;
+    e.target.value = num ? num.toLocaleString('en-US') : '';
+  });
+
+  var FIELDS = ['FirstName', 'LastName', 'Email', 'Phone', 'State', 'Goals', 'Target', 'Timeline'];
+  function setError(field, msg) {
+    el('c' + field + 'Error').textContent = msg || '';
+    var input = el('c' + field);
+    var target = input && input._lfTrigger ? input._lfTrigger : input;
+    if (target) target.classList.toggle('lf-input-error', !!msg);
+  }
+  function clearErrors() { FIELDS.forEach(function (f) { setError(f, ''); }); }
+
+  var SUBMIT_LABEL = el('submitContact').innerHTML;
+
+  function openContact() {
+    clearErrors();
+    var submit = el('submitContact');
+    submit.disabled = false;
+    submit.innerHTML = SUBMIT_LABEL;
+    overlay.classList.add('open');
+    form.classList.remove('hide');
+    success.classList.remove('show');
+    if (typeof window.LF_CONTACT_PREFILL === 'function') {
+      var pre = window.LF_CONTACT_PREFILL() || {};
+      if (pre.loanAmount) {
+        var n = parseInt(String(pre.loanAmount).replace(/[^0-9]/g, ''), 10) || 0;
+        el('cLoanAmount').value = n ? n.toLocaleString('en-US') : '';
+      }
+      if (pre.annualRate) el('cRate').value = pre.annualRate;
+    }
+  }
+  function closeContact() { overlay.classList.remove('open'); }
+  window.openContactModal = openContact; // so a page's hamburger menu can reuse it
+
+  var openers = document.querySelectorAll('[data-lf-contact]');
+  Array.prototype.forEach.call(openers, function (btn) { btn.addEventListener('click', openContact); });
+  var navBtn = el('openContactBtn');
+  if (navBtn && !navBtn.hasAttribute('data-lf-contact')) navBtn.addEventListener('click', openContact);
+
+  el('closeContactModal').addEventListener('click', closeContact);
+  el('closeContactSuccess').addEventListener('click', closeContact);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeContact(); });
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeContact();
+  });
+
+  el('submitContact').addEventListener('click', async function () {
+    clearErrors();
+    var firstName = el('cFirstName').value.trim();
+    var lastName = el('cLastName').value.trim();
+    var email = el('cEmail').value.trim();
+    var phone = el('cPhone').value.trim();
+    var phoneDigits = phone.replace(/\D/g, '');
+    var state = stateSelect.value;
+    var goals = el('cGoals').value.trim();
+    var target = el('cTarget').value;
+    var timeline = el('cTimeline').value;
+
+    var valid = true;
+    if (!firstName) { setError('FirstName', 'Required'); valid = false; }
+    if (!lastName) { setError('LastName', 'Required'); valid = false; }
+    if (!email) { setError('Email', 'Required'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
+    if (!phone) { setError('Phone', 'Required'); valid = false; }
+    else if (!validPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
+    if (!state) { setError('State', 'Required'); valid = false; }
+    if (!goals) { setError('Goals', 'Required'); valid = false; }
+    if (!target) { setError('Target', 'Required'); valid = false; }
+    if (!timeline) { setError('Timeline', 'Required'); valid = false; }
+    if (!valid) return;
+
+    var payload = {
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      state: state,
+      loanAmount: parseFloat(el('cLoanAmount').value.replace(/[^0-9.]/g, '')) || 0,
+      termYears: 30,
+      annualRate: parseFloat(el('cRate').value) || 0,
+      message: goals,
+      target: target,
+      timeline: timeline,
+      source: 'MortgageCalculator',
+      timestamp: new Date().toISOString()
+    };
+
+    var btn = el('submitContact');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      var url = (typeof WEBHOOK_URL !== 'undefined' && WEBHOOK_URL) ? WEBHOOK_URL : '';
+      if (url) {
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
+      }
+      el('contactSuccessHeading').textContent = "You're all set, " + firstName + '!';
+      form.classList.add('hide');
+      success.classList.add('show');
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = SUBMIT_LABEL;
+      alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
+    }
+  });
+})();
 </script>
 
 </body>
