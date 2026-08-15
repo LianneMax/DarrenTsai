@@ -15,6 +15,8 @@
   --text-dark:   #1a1a2e;
   --text-muted:  #6b7280;
   --navy-dark:   #1a2f42;
+  --success:     #1e7a45;
+  --success-bg:  #dcf1e3;
   --teal-light:  rgba(81, 118, 134, 0.12);
   --rose-glow:   rgba(210, 86, 109, 0.35);
   --card-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
@@ -1333,22 +1335,26 @@ p {
   animation: fadeUp 0.5s ease;
 }
 
+/* Filled pale-green badge + checkmark glyph. Same treatment as the static
+   landing pages (/fha, /dscr, /realestateinvesting) so every opt-in confirms
+   the same way. Size is overridable per surface via --success-check-size. */
 .success-check {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 24px;
+  width: var(--success-check-size, 56px);
+  height: var(--success-check-size, 56px);
+  border-radius: 50%;
+  background: var(--success-bg);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: calc(var(--success-check-size, 56px) * 0.46);
+  line-height: 1;
 }
 
-.success-check circle {
-  stroke-dasharray: 151;
-  stroke-dashoffset: 151;
-  animation: drawCircle 0.6s ease forwards 0.1s;
-}
-
-.success-check path {
-  stroke-dasharray: 50;
-  stroke-dashoffset: 50;
-  animation: drawCheck 0.5s ease forwards 0.65s;
+/* Outline Calendly CTA that closes out every success state. */
+.success-cta {
+  margin-top: 24px;
 }
 
 .success-heading {
@@ -1601,14 +1607,6 @@ p {
 
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-
-  @keyframes drawCheck {
-    to { stroke-dashoffset: 0; }
-  }
-
-  @keyframes drawCircle {
-    to { stroke-dashoffset: 0; }
   }
 
   @keyframes bounce {

@@ -819,21 +819,20 @@ export default function DebtSavingsCalculator() {
 
         {/* ── Success state ─────────────────────────────────────────────── */}
         {submitted && (
-          <div style={{
-            background: '#f0fdf4', border: '1px solid #86efac',
-            borderRadius: 12, padding: 28, textAlign: 'center',
-          }}>
-            <svg viewBox="0 0 52 52" fill="none" style={{ width: 52, height: 52, margin: '0 auto 14px' }}>
-              <circle cx="26" cy="26" r="24" stroke="#2ecc71" strokeWidth="3"/>
-              <path d="M14 26l9 9 16-16" stroke="#2ecc71" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <h3 style={{ color: '#166534', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
-              You're all set!
-            </h3>
-            <p style={{ color: '#166534', marginBottom: 8, fontSize: 14 }}>
+          <div className="success-state" style={{ padding: 28 }}>
+            <div className="success-check" role="img" aria-label="Success">✓</div>
+            <h3 className="success-heading">You're all set!</h3>
+            <p className="success-body">
               Thanks! Darren will reach out within 1 business day to review your personalized savings estimate.
             </p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            <button
+              type="button"
+              className="btn btn-outline-navy btn-full success-cta"
+              onClick={openCalendly}
+            >
+              Book a Free Strategy Call
+            </button>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 14 }}>
               Questions? Call or text:{' '}
               <a href="tel:7148875432" style={{ color: 'var(--navy)', fontWeight: 600 }}>
                 (714) 887-5432

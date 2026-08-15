@@ -5,6 +5,7 @@ import type { MortgageInputs } from '../types/mortgage';
 import { GOOGLE_SHEET_WEBHOOK_URL, EMAIL, NMLS, DRE } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
+import { openCalendly } from '../utils/calendly';
 
 const emailSchema = z.string().email();
 
@@ -173,19 +174,22 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
   if (status === 'success') {
     return (
       <div className="success-state" style={{ padding: '16px 0 8px' }}>
-        <svg className="success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
-          <circle cx="26" cy="26" r="24" stroke="#2ecc71" strokeWidth="3" />
-          <path d="M14 26l9 9 16-16" stroke="#2ecc71" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <div className="success-check" role="img" aria-label="Success">✓</div>
         <h3 className="success-heading">You're all set, {form.firstName}!</h3>
         <p className="success-body">
           Darren will review your numbers and be in touch shortly. In the meantime,
           check out the savings calculator above to see your full breakdown.
         </p>
         <button
+          onClick={openCalendly}
+          className="btn btn-outline-navy btn-full success-cta"
+        >
+          Book a Free Strategy Call
+        </button>
+        <button
           onClick={onClose}
-          className="btn btn-teal"
-          style={{ marginTop: 24 }}
+          className="btn btn-teal btn-full"
+          style={{ marginTop: 10 }}
         >
           Close
         </button>

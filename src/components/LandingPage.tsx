@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { GOOGLE_SHEET_WEBHOOK_URL, EMAIL, NMLS, DRE } from '../config';
 import Footer from './Footer';
+import { openCalendly } from '../utils/calendly';
 
 const emailSchema = z.string().email();
 
@@ -118,14 +119,18 @@ export default function LandingPage({ config }: { config: LandingConfig }) {
 
         {status === 'success' && !modalOpen ? (
           <div className="success-state" style={{ padding: '32px 0', textAlign: 'center' }}>
-            <svg className="success-check" viewBox="0 0 52 52" fill="none" aria-label="Success" style={{ width: 60, margin: '0 auto' }}>
-              <circle cx="26" cy="26" r="24" stroke="#2ecc71" strokeWidth="3" />
-              <path d="M14 26l9 9 16-16" stroke="#2ecc71" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <div className="success-check" role="img" aria-label="Success" style={{ ['--success-check-size' as string]: '60px' }}>✓</div>
             <h1 className="success-heading" style={{ marginTop: 20 }}>You're in!</h1>
             <p className="success-body">
               {config.successBody ?? `Check your email for the ${config.magnetName}. If you don't see it, check promotions or spam.`}
             </p>
+            <button
+              type="button"
+              className="btn btn-outline-navy success-cta"
+              onClick={openCalendly}
+            >
+              Book a Free Strategy Call
+            </button>
           </div>
         ) : (
           <>
@@ -177,15 +182,15 @@ export default function LandingPage({ config }: { config: LandingConfig }) {
             {status === 'success' ? (
               <div className="modal-body">
                 <div className="success-state" style={{ padding: '8px 0' }}>
-                  <svg className="success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
-                    <circle cx="26" cy="26" r="24" stroke="#2ecc71" strokeWidth="3" />
-                    <path d="M14 26l9 9 16-16" stroke="#2ecc71" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <div className="success-check" role="img" aria-label="Success">✓</div>
                   <h3 className="success-heading">You're in!</h3>
                   <p className="success-body">
                     {config.successBody ?? `Check your email for the ${config.magnetName}. If you don't see it, check promotions or spam.`}
                   </p>
-                  <button className="btn btn-teal" style={{ marginTop: 24 }} onClick={() => setModalOpen(false)}>
+                  <button className="btn btn-outline-navy btn-full success-cta" onClick={openCalendly}>
+                    Book a Free Strategy Call
+                  </button>
+                  <button className="btn btn-teal btn-full" style={{ marginTop: 10 }} onClick={() => setModalOpen(false)}>
                     Done
                   </button>
                 </div>

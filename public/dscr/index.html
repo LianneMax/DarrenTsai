@@ -7,6 +7,8 @@
 <link rel="icon" type="image/jpeg" href="/darren.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
 <style>
   :root{
     --white:       #ffffff;
@@ -605,7 +607,12 @@
   .modal-success{display:none;text-align:center;}
   .modal-success.show{display:block;}
   .modal-form.hide{display:none;}
-  .success-check{width:56px;margin:0 auto;}
+  .success-check{
+    width:56px;height:56px;border-radius:50%;
+    background:var(--success-bg);color:var(--success);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto;font-size:26px;line-height:1;
+  }
   .success-heading{
     font-family:'Outfit', sans-serif;
     font-weight:700;
@@ -739,11 +746,23 @@
   .lf-form.hide{display:none;}
   .lf-success{display:none;text-align:center;padding:20px 0;}
   .lf-success.show{display:block;}
-  .lf-success-check{width:72px;height:72px;margin:0 auto 24px;display:block;}
+  .lf-success-check{
+    width:64px;height:64px;border-radius:50%;
+    background:#dcf1e3;color:#1e7a45;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 20px;font-size:30px;line-height:1;
+  }
   .lf-success-heading{font-family:'Outfit', sans-serif;font-size:1.5rem;font-weight:700;color:#223d55;margin:0 0 12px;}
   .lf-success-body{font-size:0.95rem;color:#6b7280;line-height:1.7;margin:0;}
+  .lf-success-cta{
+    margin-top:24px;width:100%;display:inline-flex;align-items:center;justify-content:center;
+    padding:12px 28px;border:2px solid #517686;border-radius:8px;background:transparent;color:#517686;
+    font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
+    transition:transform .2s ease,box-shadow .2s ease;
+  }
+  .lf-success-cta:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(81,118,134,0.25);}
   .lf-success-close{
-    margin-top:24px;display:inline-flex;align-items:center;justify-content:center;
+    margin-top:10px;width:100%;display:inline-flex;align-items:center;justify-content:center;
     padding:12px 28px;border:none;border-radius:8px;background:#517686;color:#ffffff;
     font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
     transition:transform .2s ease,box-shadow .2s ease;
@@ -815,7 +834,7 @@
     </a>
     <div class="site-nav-actions">
       <button type="button" id="openContactBtn" class="cta outline" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
-      <a href="https://calendly.com/realdarrentsai/15min" target="_blank" rel="noopener" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;justify-content:center;">Book a Call</a>
+      <button type="button" id="openCalendlyBtn" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;justify-content:center;">Book a Call</button>
     </div>
   </div>
 </header>
@@ -1036,13 +1055,11 @@
     </div>
     <div class="modal-success" id="modalSuccess">
       <div class="modal-body">
-        <svg class="success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
-          <circle cx="26" cy="26" r="24" stroke="#2ecc71" stroke-width="3"/>
-          <path d="M14 26l9 9 16-16" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <div class="success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="success-heading">You're all set.</h3>
         <p class="success-body">Check your email for your DSCR breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
-        <button class="cta" id="closeSuccess" style="margin-top:20px;">Done</button>
+        <button type="button" id="openSuccessCalendlyBtn" class="cta outline" style="width:100%;justify-content:center;margin-top:20px;">Book a Free Strategy Call</button>
+        <button class="cta" id="closeSuccess" style="width:100%;margin-top:10px;">Done</button>
       </div>
     </div>
   </div>
@@ -1378,6 +1395,24 @@
   $('closeSuccess').addEventListener('click', () => overlay.classList.remove('open'));
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
 
+  // ---------------------------------------------------------
+  // Calendly — official popup widget (same as main-site Nav.tsx,
+  // /fha and /realestateinvesting). widget.js is loaded in <head>;
+  // if it hasn't landed yet, fall back to a new tab.
+  // ---------------------------------------------------------
+  const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
+  function openCalendly() {
+    if (window.Calendly) {
+      window.Calendly.initPopupWidget({ url: CALENDLY_URL });
+    } else {
+      window.open(CALENDLY_URL, '_blank', 'noopener');
+    }
+  }
+  ['openCalendlyBtn', 'openSuccessCalendlyBtn'].forEach((id) => {
+    const btn = $(id);
+    if (btn) btn.addEventListener('click', openCalendly);
+  });
+
   $('submitLead').addEventListener('click', async () => {
     clearErrors();
     const name = $('mName').value.trim();
@@ -1560,12 +1595,10 @@
 
     <div class="lf-success" id="contactSuccess">
       <div class="lf-body">
-        <svg class="lf-success-check" viewBox="0 0 52 52" fill="none" aria-label="Success">
-          <circle cx="26" cy="26" r="24" stroke="#2ecc71" stroke-width="3"/>
-          <path d="M14 26l9 9 16-16" stroke="#2ecc71" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <div class="lf-success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="lf-success-heading" id="contactSuccessHeading">You're all set!</h3>
         <p class="lf-success-body">Darren will review your numbers and be in touch shortly.</p>
+        <button type="button" class="lf-success-cta" id="contactSuccessCalendly">Book a Free Strategy Call</button>
         <button type="button" class="lf-success-close" id="closeContactSuccess">Close</button>
       </div>
     </div>
@@ -1780,6 +1813,10 @@
 
   el('closeContactModal').addEventListener('click', closeContact);
   el('closeContactSuccess').addEventListener('click', closeContact);
+  el('contactSuccessCalendly').addEventListener('click', function () {
+    if (typeof openCalendly === 'function') openCalendly();
+    else window.open('https://calendly.com/realdarrentsai/15min', '_blank', 'noopener');
+  });
   overlay.addEventListener('click', function (e) { if (e.target === overlay) closeContact(); });
   window.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && overlay.classList.contains('open')) closeContact();
