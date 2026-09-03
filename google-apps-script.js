@@ -44,6 +44,21 @@
  *    in Netlify's environment variables>
  * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
  *
+ * BONZO MORTGAGE FIELDS (how the calculator numbers reach Bonzo) — verified live
+ * against the v3 API on 2026-09-04, so don't re-derive this from the docs:
+ * - Send them as FLAT TOP-LEVEL KEYS on the same POST /prospects/campaign/{id}.
+ *   Confirmed 201 with every field populated, tags and enrollment intact.
+ * - A nested `mortgage: {...}` object returns 201 and is SILENTLY DROPPED. So is
+ *   `custom_fields`, `mortgage_fields`, and any invented key (`dscr`, `dscr_ratio`).
+ *   POST /prospects/{id}/mortgage does not exist (404).
+ * - The official v3 spec (https://d11n2cytbq62hx.cloudfront.net/v3.json) documents
+ *   `mortgage` only on the RESPONSE and lists no request schema for it — the request
+ *   schemas there are incomplete (they omit `tags` too, which demonstrably works).
+ * - loan_amount / down_payment / interest_rate are NUMERIC fields: they need bare
+ *   numbers, not the "$300,000" / "7.50%" display strings the landing pages send.
+ * - This Bonzo account has NO custom fields defined, so anything without a native
+ *   Mortgage field (e.g. the DSCR ratio) has to ride in a text field.
+ *
  * FHA CALCULATOR EMAIL SETUP (sends the static fha-affordability-calculator.xlsx via
  * the Netlify function):
  * 1. Add property: NETLIFY_FHA_PDF_URL = https://realdarrentsai.com/api/send-fha-guide
@@ -179,6 +194,60 @@ function isDuplicateLead(sheet, email, phone) {
   return false;
 }
 
+// Bonzo's Mortgage-group field keys, with the types the API reports:
+//   loan_amount, down_payment, interest_rate, property_value, cash_out_amount,
+//   household_income, requested_apr  -> numeric (bare numbers only)
+//   purchase_price, credit_score, loan_type, loan_program, loan_purpose,
+//   lead_source, current_step, monthly_payment, lender, ...            -> text
+//   property_state, bankruptcy, foreclosure, working_with_agent        -> select
+// There are NO custom fields defined on this Bonzo account, so anything without a
+// native field here has to ride in one of the text fields above.
+const BONZO_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM',
+  'NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA',
+  'WV','WI','WY','PR'
+];
+
+// The landing pages send display strings ("$300,000", "7.50%", "25%"); Bonzo's
+// numeric fields need bare numbers. Returns '' when there's nothing usable.
+function bonzoNumber(value) {
+  if (value === null || value === undefined) return '';
+  const cleaned = String(value).replace(/[^0-9.]/g, '');
+  return cleaned && !isNaN(parseFloat(cleaned)) ? cleaned : '';
+}
+
+function addMortgageFields(body, data) {
+  function set(key, value) { if (value !== '' && value !== undefined && value !== null) body[key] = value; }
+
+  set('lead_source', data.magnet || '');
+  set('credit_score', bonzoNumber(data.creditScore));
+
+  const state = String(data.state || '').trim().toUpperCase();
+  if (BONZO_STATES.indexOf(state) !== -1) set('property_state', state); // select — an unlisted value would 422 the whole push
+
+  if (data.source !== 'dscr') return;
+
+  const loanAmount = bonzoNumber(data.loanAmount);
+  set('loan_amount', loanAmount);
+  set('interest_rate', bonzoNumber(data.rate));
+  set('loan_type', 'DSCR');
+  // No DSCR field exists in Bonzo; loan_program is free text and reads sensibly
+  // in the UI ("DSCR 1.14"), so campaign copy can merge it.
+  if (data.dscr) set('loan_program', 'DSCR ' + String(data.dscr).trim());
+
+  // The DSCR page sends down payment as a PERCENT ("25%") but Bonzo's down_payment
+  // is a dollar figure. Purchase price isn't sent at all — both are recoverable
+  // from the loan amount and the percent: price = loan / (1 - pct/100).
+  const loanNum = parseFloat(loanAmount) || 0;
+  const downPct = parseFloat(bonzoNumber(data.downPayment)) || 0;
+  if (loanNum > 0 && downPct > 0 && downPct < 100) {
+    const price = loanNum / (1 - downPct / 100);
+    set('purchase_price', String(Math.round(price)));
+    set('down_payment', String(Math.round(price - loanNum)));
+  }
+}
+
 function pushToBonzo(data) {
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('BONZO_API_KEY');
@@ -242,6 +311,16 @@ function pushToBonzo(data) {
     source: data.source || 'website',
     tags: tags,
   };
+
+  // Calculator output → Bonzo's Mortgage fields (the "Mortgage" tab on a prospect),
+  // so campaign copy can merge the lead's real numbers.
+  //
+  // Verified live against the v3 API (see BONZO MORTGAGE FIELDS note at the top of
+  // this file): these must be sent as FLAT TOP-LEVEL KEYS on the same campaign-
+  // enrollment POST. A nested `mortgage: {...}` object is accepted with a 201 and
+  // then silently dropped, as is any invented key like `custom_fields`. Tags and
+  // campaign enrollment are unaffected by sending these alongside.
+  addMortgageFields(body, data);
 
   try {
     Logger.log('pushToBonzo: POST ' + BONZO_BASE_URL + path + ' body=' + JSON.stringify(body));
