@@ -236,15 +236,23 @@ function addMortgageFields(body, data) {
   // in the UI ("DSCR 1.14"), so campaign copy can merge it.
   if (data.dscr) set('loan_program', 'DSCR ' + String(data.dscr).trim());
 
-  // The DSCR page sends down payment as a PERCENT ("25%") but Bonzo's down_payment
-  // is a dollar figure. Purchase price isn't sent at all — both are recoverable
-  // from the loan amount and the percent: price = loan / (1 - pct/100).
-  const loanNum = parseFloat(loanAmount) || 0;
-  const downPct = parseFloat(bonzoNumber(data.downPayment)) || 0;
-  if (loanNum > 0 && downPct > 0 && downPct < 100) {
-    const price = loanNum / (1 - downPct / 100);
-    set('purchase_price', String(Math.round(price)));
-    set('down_payment', String(Math.round(price - loanNum)));
+  // The DSCR page sends the exact dollar figures as downPaymentAmount/purchasePrice
+  // (data.downPayment is a PERCENT like "25%", which Bonzo's numeric down_payment
+  // field can't use). Older payloads predate those two fields, so fall back to
+  // recovering them from the loan amount and the percent: price = loan/(1 - pct/100).
+  const exactDown = bonzoNumber(data.downPaymentAmount);
+  const exactPrice = bonzoNumber(data.purchasePrice);
+  if (exactDown || exactPrice) {
+    set('down_payment', exactDown);
+    set('purchase_price', exactPrice);
+  } else {
+    const loanNum = parseFloat(loanAmount) || 0;
+    const downPct = parseFloat(bonzoNumber(data.downPayment)) || 0;
+    if (loanNum > 0 && downPct > 0 && downPct < 100) {
+      const price = loanNum / (1 - downPct / 100);
+      set('purchase_price', String(Math.round(price)));
+      set('down_payment', String(Math.round(price - loanNum)));
+    }
   }
 }
 

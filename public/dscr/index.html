@@ -1073,7 +1073,7 @@
   // Submissions post source:"dscr" and are written to the Dscr sheet
   // + pushed to Bonzo (tagged dscr/investor) by the Apps Script.
   // ---------------------------------------------------------
-  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbznRb2wqJ5te65RnttjWljfhlSgo_sUQz0x7BOMvwy4DZMUYQiyhMQJPtUyKZ-bbPZ2kQ/exec";
+  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbybhK2jI6UQ0PqRC4R_82rSgn93kOrJkmXQ128rP75Z5Owxn1RiuVrpAj_0tAfVUJfyVQ/exec";
 
   // Same public FRED key already shipped in the main site's Vite bundle as
   // VITE_FRED_API_KEY — FRED keys are free/low-risk and this is already
@@ -1087,6 +1087,11 @@
 
   const rentEl = $('rent'), priceEl = $('price'), taxEl = $('tax'),
         insuranceEl = $('insurance'), hoaEl = $('hoa'), dpEl = $('dp');
+
+  // Last calculated figures as raw numbers, so the opt-in payload can send
+  // exact dollar amounts instead of scraped display strings. Bonzo's Loan
+  // Amount / Down Payment / Purchase Price are numeric fields.
+  let lastCalc = { price: 0, downAmount: 0, loanAmount: 0 };
 
   const rateBuckets = [
     { min:20, max:24, rate:0.075, label:'20% down' },
@@ -1151,6 +1156,8 @@
       pill.textContent = 'Below standard qualification';
       note.textContent = "This is a common spot for investors to hear \u201cno\u201d \u2014 but it doesn't automatically mean no. Some lenders will still approve deals in this range using reserves, credit strength, or loan restructuring. This calculator can't factor those in, but a quick call can.";
     }
+
+    lastCalc = { price: price, downAmount: downAmount, loanAmount: loanAmount };
 
     $('outLoan').textContent = fmt(loanAmount);
     $('outRate').textContent = (bucket.rate*100).toFixed(2) + '%';
@@ -1442,6 +1449,11 @@
       downPayment: dpEl.value + '%',
       rate: $('outRate').textContent,
       loanAmount: $('outLoan').textContent,
+      // Exact figures for Bonzo's numeric Mortgage fields. The four above are
+      // display strings kept as-is because the Sheet columns and the PDF cover
+      // already render them that way.
+      downPaymentAmount: Math.round(lastCalc.downAmount),
+      purchasePrice: Math.round(lastCalc.price),
       timestamp: new Date().toISOString(),
     };
 
