@@ -1088,10 +1088,15 @@
   const rentEl = $('rent'), priceEl = $('price'), taxEl = $('tax'),
         insuranceEl = $('insurance'), hoaEl = $('hoa'), dpEl = $('dp');
 
-  // Last calculated figures as raw numbers, so the opt-in payload can send
-  // exact dollar amounts instead of scraped display strings. Bonzo's Loan
-  // Amount / Down Payment / Purchase Price are numeric fields.
-  let lastCalc = { price: 0, downAmount: 0, loanAmount: 0 };
+  // Last calculated scenario as raw numbers, so the opt-in payload can send
+  // exact figures instead of scraped display strings (Bonzo's Loan Amount /
+  // Down Payment / Purchase Price are numeric fields) and can carry the
+  // calculator INPUTS, not just the outputs Darren would otherwise have to
+  // reverse-engineer from the ratio.
+  let lastCalc = {
+    price: 0, downAmount: 0, loanAmount: 0,
+    rent: 0, tax: 0, insurance: 0, hoa: 0, pi: 0, pitia: 0,
+  };
 
   const rateBuckets = [
     { min:20, max:24, rate:0.075, label:'20% down' },
@@ -1157,7 +1162,11 @@
       note.textContent = "This is a common spot for investors to hear \u201cno\u201d \u2014 but it doesn't automatically mean no. Some lenders will still approve deals in this range using reserves, credit strength, or loan restructuring. This calculator can't factor those in, but a quick call can.";
     }
 
-    lastCalc = { price: price, downAmount: downAmount, loanAmount: loanAmount };
+    lastCalc = {
+      price: price, downAmount: downAmount, loanAmount: loanAmount,
+      rent: rent, tax: tax, insurance: insurance, hoa: hoa,
+      pi: pi, pitia: pitia,
+    };
 
     $('outLoan').textContent = fmt(loanAmount);
     $('outRate').textContent = (bucket.rate*100).toFixed(2) + '%';
@@ -1454,6 +1463,14 @@
       // already render them that way.
       downPaymentAmount: Math.round(lastCalc.downAmount),
       purchasePrice: Math.round(lastCalc.price),
+      // The calculator inputs themselves, so Darren can see the scenario the
+      // lead actually built rather than just the ratio it produced.
+      monthlyRent: Math.round(lastCalc.rent),
+      annualTax: Math.round(lastCalc.tax),
+      annualInsurance: Math.round(lastCalc.insurance),
+      monthlyHoa: Math.round(lastCalc.hoa),
+      monthlyPI: Math.round(lastCalc.pi),
+      monthlyPitia: Math.round(lastCalc.pitia),
       timestamp: new Date().toISOString(),
     };
 

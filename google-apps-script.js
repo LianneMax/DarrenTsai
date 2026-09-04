@@ -232,6 +232,11 @@ function addMortgageFields(body, data) {
   set('loan_amount', loanAmount);
   set('interest_rate', bonzoNumber(data.rate));
   set('loan_type', 'DSCR');
+  // Calculator inputs/outputs that have a native Bonzo home. Annual tax,
+  // annual insurance and monthly HOA have none, so they ride in the pinned
+  // scenario note instead — see dscrScenarioNote().
+  set('monthly_payment', bonzoNumber(data.monthlyPitia)); // Bonzo: "Estimated Monthly Payment"
+  set('monthly_income', bonzoNumber(data.monthlyRent));   // the property's market rent
   // No DSCR field exists in Bonzo; loan_program is free text and reads sensibly
   // in the UI ("DSCR 1.14"), so campaign copy can merge it.
   if (data.dscr) set('loan_program', 'DSCR ' + String(data.dscr).trim());
@@ -253,6 +258,61 @@ function addMortgageFields(body, data) {
       set('purchase_price', String(Math.round(price)));
       set('down_payment', String(Math.round(price - loanNum)));
     }
+  }
+}
+
+// The full DSCR scenario as a pinned note. Bonzo has no fields for annual tax,
+// annual insurance or monthly HOA, and those three are exactly what decides
+// whether a deal pencils — so rather than drop them, they go on the record as
+// text Darren reads before the call. Returns '' when there's nothing to say.
+function dscrScenarioNote(data) {
+  if (data.source !== 'dscr') return '';
+  const money = function (v) {
+    const n = parseFloat(bonzoNumber(v));
+    return isNaN(n) ? null : '$' + Math.round(n).toLocaleString('en-US');
+  };
+  const lines = [];
+  const rent = money(data.monthlyRent);
+  const price = money(data.purchasePrice);
+  const tax = money(data.annualTax);
+  const ins = money(data.annualInsurance);
+  const hoa = money(data.monthlyHoa);
+  const pi = money(data.monthlyPI);
+  const pitia = money(data.monthlyPitia);
+
+  if (rent) lines.push('Monthly market rent: ' + rent);
+  if (price) lines.push('Purchase price: ' + price);
+  if (data.downPayment) lines.push('Down payment: ' + data.downPayment + (money(data.downPaymentAmount) ? ' (' + money(data.downPaymentAmount) + ')' : ''));
+  if (tax) lines.push('Annual property tax: ' + tax);
+  if (ins) lines.push('Annual insurance: ' + ins);
+  if (hoa) lines.push('Monthly HOA: ' + hoa);
+  // No "&" anywhere in the note — Bonzo HTML-escapes note content, so "P&I"
+  // comes back as "P&amp;I" and may render that way.
+  if (pi) lines.push('Monthly principal + interest: ' + pi);
+  if (pitia) lines.push('Monthly PITIA: ' + pitia);
+  if (!lines.length) return '';
+
+  return 'DSCR calculator scenario (self-reported by the lead, not verified):\n\n'
+    + lines.join('\n')
+    + (data.dscr ? '\n\nResulting DSCR: ' + String(data.dscr).trim() : '');
+}
+
+// Posts the scenario note onto a freshly created prospect. Never throws — the
+// lead is already in Sheets and Bonzo by this point, so a failed note must not
+// surface as an error.
+function postBonzoNote(prospectId, content, token) {
+  if (!prospectId || !content) return;
+  try {
+    const resp = UrlFetchApp.fetch(BONZO_BASE_URL + '/prospects/' + prospectId + '/notes', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({ content: content, is_pinned: true }),
+      muteHttpExceptions: true,
+    });
+    Logger.log('postBonzoNote: response ' + resp.getResponseCode());
+  } catch (err) {
+    Logger.log('postBonzoNote: threw ' + err.toString());
   }
 }
 
@@ -340,6 +400,16 @@ function pushToBonzo(data) {
       muteHttpExceptions: true, // don't let a Bonzo error break the Sheets write
     });
     Logger.log('pushToBonzo: response ' + resp.getResponseCode() + ' ' + resp.getContentText());
+
+    // Attach the full scenario as a pinned note (DSCR only). Best-effort: the
+    // prospect is already created, so a missing id or a failed note is logged
+    // and ignored rather than retried.
+    const note = dscrScenarioNote(data);
+    if (note) {
+      let prospectId = null;
+      try { prospectId = JSON.parse(resp.getContentText()).data.id; } catch (e) {}
+      postBonzoNote(prospectId, note, token);
+    }
   } catch (err) {
     Logger.log('pushToBonzo: threw ' + err.toString());
     // swallow — lead is already safe in Sheets even if Bonzo push fails
