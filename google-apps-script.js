@@ -286,9 +286,10 @@ function dscrScenarioNote(data) {
   if (tax) lines.push('Annual property tax: ' + tax);
   if (ins) lines.push('Annual insurance: ' + ins);
   if (hoa) lines.push('Monthly HOA: ' + hoa);
-  // No "&" anywhere in the note — Bonzo HTML-escapes note content, so "P&I"
-  // comes back as "P&amp;I" and may render that way.
-  if (pi) lines.push('Monthly principal + interest: ' + pi);
+  // Plain words only — Bonzo HTML-escapes note content, and it escapes more than
+  // the obvious: "&" became "&amp;" and "+" became "&#43;", both verified live.
+  // Stick to letters, digits, "$", "%", ":" and "." here.
+  if (pi) lines.push('Monthly principal and interest: ' + pi);
   if (pitia) lines.push('Monthly PITIA: ' + pitia);
   if (!lines.length) return '';
 
