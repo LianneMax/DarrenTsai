@@ -293,15 +293,42 @@ const CLICK_ID_NETWORKS = {
   gclid: 'ads:google', gbraid: 'ads:google', wbraid: 'ads:google',
   msclkid: 'ads:bing', fbclid: 'ads:meta'
 };
+/**
+ * The touch a lead is credited to. Normally the latest visit; but when the
+ * credit falls back to a first-touch ad click, source and campaign must come
+ * from that SAME first touch. Mixing them tagged a paid lead as both
+ * ads:google and utm:youtube-com, i.e. two origins at once.
+ */
+function effectiveTouch(data) {
+  const fromFirst = !data.clickIdType && !data.clickId && !!(data.firstClickId || data.firstClickIdType);
+  if (fromFirst) {
+    return {
+      fromFirst: true,
+      source: data.firstUtmSource || '',
+      campaign: data.firstUtmCampaign || '',
+      content: '', // attribution.js does not send first-touch utm_content
+    };
+  }
+  return {
+    fromFirst: false,
+    source: data.utm_source || '',
+    campaign: data.utm_campaign || '',
+    content: data.utm_content || '',
+  };
+}
+
 function attributionTags(data) {
   const tags = [];
-  // Falls back to the first touch, so an ad-originated lead whose last visit
-  // was organic still gets tagged ads:google rather than being filed as
-  // organic YouTube or search.
+  const touch = effectiveTouch(data);
   const network = CLICK_ID_NETWORKS[effectiveClickIdType(data)];
   if (network) tags.push(network);
-  if (data.utm_source) tags.push('utm:' + bonzoTag(data.utm_source));
-  if (data.utm_campaign) tags.push('campaign:' + bonzoTag(data.utm_campaign));
+  if (touch.source) tags.push('utm:' + bonzoTag(touch.source));
+  if (touch.campaign) tags.push('campaign:' + bonzoTag(touch.campaign));
+  // The latest visit is still worth knowing when it differs from the credited
+  // touch, but under its own prefix so it can't be read as the origin.
+  if (touch.fromFirst && data.utm_source && bonzoTag(data.utm_source) !== bonzoTag(touch.source)) {
+    tags.push('last:' + bonzoTag(data.utm_source));
+  }
   if (!tags.length) tags.push('attr:none');
   return tags;
 }
@@ -498,7 +525,8 @@ function pushToBonzo(data) {
   // Do NOT reuse lead_source (holds the magnet) or loan_program (DSCR ratio).
   const clickId = effectiveClickId(data);
   if (clickId) body.lead_id = clickId;
-  const campaignLabel = [data.utm_campaign, data.utm_content].filter(function (v) { return !!v; }).join(' / ');
+  const credited = effectiveTouch(data);
+  const campaignLabel = [credited.campaign, credited.content].filter(function (v) { return !!v; }).join(' / ');
   if (campaignLabel) body.current_step = campaignLabel;
 
   try {

@@ -29,6 +29,7 @@ type Gas = {
   isLicensedState: (s: string) => boolean;
   addMortgageFields: (body: Record<string, unknown>, d: Record<string, unknown>) => void;
   attributionTags: (d: Record<string, unknown>) => string[];
+  effectiveTouch: (d: Record<string, unknown>) => { fromFirst: boolean; source: string; campaign: string; content: string };
   effectiveClickId: (d: Record<string, unknown>) => string;
   effectiveClickIdType: (d: Record<string, unknown>) => string;
 };
@@ -38,7 +39,7 @@ function loadGas(): Gas {
   const names = [
     'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
     'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'isDuplicateLead', 'ensureHeaders',
-    'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags',
+    'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
     'effectiveClickId', 'effectiveClickIdType',
   ];
   const stubs = `
@@ -278,6 +279,28 @@ describe('first-touch fallback for returning visitors', () => {
     const tags = gas.attributionTags(returningVisitor);
     expect(tags).toContain('ads:google');
     expect(tags).not.toContain('attr:none');
+  });
+
+  it('takes source and campaign from the same touch as the click, so tags never name two origins', () => {
+    const tags = gas.attributionTags(returningVisitor);
+    expect(tags).toContain('utm:google');
+    expect(tags).toContain('campaign:heloc-q4');
+    expect(tags).not.toContain('utm:youtube-com');
+  });
+
+  it('keeps the latest visit under its own last: prefix', () => {
+    expect(gas.attributionTags(returningVisitor)).toContain('last:youtube-com');
+  });
+
+  it('uses the latest touch, with no last: tag, when the latest visit has the click', () => {
+    const clickedAgain = { ...returningVisitor, clickId: 'NEWER_GCLID', clickIdType: 'gclid', utm_source: 'google', utm_campaign: 'dscr' };
+    const tags = gas.attributionTags(clickedAgain);
+    expect(tags).toContain('campaign:dscr');
+    expect(tags.some((t) => t.startsWith('last:'))).toBe(false);
+  });
+
+  it('credits the first-touch campaign in current_step too', () => {
+    expect(gas.effectiveTouch(returningVisitor)).toMatchObject({ fromFirst: true, campaign: 'heloc-q4' });
   });
 
   it('prefers the most recent click id when there is one', () => {
