@@ -34,9 +34,16 @@ import type { Config, Context } from "@netlify/functions";
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
 const ALERT_TO = "darren@realdarrentsai.com";
 
-// Apps Script cold starts run 3-5s; Netlify synchronous functions are capped at
-// 10s. 8s leaves room to still send the rescue email before we're killed.
-const UPSTREAM_TIMEOUT_MS = 8000;
+// Netlify synchronous functions are killed at 10s, and the rescue email below
+// needs roughly 300ms, so this is the most we can wait and still report.
+//
+// Measured against production on 17 Sep, after the slow work moved to the
+// follow-up queue: 3.7-3.9s warm, 6.2s cold. 8s left barely a second of margin
+// on a cold start, and this site is cold often. Exceeding it is no longer
+// harmful (the lead still saves and the alert says STATUS UNKNOWN), but it
+// still shows the visitor an error for a lead that worked, so it is worth
+// avoiding.
+const UPSTREAM_TIMEOUT_MS = 9000;
 
 const ALLOWED_HOSTS = ["realdarrentsai.com", "www.realdarrentsai.com"];
 
