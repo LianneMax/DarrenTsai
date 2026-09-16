@@ -691,10 +691,8 @@ function alertFailure(subjectDetail, rawPayload) {
 
 function doPost(e) {
   let raw = '{}';
-  // Only the sheet write is serialised. pushToBonzo plus the three guide calls
-  // are four sequential UrlFetchApp round trips; holding the lock across them
-  // would queue concurrent submissions behind 5-10s of HTTP and time out the
-  // /api/lead proxy that now waits on this response.
+  // Only the sheet write and the follow-up enqueue are serialised; no HTTP
+  // happens inside doPost any more (see processFollowUps).
   const lock = LockService.getScriptLock();
   try {
     raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
@@ -773,12 +771,15 @@ function doPost(e) {
       ].concat(attrRow(data)));
     }
 
-    lock.releaseLock();
+    // Queue the slow work instead of doing it here. pushToBonzo plus the guide
+    // calls (one of which renders a PDF) routinely ran past the /api/lead
+    // proxy's 8s budget: the lead saved, but the visitor was told it failed and
+    // Darren got a false "LEAD NOT SAVED" alert. Replying as soon as the row is
+    // written keeps this response fast; processFollowUps does the rest within
+    // about a minute.
+    enqueueFollowUp(ss, data, raw);
 
-    pushToBonzo(data);
-    sendDscrGuide(ss, data);
-    sendReiGuide(ss, data);
-    sendFhaGuide(ss, data);
+    lock.releaseLock();
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))
@@ -795,6 +796,98 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (e) { /* already released on the happy path */ }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Follow-up queue: Bonzo push and guide emails, run by a time-driven trigger.
+// Setup (once): run installFollowUpTrigger() from the Apps Script editor.
+// ---------------------------------------------------------------------------
+const FOLLOWUP_TAB = 'Follow-ups';
+const FOLLOWUP_HEADERS = ['Queued At', 'Status', 'Processed At', 'Error', 'Source', 'Email', 'Payload'];
+const FOLLOWUP_COL = { status: 2, processedAt: 3, error: 4, payload: 7 };
+const FOLLOWUP_MAX_RUN_MS = 4 * 60 * 1000; // stay well inside the 6 min execution cap
+const FOLLOWUP_RUNNING_KEY = 'followups_running';
+
+function enqueueFollowUp(ss, data, raw) {
+  const sheet = getOrCreateSheet(ss, FOLLOWUP_TAB, FOLLOWUP_HEADERS);
+  sheet.appendRow([
+    new Date().toISOString(), 'pending', '', '', data.source || '', data.email || '', raw
+  ]);
+}
+
+// Sheet writes are serialised against doPost, but only one write at a time.
+// The script lock must NOT be held across the HTTP below: doPost waits on that
+// same lock for 20s, so holding it for a multi-minute batch would fail exactly
+// the live submissions this queue exists to protect.
+function withSheetLock(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+/**
+ * Runs every minute. Each queued lead is attempted exactly once: pushToBonzo
+ * and the guide senders already catch and log their own HTTP failures, and
+ * retrying a half-finished item would create duplicate Bonzo prospects or send
+ * a second guide. Anything that throws is marked 'error' and alerted with its
+ * payload for manual recovery; the Sheet row is already safe either way.
+ *
+ * Overlapping runs are prevented with a self-expiring cache key rather than the
+ * script lock, so a crashed run heals itself after the TTL instead of wedging
+ * the queue, and doPost is never blocked behind this.
+ */
+function processFollowUps() {
+  const cache = CacheService.getScriptCache();
+  if (cache.get(FOLLOWUP_RUNNING_KEY)) return; // a previous run is still going
+  cache.put(FOLLOWUP_RUNNING_KEY, '1', 300);
+
+  const started = Date.now();
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(FOLLOWUP_TAB);
+    if (!sheet || sheet.getLastRow() < 2) return;
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FOLLOWUP_HEADERS.length).getValues();
+
+    for (let i = 0; i < rows.length; i++) {
+      if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
+      if (rows[i][FOLLOWUP_COL.status - 1] !== 'pending') continue;
+      const rowNum = i + 2;
+
+      // Claim the row before any HTTP, so a crash mid-item can't re-run it.
+      withSheetLock(function () {
+        sheet.getRange(rowNum, FOLLOWUP_COL.status).setValue('processing');
+        SpreadsheetApp.flush();
+      });
+
+      const raw = String(rows[i][FOLLOWUP_COL.payload - 1] || '{}');
+      try {
+        const data = JSON.parse(raw);
+        // No lock held here: this is seconds of HTTP, including a PDF render.
+        pushToBonzo(data);
+        sendDscrGuide(ss, data);
+        sendReiGuide(ss, data);
+        sendFhaGuide(ss, data);
+        withSheetLock(function () {
+          sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['done', new Date().toISOString(), '']]);
+        });
+      } catch (err) {
+        withSheetLock(function () {
+          sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['error', new Date().toISOString(), err.toString()]]);
+        });
+        alertFailure('follow-up threw (Sheet row IS saved; Bonzo/guide may not have run): ' + err.toString(), raw);
+      }
+    }
+  } finally {
+    try { cache.remove(FOLLOWUP_RUNNING_KEY); } catch (e) { /* TTL will clear it */ }
+  }
+}
+
+/** Run once by hand. Replaces any existing processFollowUps trigger. */
+function installFollowUpTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'processFollowUps') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('processFollowUps').timeBased().everyMinutes(1).create();
 }
 
 function doGet() {

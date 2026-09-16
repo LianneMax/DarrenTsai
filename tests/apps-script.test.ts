@@ -29,6 +29,7 @@ type Gas = {
   isLicensedState: (s: string) => boolean;
   addMortgageFields: (body: Record<string, unknown>, d: Record<string, unknown>) => void;
   attributionTags: (d: Record<string, unknown>) => string[];
+  FOLLOWUP_HEADERS: string[];
   effectiveTouch: (d: Record<string, unknown>) => { fromFirst: boolean; source: string; campaign: string; content: string };
   effectiveClickId: (d: Record<string, unknown>) => string;
   effectiveClickIdType: (d: Record<string, unknown>) => string;
@@ -40,7 +41,7 @@ function loadGas(): Gas {
     'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
     'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'isDuplicateLead', 'ensureHeaders',
     'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
-    'effectiveClickId', 'effectiveClickIdType',
+    'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
   ];
   const stubs = `
     var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
@@ -49,7 +50,8 @@ function loadGas(): Gas {
     var Logger = { log: function(){} };
     var MailApp = { sendEmail: function(){} };
     var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){} }; } };
-    var LockService = { getScriptLock: function(){ return { waitLock: function(){}, releaseLock: function(){} }; } };
+    var LockService = { getScriptLock: function(){ return { waitLock: function(){}, tryLock: function(){ return true; }, releaseLock: function(){} }; } };
+    var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; } }; } }; } };
     var ContentService = { createTextOutput: function(){ return { setMimeType: function(){ return {}; } }; }, MimeType: { JSON: 'json' } };
   `;
   const factory = new Function(`${stubs}\n${SOURCE}\nreturn { ${names.join(', ')} };`);
@@ -390,5 +392,66 @@ describe('existing behaviour preserved', () => {
       expect(gas.isLicensedState(s)).toBe(true);
     }
     expect(gas.isLicensedState('MO')).toBe(false);
+  });
+});
+
+/**
+ * doPost must not make any HTTP call. Bonzo plus the guide senders (one renders
+ * a PDF) ran past the proxy's 8s budget in production on 16 Sep: the lead saved,
+ * but the visitor saw an error and Darren got a false NOT SAVED alert.
+ */
+describe('doPost replies before the slow follow-ups', () => {
+  const body = () => {
+    const start = SOURCE.indexOf('function doPost');
+    return SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+  };
+  const processFollowUps = () => {
+    const start = SOURCE.indexOf('function processFollowUps');
+    return SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+  };
+
+  it('does not call Bonzo or any guide sender inline', () => {
+    const src = body();
+    for (const fn of ['pushToBonzo(', 'sendDscrGuide(', 'sendReiGuide(', 'sendFhaGuide(', 'UrlFetchApp.fetch(']) {
+      expect(src, `${fn} runs inside doPost and will blow the proxy timeout`).not.toContain(fn);
+    }
+  });
+
+  it('queues the follow-up before replying', () => {
+    const src = body();
+    expect(src).toContain('enqueueFollowUp(');
+    expect(src.indexOf('enqueueFollowUp(')).toBeLessThan(src.indexOf('success: true'));
+  });
+
+  it('processFollowUps still runs every step the old inline path did', () => {
+    const src = processFollowUps();
+    for (const fn of ['pushToBonzo(', 'sendDscrGuide(', 'sendReiGuide(', 'sendFhaGuide(']) {
+      expect(src).toContain(fn);
+    }
+  });
+
+  it('claims a row before doing HTTP, so a crashed run cannot send twice', () => {
+    const src = processFollowUps();
+    expect(src.indexOf("'processing'")).toBeLessThan(src.indexOf('pushToBonzo('));
+  });
+
+  /**
+   * The queue must never hold the script lock across its HTTP. doPost waits on
+   * that same lock for 20s, so a multi-minute batch holding it would fail the
+   * live submissions this queue exists to protect.
+   */
+  it('does not hold the script lock across the HTTP calls', () => {
+    const src = processFollowUps();
+    expect(src).not.toMatch(/getScriptLock\(\)/);
+    expect(src, 'overlap guard should be the self-expiring cache key, not the script lock')
+      .toContain('FOLLOWUP_RUNNING_KEY');
+  });
+
+  it('serialises each sheet write against doPost via withSheetLock', () => {
+    expect(processFollowUps()).toContain('withSheetLock(');
+  });
+
+  it('keeps the payload as the last follow-up column', () => {
+    expect(gas.FOLLOWUP_HEADERS[gas.FOLLOWUP_HEADERS.length - 1]).toBe('Payload');
   });
 });

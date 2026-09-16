@@ -69,7 +69,10 @@ function originAllowed(req: Request): boolean {
  * Darren so it is still recoverable by hand. Never throws — a failure here must
  * not mask the original failure we are reporting.
  */
-async function rescueEmail(reason: string, payload: string) {
+// A timeout is not a failed write: Apps Script keeps running after we stop
+// waiting, so the lead has very likely been saved. Saying "NOT SAVED" there sent
+// Darren a false alarm and invited a duplicate hand-entry.
+async function rescueEmail(reason: string, payload: string, uncertain = false) {
   const resendKey = Netlify.env.get("RESEND_API_KEY");
   if (!resendKey) {
     console.error("no RESEND_API_KEY, lead could not be rescued", reason);
@@ -85,10 +88,15 @@ async function rescueEmail(reason: string, payload: string) {
       body: JSON.stringify({
         from: FROM,
         to: [ALERT_TO],
-        subject: "LEAD NOT SAVED — recover this by hand",
-        text:
-          `A lead submitted on realdarrentsai.com could not be written to Sheets or Bonzo.\n\n` +
-          `Reason: ${reason}\n\nRaw submission:\n${payload}\n`,
+        subject: uncertain
+          ? "LEAD STATUS UNKNOWN — check the Sheet before re-entering"
+          : "LEAD NOT SAVED — recover this by hand",
+        text: uncertain
+          ? `A lead submitted on realdarrentsai.com timed out before Apps Script confirmed it.\n` +
+            `It is probably saved: check the Sheet for this email before entering it by hand, to avoid a duplicate.\n\n` +
+            `Reason: ${reason}\n\nRaw submission:\n${payload}\n`
+          : `A lead submitted on realdarrentsai.com could not be written to Sheets or Bonzo.\n\n` +
+            `Reason: ${reason}\n\nRaw submission:\n${payload}\n`,
       }),
     });
   } catch (err) {
@@ -175,10 +183,12 @@ export default async (req: Request, _context: Context) => {
 
     return jsonResponse(200, { ok: true });
   } catch (err) {
-    const reason = timer.aborted
+    const name = (err as { name?: string } | null)?.name;
+    const timedOut = timer.aborted || name === "TimeoutError" || name === "AbortError";
+    const reason = timedOut
       ? `Timed out after ${UPSTREAM_TIMEOUT_MS}ms`
       : `Request failed: ${String(err)}`;
-    await rescueEmail(reason, raw);
+    await rescueEmail(reason, raw, timedOut);
     return jsonResponse(502, { ok: false, error: "upstream unreachable" });
   }
 };

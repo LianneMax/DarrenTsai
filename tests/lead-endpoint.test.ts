@@ -227,6 +227,17 @@ describe('failure paths — a lead must never be lost silently', () => {
     expect(body.subject).toMatch(/LEAD NOT SAVED/);
   });
 
+  it('flags a timeout as status unknown, not NOT SAVED, since Apps Script keeps running', async () => {
+    responses = [Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })];
+    const res = await handler(req(LEAD), ctx);
+    expect(res.status).toBe(502);
+    const rescue = calls.find((c) => c.url.includes('api.resend.com'))!;
+    const body = JSON.parse(rescue.init.body as string);
+    expect(body.subject).toMatch(/STATUS UNKNOWN/);
+    expect(body.subject).not.toMatch(/NOT SAVED/);
+    expect(body.text).toContain('jane@example.com');
+  });
+
   it('still returns 502 when the rescue email itself cannot be sent', async () => {
     // No RESEND_API_KEY: the visitor must still be told it failed rather than
     // being shown a success state.

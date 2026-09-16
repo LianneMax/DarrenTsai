@@ -1380,7 +1380,20 @@
     } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Send Me The Case Study';
-      alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
+      // Inline, not a native dialog box: that freezes the page, and after a
+      // server-side failure the lead has already been emailed to Darren, so
+      // the visitor must not be pushed to resubmit and create a duplicate.
+      var errEl = btn.parentNode.querySelector('.submit-error');
+      if (!errEl) {
+        errEl = document.createElement('p');
+        errEl.className = 'submit-error';
+        errEl.setAttribute('role', 'alert');
+        errEl.style.cssText = 'color:#b42318;font-size:14px;line-height:1.4;margin:10px 0 0;text-align:center;';
+        btn.insertAdjacentElement('afterend', errEl);
+      }
+      errEl.textContent = (typeof res !== 'undefined' && res)
+        ? "We couldn't confirm your request, but your details were passed to Darren and he'll be in touch. No need to submit again. Questions? Call (714) 887-5432."
+        : "We couldn't reach our server. Check your connection and try again, or call (714) 887-5432.";
     }
   });
 
@@ -2025,7 +2038,20 @@
     } catch (err) {
       btn.disabled = false;
       btn.innerHTML = SUBMIT_LABEL;
-      alert('Something went wrong. Please try again or email darren@realdarrentsai.com.');
+      // Inline, not a native dialog box: that freezes the page, and after a
+      // server-side failure the lead has already been emailed to Darren, so
+      // the visitor must not be pushed to resubmit and create a duplicate.
+      var errEl = btn.parentNode.querySelector('.submit-error');
+      if (!errEl) {
+        errEl = document.createElement('p');
+        errEl.className = 'submit-error';
+        errEl.setAttribute('role', 'alert');
+        errEl.style.cssText = 'color:#b42318;font-size:14px;line-height:1.4;margin:10px 0 0;text-align:center;';
+        btn.insertAdjacentElement('afterend', errEl);
+      }
+      errEl.textContent = (typeof res !== 'undefined' && res)
+        ? "We couldn't confirm your request, but your details were passed to Darren and he'll be in touch. No need to submit again. Questions? Call (714) 887-5432."
+        : "We couldn't reach our server. Check your connection and try again, or call (714) 887-5432.";
     }
   });
 })();
