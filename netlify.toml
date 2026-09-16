@@ -2,7 +2,45 @@
   command = "npm run build"
   publish = "dist"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# NOTE ON ROUTING
+# There used to be a catch-all `/* -> /index.html 200` here for SPA routing.
+# The app has no router, so it did nothing useful and actively hurt: every
+# unknown URL returned the homepage with a 200, which meant scanner probes and
+# dead links looked like successful pageviews, real 404s were invisible in
+# analytics, and a mistyped Google Ads final URL would silently land on the
+# homepage and still pass Ads' landing page checks. Netlify now serves
+# public/404.html with a real 404 for unmatched paths.
+#
+# Netlify functions declare their own routes via `export const config.path`
+# (see netlify/functions/*.mts), so /api/* resolves without a redirect here.
+
+# Hashed asset filenames change whenever content changes, so they can be cached
+# forever. This is the single cheapest repeat-visit win available.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The landing pages are edited by hand and are ad destinations, so they must not
+# go stale, but they should still revalidate cheaply rather than refetch.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/attribution.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"

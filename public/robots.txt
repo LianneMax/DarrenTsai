@@ -1,0 +1,11 @@
+# realdarrentsai.com
+# Crawlers requested this file 636 times in a single month and were served the
+# homepage instead, because the SPA catch-all answered every unknown path.
+
+User-agent: *
+Allow: /
+
+# Nothing here is private, but these are noise in crawl reports.
+Disallow: /api/
+
+Sitemap: https://realdarrentsai.com/sitemap.xml
