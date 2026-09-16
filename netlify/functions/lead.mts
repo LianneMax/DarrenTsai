@@ -100,9 +100,17 @@ export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
   if (!originAllowed(req)) return jsonResponse(403, { error: "forbidden" });
 
-  const upstream = Netlify.env.get("APPS_SCRIPT_WEBHOOK_URL");
+  // Accepts both spellings. The canonical name is APPS_SCRIPT_WEBHOOK_URL
+  // (Google's product is "Apps Script"), but APP_SCRIPT_WEBHOOK_URL is what is
+  // currently set in Netlify. Reading both means a rename in either direction
+  // cannot take every form on the site down, which is worth more than
+  // insisting on one spelling.
+  const upstream =
+    Netlify.env.get("APPS_SCRIPT_WEBHOOK_URL") ?? Netlify.env.get("APP_SCRIPT_WEBHOOK_URL");
   if (!upstream) {
-    console.error("APPS_SCRIPT_WEBHOOK_URL is not configured");
+    console.error(
+      "Neither APPS_SCRIPT_WEBHOOK_URL nor APP_SCRIPT_WEBHOOK_URL is set; leads cannot be forwarded",
+    );
     return jsonResponse(500, { error: "lead endpoint not configured" });
   }
 

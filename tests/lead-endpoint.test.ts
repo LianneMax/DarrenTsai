@@ -146,6 +146,21 @@ describe('configuration', () => {
     expect(res.status).toBe(500);
     expect(upstreamCalled()).toBe(false);
   });
+
+  // Production had APP_SCRIPT_WEBHOOK_URL set while the code read
+  // APPS_SCRIPT_WEBHOOK_URL, which took every form on the site down with a 500.
+  // Both spellings are accepted so a rename cannot repeat that.
+  it.each(['APPS_SCRIPT_WEBHOOK_URL', 'APP_SCRIPT_WEBHOOK_URL'])(
+    'reads the upstream URL from %s',
+    async (varName) => {
+      vi.stubGlobal('Netlify', {
+        env: { get: (k: string) => (k === varName ? UPSTREAM : k === 'RESEND_API_KEY' ? 're_test' : undefined) },
+      });
+      const res = await handler(req(LEAD), ctx);
+      expect(res.status).toBe(200);
+      expect(upstreamCalled()).toBe(true);
+    },
+  );
 });
 
 describe('the happy path', () => {
