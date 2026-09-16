@@ -9,7 +9,9 @@ export default function Footer() {
           <div className="footer-left">
             <div className="footer-brand">
               <img
-                src="/darren.jpg"
+                src="/darren-avatar.png"
+                width={72}
+                height={72}
                 alt="Darren Tsai"
                 style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
               />

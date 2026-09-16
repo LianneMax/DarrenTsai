@@ -75,7 +75,9 @@ export default function Nav({ onOpenContact }: Props) {
           <a href="#" className="nav-logo" aria-label="Darren Tsai Home">
             <div className="nav-avatar">
               <img
-                src="/darren.jpg"
+                src="/darren-avatar.png"
+                width={72}
+                height={72}
                 alt=""
                 className="nav-avatar-img"
                 onError={(e) => {
