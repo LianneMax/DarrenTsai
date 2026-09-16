@@ -134,6 +134,34 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
     expect(row.length).toBe(gas.ATTR_HEADERS.length);
     for (const cell of row) expect(cell).toBe('');
   });
+
+  /**
+   * doPost builds some rows inline rather than through SOURCE_SCHEMAS, so the
+   * length-parity tests above cannot see them. This caught a real bug: the
+   * Qualify branch kept writing 12 values after QUALIFY_HEADERS grew to 23,
+   * which would have left attribution permanently blank on that tab.
+   *
+   * Source-level rather than behavioural because those rows are literals inside
+   * doPost with no seam to call.
+   */
+  it('every inline appendRow in doPost writes the attribution columns', () => {
+    const doPost = SOURCE.slice(SOURCE.indexOf('function doPost'));
+    const branches = [...doPost.matchAll(/getOrCreateSheet\(ss, '([^']+)', (\w+)\)/g)];
+    expect(branches.length).toBeGreaterThan(0);
+
+    for (const [, tabName, headersConst] of branches) {
+      // Newsletter deliberately has no attribution columns.
+      if (headersConst === 'NEWSLETTER_HEADERS') continue;
+
+      const after = doPost.slice(doPost.indexOf(`getOrCreateSheet(ss, '${tabName}'`));
+      const upToNextBranch = after.slice(0, after.indexOf('getOrCreateSheet', 10) + 1 || after.length);
+      expect(
+        upToNextBranch.includes('concat(attrRow(data))') || upToNextBranch.includes('schema.row(data)'),
+        `the "${tabName}" branch writes a row without concat(attrRow(data)), so its ` +
+        `${headersConst} attribution columns would stay blank`,
+      ).toBe(true);
+    }
+  });
 });
 
 describe('ensureHeaders', () => {

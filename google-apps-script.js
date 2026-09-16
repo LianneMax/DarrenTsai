@@ -677,7 +677,7 @@ function doPost(e) {
         data.employment  || '',
         data.notes       || '',
         'QualifyForm'
-      ]);
+      ].concat(attrRow(data)));
     } else if (data.source === 'DebtConsolidation') {
       const sheet = getOrCreateSheet(ss, 'Debt Consolidation', DEBT_CONSOLIDATION_HEADERS);
       sheet.appendRow([

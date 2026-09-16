@@ -2084,7 +2084,10 @@
       // Same-origin proxy, so the status is readable. The old no-cors post made
       // a 500 look identical to success, which is why this page could report a
       // lead it never actually saved.
-      var res = await fetch(LEAD_ENDPOINT, {
+      // Literal, not the host page's LEAD_ENDPOINT: this modal is copied
+      // verbatim across the landing pages and must not depend on anything
+      // the host happens to declare.
+      var res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
