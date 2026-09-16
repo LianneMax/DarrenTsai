@@ -2,14 +2,13 @@ import { useState, useEffect, type MouseEvent } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import { GOOGLE_SHEET_WEBHOOK_URL, FRED_API_KEY } from '../config';
+import { LEAD_ENDPOINT, FRED_API_KEY, EMAIL } from '../config';
+import { getAttribution, track } from '../utils/attribution';
+import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
 
 const emailSchema = z.string().email();
-
-// Calendly URL — matches the one used across the site
-const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
 // HELOC registration URL
 const HELOC_URL = 'https://heloc.saxtonmortgage.com/account/heloc/register?referrer=9f491c72-43fa-41d7-b949-cc339ea5e6ee';
@@ -67,14 +66,10 @@ function pct(n: number) {
   return n.toFixed(2) + '%';
 }
 
-function openCalendly() {
-  const cal = (window as Window & { Calendly?: { initPopupWidget: (o: { url: string }) => void } }).Calendly;
-  if (cal) {
-    cal.initPopupWidget({ url: CALENDLY_URL });
-  } else {
-    window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer');
-  }
-}
+// Was a second local copy of the shared helper, which assumed the widget had
+// been eagerly loaded in <head>. Re-exported here so the call sites below are
+// untouched.
+const openCalendly = openCalendlyPopup;
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
 
@@ -239,22 +234,30 @@ export default function DebtSavingsCalculator() {
     }, 0);
   };
 
-  const submitLead = (e: MouseEvent<HTMLAnchorElement>) => {
+  const submitLead = async (e: MouseEvent<HTMLAnchorElement>) => {
+    // Always take over the navigation now: the save is awaited, so letting the
+    // browser follow the href would race the request and we would never learn
+    // whether the lead landed. The destination tab is opened below, inside this
+    // same user gesture, so a popup blocker does not eat it.
+    e.preventDefault();
+
     if (!fname || !phone || !email || !usState) {
-      e.preventDefault();
       setErrorMsg('Please fill in your name, phone, email, and state.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
-      e.preventDefault();
       setErrorMsg('Please enter a valid email address.');
       return;
     }
     if (!isValidPhoneNumber(phone.trim(), 'US')) {
-      e.preventDefault();
       setErrorMsg('Please enter a valid US phone number.');
       return;
     }
+    setErrorMsg('');
+
+    // Opened synchronously so it counts as gesture-initiated; pointed at the
+    // real URL once the save resolves.
+    const quoteTab = window.open('', '_blank', 'noopener,noreferrer');
     const payload = {
       firstName: fname, lastName: lname, phone, email,
       state: usState,
@@ -270,15 +273,44 @@ export default function DebtSavingsCalculator() {
       source: 'DebtConsolidation',
       timestamp: new Date().toISOString(),
     };
-    if (GOOGLE_SHEET_WEBHOOK_URL) {
-      fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+    const helocUrl = buildHelocUrl(fname, lname, email);
+
+    try {
+      const res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, ...getAttribution() }),
+      });
+      if (!res.ok) throw new Error(`lead-endpoint-${res.status}`);
+
+      track('generate_lead', {
+        lead_source: payload.source,
+        form_id: 'debt-savings-calculator',
+        page_path: window.location.pathname,
+        user_data: {
+          email: payload.email,
+          phone_number: payload.phone,
+          address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state },
+        },
+      });
+      track('virtual_page_view', {
+        page_path: '/thank-you/debt-savings',
+        page_title: 'Thank You — Debt Savings',
+      });
+      setSubmitted(true);
+    } catch {
+      // The visitor still gets the quote they asked for: Saxton's form is
+      // prefilled from the same details, so they are not stranded. But say so
+      // plainly rather than showing a success state we cannot stand behind.
+      setErrorMsg(
+        "We couldn't save your details on our end. We've opened your quote anyway — " +
+        `if you don't hear back, email ${EMAIL}.`
+      );
+    } finally {
+      // Point the tab either way: getting the quote is what they clicked for.
+      if (quoteTab) quoteTab.location.href = helocUrl;
+      else window.location.href = helocUrl; // popup blocked: fall back to this tab
     }
-    setSubmitted(true);
   };
 
   // ── Step tab bar ───────────────────────────────────────────────────────────

@@ -2,10 +2,11 @@ import { useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import type { MortgageInputs } from '../types/mortgage';
-import { GOOGLE_SHEET_WEBHOOK_URL, EMAIL, NMLS, DRE } from '../config';
+import { LEAD_ENDPOINT, EMAIL, NMLS, DRE } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openCalendly } from '../utils/calendly';
+import { getAttribution, track } from '../utils/attribution';
 
 const emailSchema = z.string().email();
 
@@ -59,24 +60,15 @@ const TARGET_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const SUBMITTED_KEY = 'dt_lead_submitted';
-
-function getSubmitted(): { firstName: string } | null {
-  try {
-    const raw = sessionStorage.getItem(SUBMITTED_KEY);
-    return raw ? (JSON.parse(raw) as { firstName: string }) : null;
-  } catch {
-    return null;
-  }
-}
-
+// There was a sessionStorage "already submitted" flag here. It meant anyone who
+// reopened the modal in the same tab was shown a success screen they had not
+// earned and could not submit again, which silently suppressed second leads.
+// Success now lives purely in component state.
 export default function LeadForm({ currentInputs, onClose }: Props) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    () => (getSubmitted() ? 'success' : 'idle')
-  );
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const [form, setForm] = useState<FormState>(() => ({
-    firstName: getSubmitted()?.firstName ?? '',
+    firstName: '',
     lastName: '',
     email: '',
     phone: '',
@@ -150,21 +142,30 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     };
 
     try {
-      if (!GOOGLE_SHEET_WEBHOOK_URL) {
-        await new Promise((r) => setTimeout(r, 800));
-        sessionStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
-        setStatus('success');
-        return;
-      }
-
-      await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+      const res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, ...getAttribution() }),
+      });
+      // Same-origin, so unlike the old no-cors post the status is readable and
+      // a failure actually reaches the visitor instead of showing a checkmark.
+      if (!res.ok) throw new Error(`lead-endpoint-${res.status}`);
+
+      track('generate_lead', {
+        lead_source: payload.source,
+        form_id: 'home-contact-modal',
+        page_path: window.location.pathname,
+        user_data: {
+          email: payload.email,
+          phone_number: payload.phone,
+          address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state },
+        },
+      });
+      track('virtual_page_view', {
+        page_path: '/thank-you/contact',
+        page_title: 'Thank You — Contact',
       });
 
-      sessionStorage.setItem(SUBMITTED_KEY, JSON.stringify({ firstName: form.firstName.trim() }));
       setStatus('success');
     } catch {
       setStatus('error');

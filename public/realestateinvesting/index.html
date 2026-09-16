@@ -4,11 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real Estate Investing For Beginners 2026 — Free Case Study | Darren Tsai</title>
-<link rel="icon" type="image/jpeg" href="/darren.jpg">
+<meta name="description" content="A real BRRRR deal broken down number by number, purchase through refinance, including the mistake that cost money. Free case study for first-time property investors.">
+<link rel="canonical" href="https://realdarrentsai.com/realestateinvesting/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
-<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="/attribution.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Calendly is injected on first click (see loadCalendly below). It used to
+     load eagerly here, putting a render-blocking third-party stylesheet in
+     front of first paint for a widget nobody sees until they click. -->
 <style>
   :root{
     --white:       #ffffff;
@@ -771,7 +776,7 @@
   <div class="wrap site-nav-inner">
     <a href="https://www.realdarrentsai.com/" class="site-nav-logo">
       <span class="site-nav-avatar">
-        <img src="/darren.jpg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <img src="/darren.jpg" width="320" height="320" decoding="async" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
         <span class="site-nav-avatar-fallback" aria-hidden="true">DT</span>
       </span>
       <span class="site-nav-logo-text">
@@ -1033,7 +1038,7 @@
     <div class="footer-grid">
       <div class="footer-left">
         <div class="footer-brand">
-          <img src="/darren.jpg" alt="Darren Tsai" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <img src="/darren.jpg" width="320" height="320" decoding="async" alt="Darren Tsai" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
           <span class="footer-name">Darren Tsai</span>
         </div>
         <p class="footer-title">Senior Loan Officer &middot; Saxton Mortgage</p>
@@ -1130,12 +1135,14 @@
 
   // ---------------------------------------------------------
   // Lead capture wiring:
-  // Same Apps Script web-app URL used by the Vite site
-  // (VITE_GOOGLE_SHEET_WEBHOOK_URL) and by /fha and /dscr.
-  // Submissions post source:"real-estate-investing" and are written to the
-  // "Real Estate Investing" sheet tab by the Apps Script (see google-apps-script.js).
+  // Submissions post source:"real-estate-investing" to /api/lead, which forwards them
+  // server-side to Apps Script. From there they are written to the
+  // Real Estate Investing sheet + Bonzo.
   // ---------------------------------------------------------
-  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbybhK2jI6UQ0PqRC4R_82rSgn93kOrJkmXQ128rP75Z5Owxn1RiuVrpAj_0tAfVUJfyVQ/exec";
+  // Leads POST to a same-origin Netlify function, which forwards to Apps
+  // Script server-side and returns a real status. The Apps Script URL now
+  // lives only in the APPS_SCRIPT_WEBHOOK_URL env var.
+  const LEAD_ENDPOINT = '/api/lead';
 
   const $ = (id) => document.getElementById(id);
 
@@ -1343,13 +1350,27 @@
     btn.disabled = true;
     btn.textContent = 'Sending…';
     try {
-      if (WEBHOOK_URL) {
-        await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload),
+      // Same-origin proxy, so the status is readable. The old no-cors post made
+      // a 500 look identical to success, which is why this page could report a
+      // lead it never actually saved.
+      var res = await fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
+      });
+      if (!res.ok) throw new Error('lead-endpoint-' + res.status);
+      if (window.DT) {
+        window.DT.track('generate_lead', {
+          lead_source: payload.source,
+          form_id: 'rei-magnet',
+          page_path: location.pathname,
+          user_data: {
+            email: payload.email,
+            phone_number: payload.phone,
+            address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state }
+          }
         });
+        window.DT.track('virtual_page_view', { page_path: '/thank-you/rei', page_title: 'Thank You — REI Case Study' });
       }
       $('formFields').classList.add('hide');
       $('leadSuccess').classList.add('show');
@@ -1388,10 +1409,26 @@
   // opens an in-page overlay instead of a new tab.
   // ---------------------------------------------------------
   const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
+  var calendlyLoading = false;
+  function loadCalendly() {
+    if (calendlyLoading) return;
+    calendlyLoading = true;
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://assets.calendly.com/assets/external/widget.css';
+    document.head.appendChild(css);
+    var js = document.createElement('script');
+    js.src = 'https://assets.calendly.com/assets/external/widget.js';
+    js.async = true;
+    document.head.appendChild(js);
+  }
   function openCalendly() {
     if (window.Calendly) {
       window.Calendly.initPopupWidget({ url: CALENDLY_URL });
     } else {
+      // Start fetching for next time, and send this click straight through so
+      // it is never swallowed by the wait.
+      loadCalendly();
       window.open(CALENDLY_URL, '_blank', 'noopener');
     }
   }
@@ -1954,14 +1991,27 @@
     btn.disabled = true;
     btn.textContent = 'Sending…';
     try {
-      var url = (typeof WEBHOOK_URL !== 'undefined' && WEBHOOK_URL) ? WEBHOOK_URL : '';
-      if (url) {
-        await fetch(url, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload)
+      // Same-origin proxy, so the status is readable. The old no-cors post made
+      // a 500 look identical to success, which is why this page could report a
+      // lead it never actually saved.
+      var res = await fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
+      });
+      if (!res.ok) throw new Error('lead-endpoint-' + res.status);
+      if (window.DT) {
+        window.DT.track('generate_lead', {
+          lead_source: payload.source,
+          form_id: 'rei-contact-modal',
+          page_path: location.pathname,
+          user_data: {
+            email: payload.email,
+            phone_number: payload.phone,
+            address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state }
+          }
         });
+        window.DT.track('virtual_page_view', { page_path: '/thank-you/rei-contact', page_title: 'Thank You — Contact' });
       }
       el('contactSuccessHeading').textContent = "You're all set, " + firstName + '!';
       form.classList.add('hide');
