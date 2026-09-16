@@ -180,6 +180,71 @@ describe('payload shape', () => {
   });
 });
 
+describe('first touch', () => {
+  it('exposes the click id TYPE of the first touch, not just its id', () => {
+    // Without this an ad-originated lead whose last visit was organic cannot be
+    // tagged with the right network downstream.
+    load({ url: 'https://realdarrentsai.com/?gclid=FIRST_AD' });
+    const dt = load({ url: 'https://realdarrentsai.com/', referrer: 'https://www.youtube.com/' });
+    expect(dt.attr().firstClickId).toBe('FIRST_AD');
+    expect(dt.attr().firstClickIdType).toBe('gclid');
+    expect(dt.attr().clickId).toBe(''); // last touch is organic
+    expect(dt.attr().utm_source).toBe('youtube.com');
+  });
+});
+
+describe('outbound clicks', () => {
+  function clickLink(href: string, text = 'Go') {
+    const a = document.createElement('a');
+    a.setAttribute('href', href);
+    a.textContent = text;
+    document.body.appendChild(a);
+    a.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    a.remove();
+    return (window.dataLayer as Record<string, unknown>[]).at(-1);
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('tracks a click to an external domain', () => {
+    load({ url: 'https://realdarrentsai.com/' });
+    const ev = clickLink('https://heloc.saxtonmortgage.com/account/heloc/register?referrer=abc', 'Get my quote');
+    expect(ev?.event).toBe('outbound_click');
+    expect(ev?.outbound_domain).toBe('heloc.saxtonmortgage.com');
+    expect(ev?.link_text).toBe('Get my quote');
+  });
+
+  it('tracks the Point HEI affiliate link', () => {
+    load({ url: 'https://realdarrentsai.com/' });
+    const ev = clickLink('https://pointdigitalfinance.sjv.io/JKEgNe');
+    expect(ev?.event).toBe('outbound_click');
+    expect(ev?.outbound_domain).toBe('pointdigitalfinance.sjv.io');
+  });
+
+  it('does not treat an internal link as outbound', () => {
+    load({ url: 'https://realdarrentsai.com/' });
+    const before = (window.dataLayer as unknown[]).length;
+    clickLink('/dscr/');
+    clickLink('https://realdarrentsai.com/fha/');
+    expect((window.dataLayer as unknown[]).length).toBe(before);
+  });
+
+  it('keeps phone and Calendly as their own events, not outbound', () => {
+    load({ url: 'https://realdarrentsai.com/' });
+    expect(clickLink('tel:+17148875432')?.event).toBe('phone_click');
+    expect(clickLink('https://calendly.com/realdarrentsai/15min')?.event).toBe('calendly_open');
+  });
+
+  it('carries the attribution snapshot, so an outbound click is still attributable', () => {
+    load({ url: 'https://realdarrentsai.com/?gclid=OUT123&utm_source=google' });
+    const ev = clickLink('https://heloc.saxtonmortgage.com/');
+    expect(ev?.clickId).toBe('OUT123');
+    expect(ev?.utm_source).toBe('google');
+  });
+});
+
 describe('track()', () => {
   it('pushes the event with the attribution snapshot merged in', () => {
     const dt = load({ url: 'https://realdarrentsai.com/?gclid=EVT&utm_source=google' });

@@ -29,6 +29,8 @@ type Gas = {
   isLicensedState: (s: string) => boolean;
   addMortgageFields: (body: Record<string, unknown>, d: Record<string, unknown>) => void;
   attributionTags: (d: Record<string, unknown>) => string[];
+  effectiveClickId: (d: Record<string, unknown>) => string;
+  effectiveClickIdType: (d: Record<string, unknown>) => string;
 };
 
 /** Evaluate the Apps Script source with GAS globals stubbed, and expose its top-level bindings. */
@@ -37,6 +39,7 @@ function loadGas(): Gas {
     'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
     'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'isDuplicateLead', 'ensureHeaders',
     'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags',
+    'effectiveClickId', 'effectiveClickIdType',
   ];
   const stubs = `
     var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
@@ -242,6 +245,68 @@ describe('bonzo tag sanitisation', () => {
 
   it('produces only [a-z0-9-]', () => {
     expect(gas.bonzoTag('Ünïcødé 🎉 Ads!')).toMatch(/^[a-z0-9-]*$/);
+  });
+});
+
+/**
+ * The case this guards: someone clicks a Google ad, leaves, then comes back
+ * weeks later through organic YouTube or search and converts. Their last touch
+ * has no click id, so attributing on last touch alone loses the gclid entirely
+ * and files a paid lead as organic.
+ */
+describe('first-touch fallback for returning visitors', () => {
+  const returningVisitor = {
+    // last touch: organic YouTube, no click id
+    utm_source: 'youtube.com', utm_medium: 'referral',
+    clickId: '', clickIdType: '',
+    // first touch: the Google ad that originally found them, still in window
+    firstUtmSource: 'google', firstUtmCampaign: 'heloc-q4',
+    firstClickId: 'GCLID_FROM_THE_AD', firstClickIdType: 'gclid',
+  };
+
+  it('keeps the first-touch click id in its own column', () => {
+    const row = gas.attrRow(returningVisitor);
+    expect(row[gas.ATTR_HEADERS.indexOf('First Click ID')]).toBe('GCLID_FROM_THE_AD');
+    expect(row[gas.ATTR_HEADERS.indexOf('First Click ID Type')]).toBe('gclid');
+  });
+
+  it('attributes the lead to the ad click rather than nothing', () => {
+    expect(gas.effectiveClickId(returningVisitor)).toBe('GCLID_FROM_THE_AD');
+  });
+
+  it('still tags it ads:google, not just organic youtube', () => {
+    const tags = gas.attributionTags(returningVisitor);
+    expect(tags).toContain('ads:google');
+    expect(tags).not.toContain('attr:none');
+  });
+
+  it('prefers the most recent click id when there is one', () => {
+    const clickedAgain = { ...returningVisitor, clickId: 'NEWER_GCLID', clickIdType: 'gclid' };
+    expect(gas.effectiveClickId(clickedAgain)).toBe('NEWER_GCLID');
+  });
+
+  it('respects the network of the newer click when they differ', () => {
+    const switchedNetwork = { ...returningVisitor, clickId: 'BING_ID', clickIdType: 'msclkid' };
+    expect(gas.effectiveClickIdType(switchedNetwork)).toBe('msclkid');
+    expect(gas.attributionTags(switchedNetwork)).toContain('ads:bing');
+  });
+
+  it('yields nothing for a lead that never had a click id', () => {
+    expect(gas.effectiveClickId({ utm_source: 'youtube.com' })).toBe('');
+    expect(gas.attributionTags({})).toEqual(['attr:none']);
+  });
+
+  it('records every first-touch field attribution.js sends', () => {
+    // A field sent by the client but absent from ATTR_HEADERS is silently
+    // dropped, which is exactly how the first-touch click id was lost.
+    const sent = ['firstUtmSource', 'firstUtmCampaign', 'firstClickId', 'firstClickIdType', 'firstTouchTs'];
+    const written = gas.attrRow(
+      Object.fromEntries(sent.map((k) => [k, `value-${k}`])),
+    ) as string[];
+    for (const key of sent) {
+      expect(written, `${key} is sent by attribution.js but never written to the sheet`)
+        .toContain(`value-${key}`);
+    }
   });
 });
 

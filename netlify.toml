@@ -14,6 +14,63 @@
 # Netlify functions declare their own routes via `export const config.path`
 # (see netlify/functions/*.mts), so /api/* resolves without a redirect here.
 
+# YOUTUBE SHORT LINKS
+# One per bucket, plus a -c variant so a description click and a pinned-comment
+# click are distinguishable (utm_content). Short enough to read aloud in a video.
+#
+# These are 302, deliberately. A 301 is cached by the browser permanently, so
+# when /heloc ships and the equity links change destination, everyone who
+# clicked the old link would keep landing on the homepage with no way to fix it.
+# The whole point of a short link is that the destination can change later.
+#
+# Redirects are evaluated top to bottom, and these must stay above any catch-all
+# if one is ever reintroduced.
+
+[[redirects]]
+  from = "/yt/heloc"
+  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/heloc-c"
+  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=pinned-comment"
+  status = 302
+
+[[redirects]]
+  from = "/yt/equity"
+  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/equity-c"
+  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=pinned-comment"
+  status = 302
+
+[[redirects]]
+  from = "/yt/dscr"
+  to = "/dscr/?utm_source=youtube&utm_medium=social&utm_campaign=yt-dscr&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/dscr-c"
+  to = "/dscr/?utm_source=youtube&utm_medium=social&utm_campaign=yt-dscr&utm_content=pinned-comment"
+  status = 302
+
+[[redirects]]
+  from = "/yt/rei"
+  to = "/realestateinvesting/?utm_source=youtube&utm_medium=social&utm_campaign=yt-rei&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/rei-c"
+  to = "/realestateinvesting/?utm_source=youtube&utm_medium=social&utm_campaign=yt-rei&utm_content=pinned-comment"
+  status = 302
+
+[[redirects]]
+  from = "/yt/buyer"
+  to = "/fha/?utm_source=youtube&utm_medium=social&utm_campaign=yt-buyer&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/buyer-c"
+  to = "/fha/?utm_source=youtube&utm_medium=social&utm_campaign=yt-buyer&utm_content=pinned-comment"
+  status = 302
+
 # Hashed asset filenames change whenever content changes, so they can be cached
 # forever. This is the single cheapest repeat-visit win available.
 [[headers]]

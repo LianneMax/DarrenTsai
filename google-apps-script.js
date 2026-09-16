@@ -100,15 +100,36 @@ function getFhaCampaignId(props) {
 const ATTR_HEADERS = [
   'UTM Source', 'UTM Medium', 'UTM Campaign', 'UTM Term', 'UTM Content',
   'Click ID', 'Click ID Type', 'Landing Page', 'Referrer',
-  'First Touch Source', 'First Touch Campaign'
+  'First Touch Source', 'First Touch Campaign',
+  // First-touch click id, appended later. The last touch is not enough on its
+  // own: someone who clicks an ad, leaves, and returns weeks later through
+  // organic YouTube or search has a last touch with no click id at all, so
+  // without these the gclid is lost and the lead can never be matched back to
+  // the ad that found them. First touch is kept for 90 days, matching Google's
+  // gclid lookback, specifically for this case.
+  'First Click ID', 'First Click ID Type', 'First Touch At'
 ];
 function attrRow(d) {
   return [
     d.utm_source || '', d.utm_medium || '', d.utm_campaign || '',
     d.utm_term || '', d.utm_content || '',
     d.clickId || '', d.clickIdType || '', d.landingPage || '', d.referrer || '',
-    d.firstUtmSource || '', d.firstUtmCampaign || ''
+    d.firstUtmSource || '', d.firstUtmCampaign || '',
+    d.firstClickId || '', d.firstClickIdType || '', d.firstTouchTs || ''
   ];
+}
+
+/**
+ * The click id to attribute this lead to: the most recent one, falling back to
+ * the first touch. Google accepts a gclid for offline conversion upload within
+ * its lookback window, so the first-touch id is still usable weeks later and is
+ * far better than uploading nothing.
+ */
+function effectiveClickId(d) {
+  return d.clickId || d.firstClickId || '';
+}
+function effectiveClickIdType(d) {
+  return d.clickIdType || d.firstClickIdType || '';
 }
 
 const LEAD_HEADERS = [
@@ -274,7 +295,10 @@ const CLICK_ID_NETWORKS = {
 };
 function attributionTags(data) {
   const tags = [];
-  const network = CLICK_ID_NETWORKS[data.clickIdType];
+  // Falls back to the first touch, so an ad-originated lead whose last visit
+  // was organic still gets tagged ads:google rather than being filed as
+  // organic YouTube or search.
+  const network = CLICK_ID_NETWORKS[effectiveClickIdType(data)];
   if (network) tags.push(network);
   if (data.utm_source) tags.push('utm:' + bonzoTag(data.utm_source));
   if (data.utm_campaign) tags.push('campaign:' + bonzoTag(data.utm_campaign));
@@ -472,7 +496,8 @@ function pushToBonzo(data) {
   // Mortgage fields. `lead_id` is unused and semantically right for a click id;
   // `current_step` gives Darren something readable on the prospect screen.
   // Do NOT reuse lead_source (holds the magnet) or loan_program (DSCR ratio).
-  if (data.clickId) body.lead_id = data.clickId;
+  const clickId = effectiveClickId(data);
+  if (clickId) body.lead_id = clickId;
   const campaignLabel = [data.utm_campaign, data.utm_content].filter(function (v) { return !!v; }).join(' / ');
   if (campaignLabel) body.current_step = campaignLabel;
 

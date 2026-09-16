@@ -162,6 +162,11 @@
       firstUtmSource: first.utm_source || '',
       firstUtmCampaign: first.utm_campaign || '',
       firstClickId: first.clickId || '',
+      // The network of the FIRST click, not just its id. Without this, a lead
+      // whose last touch has no click id (an ad click followed later by an
+      // organic YouTube or search visit) cannot be tagged ads:google from the
+      // first touch, and gets filed as organic instead.
+      firstClickIdType: first.clickIdType || '',
       firstTouchTs: first.ts ? new Date(first.ts).toISOString() : ''
     };
   }
@@ -191,10 +196,29 @@
     var el = e.target && e.target.closest ? e.target.closest('a[href]') : null;
     if (!el) return;
     var href = el.getAttribute('href') || '';
+
     if (href.indexOf('tel:') === 0) {
       track('phone_click', { phone_number: href.slice(4), page_path: window.location.pathname });
-    } else if (href.indexOf('calendly.com') !== -1) {
+      return;
+    }
+    if (href.indexOf('calendly.com') !== -1) {
       track('calendly_open', { page_path: window.location.pathname });
+      return;
+    }
+
+    // Anything leaving the site. Some conversions finish on someone else's
+    // domain (the Saxton/Figure HELOC soft-pull, the Point HEI link), where our
+    // UTMs never reach the Sheet or Bonzo, so the click itself is the only
+    // signal we will ever get that the visitor went. Without this those
+    // journeys are invisible: the visitor simply stops existing in our data.
+    var dest = hostOf(href);
+    if (dest && dest !== window.location.hostname.replace(/^www\./, '').toLowerCase()) {
+      track('outbound_click', {
+        outbound_domain: dest,
+        outbound_url: href,
+        link_text: (el.textContent || '').trim().slice(0, 80),
+        page_path: window.location.pathname
+      });
     }
   }, true);
 
