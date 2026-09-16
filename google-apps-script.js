@@ -92,12 +92,34 @@ function getFhaCampaignId(props) {
   return props.getProperty('BONZO_FHA_CAMPAIGN_ID') || FHA_CAMPAIGN_ID;
 }
 
+// Ad attribution, captured by public/attribution.js and sent with every form.
+// ALWAYS appended to the END of a header array and the END of the matching row,
+// never inserted mid-array: existing tabs already hold rows under the current
+// column order, and inserting would shift every historical row's meaning with
+// no way to tell old rows from new. ensureHeaders() relies on this too.
+const ATTR_HEADERS = [
+  'UTM Source', 'UTM Medium', 'UTM Campaign', 'UTM Term', 'UTM Content',
+  'Click ID', 'Click ID Type', 'Landing Page', 'Referrer',
+  'First Touch Source', 'First Touch Campaign'
+];
+function attrRow(d) {
+  return [
+    d.utm_source || '', d.utm_medium || '', d.utm_campaign || '',
+    d.utm_term || '', d.utm_content || '',
+    d.clickId || '', d.clickIdType || '', d.landingPage || '', d.referrer || '',
+    d.firstUtmSource || '', d.firstUtmCampaign || ''
+  ];
+}
+
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
   'Target Outcome', 'Timeline', 'Source', 'Licensed?'
-];
+].concat(ATTR_HEADERS);
 
+// Newsletter is a different shape (no name/phone columns), so isDuplicateLead's
+// "email is column 4, phone is column 5" assumption does not hold here and it
+// gets no attribution columns.
 const NEWSLETTER_HEADERS = [
   'Timestamp', 'Email', 'Source'
 ];
@@ -106,7 +128,7 @@ const QUALIFY_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
   'Loan Type', 'Timeline', 'Price Range', 'Credit Range',
   'Employment', 'Notes', 'Source'
-];
+].concat(ATTR_HEADERS);
 
 // Each landing funnel gets its OWN sheet tab with columns matching its actual
 // inputs/outputs — no shared blank columns. `row(d)` returns cells in header order.
@@ -122,34 +144,34 @@ function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 const SOURCE_SCHEMAS = {
   'heloc-hei': {
     tab: 'HELOC vs HEI',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?']),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)]); }
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d)); }
   },
   'dscr': {
     tab: 'DSCR',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?']),
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?'], ATTR_HEADERS),
     row: function (d) {
       return commonLeadRow(d).concat([
         d.magnet || '', d.source, d.dscr || '', d.downPayment || '', d.loanAmount || '', d.rate || '', licensedCell(d)
-      ]);
+      ], attrRow(d));
     }
   },
   'self-employed': {
     tab: 'Self-Employed',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?']),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)]); }
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d)); }
   },
   'fha': {
     tab: 'FHA',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Credit Score', 'Licensed?']),
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Credit Score', 'Licensed?'], ATTR_HEADERS),
     row: function (d) {
-      return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)]);
+      return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)], attrRow(d));
     }
   },
   'real-estate-investing': {
     tab: 'Real Estate Investing',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?']),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)]); }
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d)); }
   }
 };
 
@@ -162,7 +184,7 @@ const DEBT_CONSOLIDATION_HEADERS = [
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
   'Refi Monthly Payment', 'Refi Monthly Savings',
   'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
-];
+].concat(ATTR_HEADERS);
 
 
 function getOrCreateSheet(ss, name, headers) {
@@ -175,8 +197,27 @@ function getOrCreateSheet(ss, name, headers) {
     headerRange.setBackground('#223d55');
     headerRange.setFontColor('#ffffff');
     sheet.setFrozenRows(1);
+  } else {
+    ensureHeaders(sheet, headers);
   }
   return sheet;
+}
+
+// Adds header cells for columns a schema has gained since the tab was created.
+// Append-only and idempotent by construction: it writes just the tail past the
+// sheet's current last column and never touches an existing header cell, so a
+// tab full of historical rows keeps every column meaning it already had. Rows
+// written before the new columns existed simply stay blank underneath them,
+// which is accurate — those leads genuinely have no attribution.
+function ensureHeaders(sheet, headers) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol >= headers.length) return;
+  const extra = headers.slice(lastCol);
+  const range = sheet.getRange(1, lastCol + 1, 1, extra.length);
+  range.setValues([extra]);
+  range.setFontWeight('bold');
+  range.setBackground('#223d55');
+  range.setFontColor('#ffffff');
 }
 
 function isDuplicateLead(sheet, email, phone) {
@@ -185,11 +226,16 @@ function isDuplicateLead(sheet, email, phone) {
   // Email is column 4 (index 3), Phone is column 5 (index 4)
   const emails = sheet.getRange(2, 4, lastRow - 1, 1).getValues().flat();
   const phones = sheet.getRange(2, 5, lastRow - 1, 1).getValues().flat();
-  const normalizedEmail = (email || '').toLowerCase().trim();
-  const normalizedPhone = (phone || '').replace(/\D/g, '');
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const normalizedPhone = String(phone || '').replace(/\D/g, '');
   for (var i = 0; i < emails.length; i++) {
-    if (normalizedEmail && emails[i].toLowerCase().trim() === normalizedEmail) return true;
-    if (normalizedPhone && phones[i].replace(/\D/g, '') === normalizedPhone) return true;
+    // String() is load-bearing: Sheets hands back a Number for a phone cell that
+    // looks numeric, and calling .replace() on a Number throws. The throw would
+    // be caught by doPost and returned as {success:false}, which was invisible
+    // to the browser under the old no-cors post — i.e. every lead silently lost
+    // while the form still showed a green checkmark.
+    if (normalizedEmail && String(emails[i]).toLowerCase().trim() === normalizedEmail) return true;
+    if (normalizedPhone && String(phones[i]).replace(/\D/g, '') === normalizedPhone) return true;
   }
   return false;
 }
@@ -208,6 +254,33 @@ const BONZO_STATES = [
   'NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA',
   'WV','WI','WY','PR'
 ];
+
+// Bonzo tags are free text, but unsanitised campaign names make them miserable
+// to filter on, and Bonzo HTML-escapes "&" and "+" (verified: they come back as
+// &amp; and &#43;). Reduce to [a-z0-9-] so a tag always reads cleanly.
+function bonzoTag(value) {
+  return String(value == null ? '' : value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Which ad network a lead came from, plus the campaign, as filterable tags.
+// 'attr:none' is deliberate: explicitly tagging the unattributed set is how a
+// break in tracking becomes visible instead of just looking like quiet weeks.
+const CLICK_ID_NETWORKS = {
+  gclid: 'ads:google', gbraid: 'ads:google', wbraid: 'ads:google',
+  msclkid: 'ads:bing', fbclid: 'ads:meta'
+};
+function attributionTags(data) {
+  const tags = [];
+  const network = CLICK_ID_NETWORKS[data.clickIdType];
+  if (network) tags.push(network);
+  if (data.utm_source) tags.push('utm:' + bonzoTag(data.utm_source));
+  if (data.utm_campaign) tags.push('campaign:' + bonzoTag(data.utm_campaign));
+  if (!tags.length) tags.push('attr:none');
+  return tags;
+}
 
 // The landing pages send display strings ("$300,000", "7.50%", "25%"); Bonzo's
 // numeric fields need bare numbers. Returns '' when there's nothing usable.
@@ -372,6 +445,9 @@ function pushToBonzo(data) {
     if (data.state) tags.push('state:' + String(data.state).trim().toUpperCase());
   }
 
+  // Which ad (if any) produced this lead, as filterable tags.
+  attributionTags(data).forEach(function (t) { tags.push(t); });
+
   const body = {
     first_name: data.firstName || '',
     last_name: data.lastName || '',
@@ -391,6 +467,15 @@ function pushToBonzo(data) {
   // campaign enrollment are unaffected by sending these alongside.
   addMortgageFields(body, data);
 
+  // Ad attribution into Bonzo's own fields. This account has NO custom fields
+  // and they can't be created via the API, so these ride in existing free-text
+  // Mortgage fields. `lead_id` is unused and semantically right for a click id;
+  // `current_step` gives Darren something readable on the prospect screen.
+  // Do NOT reuse lead_source (holds the magnet) or loan_program (DSCR ratio).
+  if (data.clickId) body.lead_id = data.clickId;
+  const campaignLabel = [data.utm_campaign, data.utm_content].filter(function (v) { return !!v; }).join(' / ');
+  if (campaignLabel) body.current_step = campaignLabel;
+
   try {
     Logger.log('pushToBonzo: POST ' + BONZO_BASE_URL + path + ' body=' + JSON.stringify(body));
     const resp = UrlFetchApp.fetch(BONZO_BASE_URL + path, {
@@ -401,6 +486,17 @@ function pushToBonzo(data) {
       muteHttpExceptions: true, // don't let a Bonzo error break the Sheets write
     });
     Logger.log('pushToBonzo: response ' + resp.getResponseCode() + ' ' + resp.getContentText());
+
+    // The lead is already safe in Sheets, so a Bonzo failure is not fatal — but
+    // it does mean nobody gets nurtured, which is invisible without an alert.
+    const code = resp.getResponseCode();
+    if (code < 200 || code >= 300) {
+      alertFailure(
+        'Bonzo push failed with HTTP ' + code + ' (lead IS in the sheet, but was not enrolled):\n' +
+        resp.getContentText().slice(0, 500),
+        JSON.stringify(body)
+      );
+    }
 
     // Attach the full scenario as a pinned note (DSCR only). Best-effort: the
     // prospect is already created, so a missing id or a failed note is logged
@@ -519,12 +615,40 @@ function sendFhaGuide(ss, data) {
   }
 }
 
-function doPost(e) {
+// Email Darren when a lead fails to land, including the raw payload so it can
+// be recovered by hand. Rate-limited to one alert per 5 minutes: a systemic
+// outage would otherwise burn the 100/day consumer Gmail quota in minutes and
+// bury the first, most useful alert.
+const ALERT_EMAIL = 'darren@realdarrentsai.com';
+function alertFailure(subjectDetail, rawPayload) {
   try {
-    // Browser sends text/plain with no-cors mode — body is still valid JSON
-    const raw = (e.postData && e.postData.contents) ? e.postData.contents : '{}';
+    const cache = CacheService.getScriptCache();
+    if (cache.get('alert_sent')) return;
+    cache.put('alert_sent', '1', 300);
+    MailApp.sendEmail({
+      to: ALERT_EMAIL,
+      subject: 'LEAD PIPELINE FAILURE — realdarrentsai.com',
+      body: subjectDetail + '\n\nRAW PAYLOAD (recover this lead by hand):\n' + rawPayload +
+            '\n\nFurther alerts are suppressed for 5 minutes.'
+    });
+  } catch (err) {
+    Logger.log('alertFailure itself failed: ' + err.toString());
+  }
+}
+
+function doPost(e) {
+  let raw = '{}';
+  // Only the sheet write is serialised. pushToBonzo plus the three guide calls
+  // are four sequential UrlFetchApp round trips; holding the lock across them
+  // would queue concurrent submissions behind 5-10s of HTTP and time out the
+  // /api/lead proxy that now waits on this response.
+  const lock = LockService.getScriptLock();
+  try {
+    raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     const data = JSON.parse(raw);
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+    lock.waitLock(20000);
 
     if (data.source === 'newsletter') {
       const sheet = getOrCreateSheet(ss, 'Newsletter', NEWSLETTER_HEADERS);
@@ -575,7 +699,7 @@ function doPost(e) {
         data.refiMonthlySavings   || 0,
         data.heloanMonthlyPayment || 0,
         data.heloanMonthlySavings || 0,
-      ]);
+      ].concat(attrRow(data)));
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
       sheet.appendRow([
@@ -593,8 +717,10 @@ function doPost(e) {
         data.timeline             || '',
         data.source               || 'SimpleMortgageCalculator',
         licensedCell(data)
-      ]);
+      ].concat(attrRow(data)));
     }
+
+    lock.releaseLock();
 
     pushToBonzo(data);
     sendDscrGuide(ss, data);
@@ -606,9 +732,15 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
+    // The lead is the product; losing one silently is the worst outcome here.
+    // The alert carries the raw payload so it can be recovered by hand even if
+    // both the sheet write and the Bonzo push failed.
+    alertFailure('doPost threw: ' + err.toString(), raw);
     return ContentService
       .createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    try { lock.releaseLock(); } catch (e) { /* already released on the happy path */ }
   }
 }
 
