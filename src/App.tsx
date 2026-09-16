@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { MortgageInputs } from './types/mortgage';
 import { calculateMortgage } from './utils/mortgageCalc';
+import { useDebounced } from './hooks/useDebounced';
 import Nav from './components/Nav';
 import Hero from './components/Hero';
 import DebtSavingsCalculator from './components/DebtSavingsCalculator';
@@ -37,13 +38,22 @@ export default function App() {
   const [inputs, setInputs] = useState<MortgageInputs>(loadInputs);
   const [contactOpen, setContactOpen] = useState(false);
 
-  // Persist inputs to sessionStorage whenever they change
+  // Persisting was a synchronous JSON.stringify + sessionStorage write on the
+  // main thread on EVERY keystroke, which showed up directly in the Poor INP
+  // number. Nothing needs it written that eagerly, so it waits for a pause in
+  // typing and yields to idle time when the browser offers it.
   useEffect(() => {
-    try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(inputs));
-    } catch {
-      // ignore
-    }
+    const persist = () => {
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(inputs));
+      } catch {
+        // ignore
+      }
+    };
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
+      .requestIdleCallback;
+    const timer = window.setTimeout(() => (idle ? idle(persist) : persist()), 400);
+    return () => window.clearTimeout(timer);
   }, [inputs]);
 
   // Prevent body scroll when modal is open
@@ -52,7 +62,12 @@ export default function App() {
     return () => { document.body.style.overflow = ''; };
   }, [contactOpen]);
 
-  const summary = useMemo(() => calculateMortgage(inputs), [inputs]);
+  // The full 360-row amortization schedule is rebuilt whenever inputs change,
+  // and rendering it re-renders up to 390 table rows. Recomputing on the raw
+  // keystroke made every character a long task; a short debounce keeps typing
+  // responsive while still feeling instant.
+  const debouncedInputs = useDebounced(inputs, 180);
+  const summary = useMemo(() => calculateMortgage(debouncedInputs), [debouncedInputs]);
 
   const openContact  = () => setContactOpen(true);
   const closeContact = () => setContactOpen(false);

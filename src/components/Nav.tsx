@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
-const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
+import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 
+// Was a third local copy of this helper. It bypassed the shared one, so it kept
+// assuming the widget had been eagerly loaded in <head>.
 function openCalendly(e: React.MouseEvent) {
   e.preventDefault();
-  const cal = (window as Window & { Calendly?: { initPopupWidget: (o: { url: string }) => void } }).Calendly;
-  if (cal) {
-    cal.initPopupWidget({ url: CALENDLY_URL });
-  } else {
-    window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer');
-  }
+  openCalendlyPopup();
 }
 
 interface Props {

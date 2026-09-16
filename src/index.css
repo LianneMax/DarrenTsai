@@ -1,7 +1,12 @@
 /* ============================================================
    1. GOOGLE FONTS
+   ============================================================
+   Loaded via <link> in index.html, not @import. An @import here is only
+   discovered once this stylesheet has downloaded and parsed, which serialises
+   two round trips before a single glyph is requested and was a direct
+   contributor to the Poor FCP number. The <link> starts the request during
+   HTML parse instead, alongside the preconnects.
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ============================================================
    2. CSS CUSTOM PROPERTIES

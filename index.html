@@ -2,12 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/darren.jpg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Darren Tsai, Licensed Mortgage & Real Estate Broker in Southern California. Free mortgage calculator, amortization schedule, and expert guidance." />
-    <title>Darren Tsai | Mortgage Calculator & Broker | Southern California</title>
-    <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet" />
-    <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+    <meta name="description" content="Tap into your home equity or finance an investment property with Darren Tsai, a licensed mortgage broker serving AZ, CA, FL, HI, OR, PA, TN and TX. Free calculators and a 15-minute strategy call." />
+    <link rel="canonical" href="https://realdarrentsai.com/" />
+    <title>Darren Tsai | Home Equity & Investment Property Lending</title>
+
+    <!-- Requested here rather than via an @import in index.css, which the
+         browser could not discover until the stylesheet had downloaded and
+         parsed. Weights trimmed from 7 to the 5 the site actually uses. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" />
+
+    <!-- Must run before any form handler can submit. ~2KB, no network work. -->
+    <script src="/attribution.js"></script>
+
+    <!-- Calendly is loaded on first click by src/utils/calendly.ts. It used to
+         be an eager stylesheet plus script in here, which put a render-blocking
+         third-party request in front of first paint on every page view, for a
+         widget nobody sees until they click "Book a call". -->
   </head>
   <body>
     <div id="root"></div>

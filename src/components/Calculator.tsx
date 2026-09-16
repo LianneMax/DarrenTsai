@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import type { MortgageInputs, MortgageSummary } from '../types/mortgage';
 import { formatCurrency } from '../utils/formatters';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { useCountUp } from '../hooks/useCountUp';
-import AmortizationChart from './AmortizationChart';
 import AmortizationTable from './AmortizationTable';
+
+// recharts is ~537KB and already its own chunk (vite.config.ts manualChunks),
+// but it was imported eagerly, so it sat on the critical path for a chart well
+// below the fold. Loading it on demand takes it out of first paint entirely.
+const AmortizationChart = lazy(() => import('./AmortizationChart'));
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -284,8 +288,11 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
           </div>
         </div>
 
-        {/* Chart */}
-        <AmortizationChart schedule={summary.schedule} yearlyData={summary.yearlyData} />
+        {/* Chart. The placeholder reserves the chart's height so loading it
+            does not shove the table down the page and cost us CLS. */}
+        <Suspense fallback={<div style={{ height: 360 }} aria-hidden="true" />}>
+          <AmortizationChart schedule={summary.schedule} yearlyData={summary.yearlyData} />
+        </Suspense>
 
         {/* Table */}
         <AmortizationTable schedule={summary.schedule} yearlyData={summary.yearlyData} />
