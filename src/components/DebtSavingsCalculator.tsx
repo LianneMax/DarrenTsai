@@ -257,7 +257,12 @@ export default function DebtSavingsCalculator() {
 
     // Opened synchronously so it counts as gesture-initiated; pointed at the
     // real URL once the save resolves.
-    const quoteTab = window.open('', '_blank', 'noopener,noreferrer');
+    // No 'noopener' in the features string: per the HTML spec that makes
+    // window.open return null even when the tab opens, so quoteTab was always
+    // null and the finally block below sent THIS tab to Saxton, taking every
+    // visitor off the site. Sever the opener by hand instead.
+    const quoteTab = window.open('', '_blank');
+    if (quoteTab) quoteTab.opener = null;
     const payload = {
       firstName: fname, lastName: lname, phone, email,
       state: usState,

@@ -30,6 +30,10 @@ type Gas = {
   addMortgageFields: (body: Record<string, unknown>, d: Record<string, unknown>) => void;
   attributionTags: (d: Record<string, unknown>) => string[];
   FOLLOWUP_HEADERS: string[];
+  classifyGuideResponse: (code: number) => string;
+  nextGuideStatus: (outcome: string, attempt: number) => { status: string; alert: boolean };
+  guideAttemptsFromStatus: (status: unknown) => number;
+  GUIDE_MAX_ATTEMPTS: number;
   effectiveTouch: (d: Record<string, unknown>) => { fromFirst: boolean; source: string; campaign: string; content: string };
   effectiveClickId: (d: Record<string, unknown>) => string;
   effectiveClickIdType: (d: Record<string, unknown>) => string;
@@ -42,6 +46,7 @@ function loadGas(): Gas {
     'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'isDuplicateLead', 'ensureHeaders',
     'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
     'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
+    'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
   ];
   const stubs = `
     var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
@@ -425,8 +430,12 @@ describe('doPost replies before the slow follow-ups', () => {
 
   it('processFollowUps still runs every step the old inline path did', () => {
     const src = processFollowUps();
-    for (const fn of ['pushToBonzo(', 'sendDscrGuide(', 'sendReiGuide(', 'sendFhaGuide(']) {
-      expect(src).toContain(fn);
+    expect(src).toContain('pushToBonzo(');
+    expect(src).toContain('sendGuideFor(');
+    const start = SOURCE.indexOf('function sendGuideFor');
+    const guideFor = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+    for (const fn of ['sendDscrGuide(', 'sendReiGuide(', 'sendFhaGuide(']) {
+      expect(guideFor).toContain(fn);
     }
   });
 
@@ -453,5 +462,63 @@ describe('doPost replies before the slow follow-ups', () => {
 
   it('keeps the payload as the last follow-up column', () => {
     expect(gas.FOLLOWUP_HEADERS[gas.FOLLOWUP_HEADERS.length - 1]).toBe('Payload');
+  });
+});
+
+/**
+ * A guide that failed used to be logged and swallowed, so the queue marked the
+ * lead 'done'. Found on 16 Sep: four DSCR guides returned 502 in the Debug tab
+ * while every Follow-ups row read done.
+ */
+describe('guide email outcomes', () => {
+  it('classifies responses: 2xx sent, 429 and 5xx retry, other 4xx rejected', () => {
+    expect(gas.classifyGuideResponse(200)).toBe('sent');
+    expect(gas.classifyGuideResponse(503)).toBe('retry');
+    expect(gas.classifyGuideResponse(502)).toBe('retry');
+    expect(gas.classifyGuideResponse(429)).toBe('retry');
+    expect(gas.classifyGuideResponse(422)).toBe('rejected'); // Resend: invalid `to`
+    expect(gas.classifyGuideResponse(401)).toBe('rejected'); // bad x-api-key
+  });
+
+  it('only a sent or skipped guide is done', () => {
+    expect(gas.nextGuideStatus('sent', 1)).toEqual({ status: 'done', alert: false });
+    expect(gas.nextGuideStatus('skipped', 1)).toEqual({ status: 'done', alert: false });
+    expect(gas.nextGuideStatus('retry', 1).status).not.toBe('done');
+    expect(gas.nextGuideStatus('rejected', 1).status).not.toBe('done');
+  });
+
+  it('never retries a rejection, and alerts on it immediately', () => {
+    expect(gas.nextGuideStatus('rejected', 1)).toEqual({ status: 'guide-rejected', alert: true });
+  });
+
+  it('retries quietly up to the limit, then fails loudly', () => {
+    const max = gas.GUIDE_MAX_ATTEMPTS;
+    for (let a = 1; a < max; a++) {
+      expect(gas.nextGuideStatus('retry', a)).toEqual({ status: `guide-retry:${a}`, alert: false });
+    }
+    expect(gas.nextGuideStatus('retry', max)).toEqual({ status: 'guide-failed', alert: true });
+  });
+
+  it('reads the attempt count back from a retry status', () => {
+    expect(gas.guideAttemptsFromStatus('guide-retry:2')).toBe(2);
+    expect(gas.guideAttemptsFromStatus('pending')).toBe(0);
+    expect(gas.guideAttemptsFromStatus('done')).toBe(0);
+    expect(gas.guideAttemptsFromStatus('')).toBe(0);
+  });
+
+  it('a retry pass re-sends the guide but never pushes to Bonzo again', () => {
+    const start = SOURCE.indexOf('function processFollowUps');
+    const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+    expect(src).toMatch(/if \(priorAttempts === 0\) pushToBonzo\(/);
+    expect(src).not.toMatch(/setValues\(\[\['done'/); // done only via nextGuideStatus
+  });
+
+  it('every guide sender reports an outcome instead of swallowing it', () => {
+    for (const name of ['sendDscrGuide', 'sendReiGuide', 'sendFhaGuide']) {
+      const start = SOURCE.indexOf(`function ${name}`);
+      const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+      expect(src, name).toMatch(/return postGuide\(/);
+      expect(src, name).toContain("return { outcome: 'skipped' }");
+    }
   });
 });

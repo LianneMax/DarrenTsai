@@ -580,92 +580,87 @@ function logDebug(ss, message) {
   }
 }
 
-function sendDscrGuide(ss, data) {
-  if (data.source !== 'dscr') return; // only the DSCR funnel has a guide to send
-  const props = PropertiesService.getScriptProperties();
-  const url = props.getProperty('NETLIFY_DSCR_PDF_URL');
-  const key = props.getProperty('NETLIFY_DSCR_PDF_KEY');
-  if (!url || !key) {
-    logDebug(ss, 'sendDscrGuide: NETLIFY_DSCR_PDF_URL/KEY not set, skipping');
-    return;
-  }
+/**
+ * What happened to a guide email. The queue needs this to tell "sent" apart
+ * from "failed": the senders used to log and swallow every failure, so a lead
+ * whose guide never went out was still marked done.
+ *   skipped  - this funnel has no guide (not an error)
+ *   sent     - 2xx
+ *   retry    - worth trying again: Resend busy/down (503 from our function),
+ *              any other 5xx, 429, or the call itself threw
+ *   rejected - will fail the same way every time: invalid address (422),
+ *              bad key (401/403), missing config
+ */
+function classifyGuideResponse(code) {
+  if (code >= 200 && code < 300) return 'sent';
+  if (code === 429 || code >= 500) return 'retry';
+  return 'rejected';
+}
 
+function postGuide(ss, name, urlProp, keyProp, body) {
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty(urlProp);
+  const key = props.getProperty(keyProp);
+  if (!url || !key) {
+    logDebug(ss, name + ': ' + urlProp + '/KEY not set');
+    return { outcome: 'rejected', detail: name + ': ' + urlProp + '/KEY not set' };
+  }
   try {
     const resp = UrlFetchApp.fetch(url, {
       method: 'post',
       contentType: 'application/json',
       headers: { 'x-api-key': key },
-      payload: JSON.stringify({
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        email: data.email || '',
-        dscr: data.dscr || '',
-        downPayment: data.downPayment || '',
-        rate: data.rate || '',
-        loanAmount: data.loanAmount || '',
-      }),
+      payload: JSON.stringify(body),
       muteHttpExceptions: true, // never let an email failure break the lead flow
     });
-    logDebug(ss, 'sendDscrGuide: url=' + url + ' response ' + resp.getResponseCode() + ' ' + resp.getContentText().slice(0, 500));
+    const code = resp.getResponseCode();
+    const text = resp.getContentText().slice(0, 500);
+    logDebug(ss, name + ': url=' + url + ' response ' + code + ' ' + text);
+    return { outcome: classifyGuideResponse(code), detail: name + ' ' + code + ' ' + text };
   } catch (err) {
-    logDebug(ss, 'sendDscrGuide: threw ' + err.toString());
+    logDebug(ss, name + ': threw ' + err.toString());
+    return { outcome: 'retry', detail: name + ' threw ' + err.toString() };
   }
+}
+
+function sendDscrGuide(ss, data) {
+  if (data.source !== 'dscr') return { outcome: 'skipped' }; // only the DSCR funnel has a guide to send
+  return postGuide(ss, 'sendDscrGuide', 'NETLIFY_DSCR_PDF_URL', 'NETLIFY_DSCR_PDF_KEY', {
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
+    email: data.email || '',
+    dscr: data.dscr || '',
+    downPayment: data.downPayment || '',
+    rate: data.rate || '',
+    loanAmount: data.loanAmount || '',
+  });
 }
 
 function sendReiGuide(ss, data) {
-  if (data.source !== 'real-estate-investing') return; // only the REI funnel has a guide to send
-  const props = PropertiesService.getScriptProperties();
-  const url = props.getProperty('NETLIFY_REI_PDF_URL');
-  const key = props.getProperty('NETLIFY_REI_PDF_KEY');
-  if (!url || !key) {
-    logDebug(ss, 'sendReiGuide: NETLIFY_REI_PDF_URL/KEY not set, skipping');
-    return;
-  }
-
-  try {
-    const resp = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'x-api-key': key },
-      payload: JSON.stringify({
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        email: data.email || '',
-      }),
-      muteHttpExceptions: true, // never let an email failure break the lead flow
-    });
-    logDebug(ss, 'sendReiGuide: url=' + url + ' response ' + resp.getResponseCode() + ' ' + resp.getContentText().slice(0, 500));
-  } catch (err) {
-    logDebug(ss, 'sendReiGuide: threw ' + err.toString());
-  }
+  if (data.source !== 'real-estate-investing') return { outcome: 'skipped' }; // only the REI funnel has a guide to send
+  return postGuide(ss, 'sendReiGuide', 'NETLIFY_REI_PDF_URL', 'NETLIFY_REI_PDF_KEY', {
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
+    email: data.email || '',
+  });
 }
 
 function sendFhaGuide(ss, data) {
-  if (data.source !== 'fha') return; // only the FHA funnel has a guide to send
-  const props = PropertiesService.getScriptProperties();
-  const url = props.getProperty('NETLIFY_FHA_PDF_URL');
-  const key = props.getProperty('NETLIFY_FHA_PDF_KEY');
-  if (!url || !key) {
-    logDebug(ss, 'sendFhaGuide: NETLIFY_FHA_PDF_URL/KEY not set, skipping');
-    return;
-  }
+  if (data.source !== 'fha') return { outcome: 'skipped' }; // only the FHA funnel has a guide to send
+  return postGuide(ss, 'sendFhaGuide', 'NETLIFY_FHA_PDF_URL', 'NETLIFY_FHA_PDF_KEY', {
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
+    email: data.email || '',
+  });
+}
 
-  try {
-    const resp = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'x-api-key': key },
-      payload: JSON.stringify({
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        email: data.email || '',
-      }),
-      muteHttpExceptions: true, // never let an email failure break the lead flow
-    });
-    logDebug(ss, 'sendFhaGuide: url=' + url + ' response ' + resp.getResponseCode() + ' ' + resp.getContentText().slice(0, 500));
-  } catch (err) {
-    logDebug(ss, 'sendFhaGuide: threw ' + err.toString());
+/** Run whichever guide applies to this lead (at most one does). */
+function sendGuideFor(ss, data) {
+  const results = [sendDscrGuide(ss, data), sendReiGuide(ss, data), sendFhaGuide(ss, data)];
+  for (let i = 0; i < results.length; i++) {
+    if (results[i] && results[i].outcome !== 'skipped') return results[i];
   }
+  return { outcome: 'skipped' };
 }
 
 // Email Darren when a lead fails to land, including the raw payload so it can
@@ -807,6 +802,25 @@ const FOLLOWUP_HEADERS = ['Queued At', 'Status', 'Processed At', 'Error', 'Sourc
 const FOLLOWUP_COL = { status: 2, processedAt: 3, error: 4, payload: 7 };
 const FOLLOWUP_MAX_RUN_MS = 4 * 60 * 1000; // stay well inside the 6 min execution cap
 const FOLLOWUP_RUNNING_KEY = 'followups_running';
+const GUIDE_MAX_ATTEMPTS = 3; // one per trigger run, so roughly a minute apart
+
+/**
+ * Next queue status after a guide attempt. Pure, so the whole retry policy is
+ * testable without Sheets. `attempt` is 1 for the first try.
+ *   { status, alert }  alert=true means email Darren now
+ */
+function nextGuideStatus(outcome, attempt) {
+  if (outcome === 'sent' || outcome === 'skipped') return { status: 'done', alert: false };
+  if (outcome === 'rejected') return { status: 'guide-rejected', alert: true };
+  if (attempt >= GUIDE_MAX_ATTEMPTS) return { status: 'guide-failed', alert: true };
+  return { status: 'guide-retry:' + attempt, alert: false };
+}
+
+/** Attempts already made for a 'guide-retry:N' status, or 0 if not retrying. */
+function guideAttemptsFromStatus(status) {
+  const m = /^guide-retry:(\d+)$/.exec(String(status || ''));
+  return m ? parseInt(m[1], 10) : 0;
+}
 
 function enqueueFollowUp(ss, data, raw) {
   const sheet = getOrCreateSheet(ss, FOLLOWUP_TAB, FOLLOWUP_HEADERS);
@@ -826,11 +840,12 @@ function withSheetLock(fn) {
 }
 
 /**
- * Runs every minute. Each queued lead is attempted exactly once: pushToBonzo
- * and the guide senders already catch and log their own HTTP failures, and
- * retrying a half-finished item would create duplicate Bonzo prospects or send
- * a second guide. Anything that throws is marked 'error' and alerted with its
- * payload for manual recovery; the Sheet row is already safe either way.
+ * Runs every minute. Bonzo is pushed exactly once per lead. The guide email
+ * reports its own outcome: sent -> 'done'; Resend busy/down -> 'guide-retry:N'
+ * and only the guide is retried on later runs, up to GUIDE_MAX_ATTEMPTS, then
+ * 'guide-failed'; a permanent rejection (invalid address, missing config) ->
+ * 'guide-rejected' with no retry. Both terminal failures alert Darren. Anything
+ * that throws is marked 'error' and alerted; the Sheet row is safe either way.
  *
  * Overlapping runs are prevented with a self-expiring cache key rather than the
  * script lock, so a crashed run heals itself after the TTL instead of wedging
@@ -850,7 +865,9 @@ function processFollowUps() {
 
     for (let i = 0; i < rows.length; i++) {
       if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
-      if (rows[i][FOLLOWUP_COL.status - 1] !== 'pending') continue;
+      const status = rows[i][FOLLOWUP_COL.status - 1];
+      const priorAttempts = guideAttemptsFromStatus(status);
+      if (status !== 'pending' && priorAttempts === 0) continue;
       const rowNum = i + 2;
 
       // Claim the row before any HTTP, so a crash mid-item can't re-run it.
@@ -863,13 +880,22 @@ function processFollowUps() {
       try {
         const data = JSON.parse(raw);
         // No lock held here: this is seconds of HTTP, including a PDF render.
-        pushToBonzo(data);
-        sendDscrGuide(ss, data);
-        sendReiGuide(ss, data);
-        sendFhaGuide(ss, data);
+        // Bonzo runs on the first pass only. A retry re-sends just the guide,
+        // so it can never create a duplicate prospect.
+        if (priorAttempts === 0) pushToBonzo(data);
+        const guide = sendGuideFor(ss, data);
+        const next = nextGuideStatus(guide.outcome, priorAttempts + 1);
         withSheetLock(function () {
-          sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['done', new Date().toISOString(), '']]);
+          sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3)
+            .setValues([[next.status, new Date().toISOString(), next.status === 'done' ? '' : (guide.detail || '')]]);
         });
+        if (next.alert) {
+          alertFailure(
+            'guide email NOT delivered to ' + (data.email || '(no email)') + ' [' + next.status + ']. ' +
+            'The lead IS saved in the Sheet and Bonzo; send the guide by hand. Detail: ' + (guide.detail || ''),
+            raw
+          );
+        }
       } catch (err) {
         withSheetLock(function () {
           sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['error', new Date().toISOString(), err.toString()]]);

@@ -237,7 +237,15 @@ export default async (req: Request, context: Context) => {
     if (!emailRes.ok) {
       const detail = await emailRes.text();
       console.error("resend send failed", emailRes.status, detail);
-      return jsonResponse(502, { error: "email send failed" });
+      // Tell the caller whether trying again can help. 429 and 5xx are Resend
+      // being busy or down; anything else (422 invalid address, 403 unverified
+      // domain) fails identically on every retry, so it must not be retried.
+      const retryable = emailRes.status === 429 || emailRes.status >= 500;
+      return jsonResponse(retryable ? 503 : 422, {
+        error: retryable ? "email send failed" : "email rejected",
+        resendStatus: emailRes.status,
+        detail: detail.slice(0, 300),
+      });
     }
 
     return jsonResponse(200, { success: true });
