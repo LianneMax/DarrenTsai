@@ -2195,3 +2195,18 @@ p {
 
   .edu-card { will-change: auto; }
 }
+
+/* Email typo hint: advisory, never an error state. */
+.email-hint {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #b54708;
+  text-align: left;
+}
+button.email-hint { text-decoration: underline; cursor: pointer; }

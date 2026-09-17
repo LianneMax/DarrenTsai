@@ -7,6 +7,7 @@ import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openCalendly } from '../utils/calendly';
 import { getAttribution, track } from '../utils/attribution';
+import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
 
 const emailSchema = z.string().email();
 
@@ -81,6 +82,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     target: '',
   }));
 
+  const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -253,10 +255,24 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
           <input
             id="lf-email" type="email"
             className={`form-input${errors.email ? ' input-error' : ''}`}
-            value={form.email} onChange={set('email')}
+            value={form.email} onChange={(e) => { setEmailHint(null); set('email')(e); }}
+            onBlur={(e) => setEmailHint(checkEmail(e.target.value))}
             autoComplete="email"
           />
           {errors.email && <span className="field-error">{errors.email}</span>}
+          {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
+          {!errors.email && emailHint && (
+            emailHint.kind === 'typo' ? (
+              <button
+                type="button" className="email-hint"
+                onClick={() => { setForm((f) => ({ ...f, email: emailHint.email })); setEmailHint(null); }}
+              >
+                {emailHintMessage(emailHint)}
+              </button>
+            ) : (
+              <span className="email-hint">{emailHintMessage(emailHint)}</span>
+            )
+          )}
         </div>
         <div className="input-group" style={{ marginBottom: 0 }}>
           <label htmlFor="lf-phone" className="input-label">

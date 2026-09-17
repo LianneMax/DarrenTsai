@@ -7,6 +7,7 @@ import { getAttribution, track } from '../utils/attribution';
 import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
+import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
 
 const emailSchema = z.string().email();
 
@@ -183,6 +184,7 @@ export default function DebtSavingsCalculator() {
   const [lname,     setLname]     = useState('');
   const [phone,     setPhone]     = useState('');
   const [email,     setEmail]     = useState('');
+  const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
   const [bestTime,  setBestTime]  = useState('Morning (8am–12pm)');
   const [leadSrc,   setLeadSrc]   = useState('YouTube');
   const [usState,   setUsState]   = useState('');
@@ -777,7 +779,18 @@ export default function DebtSavingsCalculator() {
               <div>
                 <label className="input-label">Email Address</label>
                 <input type="email" className="form-input" placeholder="you@email.com"
-                  value={email} onChange={(e) => setEmail(e.target.value)} />
+                  value={email}
+                  onChange={(e) => { setEmailHint(null); setEmail(e.target.value); }}
+                  onBlur={(e) => setEmailHint(checkEmail(e.target.value))} />
+                {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
+                {emailHint && (emailHint.kind === 'typo' ? (
+                  <button type="button" className="email-hint"
+                    onClick={() => { setEmail(emailHint.email); setEmailHint(null); }}>
+                    {emailHintMessage(emailHint)}
+                  </button>
+                ) : (
+                  <span className="email-hint">{emailHintMessage(emailHint)}</span>
+                ))}
               </div>
             </div>
 
