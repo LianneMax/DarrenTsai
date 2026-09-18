@@ -34,6 +34,13 @@ type Gas = {
   nextGuideStatus: (outcome: string, attempt: number) => { status: string; alert: boolean };
   guideAttemptsFromStatus: (status: unknown) => number;
   GUIDE_MAX_ATTEMPTS: number;
+  GUIDE_BACKOFF_MIN: number[];
+  FOLLOWUP_ORPHAN_MS: number;
+  guideBackoffMs: (attemptsMade: number) => number;
+  claimDecision: (status: unknown, processedAt: unknown, now: number) => { claim: boolean; attempts: number; reason: string };
+  guideDigestRows: (rows: unknown[][], now: number) => Array<{ row: number; status: string; source: string; email: string; error: string }>;
+  formatGuideDigest: (items: Array<Record<string, unknown>>) => string;
+  FOLLOWUP_COL: Record<string, number>;
   effectiveTouch: (d: Record<string, unknown>) => { fromFirst: boolean; source: string; campaign: string; content: string };
   effectiveClickId: (d: Record<string, unknown>) => string;
   effectiveClickIdType: (d: Record<string, unknown>) => string;
@@ -47,6 +54,8 @@ function loadGas(): Gas {
     'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
     'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
     'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
+    'GUIDE_BACKOFF_MIN', 'FOLLOWUP_ORPHAN_MS', 'guideBackoffMs', 'claimDecision',
+    'guideDigestRows', 'formatGuideDigest', 'FOLLOWUP_COL',
   ];
   const stubs = `
     var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
@@ -520,5 +529,171 @@ describe('guide email outcomes', () => {
       expect(src, name).toMatch(/return postGuide\(/);
       expect(src, name).toContain("return { outcome: 'skipped' }");
     }
+  });
+});
+
+/**
+ * Patch 0003 retried a failed guide once per trigger run, so all three attempts
+ * were spent inside three minutes. A Resend outage lasts longer than that: every
+ * lead submitted during one would reach 'guide-failed' having barely tried.
+ *
+ * It also claimed each row as a bare 'processing', which threw away the attempt
+ * count and, if the run died mid-call, left the row stuck in that state forever
+ * with no way for a later run to tell a live claim from a dead one.
+ */
+describe('retry scheduling', () => {
+  const MIN = 60 * 1000;
+
+  it('waits longer after each failure instead of hammering once a minute', () => {
+    const waits = [1, 2, 3, 4, 5].map((n) => gas.guideBackoffMs(n) / MIN);
+    expect(waits).toEqual(gas.GUIDE_BACKOFF_MIN);
+    for (let i = 1; i < waits.length; i++) expect(waits[i]).toBeGreaterThan(waits[i - 1]);
+  });
+
+  it('spreads its attempts over hours, not minutes', () => {
+    let total = 0;
+    for (let n = 1; n < gas.GUIDE_MAX_ATTEMPTS; n++) total += gas.guideBackoffMs(n);
+    expect(total / (60 * MIN)).toBeGreaterThan(3); // hours
+  });
+
+  it('takes a new row at once', () => {
+    expect(gas.claimDecision('pending', '', Date.now())).toEqual({ claim: true, attempts: 0, reason: 'new' });
+  });
+
+  it('leaves a failed guide alone until its backoff has passed', () => {
+    const now = Date.now();
+    const justNow = new Date(now - 10 * 1000).toISOString();
+    expect(gas.claimDecision('guide-retry:1', justNow, now).claim).toBe(false);
+
+    const later = new Date(now - 2 * MIN).toISOString();
+    expect(gas.claimDecision('guide-retry:1', later, now)).toEqual({ claim: true, attempts: 1, reason: 'retry' });
+  });
+
+  it('honours the longer waits at higher attempt counts', () => {
+    const now = Date.now();
+    const thirtyMinAgo = new Date(now - 30 * MIN).toISOString();
+    // attempt 3 waits 20 min: due. attempt 4 waits 60 min: not due.
+    expect(gas.claimDecision('guide-retry:3', thirtyMinAgo, now).claim).toBe(true);
+    expect(gas.claimDecision('guide-retry:4', thirtyMinAgo, now).claim).toBe(false);
+  });
+
+  it('stops once the attempts are used up', () => {
+    const old = new Date(Date.now() - 10 * 60 * MIN).toISOString();
+    const d = gas.claimDecision('guide-retry:' + gas.GUIDE_MAX_ATTEMPTS, old, Date.now());
+    expect(d.claim).toBe(false);
+    expect(d.reason).toBe('exhausted');
+  });
+
+  it('never touches a terminal row', () => {
+    const old = new Date(Date.now() - 10 * 60 * MIN).toISOString();
+    for (const s of ['done', 'guide-failed', 'guide-rejected', 'error', '']) {
+      expect(gas.claimDecision(s, old, Date.now()).claim, s).toBe(false);
+    }
+  });
+});
+
+describe('a run that dies mid-guide', () => {
+  const now = Date.now();
+
+  it('leaves a freshly claimed row alone, another run is working on it', () => {
+    const d = gas.claimDecision('processing:0', new Date(now - 30 * 1000).toISOString(), now);
+    expect(d).toEqual({ claim: false, attempts: 0, reason: 'in-flight' });
+  });
+
+  it('takes the row back once it is too old to be alive', () => {
+    const stale = new Date(now - gas.FOLLOWUP_ORPHAN_MS - 1000).toISOString();
+    expect(gas.claimDecision('processing:2', stale, now)).toEqual({ claim: true, attempts: 2, reason: 'orphan' });
+  });
+
+  it('waits longer than the execution cap before calling a row orphaned', () => {
+    expect(gas.FOLLOWUP_ORPHAN_MS).toBeGreaterThan(6 * 60 * 1000);
+  });
+
+  it('recovers a bare legacy processing row too', () => {
+    const stale = new Date(now - gas.FOLLOWUP_ORPHAN_MS - 1000).toISOString();
+    expect(gas.claimDecision('processing', stale, now).claim).toBe(true);
+  });
+
+  it('treats a row with no timestamp as old rather than stranding it', () => {
+    expect(gas.claimDecision('processing:1', '', now).claim).toBe(true);
+    expect(gas.claimDecision('guide-retry:1', '', now).claim).toBe(true);
+  });
+
+  it('accepts a Date as well as an ISO string, since Sheets returns both', () => {
+    const stale = new Date(now - gas.FOLLOWUP_ORPHAN_MS - 1000);
+    expect(gas.claimDecision('processing:1', stale, now).claim).toBe(true);
+    expect(gas.claimDecision('processing:1', new Date(now - 1000), now).claim).toBe(false);
+  });
+
+  it('claims with the attempt count and a timestamp, not a bare processing', () => {
+    const start = SOURCE.indexOf('function processFollowUps');
+    const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+    expect(src).toContain("'processing:' + priorAttempts");
+    expect(src).not.toMatch(/setValue\('processing'\)/);
+    expect(src).toContain('claimDecision(');
+  });
+});
+
+/**
+ * alertFailure sends at most one email per 5 minutes. In a burst, an expired API
+ * key for instance, Darren gets the first failure and the rest are visible only
+ * to someone who opens the Follow-ups tab. The digest is the backstop.
+ */
+describe('daily digest', () => {
+  const C = () => gas.FOLLOWUP_COL;
+  const now = Date.now();
+
+  /** One Follow-ups row, in sheet order. */
+  function row(status: string, opts: { at?: string; email?: string; source?: string; error?: string } = {}) {
+    const r: unknown[] = new Array(7).fill('');
+    r[C().status - 1] = status;
+    r[C().processedAt - 1] = opts.at ?? new Date(now - 60 * 1000).toISOString();
+    r[C().error - 1] = opts.error ?? 'Resend 422';
+    r[C().source - 1] = opts.source ?? 'dscr';
+    r[C().email - 1] = opts.email ?? 'jane@gmail.com';
+    return r;
+  }
+
+  it('reports every terminal failure, not just the first', () => {
+    const items = gas.guideDigestRows([row('guide-failed'), row('guide-rejected'), row('error')], now);
+    expect(items).toHaveLength(3);
+    expect(items.map((i) => i.status)).toEqual(['guide-failed', 'guide-rejected', 'error']);
+  });
+
+  it('ignores rows that are fine or still in flight', () => {
+    const items = gas.guideDigestRows(
+      [row('done'), row('pending'), row('guide-retry:2'), row('processing:1')],
+      now,
+    );
+    expect(items).toHaveLength(0);
+  });
+
+  it('ignores failures older than a day, so one row is not reported forever', () => {
+    const old = new Date(now - 25 * 60 * 60 * 1000).toISOString();
+    expect(gas.guideDigestRows([row('guide-failed', { at: old })], now)).toHaveLength(0);
+  });
+
+  it('points at the sheet row and the lead, so recovery is possible', () => {
+    const items = gas.guideDigestRows([row('done'), row('guide-failed', { email: 'bob@work.io' })], now);
+    expect(items[0].row).toBe(3); // second data row, header is row 1
+    expect(items[0].email).toBe('bob@work.io');
+  });
+
+  it('says plainly that the lead itself is safe', () => {
+    const body = gas.formatGuideDigest(gas.guideDigestRows([row('guide-failed')], now));
+    expect(body).toContain('ARE saved');
+    expect(body).toContain('jane@gmail.com');
+  });
+
+  it('sends nothing on a clean day', () => {
+    const start = SOURCE.indexOf('function sendGuideDigest');
+    const src = SOURCE.slice(start, SOURCE.indexOf('\n/**', start + 1));
+    expect(src).toMatch(/if \(items\.length === 0\) return;/);
+  });
+
+  it('is installed as its own daily trigger', () => {
+    expect(SOURCE).toContain("ScriptApp.newTrigger('sendGuideDigest').timeBased().everyDays(1)");
+    // The old name still works: it is what the deployment notes tell Darren to run.
+    expect(SOURCE).toContain('function installFollowUpTrigger()');
   });
 });

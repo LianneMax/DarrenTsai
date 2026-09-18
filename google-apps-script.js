@@ -799,10 +799,34 @@ function doPost(e) {
 // ---------------------------------------------------------------------------
 const FOLLOWUP_TAB = 'Follow-ups';
 const FOLLOWUP_HEADERS = ['Queued At', 'Status', 'Processed At', 'Error', 'Source', 'Email', 'Payload'];
-const FOLLOWUP_COL = { status: 2, processedAt: 3, error: 4, payload: 7 };
+const FOLLOWUP_COL = { status: 2, processedAt: 3, error: 4, source: 5, email: 6, payload: 7 };
 const FOLLOWUP_MAX_RUN_MS = 4 * 60 * 1000; // stay well inside the 6 min execution cap
 const FOLLOWUP_RUNNING_KEY = 'followups_running';
-const GUIDE_MAX_ATTEMPTS = 3; // one per trigger run, so roughly a minute apart
+const GUIDE_MAX_ATTEMPTS = 6;
+
+/**
+ * Minutes to wait before attempt 2, 3, 4, 5, 6. The first version retried once
+ * per trigger run, so all three attempts were spent inside three minutes - a
+ * Resend outage lasts longer than that, and every lead submitted during one
+ * would end 'guide-failed' having barely tried. This spreads six attempts over
+ * about four and a half hours.
+ */
+const GUIDE_BACKOFF_MIN = [1, 5, 20, 60, 180];
+
+/**
+ * A row is claimed as 'processing:N' before any HTTP. If the run dies mid-call
+ * the row keeps that status forever and the lead's guide is never sent. After
+ * this long, another run may take it back. Comfortably longer than the 6 minute
+ * execution cap, so a live run is never stolen from.
+ */
+const FOLLOWUP_ORPHAN_MS = 10 * 60 * 1000;
+
+/** Milliseconds to wait after `attemptsMade` failures. */
+function guideBackoffMs(attemptsMade) {
+  const i = Math.max(0, attemptsMade - 1);
+  const mins = GUIDE_BACKOFF_MIN[Math.min(i, GUIDE_BACKOFF_MIN.length - 1)];
+  return mins * 60 * 1000;
+}
 
 /**
  * Next queue status after a guide attempt. Pure, so the whole retry policy is
@@ -816,10 +840,46 @@ function nextGuideStatus(outcome, attempt) {
   return { status: 'guide-retry:' + attempt, alert: false };
 }
 
-/** Attempts already made for a 'guide-retry:N' status, or 0 if not retrying. */
+/**
+ * Attempts already made, read back from a 'guide-retry:N' or 'processing:N'
+ * status. 0 for anything else, including a bare legacy 'processing'.
+ */
 function guideAttemptsFromStatus(status) {
-  const m = /^guide-retry:(\d+)$/.exec(String(status || ''));
+  const m = /^(?:guide-retry|processing):(\d+)$/.exec(String(status || ''));
   return m ? parseInt(m[1], 10) : 0;
+}
+
+/**
+ * Whether this run may take the row, and which attempt it would be. Pure, so
+ * the whole scheduling policy is testable without Sheets.
+ *   status      the Status cell
+ *   processedAt the Processed At cell (ISO string, Date, or blank)
+ *   now         milliseconds
+ * Returns { claim, attempts, reason }.
+ */
+function claimDecision(status, processedAt, now) {
+  const s = String(status || '');
+  if (s === 'pending') return { claim: true, attempts: 0, reason: 'new' };
+
+  const last = Date.parse(
+    processedAt instanceof Date ? processedAt.toISOString() : String(processedAt || '')
+  );
+  const age = isNaN(last) ? Infinity : now - last; // no timestamp: treat as old
+
+  if (/^guide-retry:\d+$/.test(s)) {
+    const attempts = guideAttemptsFromStatus(s);
+    if (attempts >= GUIDE_MAX_ATTEMPTS) return { claim: false, attempts: attempts, reason: 'exhausted' };
+    if (age < guideBackoffMs(attempts)) return { claim: false, attempts: attempts, reason: 'backoff' };
+    return { claim: true, attempts: attempts, reason: 'retry' };
+  }
+
+  // A row stuck mid-flight because the run that claimed it died.
+  if (s === 'processing' || /^processing:\d+$/.test(s)) {
+    if (age < FOLLOWUP_ORPHAN_MS) return { claim: false, attempts: 0, reason: 'in-flight' };
+    return { claim: true, attempts: guideAttemptsFromStatus(s), reason: 'orphan' };
+  }
+
+  return { claim: false, attempts: 0, reason: 'terminal' };
 }
 
 function enqueueFollowUp(ss, data, raw) {
@@ -840,12 +900,18 @@ function withSheetLock(fn) {
 }
 
 /**
- * Runs every minute. Bonzo is pushed exactly once per lead. The guide email
- * reports its own outcome: sent -> 'done'; Resend busy/down -> 'guide-retry:N'
- * and only the guide is retried on later runs, up to GUIDE_MAX_ATTEMPTS, then
- * 'guide-failed'; a permanent rejection (invalid address, missing config) ->
- * 'guide-rejected' with no retry. Both terminal failures alert Darren. Anything
- * that throws is marked 'error' and alerted; the Sheet row is safe either way.
+ * Runs every minute, but a given row is only picked up when claimDecision says
+ * so: new rows immediately, a failed guide after its backoff (1, 5, 20, 60 then
+ * 180 minutes), and a row stuck in 'processing:N' once it is old enough to be
+ * an orphan from a run that died.
+ *
+ * Bonzo is pushed exactly once per lead. The guide email reports its own
+ * outcome: sent -> 'done'; Resend busy/down -> 'guide-retry:N', retried up to
+ * GUIDE_MAX_ATTEMPTS, then 'guide-failed'; a permanent rejection (invalid
+ * address, missing config) -> 'guide-rejected' with no retry. Both terminal
+ * failures alert Darren, and the daily digest catches anything the 5 minute
+ * alert throttle swallowed. Anything that throws is marked 'error' and alerted;
+ * the Sheet row is safe either way.
  *
  * Overlapping runs are prevented with a self-expiring cache key rather than the
  * script lock, so a crashed run heals itself after the TTL instead of wedging
@@ -865,14 +931,22 @@ function processFollowUps() {
 
     for (let i = 0; i < rows.length; i++) {
       if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
-      const status = rows[i][FOLLOWUP_COL.status - 1];
-      const priorAttempts = guideAttemptsFromStatus(status);
-      if (status !== 'pending' && priorAttempts === 0) continue;
+      const decision = claimDecision(
+        rows[i][FOLLOWUP_COL.status - 1],
+        rows[i][FOLLOWUP_COL.processedAt - 1],
+        Date.now()
+      );
+      if (!decision.claim) continue;
+      const priorAttempts = decision.attempts;
       const rowNum = i + 2;
 
       // Claim the row before any HTTP, so a crash mid-item can't re-run it.
+      // The attempt count goes into the claim, and the timestamp with it: the
+      // old bare 'processing' lost the count, and a run that died here left the
+      // row stuck forever with nothing to measure staleness against.
       withSheetLock(function () {
-        sheet.getRange(rowNum, FOLLOWUP_COL.status).setValue('processing');
+        sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 2)
+          .setValues([['processing:' + priorAttempts, new Date().toISOString()]]);
         SpreadsheetApp.flush();
       });
 
@@ -908,12 +982,86 @@ function processFollowUps() {
   }
 }
 
-/** Run once by hand. Replaces any existing processFollowUps trigger. */
-function installFollowUpTrigger() {
+// ── Daily digest ────────────────────────────────────────────────────────────
+//
+// WHY. alertFailure sends at most one email every 5 minutes. That is right for
+// a flood, but it means the second and later failures in a burst are visible
+// only to someone who thinks to open the Follow-ups tab. If a guide API key
+// expires, every lead fails, Darren gets one email, and the rest are silent.
+// This runs once a day and reports everything, throttled by nothing.
+
+const GUIDE_DIGEST_STATUSES = ['guide-failed', 'guide-rejected', 'error'];
+const DIGEST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The rows a digest should mention: terminal failures stamped within the
+ * window. Pure, so it can be tested without Sheets. `rows` is the raw
+ * getValues() block, without the header row.
+ */
+function guideDigestRows(rows, now) {
+  const out = [];
+  for (let i = 0; i < rows.length; i++) {
+    const status = String(rows[i][FOLLOWUP_COL.status - 1] || '');
+    if (GUIDE_DIGEST_STATUSES.indexOf(status) === -1) continue;
+    const at = rows[i][FOLLOWUP_COL.processedAt - 1];
+    const ts = Date.parse(at instanceof Date ? at.toISOString() : String(at || ''));
+    if (!isNaN(ts) && now - ts > DIGEST_WINDOW_MS) continue; // older than the window
+    out.push({
+      row: i + 2,
+      status: status,
+      source: String(rows[i][FOLLOWUP_COL.source - 1] || ''),
+      email: String(rows[i][FOLLOWUP_COL.email - 1] || ''),
+      error: String(rows[i][FOLLOWUP_COL.error - 1] || '').slice(0, 200),
+    });
+  }
+  return out;
+}
+
+function formatGuideDigest(items) {
+  const lines = items.map(function (it) {
+    return '- row ' + it.row + '  [' + it.status + ']  ' + (it.email || '(no email)') +
+           (it.source ? '  (' + it.source + ')' : '') + '\n    ' + it.error;
+  });
+  return 'These leads ARE saved in the Sheet. Their guide email is not.\n' +
+         'Send each one by hand, then clear the Status cell to retry it.\n\n' +
+         lines.join('\n') + '\n';
+}
+
+/** Installed as a daily trigger. Sends nothing on a clean day. */
+function sendGuideDigest() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(FOLLOWUP_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FOLLOWUP_HEADERS.length).getValues();
+  const items = guideDigestRows(rows, Date.now());
+  if (items.length === 0) return; // silence means nothing failed
+  try {
+    MailApp.sendEmail({
+      to: ALERT_EMAIL,
+      subject: items.length + ' guide email(s) not delivered in the last 24h',
+      body: formatGuideDigest(items),
+    });
+  } catch (err) {
+    Logger.log('sendGuideDigest failed: ' + err.toString());
+  }
+}
+
+/**
+ * Run once by hand. Replaces the queue trigger and the daily digest trigger.
+ * The old name is kept because that is what the deployment notes tell Darren
+ * to run.
+ */
+function installTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'processFollowUps') ScriptApp.deleteTrigger(t);
+    const fn = t.getHandlerFunction();
+    if (fn === 'processFollowUps' || fn === 'sendGuideDigest') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('processFollowUps').timeBased().everyMinutes(1).create();
+  ScriptApp.newTrigger('sendGuideDigest').timeBased().everyDays(1).atHour(7).create();
+}
+
+function installFollowUpTrigger() {
+  installTriggers();
 }
 
 function doGet() {
