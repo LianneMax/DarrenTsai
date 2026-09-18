@@ -25,34 +25,8 @@ describe.each(PAGES)('/%s submit errors', (page) => {
   });
 });
 
-/**
- * The guide functions used to return 502 for every Resend failure, so the queue
- * could not tell "Resend is busy, try again" from "this address will never work".
+/*
+ * The 502-vs-503/422 checks and the window.open checks that used to live here
+ * were regexes over source files. They are now real tests that invoke the code:
+ * tests/guide-endpoints.test.ts and tests/quote-tab.test.ts.
  */
-describe.each(['send-dscr-guide', 'send-rei-guide', 'send-fha-guide'])('%s failure status', (fn) => {
-  const src = readFileSync(resolve(__dirname, `../netlify/functions/${fn}.mts`), 'utf8');
-
-  it('returns 503 for retryable Resend failures (429, 5xx) and 422 for the rest', () => {
-    expect(src).toContain('emailRes.status === 429 || emailRes.status >= 500');
-    expect(src).toContain('retryable ? 503 : 422');
-    expect(src).not.toMatch(/jsonResponse\(502, \{ error: "email send failed" \}\)/);
-  });
-});
-
-/**
- * window.open with 'noopener' returns null by spec, which made the debt
- * calculator send every visitor's own tab to Saxton (smoke test, 17 Sep).
- */
-describe('debt calculator quote tab', () => {
-  const src = readFileSync(resolve(__dirname, '../src/components/DebtSavingsCalculator.tsx'), 'utf8');
-
-  it('does not pass noopener to window.open', () => {
-    const calls = src.match(/window\.open\([^)]*\)/g) ?? [];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const c of calls) expect(c).not.toMatch(/noopener/);
-  });
-
-  it('severs the opener by hand instead', () => {
-    expect(src).toContain('quoteTab.opener = null');
-  });
-});

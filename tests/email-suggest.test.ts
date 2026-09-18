@@ -56,6 +56,7 @@ describe('stays quiet when unsure — a wrong guess must not stop a real address
     'someone@saxtonmortgage.com',
     'max@a-very-unusual-domain.io',
     'max@mail.ru',
+    'max@protonmail.ch', // a real Proton domain, 2 edits from protonmail.com
     'max@',
     'max',
     '',

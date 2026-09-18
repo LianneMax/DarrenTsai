@@ -17,7 +17,7 @@
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com',
     'me.com', 'live.com', 'msn.com', 'comcast.net', 'verizon.net', 'att.net',
     'sbcglobal.net', 'pacbell.net', 'cox.net', 'charter.net', 'ymail.com',
-    'protonmail.com', 'proton.me', 'mail.com', 'earthlink.net', 'frontier.com',
+    'protonmail.com', 'protonmail.ch', 'proton.me', 'mail.com', 'earthlink.net', 'frontier.com',
     'roadrunner.com', 'bellsouth.net', 'outlook.co.uk', 'yahoo.co.uk'
   ];
 

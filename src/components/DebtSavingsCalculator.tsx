@@ -8,6 +8,7 @@ import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
 import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import { openQuoteTab, deliverQuote } from '../utils/quoteTab';
 
 const emailSchema = z.string().email();
 
@@ -190,6 +191,9 @@ export default function DebtSavingsCalculator() {
   const [usState,   setUsState]   = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
+  // Set only when the quote tab could not be opened (popup blocker), so the
+  // visitor gets a link to click instead of being thrown off the site.
+  const [quoteUrl,  setQuoteUrl]  = useState<string | null>(null);
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -258,13 +262,10 @@ export default function DebtSavingsCalculator() {
     setErrorMsg('');
 
     // Opened synchronously so it counts as gesture-initiated; pointed at the
-    // real URL once the save resolves.
-    // No 'noopener' in the features string: per the HTML spec that makes
-    // window.open return null even when the tab opens, so quoteTab was always
-    // null and the finally block below sent THIS tab to Saxton, taking every
-    // visitor off the site. Sever the opener by hand instead.
-    const quoteTab = window.open('', '_blank');
-    if (quoteTab) quoteTab.opener = null;
+    // real URL once the save resolves. See src/utils/quoteTab.ts for why the
+    // features string must stay empty.
+    const quoteTab = openQuoteTab();
+    setQuoteUrl(null);
     const payload = {
       firstName: fname, lastName: lname, phone, email,
       state: usState,
@@ -315,8 +316,10 @@ export default function DebtSavingsCalculator() {
       );
     } finally {
       // Point the tab either way: getting the quote is what they clicked for.
-      if (quoteTab) quoteTab.location.href = helocUrl;
-      else window.location.href = helocUrl; // popup blocked: fall back to this tab
+      // If the popup was blocked we offer a link instead of navigating this
+      // tab. Hijacking it loses the confirmation, and loses the "we couldn't
+      // save your details" message in the case where it matters most.
+      if (deliverQuote(quoteTab, helocUrl) === 'manual') setQuoteUrl(helocUrl);
     }
   };
 
@@ -875,6 +878,15 @@ export default function DebtSavingsCalculator() {
             <p className="success-body">
               Thanks! Darren will reach out within 1 business day to review your personalized savings estimate.
             </p>
+            {quoteUrl && (
+              <p className="success-body" style={{ marginBottom: 16 }}>
+                Your browser blocked the quote window.{' '}
+                <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'var(--navy)', fontWeight: 600 }}>
+                  Open your quote
+                </a>
+              </p>
+            )}
             <button
               type="button"
               className="btn btn-outline-navy btn-full success-cta"
@@ -967,7 +979,15 @@ export default function DebtSavingsCalculator() {
               </button>
             </div>
             <div className="modal-body">
-              <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
+              <p className="modal-sub" style={{ marginBottom: quoteUrl ? 12 : 24 }}>{errorMsg}</p>
+              {quoteUrl && (
+                <p className="modal-sub" style={{ marginBottom: 24 }}>
+                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: 'var(--navy)', fontWeight: 600 }}>
+                    Open your quote
+                  </a>
+                </p>
+              )}
               <button
                 className="btn btn-rose btn-full"
                 onClick={() => setErrorMsg(null)}
