@@ -151,7 +151,21 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       });
       // Same-origin, so unlike the old no-cors post the status is readable and
       // a failure actually reaches the visitor instead of showing a checkmark.
-      if (!res.ok) throw new Error(`lead-endpoint-${res.status}`);
+      if (!res.ok) {
+        // A 422 with field:"email" is the one failure the visitor can fix: the
+        // domain has no mail server, and nothing was saved. Keep them on the
+        // form with the message against the email field rather than showing the
+        // generic failure state, which tells them not to resubmit.
+        if (res.status === 422) {
+          const fix = await res.json().catch(() => null);
+          if (fix && fix.field === 'email' && fix.message) {
+            setErrors((prev) => ({ ...prev, email: String(fix.message) }));
+            setStatus('idle');
+            return;
+          }
+        }
+        throw new Error(`lead-endpoint-${res.status}`);
+      }
 
       track('generate_lead', {
         lead_source: payload.source,

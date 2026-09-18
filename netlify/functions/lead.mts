@@ -30,6 +30,7 @@
 //   RESEND_API_KEY = <already set, shared with the guide functions>
 
 import type { Config, Context } from "@netlify/functions";
+import { Resolver } from "node:dns/promises";
 
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
 const ALERT_TO = "darren@realdarrentsai.com";
@@ -46,6 +47,117 @@ const ALERT_TO = "darren@realdarrentsai.com";
 const UPSTREAM_TIMEOUT_MS = 9000;
 
 const ALLOWED_HOSTS = ["realdarrentsai.com", "www.realdarrentsai.com"];
+
+// ── Email domain check ──────────────────────────────────────────────────────
+//
+// WHY. Resend answers 422 "Invalid `to` field" for an address whose domain
+// cannot receive mail. By the time that happens the lead is saved, the visitor
+// has gone, and the guide they were promised is never sent. The typo hint in
+// the form (public/email-suggest.js) catches a misspelt gmail.com, but it says
+// nothing about a domain it has never heard of, which is exactly what an
+// invented or dead domain looks like.
+//
+// THE RULE. This refuses a lead ONLY on a definitive "this domain does not
+// exist" from DNS. A timeout, a SERVFAIL, or any other uncertainty lets the
+// lead through. Turning away a real buyer because DNS was briefly slow costs
+// far more than one undelivered guide, so every ambiguous case fails open.
+const MX_TIMEOUT_MS = 700;
+
+// Skipped outright: these carry most of the traffic and are known good, so the
+// common case costs no latency at all.
+const KNOWN_GOOD_DOMAINS = new Set([
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com",
+  "me.com", "live.com", "msn.com", "comcast.net", "verizon.net", "att.net",
+  "sbcglobal.net", "cox.net", "charter.net", "ymail.com", "protonmail.com",
+  "proton.me", "bellsouth.net", "realdarrentsai.com", "resend.dev",
+]);
+
+/** Warm containers reuse this, so a repeat submission costs no second lookup. */
+const domainCache = new Map<string, boolean>();
+
+/** The slice of node:dns this file uses. */
+type MxResolver = {
+  resolveMx(domain: string): Promise<unknown[]>;
+  resolve4(domain: string): Promise<string[]>;
+  cancel(): void;
+};
+
+const realResolver = (): MxResolver =>
+  new Resolver({ timeout: MX_TIMEOUT_MS, tries: 1 }) as unknown as MxResolver;
+
+let makeResolver: () => MxResolver = realResolver;
+
+/**
+ * Test seam. vi.mock does not reach a .mts function module under this Vitest
+ * setup (it is loaded outside the transform pipeline), and a test that hits
+ * real DNS is neither fast nor honest, so the resolver is injectable. Passing
+ * null restores the real one. Also clears the cache, which otherwise leaks a
+ * verdict from one test into the next.
+ */
+export function __setResolverFactory(factory: (() => MxResolver) | null) {
+  makeResolver = factory ?? realResolver;
+  domainCache.clear();
+}
+
+/** DNS errors that mean the domain genuinely has no mail route. */
+const DEFINITIVE_NXDOMAIN = new Set(["ENOTFOUND", "ENODATA", "NXDOMAIN"]);
+
+export function emailDomain(email: unknown): string | null {
+  if (typeof email !== "string") return null;
+  const at = email.trim().lastIndexOf("@");
+  if (at < 1) return null;
+  const domain = email.trim().slice(at + 1).toLowerCase();
+  if (!domain.includes(".") || domain.endsWith(".") || domain.includes(" ")) return null;
+  return domain;
+}
+
+/**
+ * True only when DNS says, without ambiguity, that mail to this domain cannot
+ * be routed: no MX record and no A record to fall back on (RFC 5321 §5.1).
+ * Anything else - timeout, SERVFAIL, a thrown resolver - returns false.
+ */
+async function domainCannotReceiveMail(domain: string): Promise<boolean> {
+  if (KNOWN_GOOD_DOMAINS.has(domain)) return false;
+  const cached = domainCache.get(domain);
+  if (cached !== undefined) return cached;
+
+  const resolver = makeResolver();
+  const lookup = (async () => {
+    try {
+      const mx = await resolver.resolveMx(domain);
+      if (mx.length > 0) return false;
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code ?? "";
+      if (!DEFINITIVE_NXDOMAIN.has(code)) return false; // uncertain: let it through
+    }
+    // No MX. A domain with an A record still accepts mail, so check before
+    // refusing anything.
+    try {
+      const a = await resolver.resolve4(domain);
+      return a.length === 0;
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code ?? "";
+      return DEFINITIVE_NXDOMAIN.has(code);
+    }
+  })();
+
+  let verdict = false;
+  try {
+    verdict = await Promise.race([
+      lookup,
+      new Promise<boolean>((r) => setTimeout(() => r(false), MX_TIMEOUT_MS)),
+    ]);
+  } catch {
+    verdict = false;
+  }
+  try {
+    resolver.cancel();
+  } catch {
+    /* nothing to cancel */
+  }
+  if (verdict) domainCache.set(domain, true); // only cache the definite answer
+  return verdict;
+}
 
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -154,7 +266,27 @@ export default async (req: Request, _context: Context) => {
     return jsonResponse(400, { error: "email or phone required" });
   }
 
-  const timer = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+  // The visitor is still on the page at this point, so a dead email domain can
+  // still be fixed by the person who typed it. One step later the lead is
+  // stored, the response has been sent, and there is nobody left to ask.
+  const startedAt = Date.now();
+  const domain = emailDomain(payload.email);
+  if (domain && (await domainCannotReceiveMail(domain))) {
+    return jsonResponse(422, {
+      ok: false,
+      error: "email domain unreachable",
+      field: "email",
+      message:
+        `We couldn't find a mail server for "${domain.slice(0, 60)}". ` +
+        `Please check your email address and try again.`,
+    });
+  }
+
+  // The DNS check eats into the same budget: Netlify kills the function at 10s
+  // and the rescue email still needs its ~300ms at the end.
+  const timer = AbortSignal.timeout(
+    Math.max(1000, UPSTREAM_TIMEOUT_MS - (Date.now() - startedAt)),
+  );
   try {
     const res = await fetch(upstream, {
       method: "POST",

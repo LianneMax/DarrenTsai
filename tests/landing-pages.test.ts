@@ -30,3 +30,28 @@ describe.each(PAGES)('/%s submit errors', (page) => {
  * were regexes over source files. They are now real tests that invoke the code:
  * tests/guide-endpoints.test.ts and tests/quote-tab.test.ts.
  */
+
+/**
+ * Patch 0006 makes /api/lead able to refuse a lead outright (422, dead email
+ * domain). That is the ONLY failure where the lead was not saved, so the
+ * existing "no need to submit again" copy would be a lie there. These check the
+ * handlers separate the two cases.
+ */
+describe.each(PAGES)('/%s email rejection', (page) => {
+  const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
+
+  it('reads the message off a 422 in both form handlers', () => {
+    expect(html.match(/if \(res\.status === 422\)/g) ?? []).toHaveLength(2);
+    expect(html.match(/fix\.field === 'email'/g) ?? []).toHaveLength(2);
+  });
+
+  it('prefers that message over the do-not-resubmit copy', () => {
+    expect(html.match(/errEl\.textContent = visitorMessage \? visitorMessage/g) ?? []).toHaveLength(2);
+  });
+
+  it('re-enables the button so the corrected address can be sent', () => {
+    // The catch block already does this for every failure; the 422 path throws
+    // into the same place rather than returning early.
+    expect(html).toContain('btn.disabled = false');
+  });
+});

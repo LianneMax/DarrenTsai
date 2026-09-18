@@ -283,13 +283,27 @@ export default function DebtSavingsCalculator() {
     };
     const helocUrl = buildHelocUrl(fname, lname, email);
 
+    // A dead email domain is the one failure the visitor can still fix, and the
+    // only one where nothing was saved.
+    let emailRejected = false;
+
     try {
       const res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, ...getAttribution() }),
       });
-      if (!res.ok) throw new Error(`lead-endpoint-${res.status}`);
+      if (!res.ok) {
+        if (res.status === 422) {
+          const fix = await res.json().catch(() => null);
+          if (fix && fix.field === 'email' && fix.message) {
+            emailRejected = true;
+            setErrorMsg(String(fix.message));
+            return; // the finally below still runs and closes the quote tab
+          }
+        }
+        throw new Error(`lead-endpoint-${res.status}`);
+      }
 
       track('generate_lead', {
         lead_source: payload.source,
@@ -319,7 +333,13 @@ export default function DebtSavingsCalculator() {
       // If the popup was blocked we offer a link instead of navigating this
       // tab. Hijacking it loses the confirmation, and loses the "we couldn't
       // save your details" message in the case where it matters most.
-      if (deliverQuote(quoteTab, helocUrl) === 'manual') setQuoteUrl(helocUrl);
+      if (emailRejected) {
+        // Nothing was saved and the address is wrong. Keep them here to fix it
+        // instead of handing Saxton a prefilled form with a dead email.
+        try { quoteTab?.close(); } catch { /* already gone */ }
+      } else if (deliverQuote(quoteTab, helocUrl) === 'manual') {
+        setQuoteUrl(helocUrl);
+      }
     }
   };
 

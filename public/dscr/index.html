@@ -1513,7 +1513,18 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
       });
-      if (!res.ok) throw new Error('lead-endpoint-' + res.status);
+      if (!res.ok) {
+        // A 422 with field:"email" is the one failure the visitor can fix: the
+        // domain they typed has no mail server, and the lead was NOT saved. Every
+        // other failure has already been rescued by email, which is why the copy
+        // below tells them not to resubmit. Saying that here would be a lie.
+        var visitorMessage = null;
+        if (res.status === 422) {
+          try { var fix = await res.json(); if (fix && fix.field === 'email') visitorMessage = fix.message; }
+          catch (jsonErr) { visitorMessage = null; }
+        }
+        throw new Error('lead-endpoint-' + res.status);
+      }
       if (window.DT) {
         window.DT.track('generate_lead', {
           lead_source: payload.source,
@@ -1543,7 +1554,8 @@
         errEl.style.cssText = 'color:#b42318;font-size:14px;line-height:1.4;margin:10px 0 0;text-align:center;';
         btn.insertAdjacentElement('afterend', errEl);
       }
-      errEl.textContent = (typeof res !== 'undefined' && res)
+      errEl.textContent = visitorMessage ? visitorMessage
+        : (typeof res !== 'undefined' && res)
         ? "We couldn't confirm your request, but your details were passed to Darren and he'll be in touch. No need to submit again. Questions? Call (714) 887-5432."
         : "We couldn't reach our server. Check your connection and try again, or call (714) 887-5432.";
     }
@@ -1961,7 +1973,18 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
       });
-      if (!res.ok) throw new Error('lead-endpoint-' + res.status);
+      if (!res.ok) {
+        // A 422 with field:"email" is the one failure the visitor can fix: the
+        // domain they typed has no mail server, and the lead was NOT saved. Every
+        // other failure has already been rescued by email, which is why the copy
+        // below tells them not to resubmit. Saying that here would be a lie.
+        var visitorMessage = null;
+        if (res.status === 422) {
+          try { var fix = await res.json(); if (fix && fix.field === 'email') visitorMessage = fix.message; }
+          catch (jsonErr) { visitorMessage = null; }
+        }
+        throw new Error('lead-endpoint-' + res.status);
+      }
       if (window.DT) {
         window.DT.track('generate_lead', {
           lead_source: payload.source,
@@ -1992,7 +2015,8 @@
         errEl.style.cssText = 'color:#b42318;font-size:14px;line-height:1.4;margin:10px 0 0;text-align:center;';
         btn.insertAdjacentElement('afterend', errEl);
       }
-      errEl.textContent = (typeof res !== 'undefined' && res)
+      errEl.textContent = visitorMessage ? visitorMessage
+        : (typeof res !== 'undefined' && res)
         ? "We couldn't confirm your request, but your details were passed to Darren and he'll be in touch. No need to submit again. Questions? Call (714) 887-5432."
         : "We couldn't reach our server. Check your connection and try again, or call (714) 887-5432.";
     }

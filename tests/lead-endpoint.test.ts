@@ -40,7 +40,9 @@ function req(body: unknown, opts: { method?: string; origin?: string | null } = 
   });
 }
 
-const LEAD = { firstName: 'Jane', email: 'jane@example.com', phone: '5551234567', source: 'dscr' };
+// gmail.com is on the endpoint's known-good list, so these tests never reach
+// the DNS resolver. The domain check has its own file: lead-email-domain.test.ts.
+const LEAD = { firstName: 'Jane', email: 'jane@gmail.com', phone: '5551234567', source: 'dscr' };
 
 /** Did the handler try to send the rescue email? */
 function rescueSent() {
@@ -223,7 +225,7 @@ describe('failure paths — a lead must never be lost silently', () => {
     await handler(req(LEAD), ctx);
     const rescue = calls.find((c) => c.url.includes('api.resend.com'))!;
     const body = JSON.parse(rescue.init.body as string);
-    expect(body.text).toContain('jane@example.com');
+    expect(body.text).toContain('jane@gmail.com');
     expect(body.subject).toMatch(/LEAD NOT SAVED/);
   });
 
@@ -235,7 +237,7 @@ describe('failure paths — a lead must never be lost silently', () => {
     const body = JSON.parse(rescue.init.body as string);
     expect(body.subject).toMatch(/STATUS UNKNOWN/);
     expect(body.subject).not.toMatch(/NOT SAVED/);
-    expect(body.text).toContain('jane@example.com');
+    expect(body.text).toContain('jane@gmail.com');
   });
 
   it('still returns 502 when the rescue email itself cannot be sent', async () => {
