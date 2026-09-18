@@ -571,10 +571,15 @@ function pushToBonzo(data) {
 // (frequently shows "No logs are available" even on completed runs), so this
 // is the trustworthy way to see what happened. Safe to delete this tab and
 // stop calling logDebug() once the DSCR email flow is confirmed stable.
-function logDebug(ss, message) {
+// Email is third so the tab can be read as "what happened, and to whom". Rows
+// written before the column existed stay blank under it: ensureHeaders only
+// appends, and never rewrites a cell a historical row already meant.
+const DEBUG_HEADERS = ['Timestamp', 'Message', 'Email'];
+
+function logDebug(ss, message, email) {
   try {
-    const sheet = getOrCreateSheet(ss, 'Debug', ['Timestamp', 'Message']);
-    sheet.appendRow([new Date().toISOString(), message]);
+    const sheet = getOrCreateSheet(ss, 'Debug', DEBUG_HEADERS);
+    sheet.appendRow([new Date().toISOString(), message, email || '']);
   } catch (err) {
     // never let debug logging itself break the lead flow
   }
@@ -602,7 +607,7 @@ function postGuide(ss, name, urlProp, keyProp, body) {
   const url = props.getProperty(urlProp);
   const key = props.getProperty(keyProp);
   if (!url || !key) {
-    logDebug(ss, name + ': ' + urlProp + '/KEY not set');
+    logDebug(ss, name + ': ' + urlProp + '/KEY not set', body.email);
     return { outcome: 'rejected', detail: name + ': ' + urlProp + '/KEY not set' };
   }
   try {
@@ -615,10 +620,10 @@ function postGuide(ss, name, urlProp, keyProp, body) {
     });
     const code = resp.getResponseCode();
     const text = resp.getContentText().slice(0, 500);
-    logDebug(ss, name + ': url=' + url + ' response ' + code + ' ' + text);
+    logDebug(ss, name + ': url=' + url + ' response ' + code + ' ' + text, body.email);
     return { outcome: classifyGuideResponse(code), detail: name + ' ' + code + ' ' + text };
   } catch (err) {
-    logDebug(ss, name + ': threw ' + err.toString());
+    logDebug(ss, name + ': threw ' + err.toString(), body.email);
     return { outcome: 'retry', detail: name + ' threw ' + err.toString() };
   }
 }

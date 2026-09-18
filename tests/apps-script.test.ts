@@ -41,6 +41,7 @@ type Gas = {
   guideDigestRows: (rows: unknown[][], now: number) => Array<{ row: number; status: string; source: string; email: string; error: string }>;
   formatGuideDigest: (items: Array<Record<string, unknown>>) => string;
   FOLLOWUP_COL: Record<string, number>;
+  DEBUG_HEADERS: string[];
   effectiveTouch: (d: Record<string, unknown>) => { fromFirst: boolean; source: string; campaign: string; content: string };
   effectiveClickId: (d: Record<string, unknown>) => string;
   effectiveClickIdType: (d: Record<string, unknown>) => string;
@@ -55,7 +56,7 @@ function loadGas(): Gas {
     'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
     'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
     'GUIDE_BACKOFF_MIN', 'FOLLOWUP_ORPHAN_MS', 'guideBackoffMs', 'claimDecision',
-    'guideDigestRows', 'formatGuideDigest', 'FOLLOWUP_COL',
+    'guideDigestRows', 'formatGuideDigest', 'FOLLOWUP_COL', 'DEBUG_HEADERS',
   ];
   const stubs = `
     var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
@@ -695,5 +696,30 @@ describe('daily digest', () => {
     expect(SOURCE).toContain("ScriptApp.newTrigger('sendGuideDigest').timeBased().everyDays(1)");
     // The old name still works: it is what the deployment notes tell Darren to run.
     expect(SOURCE).toContain('function installFollowUpTrigger()');
+  });
+});
+
+/**
+ * The Debug tab is how a guide failure is actually read back. Without the
+ * address you can see that a send returned 422 but not who lost their guide,
+ * which is the only thing that lets you send it by hand.
+ */
+describe('Debug tab', () => {
+  it('records who the message was about', () => {
+    expect(gas.DEBUG_HEADERS).toEqual(['Timestamp', 'Message', 'Email']);
+  });
+
+  it('appends Email rather than inserting it, so old rows keep their meaning', () => {
+    // ensureHeaders only writes past the current last column; a column added in
+    // the middle would silently re-label every historical row.
+    expect(gas.DEBUG_HEADERS.indexOf('Email')).toBe(gas.DEBUG_HEADERS.length - 1);
+  });
+
+  it('passes the lead address on every guide log line', () => {
+    const start = SOURCE.indexOf('function postGuide');
+    const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
+    const logs = src.match(/logDebug\([^;]*\);/g) ?? [];
+    expect(logs.length).toBe(3);
+    for (const call of logs) expect(call, call).toContain('body.email');
   });
 });
