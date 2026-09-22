@@ -260,6 +260,8 @@ describe('track()', () => {
     const dt = load({ url: 'https://realdarrentsai.com/' });
     dt.track('generate_lead', { lead_source: 'fha' });
     dt.track('phone_click', {});
-    expect((window.dataLayer as unknown[]).length).toBe(2);
+    const tracked = (window.dataLayer as Record<string, unknown>[])
+      .filter((item) => item.event === 'generate_lead' || item.event === 'phone_click');
+    expect(tracked).toHaveLength(2);
   });
 });

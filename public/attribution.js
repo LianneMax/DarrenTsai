@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var GTM_ID = ''; // <- set to 'GTM-XXXXXXX' when the container is issued
+  var GTM_ID = 'GTM-N7Z8Q4QF';
 
   var STORAGE_KEY = 'dt_attr';
   var FIRST_TOUCH_TTL = 90 * 24 * 60 * 60 * 1000; // Google's gclid lookback
@@ -230,7 +230,10 @@
       var j = d.createElement(s);
       j.async = true;
       j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i;
-      f.parentNode.insertBefore(j, f);
+      // A normal page always has an earlier script (this file), but keep the
+      // loader safe in stripped-down test/preview documents too.
+      if (f && f.parentNode) f.parentNode.insertBefore(j, f);
+      else if (d.head) d.head.appendChild(j);
     })(window, document, 'script', 'dataLayer', GTM_ID);
   }
 })();
