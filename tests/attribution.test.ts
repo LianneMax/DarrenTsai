@@ -193,7 +193,7 @@ describe('first touch', () => {
   });
 });
 
-describe('outbound clicks', () => {
+describe('link clicks', () => {
   function clickLink(href: string, text = 'Go') {
     const a = document.createElement('a');
     a.setAttribute('href', href);
@@ -208,40 +208,41 @@ describe('outbound clicks', () => {
     document.body.innerHTML = '';
   });
 
-  it('tracks a click to an external domain', () => {
+  it('tracks a phone click, with the number that was dialled', () => {
     load({ url: 'https://realdarrentsai.com/' });
-    const ev = clickLink('https://heloc.saxtonmortgage.com/account/heloc/register?referrer=abc', 'Get my quote');
-    expect(ev?.event).toBe('outbound_click');
-    expect(ev?.outbound_domain).toBe('heloc.saxtonmortgage.com');
-    expect(ev?.link_text).toBe('Get my quote');
+    const ev = clickLink('tel:+17148875432', 'Call now');
+    expect(ev?.event).toBe('phone_click');
+    expect(ev?.phone_number).toBe('+17148875432');
   });
 
-  it('tracks the Point HEI affiliate link', () => {
+  it('tracks a Calendly link as its own event', () => {
     load({ url: 'https://realdarrentsai.com/' });
-    const ev = clickLink('https://pointdigitalfinance.sjv.io/JKEgNe');
-    expect(ev?.event).toBe('outbound_click');
-    expect(ev?.outbound_domain).toBe('pointdigitalfinance.sjv.io');
-  });
-
-  it('does not treat an internal link as outbound', () => {
-    load({ url: 'https://realdarrentsai.com/' });
-    const before = (window.dataLayer as unknown[]).length;
-    clickLink('/dscr/');
-    clickLink('https://realdarrentsai.com/fha/');
-    expect((window.dataLayer as unknown[]).length).toBe(before);
-  });
-
-  it('keeps phone and Calendly as their own events, not outbound', () => {
-    load({ url: 'https://realdarrentsai.com/' });
-    expect(clickLink('tel:+17148875432')?.event).toBe('phone_click');
     expect(clickLink('https://calendly.com/realdarrentsai/15min')?.event).toBe('calendly_open');
   });
 
-  it('carries the attribution snapshot, so an outbound click is still attributable', () => {
+  it('carries the attribution snapshot, so the click is still attributable', () => {
     load({ url: 'https://realdarrentsai.com/?gclid=OUT123&utm_source=google' });
-    const ev = clickLink('https://heloc.saxtonmortgage.com/');
+    const ev = clickLink('tel:+17148875432');
     expect(ev?.clickId).toBe('OUT123');
     expect(ev?.utm_source).toBe('google');
+  });
+
+  /**
+   * The generic outbound-link event was removed with the third-party HELOC
+   * hand-off it existed for. Every external link left on the site is footer
+   * compliance boilerplate or a social profile, and an event on those is noise
+   * in GA4, not data. This asserts it stays gone, so it is not reintroduced by
+   * accident rather than by decision.
+   */
+  it('does not fire anything for an ordinary external or internal link', () => {
+    load({ url: 'https://realdarrentsai.com/' });
+    const before = (window.dataLayer as unknown[]).length;
+    clickLink('https://www.saxtonmortgage.com/privacy-policy', 'Privacy Policy');
+    clickLink('https://www.nmlsconsumeraccess.org/');
+    clickLink('https://www.linkedin.com/in/soldwithtsai/');
+    clickLink('/dscr/');
+    clickLink('https://realdarrentsai.com/fha/');
+    expect((window.dataLayer as unknown[]).length).toBe(before);
   });
 });
 

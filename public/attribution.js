@@ -187,11 +187,18 @@
 
   window.DT = { attr: attr, track: track };
 
-  // Outbound clicks that are conversions in their own right. Phone calls are
-  // plausibly the dominant conversion for a broker and are currently invisible.
-  // Note for when CallRail lands: its number swap rewrites tel: hrefs and it
-  // records the call too, so pick one as the primary Ads conversion rather than
-  // letting both feed automated bidding.
+  // Clicks that are conversions in their own right. Phone calls are plausibly
+  // the dominant conversion for a broker and are otherwise invisible.
+  // Note on CallRail: its number swap rewrites tel: hrefs and it records the
+  // call too, so pick one as the primary Ads conversion rather than letting
+  // both feed automated bidding.
+  //
+  // There is deliberately no generic outbound-link event. There was one, for a
+  // third-party HELOC hand-off that no longer exists; with that gone every
+  // remaining external link is footer compliance boilerplate or a social
+  // profile, so the event only added noise to GA4. If a partner or affiliate
+  // destination ships later, reinstate it then - that is the case where a click
+  // on someone else's domain is the last signal we get about the visitor.
   document.addEventListener('click', function (e) {
     var el = e.target && e.target.closest ? e.target.closest('a[href]') : null;
     if (!el) return;
@@ -203,22 +210,6 @@
     }
     if (href.indexOf('calendly.com') !== -1) {
       track('calendly_open', { page_path: window.location.pathname });
-      return;
-    }
-
-    // Anything leaving the site. Some conversions finish on someone else's
-    // domain (the Saxton/Figure HELOC soft-pull, the Point HEI link), where our
-    // UTMs never reach the Sheet or Bonzo, so the click itself is the only
-    // signal we will ever get that the visitor went. Without this those
-    // journeys are invisible: the visitor simply stops existing in our data.
-    var dest = hostOf(href);
-    if (dest && dest !== window.location.hostname.replace(/^www\./, '').toLowerCase()) {
-      track('outbound_click', {
-        outbound_domain: dest,
-        outbound_url: href,
-        link_text: (el.textContent || '').trim().slice(0, 80),
-        page_path: window.location.pathname
-      });
     }
   }, true);
 
