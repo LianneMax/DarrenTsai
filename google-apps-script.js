@@ -691,9 +691,9 @@ function sendGuideFor(ss, data) {
 // be recovered by hand. Rate-limited to one alert per 5 minutes: a systemic
 // outage would otherwise burn the 100/day consumer Gmail quota in minutes and
 // bury the first, most useful alert.
-// Comma-separated: MailApp accepts one string, and both addresses must get
-// every alert and every digest. Lianne is on here to verify formatting against
-// a real inbox; drop that address once that is signed off.
+// Comma-separated, which MailApp accepts as one string. Both addresses get
+// every alert and every digest: a lost lead needs someone to act on it, and one
+// inbox is one holiday away from silence.
 const ALERT_EMAIL = 'darren@realdarrentsai.com,liannemaxbalbastro@gmail.com';
 function alertFailure(subjectDetail, rawPayload) {
   try {

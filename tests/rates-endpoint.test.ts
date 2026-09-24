@@ -165,7 +165,8 @@ describe('it never returns a number it is unsure about', () => {
  * refresher absorbs that; the reader must never inherit it.
  */
 describe('the reader does not wait on FRED once rates are stored', () => {
-  const STORED = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: '2026-09-24T12:00:00.000Z' };
+  // fetchedAt must be recent: a stale value is refreshed on read now, by design.
+  const STORED = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: new Date().toISOString() };
 
   it('serves the stored rates without calling FRED at all', async () => {
     store.pmms = STORED;
@@ -207,7 +208,7 @@ describe('the scheduled refresher', () => {
   });
 
   it('leaves the previous rates alone when a run fails', async () => {
-    const previous = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: '2026-09-24T12:00:00.000Z' };
+    const previous = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: new Date().toISOString() };
     store.pmms = previous;
     mockFred({ MORTGAGE30US: new Error('timed out'), MORTGAGE15US: new Error('timed out') });
     await refresher();
@@ -215,7 +216,7 @@ describe('the scheduled refresher', () => {
   });
 
   it('does not overwrite good rates with an implausible one', async () => {
-    const previous = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: '2026-09-24T12:00:00.000Z' };
+    const previous = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: new Date().toISOString() };
     store.pmms = previous;
     mockFred({ MORTGAGE30US: fredOk('0'), MORTGAGE15US: fredOk('6.26') });
     await refresher();
@@ -234,7 +235,7 @@ describe('the scheduled refresher', () => {
     // PMMS publishes Thursdays. Hourly is about attempts, not freshness: single
     // FRED calls fail often, and a failed run is a no-op.
     const src = readFileSync(resolve(__dirname, '../netlify/functions/refresh-rates.mts'), 'utf8');
-    expect(src).toContain('schedule: "@hourly"');
+    expect(src).toContain('schedule: "0 * * * *"');
   });
 });
 
@@ -255,5 +256,56 @@ describe('a broken store degrades to slow, never to down', () => {
     const res = await handler(req(), ctx);
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ rate30: 6.35 });
+  });
+});
+
+/**
+ * Staleness. This is the bug that reached production: the reader only fetched
+ * when the store was EMPTY, so once anything was stored it was served forever
+ * and nothing but the scheduled refresher could ever correct it. FRED published
+ * 2026-09-24 and the site went on answering 2026-09-17.
+ */
+describe('a stale store corrects itself', () => {
+  const FRESH = { rate30: 7.03, rate15: 6.42, asOf: '2026-09-24', fetchedAt: new Date().toISOString() };
+  const OLD = { rate30: 6.95, rate15: 6.26, asOf: '2026-09-17', fetchedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString() };
+
+  it('refreshes what it holds once that is old, without waiting for the schedule', async () => {
+    store.pmms = OLD;
+    mockFred({ MORTGAGE30US: fredOk('7.03', '2026-09-24'), MORTGAGE15US: fredOk('6.42', '2026-09-24') });
+    const body = await (await handler(req(), ctx)).json();
+    expect(body).toMatchObject({ rate30: 7.03, rate15: 6.42, asOf: '2026-09-24' });
+    expect(store.pmms).toMatchObject({ asOf: '2026-09-24' }); // and it stuck
+  });
+
+  it('still serves the old rates when that refresh fails, rather than nothing', async () => {
+    store.pmms = OLD;
+    mockFred({ MORTGAGE30US: new Error('timed out'), MORTGAGE15US: new Error('timed out') });
+    const res = await handler(req(), ctx);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ rate30: 6.95, asOf: '2026-09-17' });
+  });
+
+  it('does not call FRED at all while the stored value is fresh', async () => {
+    store.pmms = FRESH;
+    mockFred({});
+    const res = await handler(req(), ctx);
+    expect(res.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('treats an unparseable fetchedAt as stale rather than trusting it', async () => {
+    store.pmms = { ...OLD, fetchedAt: 'not a date' };
+    mockFred({ MORTGAGE30US: fredOk('7.03', '2026-09-24'), MORTGAGE15US: fredOk('6.42', '2026-09-24') });
+    await handler(req(), ctx);
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('serves stale rates rather than 503 when the key goes missing', async () => {
+    store.pmms = OLD;
+    vi.stubGlobal('Netlify', { env: { get: () => undefined } });
+    mockFred({});
+    const res = await handler(req(), ctx);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ rate30: 6.95 });
   });
 });

@@ -22,7 +22,7 @@
 //     client bundle, which is how the old key ended up visible.
 
 import type { Config, Context } from "@netlify/functions";
-import { RATE_SOURCE_LABEL, readRates, refreshRates } from "./rates-shared.mts";
+import { RATE_SOURCE_LABEL, isStale, readRates, refreshRates } from "./rates-shared.mts";
 
 /**
  * How long a response is reused. PMMS publishes once a week, so six hours is
@@ -34,19 +34,28 @@ const CACHE_SECONDS = 6 * 60 * 60;
 const STALE_SECONDS = 7 * 24 * 60 * 60;
 
 export default async (_req: Request, _context: Context) => {
-  let rates = await readRates();
+  const stored = await readRates();
 
-  // Cold start: the store is empty because the scheduled refresher has not run
-  // yet (a brand new deploy, or a new deploy context with its own store). Try
-  // once inline so the site is not showing static rates until the next hour.
-  // This is the one path that can be slow, and only until it succeeds once.
-  if (!rates) {
+  // Refresh inline when the store is empty (a brand new deploy, or a new deploy
+  // context with its own store) AND when what it holds has gone stale.
+  //
+  // The staleness case is the one that matters. Without it the reader depends
+  // entirely on the scheduled refresher, so if that is delayed, failing or
+  // never ran, the site serves one week's rates forever with nothing able to
+  // correct it. That is exactly what happened on the first deploy: FRED
+  // published 2026-09-24 and the site kept answering 2026-09-17.
+  let rates = stored;
+  if (!stored || isStale(stored)) {
     const key = Netlify.env.get("FRED_API_KEY");
     if (!key) {
       console.error("FRED_API_KEY is not set; the calculators will show static rates");
-      return json(503, { error: "rates not configured" }, 0);
+      if (!stored) return json(503, { error: "rates not configured" }, 0);
+    } else {
+      // Falls back to what we already had. A slow FRED must never turn a stale
+      // rate into no rate, and the CDN is serving the previous response while
+      // this runs anyway.
+      rates = (await refreshRates(key)) ?? stored;
     }
-    rates = await refreshRates(key);
   }
 
   if (!rates) return json(502, { error: "rates unavailable" }, 0);

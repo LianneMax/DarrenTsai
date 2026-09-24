@@ -113,6 +113,22 @@ export async function refreshRates(key: string): Promise<StoredRates | null> {
   return stored;
 }
 
+/**
+ * How old a stored value may be before a reader tries to refresh it itself.
+ *
+ * PMMS publishes Thursday mornings, so a value more than a few hours old is
+ * usually still correct. This is not about freshness, it is about not depending
+ * on the scheduled function being healthy: if refresh-rates is delayed, failing
+ * or never ran, nothing else would ever update the store and the site would
+ * serve one week's rates indefinitely. That happened on the first deploy.
+ */
+export const STALE_AFTER_MS = 3 * 60 * 60 * 1000;
+
+export function isStale(rates: StoredRates, now = Date.now()): boolean {
+  const fetched = Date.parse(rates.fetchedAt);
+  return isNaN(fetched) || now - fetched > STALE_AFTER_MS;
+}
+
 /** The last stored rates, or null if the store has never been written. */
 export async function readRates(): Promise<StoredRates | null> {
   try {

@@ -33,10 +33,9 @@ import type { Config, Context } from "@netlify/functions";
 import { Resolver } from "node:dns/promises";
 
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
-// TEMPORARY: alerts are going to Lianne while the new format is being checked
-// against a real inbox. Change this back to darren@realdarrentsai.com once the
-// formatting is signed off, or Darren stops being told about lost leads.
-const ALERT_TO = "liannemaxbalbastro@gmail.com";
+// Both addresses, deliberately. A lost lead needs someone to act on it, and one
+// inbox is one holiday away from silence. Resend takes an array.
+const ALERT_TO = ["darren@realdarrentsai.com", "liannemaxbalbastro@gmail.com"];
 
 // Netlify synchronous functions are killed at 10s, and the rescue email below
 // needs roughly 300ms, so this is the most we can wait and still report.
@@ -418,7 +417,7 @@ async function rescueEmail(reason: string, payload: string, uncertain = false) {
         Authorization: `Bearer ${resendKey}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ from: FROM, to: [ALERT_TO], subject, html, text }),
+      body: JSON.stringify({ from: FROM, to: ALERT_TO, subject, html, text }),
     });
   } catch (err) {
     console.error("rescue email failed", err);
