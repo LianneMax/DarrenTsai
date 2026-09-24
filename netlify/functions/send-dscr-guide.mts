@@ -50,6 +50,11 @@ const BOX_TOP = INTRO_Y2 - 24;
 const BOX_LABEL_Y = BOX_TOP - 28;
 const ROW_H = 28;
 const ROW_Y = [0, 1, 2, 3].map((i) => BOX_LABEL_Y - 24 - i * ROW_H);
+// Nothing here masks below the last row, so this one is unread. It is kept
+// because this block mirrors draw_cover() in scripts/build_dscr_pdf.py formula
+// for formula, and a gap in that chain is how the two drift: the next constant
+// added below it would be derived from a number that is no longer written down.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BOX_BOTTOM = ROW_Y[3] - 14;
 const VALUE_RIGHT_X = PAGE_W - MARGIN - 20;
 const VALUE_LEFT_X = 350; // mask-rect left edge for the value column
@@ -329,7 +334,7 @@ async function buildPersonalizedPdf(lead: {
   };
 }
 
-export default async (req: Request, context: Context) => {
+export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
 
   const apiKey = req.headers.get("x-api-key");

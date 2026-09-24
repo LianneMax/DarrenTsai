@@ -26,7 +26,8 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
   const toggleYear = (yearIdx: number) => {
     setExpandedYears(prev => {
       const next = new Set(prev);
-      next.has(yearIdx) ? next.delete(yearIdx) : next.add(yearIdx);
+      if (next.has(yearIdx)) next.delete(yearIdx);
+      else next.add(yearIdx);
       return next;
     });
   };

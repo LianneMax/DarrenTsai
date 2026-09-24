@@ -194,7 +194,7 @@ async function getPdfBytes() {
   return pdfBytes;
 }
 
-export default async (req: Request, context: Context) => {
+export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
 
   const apiKey = req.headers.get("x-api-key");

@@ -85,6 +85,11 @@ function buildEmailHtml(lead: { firstName?: string }) {
 
   <tr>
     <td class="pad" style="padding:20px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
+      Hi ${firstName},
+    </td>
+  </tr>
+  <tr>
+    <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
       Attached is your FHA Affordability &amp; True Payment Calculator.
     </td>
   </tr>
@@ -193,7 +198,7 @@ async function getXlsxBytes() {
   return xlsxBytes;
 }
 
-export default async (req: Request, context: Context) => {
+export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
 
   const apiKey = req.headers.get("x-api-key");
