@@ -23,7 +23,6 @@ type Gas = {
   NEWSLETTER_HEADERS: string[];
   DEBT_CONSOLIDATION_HEADERS: string[];
   SOURCE_SCHEMAS: Record<string, { tab: string; headers: string[]; row: (d: Record<string, unknown>) => unknown[] }>;
-  isDuplicateLead: (sheet: unknown, email: string, phone: string) => boolean;
   ensureHeaders: (sheet: unknown, headers: string[]) => void;
   bonzoTag: (value: string) => string;
   isLicensedState: (s: string) => boolean;
@@ -51,7 +50,7 @@ type Gas = {
 function loadGas(): Gas {
   const names = [
     'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
-    'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'isDuplicateLead', 'ensureHeaders',
+    'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'ensureHeaders',
     'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
     'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
     'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
@@ -121,14 +120,42 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
     },
   );
 
-  it('every schema ends with the attribution columns, so earlier columns keep their meaning', () => {
+  /**
+   * The invariant is that the attribution block stays CONTIGUOUS and in order,
+   * so attrRow's values keep landing under their own headers. It used to be
+   * phrased as "must be last", which is how it happens to sit on most tabs but
+   * is not the actual requirement: Debt Consolidation has 'Licensed?' appended
+   * after it, because that column was added later and the append-only rule
+   * forbids inserting it further left on a tab that already holds rows.
+   */
+  it('keeps the attribution columns contiguous and in order on every tab', () => {
+    const schemas: Array<[string, string[]]> = [
+      ...Object.keys(gas.SOURCE_SCHEMAS).map((k) => [k, gas.SOURCE_SCHEMAS[k].headers] as [string, string[]]),
+      ['LEAD_HEADERS', gas.LEAD_HEADERS],
+      ['QUALIFY_HEADERS', gas.QUALIFY_HEADERS],
+      ['DEBT_CONSOLIDATION_HEADERS', gas.DEBT_CONSOLIDATION_HEADERS],
+    ];
+    for (const [name, headers] of schemas) {
+      const start = headers.indexOf(gas.ATTR_HEADERS[0]);
+      expect(start, `${name} has no attribution columns at all`).toBeGreaterThan(-1);
+      expect(
+        headers.slice(start, start + gas.ATTR_HEADERS.length),
+        `${name} interleaves something into the attribution block`,
+      ).toEqual(gas.ATTR_HEADERS);
+    }
+  });
+
+  it('puts Licensed? after attribution on Debt Consolidation, and nowhere else', () => {
+    // Pinned because it looks like a mistake and is not: see the header comment
+    // on DEBT_CONSOLIDATION_HEADERS.
+    const dc = gas.DEBT_CONSOLIDATION_HEADERS;
+    expect(dc[dc.length - 1]).toBe('Licensed?');
+    expect(dc[dc.length - 2]).toBe(gas.ATTR_HEADERS[gas.ATTR_HEADERS.length - 1]);
+    // Every other tab still has it before the attribution block.
     for (const key of Object.keys(gas.SOURCE_SCHEMAS)) {
       const headers = gas.SOURCE_SCHEMAS[key].headers;
-      expect(headers.slice(-gas.ATTR_HEADERS.length)).toEqual(gas.ATTR_HEADERS);
+      expect(headers.indexOf('Licensed?')).toBeLessThan(headers.indexOf(gas.ATTR_HEADERS[0]));
     }
-    expect(gas.LEAD_HEADERS.slice(-gas.ATTR_HEADERS.length)).toEqual(gas.ATTR_HEADERS);
-    expect(gas.QUALIFY_HEADERS.slice(-gas.ATTR_HEADERS.length)).toEqual(gas.ATTR_HEADERS);
-    expect(gas.DEBT_CONSOLIDATION_HEADERS.slice(-gas.ATTR_HEADERS.length)).toEqual(gas.ATTR_HEADERS);
   });
 
   it('the attribution values land in the same positions as their headers', () => {
@@ -146,7 +173,7 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
     expect(at('Licensed?')).toBe('Yes');
   });
 
-  it('newsletter keeps its original shape (isDuplicateLead assumes cols 4/5 elsewhere)', () => {
+  it('newsletter keeps its original email-only shape', () => {
     expect(gas.NEWSLETTER_HEADERS).toEqual(['Timestamp', 'Email', 'Source']);
   });
 
@@ -177,7 +204,9 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
       const after = doPost.slice(doPost.indexOf(`getOrCreateSheet(ss, '${tabName}'`));
       const upToNextBranch = after.slice(0, after.indexOf('getOrCreateSheet', 10) + 1 || after.length);
       expect(
-        upToNextBranch.includes('concat(attrRow(data))') || upToNextBranch.includes('schema.row(data)'),
+        // `concat(attrRow(data)` without the closing paren, so a branch that
+        // appends a further column after it still counts.
+        upToNextBranch.includes('concat(attrRow(data)') || upToNextBranch.includes('schema.row(data)'),
         `the "${tabName}" branch writes a row without concat(attrRow(data)), so its ` +
         `${headersConst} attribution columns would stay blank`,
       ).toBe(true);
@@ -211,41 +240,6 @@ describe('ensureHeaders', () => {
     const sheet = fakeSheet(['a', 'b', 'c', 'd']);
     gas.ensureHeaders(sheet, ['a', 'b']);
     expect(sheet.state.writes).toBe(0);
-  });
-});
-
-describe('isDuplicateLead — the numeric-cell landmine', () => {
-  function sheetWith(rows: Array<[unknown, unknown]>) {
-    return {
-      getLastRow: () => rows.length + 1,
-      getRange: (_r: number, col: number) => ({
-        getValues: () => rows.map((row) => [col === 4 ? row[0] : row[1]]),
-      }),
-    };
-  }
-
-  it('does not throw when Sheets returns a Number for a phone cell', () => {
-    const sheet = sheetWith([['jane@example.com', 5551234567]]);
-    expect(() => gas.isDuplicateLead(sheet, 'new@example.com', '(555) 555-9999')).not.toThrow();
-  });
-
-  it('still matches a duplicate phone stored as a Number', () => {
-    const sheet = sheetWith([['jane@example.com', 5551234567]]);
-    expect(gas.isDuplicateLead(sheet, 'other@example.com', '(555) 123-4567')).toBe(true);
-  });
-
-  it('matches email case-insensitively', () => {
-    const sheet = sheetWith([['Jane@Example.com', '']]);
-    expect(gas.isDuplicateLead(sheet, 'jane@example.com', '')).toBe(true);
-  });
-
-  it('returns false for a genuinely new lead', () => {
-    const sheet = sheetWith([['jane@example.com', 5551234567]]);
-    expect(gas.isDuplicateLead(sheet, 'new@example.com', '(555) 000-1111')).toBe(false);
-  });
-
-  it('handles an empty sheet', () => {
-    expect(gas.isDuplicateLead({ getLastRow: () => 1 }, 'a@b.com', '5551112222')).toBe(false);
   });
 });
 

@@ -16,7 +16,10 @@
  *    Who has access: Anyone
  * 7. Click Deploy → authorize → copy the Web App URL
  * 8. In Netlify → Environment variables:
- *    VITE_GOOGLE_SHEET_WEBHOOK_URL = <paste URL>
+ *    APPS_SCRIPT_WEBHOOK_URL = <paste URL>
+ *    Server-side only. The old name was VITE_GOOGLE_SHEET_WEBHOOK_URL, and the
+ *    VITE_ prefix is what inlined this URL into the public client bundle; the
+ *    forms now post to /api/lead and the function holds the URL instead.
  *
  * BONZO SETUP (pushes every lead straight into Bonzo, no Zapier/manual step needed):
  * 1. In this Apps Script editor: Project Settings (gear icon) → Script Properties
@@ -138,9 +141,9 @@ const LEAD_HEADERS = [
   'Target Outcome', 'Timeline', 'Source', 'Licensed?'
 ].concat(ATTR_HEADERS);
 
-// Newsletter is a different shape (no name/phone columns), so isDuplicateLead's
-// "email is column 4, phone is column 5" assumption does not hold here and it
-// gets no attribution columns.
+// Newsletter is a different shape: email only, no name or phone, and no
+// attribution columns. Nothing on the site sends source 'newsletter' any more,
+// so this exists to keep the historical tab readable.
 const NEWSLETTER_HEADERS = [
   'Timestamp', 'Email', 'Source'
 ];
@@ -198,6 +201,11 @@ const SOURCE_SCHEMAS = {
 
 const LANDING_SOURCES = Object.keys(SOURCE_SCHEMAS);
 
+// 'Licensed?' sits AFTER the attribution columns, which reads oddly next to the
+// other tabs where it comes before them. That is the append-only rule at work:
+// this tab already holds rows written under the current order, and inserting the
+// column where it "belongs" would shift the meaning of every historical cell to
+// its right. An odd-looking header is worth far less than a corrupted tab.
 const DEBT_CONSOLIDATION_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Best Time to Call', 'Lead Source',
@@ -205,7 +213,7 @@ const DEBT_CONSOLIDATION_HEADERS = [
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
   'Refi Monthly Payment', 'Refi Monthly Savings',
   'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
-].concat(ATTR_HEADERS);
+].concat(ATTR_HEADERS, ['Licensed?']);
 
 
 function getOrCreateSheet(ss, name, headers) {
@@ -239,26 +247,6 @@ function ensureHeaders(sheet, headers) {
   range.setFontWeight('bold');
   range.setBackground('#223d55');
   range.setFontColor('#ffffff');
-}
-
-function isDuplicateLead(sheet, email, phone) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return false; // only header row, no data yet
-  // Email is column 4 (index 3), Phone is column 5 (index 4)
-  const emails = sheet.getRange(2, 4, lastRow - 1, 1).getValues().flat();
-  const phones = sheet.getRange(2, 5, lastRow - 1, 1).getValues().flat();
-  const normalizedEmail = String(email || '').toLowerCase().trim();
-  const normalizedPhone = String(phone || '').replace(/\D/g, '');
-  for (var i = 0; i < emails.length; i++) {
-    // String() is load-bearing: Sheets hands back a Number for a phone cell that
-    // looks numeric, and calling .replace() on a Number throws. The throw would
-    // be caught by doPost and returned as {success:false}, which was invisible
-    // to the browser under the old no-cors post — i.e. every lead silently lost
-    // while the form still showed a green checkmark.
-    if (normalizedEmail && String(emails[i]).toLowerCase().trim() === normalizedEmail) return true;
-    if (normalizedPhone && String(phones[i]).replace(/\D/g, '') === normalizedPhone) return true;
-  }
-  return false;
 }
 
 // Bonzo's Mortgage-group field keys, with the types the API reports:
@@ -491,7 +479,15 @@ function pushToBonzo(data) {
   // can filter workable leads from out-of-area ones in Bonzo. Covers the named
   // landing pages plus the plain mortgage-calculator fallback (LeadForm.tsx on
   // the main site) — anything with a state on it.
-  if (LANDING_SOURCES.indexOf(data.source) !== -1 || tags.indexOf('mortgage-calculator') !== -1) {
+  // Debt Consolidation is named explicitly: it collects a state like the others
+  // but is not a LANDING_SOURCE, so it used to be the one funnel where an
+  // out-of-area lead looked identical to a workable one in both Bonzo and the
+  // Sheet.
+  if (
+    LANDING_SOURCES.indexOf(data.source) !== -1 ||
+    data.source === 'DebtConsolidation' ||
+    tags.indexOf('mortgage-calculator') !== -1
+  ) {
     tags.push(isLicensedState(data.state) ? 'licensed-state' : 'unlicensed-state');
     if (data.state) tags.push('state:' + String(data.state).trim().toUpperCase());
   }
@@ -569,12 +565,35 @@ function pushToBonzo(data) {
 // Writes to a "Debug" sheet tab instead of (or alongside) Logger.log — Apps
 // Script's Cloud Logging for web-app-triggered executions is unreliable
 // (frequently shows "No logs are available" even on completed runs), so this
-// is the trustworthy way to see what happened. Safe to delete this tab and
-// stop calling logDebug() once the DSCR email flow is confirmed stable.
+// is the trustworthy way to see what happened. It is kept rather than removed
+// because it is the only place a guide failure's detail is readable after the
+// fact; trimDebugTab() below stops it growing without bound.
 // Email is third so the tab can be read as "what happened, and to whom". Rows
 // written before the column existed stay blank under it: ensureHeaders only
 // appends, and never rewrites a cell a historical row already meant.
 const DEBUG_HEADERS = ['Timestamp', 'Message', 'Email'];
+
+/**
+ * Rows to keep in the Debug tab. It gains a row per guide attempt, so left
+ * alone it grows forever and eventually costs a Sheet that has real lead data
+ * in it. Trimmed once a day rather than on every write: deleting rows is slow,
+ * and doPost must stay fast.
+ */
+const DEBUG_MAX_ROWS = 2000;
+
+/** Drops the oldest Debug rows, keeping the newest DEBUG_MAX_ROWS. */
+function trimDebugTab(ss) {
+  try {
+    const sheet = ss.getSheetByName('Debug');
+    if (!sheet) return;
+    const dataRows = sheet.getLastRow() - 1; // excluding the header
+    if (dataRows <= DEBUG_MAX_ROWS) return;
+    // Oldest rows are at the top: logDebug appends.
+    sheet.deleteRows(2, dataRows - DEBUG_MAX_ROWS);
+  } catch (err) {
+    Logger.log('trimDebugTab failed: ' + err.toString()); // never break the digest
+  }
+}
 
 function logDebug(ss, message, email) {
   try {
@@ -672,7 +691,10 @@ function sendGuideFor(ss, data) {
 // be recovered by hand. Rate-limited to one alert per 5 minutes: a systemic
 // outage would otherwise burn the 100/day consumer Gmail quota in minutes and
 // bury the first, most useful alert.
-const ALERT_EMAIL = 'darren@realdarrentsai.com';
+// Comma-separated: MailApp accepts one string, and both addresses must get
+// every alert and every digest. Lianne is on here to verify formatting against
+// a real inbox; drop that address once that is signed off.
+const ALERT_EMAIL = 'darren@realdarrentsai.com,liannemaxbalbastro@gmail.com';
 function alertFailure(subjectDetail, rawPayload) {
   try {
     const cache = CacheService.getScriptCache();
@@ -750,7 +772,7 @@ function doPost(e) {
         data.refiMonthlySavings   || 0,
         data.heloanMonthlyPayment || 0,
         data.heloanMonthlySavings || 0,
-      ].concat(attrRow(data)));
+      ].concat(attrRow(data), [licensedCell(data)]));
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
       sheet.appendRow([
@@ -1035,6 +1057,7 @@ function formatGuideDigest(items) {
 /** Installed as a daily trigger. Sends nothing on a clean day. */
 function sendGuideDigest() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  trimDebugTab(ss); // once a day is often enough, and this is the only daily job
   const sheet = ss.getSheetByName(FOLLOWUP_TAB);
   if (!sheet || sheet.getLastRow() < 2) return;
   const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FOLLOWUP_HEADERS.length).getValues();
