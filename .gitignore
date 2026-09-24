@@ -16,3 +16,10 @@ deno.lock
 
 # Vitest JSON reporter output
 .vitest/
+
+# Agent skills installed by `npx skills add`. Machine-local: .claude/skills
+# holds absolute-path symlinks into .agents/, so committing these would break
+# on any other checkout. Reinstall with the commands in skills-lock.json.
+.agents/
+.claude/
+skills-lock.json
