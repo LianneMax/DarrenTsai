@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-import handler from '../netlify/functions/lead.mts';
+import handler, { buildRescueEmail } from '../netlify/functions/lead.mts';
 
 const UPSTREAM = 'https://script.google.com/macros/s/TEST/exec';
 
@@ -226,17 +226,17 @@ describe('failure paths — a lead must never be lost silently', () => {
     const rescue = calls.find((c) => c.url.includes('api.resend.com'))!;
     const body = JSON.parse(rescue.init.body as string);
     expect(body.text).toContain('jane@gmail.com');
-    expect(body.subject).toMatch(/LEAD NOT SAVED/);
+    expect(body.subject).toMatch(/did not save/);
   });
 
-  it('flags a timeout as status unknown, not NOT SAVED, since Apps Script keeps running', async () => {
+  it('tells Darren to check the Sheet on a timeout, not to re-enter, since Apps Script keeps running', async () => {
     responses = [Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })];
     const res = await handler(req(LEAD), ctx);
     expect(res.status).toBe(502);
     const rescue = calls.find((c) => c.url.includes('api.resend.com'))!;
     const body = JSON.parse(rescue.init.body as string);
-    expect(body.subject).toMatch(/STATUS UNKNOWN/);
-    expect(body.subject).not.toMatch(/NOT SAVED/);
+    expect(body.subject).toMatch(/Check the Sheet/);
+    expect(body.subject).not.toMatch(/did not save/);
     expect(body.text).toContain('jane@gmail.com');
   });
 
@@ -247,5 +247,74 @@ describe('failure paths — a lead must never be lost silently', () => {
     responses = [new Response('boom', { status: 500 })];
     const res = await handler(req(LEAD), ctx);
     expect(res.status).toBe(502);
+  });
+});
+
+/**
+ * The rescue alert's formatting.
+ *
+ * This is the email Darren reads when a lead may be lost, so the contact
+ * details have to survive every shape a payload can arrive in — including the
+ * one where it is not JSON at all and the raw block is the only record.
+ */
+describe('buildRescueEmail', () => {
+  const PAYLOAD = JSON.stringify({
+    firstName: 'Jane',
+    lastName: 'Doe',
+    email: 'jane@gmail.com',
+    phone: '(714) 555-0123',
+    state: 'CA',
+    source: 'dscr',
+    utm_campaign: 'yt-dscr',
+    monthlyRent: 2400,
+    debts: [{ type: 'Credit Card', bal: 8500 }],
+  });
+
+  it('says what to do and who it is about, with no internal jargon', () => {
+    const { subject } = buildRescueEmail('Timed out after 9000ms', PAYLOAD, true);
+    expect(subject).toBe('Check the Sheet for Jane Doe - lead may not have saved');
+  });
+
+  it('makes the email and phone tappable', () => {
+    const { html } = buildRescueEmail('Timed out after 9000ms', PAYLOAD, true);
+    expect(html).toContain('mailto:jane@gmail.com');
+    expect(html).toContain('tel:7145550123'); // dialable, formatting stripped
+  });
+
+  it('shows attribution and any unexpected field rather than dropping it', () => {
+    const { html } = buildRescueEmail('Apps Script reported failure: x', PAYLOAD, false);
+    expect(html).toContain('yt-dscr');
+    expect(html).toContain('monthlyRent');
+    expect(html).toContain('2400');
+  });
+
+  it('says what to do, and the two cases say different things', () => {
+    const unknown = buildRescueEmail('Timed out after 9000ms', PAYLOAD, true);
+    const notSaved = buildRescueEmail('Apps Script returned HTTP 500', PAYLOAD, false);
+    expect(unknown.html).toContain('Search the Sheet for this email first');
+    expect(notSaved.html).toContain('Enter this lead by hand');
+    expect(notSaved.subject).toBe('Add Jane Doe by hand - lead did not save');
+  });
+
+  it('keeps the raw payload and a plain-text part', () => {
+    const { html, text } = buildRescueEmail('Timed out after 9000ms', PAYLOAD, true);
+    expect(html).toContain('Raw submission');
+    expect(text).toContain('jane@gmail.com');
+    expect(text).toContain('Timed out after 9000ms');
+  });
+
+  it('still sends when the payload is not JSON', () => {
+    const { subject, html, text } = buildRescueEmail('unparseable', '<not json>', false);
+    expect(subject).toContain('a new lead');
+    expect(html).toContain('could not be parsed');
+    expect(html).toContain('&lt;not json&gt;'); // escaped, not injected
+    expect(text).toContain('<not json>');
+  });
+
+  it('escapes payload values instead of letting them into the markup', () => {
+    const evil = JSON.stringify({ firstName: '<script>alert(1)</script>', email: 'a@b.com' });
+    const { html } = buildRescueEmail('x', evil, false);
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('&lt;script&gt;');
   });
 });

@@ -33,7 +33,10 @@ import type { Config, Context } from "@netlify/functions";
 import { Resolver } from "node:dns/promises";
 
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
-const ALERT_TO = "darren@realdarrentsai.com";
+// TEMPORARY: alerts are going to Lianne while the new format is being checked
+// against a real inbox. Change this back to darren@realdarrentsai.com once the
+// formatting is signed off, or Darren stops being told about lost leads.
+const ALERT_TO = "liannemaxbalbastro@gmail.com";
 
 // Netlify synchronous functions are killed at 10s, and the rescue email below
 // needs roughly 300ms, so this is the most we can wait and still report.
@@ -183,6 +186,216 @@ function originAllowed(req: Request): boolean {
   }
 }
 
+// ── Rescue alert ────────────────────────────────────────────────────────────
+//
+// WHY IT IS FORMATTED. This email is read on a phone, usually in a hurry, and
+// the only question that matters is "do I have to re-enter this lead by hand,
+// and if so what are the details". The old version answered that with a wall of
+// raw JSON: the name, email and phone were in there somewhere, between the
+// twenty calculator fields nobody needs at that moment. So the contact details
+// come first as a table, the raw payload stays at the bottom for the rare case
+// where a calculator number matters, and the plain-text part is kept intact for
+// any client that will not render HTML.
+
+const ALERT_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+
+/** The fields worth showing above the fold, in the order they are useful. */
+const LEAD_FIELDS: Array<[key: string, label: string]> = [
+  ["email", "Email"],
+  ["phone", "Phone"],
+  ["state", "State"],
+  ["source", "Source"],
+  ["magnet", "Magnet"],
+  ["leadSource", "How they found us"],
+  ["bestTimeToCall", "Best time to call"],
+  ["timestamp", "Submitted"],
+];
+
+const ATTRIBUTION_FIELDS: Array<[key: string, label: string]> = [
+  ["utm_source", "Source"],
+  ["utm_medium", "Medium"],
+  ["utm_campaign", "Campaign"],
+  ["utm_content", "Content"],
+  ["utm_term", "Term"],
+  ["clickId", "Click ID"],
+  ["clickIdType", "Click ID type"],
+  ["landingPage", "Landing page"],
+  ["referrer", "Referrer"],
+];
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Pretty-print whatever a form actually sent: strings, numbers, or a debts array. */
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function row(label: string, valueHtml: string): string {
+  return (
+    `<tr>` +
+    `<td style="padding:7px 0;font-family:${ALERT_FONT};font-size:13px;line-height:18px;color:#6b7280;width:150px;vertical-align:top;white-space:nowrap;">${escapeHtml(label)}</td>` +
+    `<td style="padding:7px 0;font-family:${ALERT_FONT};font-size:14px;line-height:19px;color:#223d55;font-weight:600;word-break:break-word;">${valueHtml}</td>` +
+    `</tr>`
+  );
+}
+
+function section(title: string, rowsHtml: string): string {
+  if (!rowsHtml) return "";
+  return (
+    `<tr><td style="padding:22px 28px 0 28px;">` +
+    `<div style="font-family:${ALERT_FONT};font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#517686;padding-bottom:4px;">${escapeHtml(title)}</div>` +
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${rowsHtml}</table>` +
+    `</td></tr>`
+  );
+}
+
+/**
+ * Builds the alert. Pure and separate from the send, so the wording and the
+ * field handling can be reasoned about (and tested) without a network call.
+ */
+export function buildRescueEmail(reason: string, payload: string, uncertain: boolean) {
+  let lead: Record<string, unknown> = {};
+  let parsedOk = false;
+  try {
+    const parsed = JSON.parse(payload);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      lead = parsed as Record<string, unknown>;
+      parsedOk = true;
+    }
+  } catch {
+    /* fall through: the raw block at the bottom is then the only record we have */
+  }
+
+  const name = [lead.firstName, lead.lastName].map(displayValue).join(" ").trim();
+  const email = displayValue(lead.email);
+  const phone = displayValue(lead.phone);
+
+  const headline = uncertain ? "Check the Sheet for this lead" : "This lead did not save";
+  const accent = uncertain ? "#b45309" : "#b42318";
+  const accentSoft = uncertain ? "#fffaeb" : "#fef3f2";
+  const accentBorder = uncertain ? "#fedf89" : "#fecdc9";
+  // The subject is the whole message for someone reading a notification on a
+  // phone, so it says what to DO and who it is about, in that order. Jargon
+  // ("STATUS UNKNOWN") told the reader about our plumbing, not their next move.
+  const who = name || email || "a new lead";
+  const subject = uncertain
+    ? `Check the Sheet for ${who} - lead may not have saved`
+    : `Add ${who} by hand - lead did not save`;
+
+  const explanationHtml = uncertain
+    ? "This lead timed out before Apps Script confirmed it. Apps Script keeps running after we stop waiting, so it is <strong>probably saved already</strong>."
+    : "This lead could not be written to Sheets or Bonzo. Nothing downstream has it.";
+  const action = uncertain
+    ? "Search the Sheet for this email first. Only enter it by hand if it is genuinely missing, otherwise you will create a duplicate in Bonzo."
+    : "Enter this lead by hand, then send whatever guide the form promised.";
+
+  // Anything the form sent that is not already shown above, so a new field on a
+  // new landing page turns up here instead of silently vanishing.
+  const shown = new Set([
+    "firstName",
+    "lastName",
+    ...LEAD_FIELDS.map(([k]) => k),
+    ...ATTRIBUTION_FIELDS.map(([k]) => k),
+  ]);
+
+  const leadRows = LEAD_FIELDS.map(([key, label]) => {
+    const value = displayValue(lead[key]);
+    if (!value) return "";
+    if (key === "email") {
+      return row(label, `<a href="mailto:${escapeHtml(value)}" style="color:#517686;">${escapeHtml(value)}</a>`);
+    }
+    // One tap to call back is the whole point of the alert.
+    if (key === "phone") {
+      const dial = value.replace(/[^\d+]/g, "");
+      return row(label, `<a href="tel:${escapeHtml(dial)}" style="color:#517686;text-decoration:none;">${escapeHtml(value)}</a>`);
+    }
+    return row(label, escapeHtml(value));
+  }).join("");
+
+  const attrRows = ATTRIBUTION_FIELDS.map(([key, label]) => {
+    const value = displayValue(lead[key]);
+    return value ? row(label, escapeHtml(value)) : "";
+  }).join("");
+
+  const otherRows = Object.keys(lead)
+    .filter((k) => !shown.has(k))
+    .map((k) => {
+      const value = displayValue(lead[k]);
+      if (!value) return "";
+      return row(k, escapeHtml(value.length > 300 ? `${value.slice(0, 300)}…` : value));
+    })
+    .join("");
+
+  const html =
+    `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+    `<title>${escapeHtml(headline)}</title></head>` +
+    `<body style="margin:0;padding:0;background-color:#f5f7f9;">` +
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5f7f9;">` +
+    `<tr><td align="center" style="padding:24px 12px;">` +
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e6ebf0;border-radius:14px;overflow:hidden;">` +
+
+    `<tr><td style="background-color:${accent};padding:18px 28px;font-family:${ALERT_FONT};">` +
+    `<div style="font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#ffffff;">realdarrentsai.com</div>` +
+    `<div style="font-size:21px;line-height:27px;font-weight:700;color:#ffffff;padding-top:4px;">${escapeHtml(headline)}</div>` +
+    `</td></tr>` +
+
+    `<tr><td style="padding:22px 28px 0 28px;font-family:${ALERT_FONT};font-size:15px;line-height:23px;color:#6b7280;">${explanationHtml}</td></tr>` +
+
+    `<tr><td style="padding:16px 28px 0 28px;">` +
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${accentSoft};border:1px solid ${accentBorder};border-radius:10px;">` +
+    `<tr><td style="padding:14px 18px;font-family:${ALERT_FONT};font-size:14px;line-height:21px;color:#223d55;">` +
+    `<strong style="color:${accent};">What to do:</strong> ${escapeHtml(action)}` +
+    `</td></tr></table></td></tr>` +
+
+    (name || leadRows
+      ? `<tr><td style="padding:22px 28px 0 28px;">` +
+        `<div style="font-family:${ALERT_FONT};font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#517686;padding-bottom:6px;">Lead</div>` +
+        (name
+          ? `<div style="font-family:${ALERT_FONT};font-size:19px;line-height:25px;font-weight:700;color:#223d55;padding-bottom:6px;">${escapeHtml(name)}</div>`
+          : "") +
+        `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${leadRows}</table>` +
+        `</td></tr>`
+      : "") +
+
+    section("Attribution", attrRows) +
+    section("Other fields", otherRows) +
+
+    `<tr><td style="padding:22px 28px 0 28px;">` +
+    `<div style="font-family:${ALERT_FONT};font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#517686;padding-bottom:6px;">Reason</div>` +
+    `<div style="font-family:${ALERT_FONT};font-size:14px;line-height:21px;color:#223d55;">${escapeHtml(reason)}</div>` +
+    `</td></tr>` +
+
+    `<tr><td style="padding:20px 28px 28px 28px;">` +
+    `<div style="font-family:${ALERT_FONT};font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#6b7280;padding-bottom:6px;">` +
+    `Raw submission${parsedOk ? "" : " (could not be parsed)"}</div>` +
+    `<div style="background-color:#f5f7f9;border:1px solid #e6ebf0;border-radius:8px;padding:14px 16px;font-family:Menlo,Consolas,monospace;font-size:11px;line-height:17px;color:#6b7280;word-break:break-all;white-space:pre-wrap;">${escapeHtml(payload)}</div>` +
+    `</td></tr>` +
+
+    `</table></td></tr></table></body></html>`;
+
+  const text =
+    `${headline.toUpperCase()}\n\n` +
+    (uncertain
+      ? "A lead submitted on realdarrentsai.com timed out before Apps Script confirmed it.\n" +
+        "It is probably saved: check the Sheet for this email before entering it by hand, to avoid a duplicate.\n"
+      : "A lead submitted on realdarrentsai.com could not be written to Sheets or Bonzo.\n") +
+    (name ? `\nName:  ${name}` : "") +
+    (email ? `\nEmail: ${email}` : "") +
+    (phone ? `\nPhone: ${phone}` : "") +
+    `\n\nReason: ${reason}\n\nRaw submission:\n${payload}\n`;
+
+  return { subject, html, text };
+}
+
 /**
  * Last line of defence: if the lead could not be stored anywhere, mail it to
  * Darren so it is still recoverable by hand. Never throws — a failure here must
@@ -197,6 +410,7 @@ async function rescueEmail(reason: string, payload: string, uncertain = false) {
     console.error("no RESEND_API_KEY, lead could not be rescued", reason);
     return;
   }
+  const { subject, html, text } = buildRescueEmail(reason, payload, uncertain);
   try {
     await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -204,19 +418,7 @@ async function rescueEmail(reason: string, payload: string, uncertain = false) {
         Authorization: `Bearer ${resendKey}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        from: FROM,
-        to: [ALERT_TO],
-        subject: uncertain
-          ? "LEAD STATUS UNKNOWN — check the Sheet before re-entering"
-          : "LEAD NOT SAVED — recover this by hand",
-        text: uncertain
-          ? `A lead submitted on realdarrentsai.com timed out before Apps Script confirmed it.\n` +
-            `It is probably saved: check the Sheet for this email before entering it by hand, to avoid a duplicate.\n\n` +
-            `Reason: ${reason}\n\nRaw submission:\n${payload}\n`
-          : `A lead submitted on realdarrentsai.com could not be written to Sheets or Bonzo.\n\n` +
-            `Reason: ${reason}\n\nRaw submission:\n${payload}\n`,
-      }),
+      body: JSON.stringify({ from: FROM, to: [ALERT_TO], subject, html, text }),
     });
   } catch (err) {
     console.error("rescue email failed", err);
