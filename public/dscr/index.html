@@ -1090,11 +1090,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // lives only in the APPS_SCRIPT_WEBHOOK_URL env var.
   const LEAD_ENDPOINT = '/api/lead';
 
-  // Same public FRED key already shipped in the main site's Vite bundle as
-  // VITE_FRED_API_KEY — FRED keys are free/low-risk and this is already
-  // exposed client-side there, so embedding it here is no new exposure.
-  const FRED_API_KEY = "58c0e27d5bf3ecb85aa3e43ede3dddcc";
-  // Typical DSCR/investor-loan premium over the 30-yr conventional rate FRED
+  // Rates come from our own function, which calls FRED server-side. The key
+  // that used to be hardcoded here is gone: a direct browser call to FRED is
+  // blocked by CORS regardless, so it never worked, it only leaked.
+  const RATES_ENDPOINT = '/api/rates';
+  // Typical DSCR/investor-loan premium over the 30-yr conventional rate PMMS
   // reports. Adjust this single number if Darren's actual DSCR pricing drifts.
   const DSCR_SPREAD_OVER_30YR = 0.60;
 
@@ -1203,17 +1203,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // Fails silently and leaves the static rates in place on any error.
   // ---------------------------------------------------------
   async function fetchLiveRates() {
-    if (!FRED_API_KEY) return;
     try {
-      const url = 'https://api.stlouisfed.org/fred/series/observations' +
-        `?series_id=MORTGAGE30US&api_key=${FRED_API_KEY}&limit=1&sort_order=desc&file_type=json`;
-      const res = await fetch(url);
+      const res = await fetch(RATES_ENDPOINT);
       if (!res.ok) return;
       const json = await res.json();
-      const obs = json && json.observations && json.observations[0];
-      if (!obs || obs.value === '.') return;
+      if (!json || typeof json.rate30 !== 'number') return;
 
-      const base = parseFloat(obs.value) + DSCR_SPREAD_OVER_30YR;
+      const base = json.rate30 + DSCR_SPREAD_OVER_30YR;
       rateBuckets[0].rate = (base + 0.50) / 100;
       rateBuckets[1].rate = base / 100;
       rateBuckets[2].rate = (base - 0.25) / 100;
@@ -1226,7 +1222,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       const note = $('rateNote');
       if (note) {
-        note.textContent = `Live 30-yr market rate via FRED® · updated weekly · as of ${obs.date}. DSCR pricing runs above conventional.`;
+        var asOf = String(json.asOf || '');
+        var d = new Date(asOf + 'T00:00:00Z');
+        var shown = isNaN(d.getTime()) ? asOf : d.toLocaleDateString('en-US',
+          { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+        note.textContent = `Based on the Freddie Mac PMMS 30-yr weekly average via FRED®, as of ${shown}. DSCR pricing runs above conventional.`;
         note.classList.add('live');
       }
 

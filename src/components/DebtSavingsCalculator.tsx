@@ -1,33 +1,15 @@
-import { useState, useEffect, type MouseEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import { LEAD_ENDPOINT, FRED_API_KEY, EMAIL } from '../config';
+import { LEAD_ENDPOINT, RATES_ENDPOINT, EMAIL } from '../config';
 import { getAttribution, track } from '../utils/attribution';
 import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
 import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
-import { openQuoteTab, deliverQuote } from '../utils/quoteTab';
 
 const emailSchema = z.string().email();
-
-// HELOC registration URL
-const HELOC_URL = 'https://heloc.saxtonmortgage.com/account/heloc/register?referrer=9f491c72-43fa-41d7-b949-cc339ea5e6ee';
-
-// Appends lead info as query params so the (external) HELOC registration
-// page can prefill — param names are a best guess, not confirmed against
-// Saxton's app since it's a separate JS-rendered app we can't inspect.
-function buildHelocUrl(fname: string, lname: string, email: string): string {
-  const initials = `${fname.trim().charAt(0)}${lname.trim().charAt(0)}`.toUpperCase();
-  const params = new URLSearchParams();
-  if (initials.trim()) params.set('initials', initials);
-  if (fname.trim())    params.set('first_name', fname.trim());
-  if (lname.trim())    params.set('last_name', lname.trim());
-  if (email.trim())    params.set('email', email.trim());
-  const qs = params.toString();
-  return qs ? `${HELOC_URL}&${qs}` : HELOC_URL;
-}
 
 // Fallback rates — overridden by live FRED data on mount
 const _RATE_30YR = 6.41;
@@ -118,24 +100,38 @@ function BreakdownRow({
 const FRED_FALLBACK_30 = _RATE_30YR;
 const FRED_FALLBACK_15 = _RATE_15YR;
 
-async function fetchFredRate(seriesId: string): Promise<{ value: number; date: string } | null> {
-  if (!FRED_API_KEY) return null;
+/**
+ * Current rates, from our own /api/rates function.
+ *
+ * It used to call api.stlouisfed.org directly, which cannot work from a
+ * browser: FRED sends no CORS headers, so the request is blocked. The server
+ * makes the call now, which also keeps the API key out of this bundle.
+ *
+ * Returns null on any failure, and the caller keeps the static fallbacks and
+ * says as much in the caption. Rates are decision-shaped information, so a
+ * wrong number is worse than an openly stale one.
+ */
+async function fetchRates(): Promise<{ rate30: number; rate15: number | null; asOf: string } | null> {
   try {
-    const base = import.meta.env.DEV
-      ? '/fred-api'
-      : 'https://api.stlouisfed.org/fred';
-    const url =
-      `${base}/series/observations` +
-      `?series_id=${seriesId}&api_key=${FRED_API_KEY}&limit=1&sort_order=desc&file_type=json`;
-    const res = await fetch(url);
+    const res = await fetch(RATES_ENDPOINT);
     if (!res.ok) return null;
     const json = await res.json();
-    const obs = json?.observations?.[0];
-    if (!obs || obs.value === '.') return null;
-    return { value: parseFloat(obs.value), date: obs.date };
+    if (typeof json?.rate30 !== 'number') return null;
+    return {
+      rate30: json.rate30,
+      rate15: typeof json.rate15 === 'number' ? json.rate15 : null,
+      asOf: typeof json.asOf === 'string' ? json.asOf : '',
+    };
   } catch {
     return null;
   }
+}
+
+/** Renders a FRED observation date (2026-09-18) as "18 Sep 2026". */
+function formatRateDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 export default function DebtSavingsCalculator() {
@@ -145,22 +141,23 @@ export default function DebtSavingsCalculator() {
 
   const [step, setStep] = useState(1);
 
-  // Live rates from FRED
+  // Current rates, fetched on mount. No deploy is involved: a new weekly PMMS
+  // release shows up on the site within one cache window of /api/rates.
   const [rate30, setRate30] = useState(FRED_FALLBACK_30);
   const [rate15, setRate15] = useState(FRED_FALLBACK_15);
   const [rateDate, setRateDate] = useState('');
   const [ratesLive, setRatesLive] = useState(false);
 
   useEffect(() => {
-    console.log('[FRED] API key present:', !!FRED_API_KEY, FRED_API_KEY?.slice(0, 6));
-    Promise.all([
-      fetchFredRate('MORTGAGE30US'),
-      fetchFredRate('MORTGAGE15US'),
-    ]).then(([r30, r15]) => {
-      console.log('[FRED] results:', r30, r15);
-      if (r30) { setRate30(r30.value); setRateDate(r30.date); setRatesLive(true); }
-      if (r15)   setRate15(r15.value);
+    let cancelled = false;
+    fetchRates().then((rates) => {
+      if (cancelled || !rates) return; // failed: keep the static fallbacks
+      setRate30(rates.rate30);
+      if (rates.rate15 !== null) setRate15(rates.rate15);
+      setRateDate(rates.asOf);
+      setRatesLive(true);
     });
+    return () => { cancelled = true; };
   }, []);
 
   // Debts
@@ -191,9 +188,6 @@ export default function DebtSavingsCalculator() {
   const [usState,   setUsState]   = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
-  // Set only when the quote tab could not be opened (popup blocker), so the
-  // visitor gets a link to click instead of being thrown off the site.
-  const [quoteUrl,  setQuoteUrl]  = useState<string | null>(null);
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -240,13 +234,7 @@ export default function DebtSavingsCalculator() {
     }, 0);
   };
 
-  const submitLead = async (e: MouseEvent<HTMLAnchorElement>) => {
-    // Always take over the navigation now: the save is awaited, so letting the
-    // browser follow the href would race the request and we would never learn
-    // whether the lead landed. The destination tab is opened below, inside this
-    // same user gesture, so a popup blocker does not eat it.
-    e.preventDefault();
-
+  const submitLead = async () => {
     if (!fname || !phone || !email || !usState) {
       setErrorMsg('Please fill in your name, phone, email, and state.');
       return;
@@ -261,11 +249,6 @@ export default function DebtSavingsCalculator() {
     }
     setErrorMsg('');
 
-    // Opened synchronously so it counts as gesture-initiated; pointed at the
-    // real URL once the save resolves. See src/utils/quoteTab.ts for why the
-    // features string must stay empty.
-    const quoteTab = openQuoteTab();
-    setQuoteUrl(null);
     const payload = {
       firstName: fname, lastName: lname, phone, email,
       state: usState,
@@ -281,11 +264,6 @@ export default function DebtSavingsCalculator() {
       source: 'DebtConsolidation',
       timestamp: new Date().toISOString(),
     };
-    const helocUrl = buildHelocUrl(fname, lname, email);
-
-    // A dead email domain is the one failure the visitor can still fix, and the
-    // only one where nothing was saved.
-    let emailRejected = false;
 
     try {
       const res = await fetch(LEAD_ENDPOINT, {
@@ -297,9 +275,10 @@ export default function DebtSavingsCalculator() {
         if (res.status === 422) {
           const fix = await res.json().catch(() => null);
           if (fix && fix.field === 'email' && fix.message) {
-            emailRejected = true;
+            // A dead email domain is the one failure the visitor can still
+            // fix, and the only one where nothing was saved. Keep them here.
             setErrorMsg(String(fix.message));
-            return; // the finally below still runs and closes the quote tab
+            return;
           }
         }
         throw new Error(`lead-endpoint-${res.status}`);
@@ -321,25 +300,13 @@ export default function DebtSavingsCalculator() {
       });
       setSubmitted(true);
     } catch {
-      // The visitor still gets the quote they asked for: Saxton's form is
-      // prefilled from the same details, so they are not stranded. But say so
-      // plainly rather than showing a success state we cannot stand behind.
+      // Say so plainly rather than showing a success state we cannot stand
+      // behind. The lead endpoint mails Darren a rescue copy on its own side,
+      // but the visitor should still know their details may not have landed.
       setErrorMsg(
-        "We couldn't save your details on our end. We've opened your quote anyway — " +
-        `if you don't hear back, email ${EMAIL}.`
+        "We couldn't save your details on our end. " +
+        `Please try again in a moment, or email ${EMAIL} and Darren will pick it up.`
       );
-    } finally {
-      // Point the tab either way: getting the quote is what they clicked for.
-      // If the popup was blocked we offer a link instead of navigating this
-      // tab. Hijacking it loses the confirmation, and loses the "we couldn't
-      // save your details" message in the case where it matters most.
-      if (emailRejected) {
-        // Nothing was saved and the address is wrong. Keep them here to fix it
-        // instead of handing Saxton a prefilled form with a dead email.
-        try { quoteTab?.close(); } catch { /* already gone */ }
-      } else if (deliverQuote(quoteTab, helocUrl) === 'manual') {
-        setQuoteUrl(helocUrl);
-      }
     }
   };
 
@@ -629,8 +596,8 @@ export default function DebtSavingsCalculator() {
             }}>
               30YR fixed: <strong>{rate30.toFixed(2)}%</strong> · 15YR: <strong>{rate15.toFixed(2)}%</strong>{' '}
               &nbsp;·&nbsp;{ratesLive
-                ? <>Live via <a href="https://fred.stlouisfed.org" target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1' }}>FRED®</a> · Updated weekly · As of {rateDate}</>
-                : 'Source: FRED® / Federal Reserve, add VITE_FRED_API_KEY for live updates'
+                ? <>Freddie Mac PMMS via <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1' }}>FRED®</a> · weekly average, as of {formatRateDate(rateDate)}</>
+                : 'Static example range, not current market rates'
               }
             </div>
 
@@ -853,10 +820,8 @@ export default function DebtSavingsCalculator() {
               </div>
             </div>
 
-            <a
-              href={buildHelocUrl(fname, lname, email)}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
               className="btn btn-rose btn-full"
               style={{ marginBottom: 18 }}
               onClick={submitLead}
@@ -865,7 +830,7 @@ export default function DebtSavingsCalculator() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </a>
+            </button>
 
             {/* Book a call block */}
             <div style={{
@@ -898,15 +863,6 @@ export default function DebtSavingsCalculator() {
             <p className="success-body">
               Thanks! Darren will reach out within 1 business day to review your personalized savings estimate.
             </p>
-            {quoteUrl && (
-              <p className="success-body" style={{ marginBottom: 16 }}>
-                Your browser blocked the quote window.{' '}
-                <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ color: 'var(--navy)', fontWeight: 600 }}>
-                  Open your quote
-                </a>
-              </p>
-            )}
             <button
               type="button"
               className="btn btn-outline-navy btn-full success-cta"
@@ -933,8 +889,10 @@ export default function DebtSavingsCalculator() {
           <strong>Important Disclosures:</strong> This tool provides estimates for educational
           purposes only. Actual rates, terms, and monthly payments depend on creditworthiness,
           property appraisal, loan-to-value ratio, and lender approval. Not a commitment to
-          lend. HELOAN parameters based on Figure Wholesale guidelines and are subject to
-          change. Rates shown reflect MortgageNewsDaily index data and are not guaranteed.
+          lend. HELOAN parameters are based on current wholesale lender guidelines and are
+          subject to change. Rates shown are Freddie Mac's Primary Mortgage Market Survey
+          (PMMS) weekly national average, retrieved via FRED®, and are not a quote or a
+          guarantee.
           All loans subject to underwriting approval. Equal Housing Opportunity.
           <br /><br />
           <strong>Darren Tsai</strong> · Senior Loan Officer · NMLS# 2438102 · DRE# 02103705
@@ -999,15 +957,7 @@ export default function DebtSavingsCalculator() {
               </button>
             </div>
             <div className="modal-body">
-              <p className="modal-sub" style={{ marginBottom: quoteUrl ? 12 : 24 }}>{errorMsg}</p>
-              {quoteUrl && (
-                <p className="modal-sub" style={{ marginBottom: 24 }}>
-                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ color: 'var(--navy)', fontWeight: 600 }}>
-                    Open your quote
-                  </a>
-                </p>
-              )}
+              <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
               <button
                 className="btn btn-rose btn-full"
                 onClick={() => setErrorMsg(null)}

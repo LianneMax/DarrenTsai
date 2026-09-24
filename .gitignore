@@ -6,3 +6,10 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+SESSION_HANDOFF_PRIVATE.md
+
+# Local Netlify folder
+.netlify
+
+# Written by the Netlify CLI when it runs functions locally, not by the build.
+deno.lock

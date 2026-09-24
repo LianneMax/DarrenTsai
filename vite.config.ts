@@ -5,11 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/fred-api': {
-        target: 'https://api.stlouisfed.org/fred',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/fred-api/, ''),
-      },
+      // The /fred-api proxy that used to be here is gone. It made FRED work in
+      // dev and only in dev, which is exactly why the production CORS failure
+      // went unnoticed for so long: rates now go through /api/rates in both.
+      //
       // Forms post to the /api/lead Netlify function. `vite dev` does not run
       // functions, so point it at `netlify dev` (run both, or just use
       // `netlify dev` on its own, which proxies Vite for you).
