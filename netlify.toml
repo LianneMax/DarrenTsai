@@ -26,6 +26,14 @@
 # Redirects are evaluated top to bottom, and these must stay above any catch-all
 # if one is ever reintroduced.
 
+# The amortization calculator moved off the homepage to its own page, so the
+# short /calculator path anyone already types or links stays alive. 302 for the
+# same reason the /yt links are: the destination can still change.
+[[redirects]]
+  from = "/calculator"
+  to = "/mortgage-calculator/"
+  status = 302
+
 [[redirects]]
   from = "/yt/heloc"
   to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=description"

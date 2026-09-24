@@ -11,9 +11,13 @@ function openCalendly(e: React.MouseEvent) {
 
 interface Props {
   onOpenContact: () => void;
+  // The nav is white-on-transparent so it can sit over the homepage hero.
+  // Pages that open on a light background (e.g. /mortgage-calculator/) would
+  // render it invisible until the first scroll, so they pin the solid style on.
+  alwaysSolid?: boolean;
 }
 
-export default function Nav({ onOpenContact }: Props) {
+export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
@@ -50,10 +54,18 @@ export default function Nav({ onOpenContact }: Props) {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
+  // The same Nav renders on the homepage and on /mortgage-calculator/, where
+  // none of the homepage sections exist. When the target is not on this page,
+  // hand the browser the real /#id URL instead of swallowing the click.
   const scrollTo = (id: string) => (e: React.MouseEvent) => {
+    const target = document.getElementById(id);
+    if (!target) {
+      setMenuOpen(false);
+      return;
+    }
     e.preventDefault();
     setMenuOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    target.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleContactClick = (e: React.MouseEvent) => {
@@ -69,10 +81,10 @@ export default function Nav({ onOpenContact }: Props) {
 
   return (
     <>
-      <nav className={`nav${scrolled ? ' nav-scrolled' : ''}${menuOpen ? ' nav-menu-open' : ''}`}>
+      <nav className={`nav${scrolled || alwaysSolid ? ' nav-scrolled' : ''}${menuOpen ? ' nav-menu-open' : ''}`}>
         <div className="nav-inner container">
 
-          <a href="#" className="nav-logo" aria-label="Darren Tsai Home">
+          <a href="/" className="nav-logo" aria-label="Darren Tsai Home">
             <div className="nav-avatar">
               <img
                 src="/darren-avatar.png"
@@ -96,7 +108,7 @@ export default function Nav({ onOpenContact }: Props) {
 
           {/* Desktop links */}
           <div className="nav-links">
-            <a href="#savings"    onClick={scrollTo('savings')}    className="nav-link">Monthly Reset</a>
+            <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-link">Monthly Reset</a>
             <div className={`nav-dropdown${calcOpen ? ' nav-dropdown--open' : ''}`} ref={calcDropdownRef}>
               <button
                 type="button"
@@ -111,13 +123,13 @@ export default function Nav({ onOpenContact }: Props) {
                 </svg>
               </button>
               <div className="nav-dropdown-menu">
-                <a href="#savings" onClick={(e) => { scrollTo('savings')(e); setCalcOpen(false); }} className="nav-dropdown-item">Debt Consolidation</a>
-                <a href="#calculator" onClick={(e) => { scrollTo('calculator')(e); setCalcOpen(false); }} className="nav-dropdown-item">Mortgage Calculator</a>
+                <a href="/#savings" onClick={(e) => { scrollTo('savings')(e); setCalcOpen(false); }} className="nav-dropdown-item">Debt Consolidation</a>
+                <a href="/mortgage-calculator/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">Mortgage Calculator</a>
                 <a href="/dscr/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">DSCR</a>
                 <a href="/fha/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">FHA Calculator</a>
               </div>
             </div>
-            <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
+            <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
             <button onClick={handleContactClick} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
             <button onClick={openCalendly} className="btn btn-rose btn-sm">Book a Call</button>
           </div>
@@ -142,12 +154,13 @@ export default function Nav({ onOpenContact }: Props) {
         <div className="nav-mobile-overlay" onClick={() => setMenuOpen(false)} aria-hidden="true" />
       )}
       <div className={`nav-mobile-menu${menuOpen ? ' nav-mobile-menu--open' : ''}`} aria-hidden={!menuOpen}>
-        <a href="#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link">Monthly Reset</a>
-        <a href="#calculator" onClick={scrollTo('calculator')} className="nav-mobile-link">Calculator</a>
-        <a href="#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink">Debt Consolidation</a>
+        <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link">Monthly Reset</a>
+        <span className="nav-mobile-link nav-mobile-label">Calculator</span>
+        <a href="/#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink">Debt Consolidation</a>
+        <a href="/mortgage-calculator/" className="nav-mobile-link nav-mobile-sublink">Mortgage Calculator</a>
         <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink">DSCR</a>
         <a href="/fha/" className="nav-mobile-link nav-mobile-sublink">FHA Calculator</a>
-        <a href="#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link">Reviews</a>
+        <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link">Reviews</a>
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn">Contact</button>
         <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }}>Book a Call</button>
       </div>

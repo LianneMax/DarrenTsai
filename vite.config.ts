@@ -20,6 +20,18 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 600,
+    // Two real pages, no client router: the homepage sells one CTA (debt
+    // consolidation) and the amortization calculator has its own URL at
+    // /mortgage-calculator/. Each gets its own HTML entry, so an unknown path
+    // still 404s instead of being rewritten to the homepage.
+    rollupOptions: {
+      input: {
+        // Relative to the Vite root; @types/node is not installed, so no
+        // path.resolve/__dirname here.
+        main: 'index.html',
+        mortgageCalculator: 'mortgage-calculator/index.html',
+      },
+    },
     // recharts (~537KB) used to be forced into a named `charts` chunk here.
     // That is now counterproductive: AmortizationChart is imported lazily
     // (Calculator.tsx), which already splits recharts out on its own, and the

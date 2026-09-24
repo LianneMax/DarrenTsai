@@ -133,6 +133,12 @@ p {
   margin-bottom: 14px;
 }
 
+/* Clears the fixed nav on pages that have no hero to sit under it. */
+.page-top-spacer {
+  height: 68px;
+  background: var(--light-bg);
+}
+
 /* Section divider */
 .section-divider {
   display: flex;
@@ -821,6 +827,13 @@ p {
   font-weight: 400;
   color: var(--text-muted);
 }
+
+/* Group heading above the calculator sublinks. Not a link: the calculators it
+   heads now live on four different pages, so there is nothing for it to open. */
+.nav-mobile-label {
+  cursor: default;
+}
+.nav-mobile-label:hover { color: inherit; }
 
 /* ---- HERO ---- */
 .hero {
