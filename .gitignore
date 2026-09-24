@@ -13,3 +13,6 @@ SESSION_HANDOFF_PRIVATE.md
 
 # Written by the Netlify CLI when it runs functions locally, not by the build.
 deno.lock
+
+# Vitest JSON reporter output
+.vitest/
