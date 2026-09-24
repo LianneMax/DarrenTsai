@@ -165,12 +165,17 @@ function commonLeadRow(d) {
 }
 function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 
+// The 'heloc-hei' route was removed here. Nothing on the site sent it: HELOC and
+// home-equity interest is handled by the debt-consolidation funnel on the
+// homepage, which the /yt/heloc and /yt/equity short links already point to, and
+// which tags its leads 'HELOC/cash-out interest' in Bonzo. A schema with no
+// sender is a tab that can only ever be created by accident.
+//
+// The existing "HELOC vs HEI" tab is untouched: nothing here deletes a tab, so
+// whatever it already holds stays readable. If a dedicated HELOC page ships
+// later, add its schema back alongside its form rather than reviving this one
+// speculatively.
 const SOURCE_SCHEMAS = {
-  'heloc-hei': {
-    tab: 'HELOC vs HEI',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d)); }
-  },
   'dscr': {
     tab: 'DSCR',
     headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?'], ATTR_HEADERS),
@@ -464,8 +469,9 @@ function pushToBonzo(data) {
     if (data.creditRange) tags.push('credit:' + data.creditRange);
     if (data.employment) tags.push('employment:' + data.employment);
   }
-  // Landing pages — each source routes to its own Bonzo campaign via tags
-  else if (data.source === 'heloc-hei') tags.push('heloc-hei', 'equity', 'loan:cash-out', 'priority:p1');
+  // Landing pages — each source routes to its own Bonzo campaign via tags.
+  // No 'heloc-hei' branch: that funnel is the debt-consolidation form above,
+  // which already carries the 'HELOC/cash-out interest' tag.
   else if (data.source === 'dscr') tags.push('dscr', 'investor', 'priority:p2');
   else if (data.source === 'self-employed') tags.push('self-employed', 'bank-statement', 'purchase', 'priority:p3');
   else if (data.source === 'fha') {

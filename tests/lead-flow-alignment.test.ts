@@ -106,8 +106,31 @@ describe('every lead the site sends has somewhere to land', () => {
    * list when a funnel is genuinely retired or revived.
    */
   it('lists the routes no form on the site currently sends', () => {
+    // 'heloc-hei' was removed from this list and from the Apps Script: HELOC and
+    // home-equity interest is captured by the debt-consolidation form on the
+    // homepage, which is where /yt/heloc and /yt/equity already point.
     const unused = [...ROUTES.keys()].filter((s) => !SITE_SOURCES.has(s)).sort();
-    expect(unused).toEqual(['QualifyForm', 'heloc-hei', 'newsletter', 'self-employed']);
+    expect(unused).toEqual(['QualifyForm', 'newsletter', 'self-employed']);
+  });
+
+  /**
+   * The removal, asserted rather than assumed. A dead schema is cheap to
+   * re-add by reflex when someone greps for "heloc" and finds the short links,
+   * and a tab nothing writes to looks identical to one that is merely quiet.
+   */
+  it('has no heloc-hei route, since the homepage funnel owns that intent', () => {
+    expect(ROUTES.has('heloc-hei')).toBe(false);
+    // Comments are stripped first: the removal is deliberately *explained* in
+    // the source, and asserting on the raw text would fail on its own rationale.
+    const code = GAS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toContain("'heloc-hei'");
+    expect(code).not.toContain('HELOC vs HEI');
+  });
+
+  it('still tags the debt-consolidation funnel with the equity intent', () => {
+    // This is what heloc-hei's 'equity' / 'loan:cash-out' tags collapsed into.
+    // Without it the removal would quietly drop the signal rather than move it.
+    expect(GAS).toContain("tags.push('debt-consolidation', 'HELOC/cash-out interest')");
   });
 });
 

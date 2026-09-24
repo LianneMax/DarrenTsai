@@ -112,7 +112,7 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
     expect(gas.attrRow(SAMPLE).length).toBe(gas.ATTR_HEADERS.length);
   });
 
-  it.each(['heloc-hei', 'dscr', 'self-employed', 'fha', 'real-estate-investing'])(
+  it.each(['dscr', 'self-employed', 'fha', 'real-estate-investing'])(
     'SOURCE_SCHEMAS[%s] headers match its row length',
     (key) => {
       const schema = gas.SOURCE_SCHEMAS[key];

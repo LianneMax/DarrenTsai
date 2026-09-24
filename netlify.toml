@@ -19,9 +19,13 @@
 # click are distinguishable (utm_content). Short enough to read aloud in a video.
 #
 # These are 302, deliberately. A 301 is cached by the browser permanently, so
-# when /heloc ships and the equity links change destination, everyone who
-# clicked the old link would keep landing on the homepage with no way to fix it.
-# The whole point of a short link is that the destination can change later.
+# if a link's destination ever changes, everyone who clicked the old one would
+# keep landing on the previous page with no way to fix it. The whole point of a
+# short link is that the destination can change later.
+#
+# HELOC and home equity both point at the homepage on purpose: the
+# debt-consolidation funnel there is the offer for that intent, and there is no
+# separate /heloc page. If one ships, these two are the only lines to change.
 #
 # Redirects are evaluated top to bottom, and these must stay above any catch-all
 # if one is ever reintroduced.
