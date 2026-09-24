@@ -145,4 +145,45 @@ describe.each(FUNCS)('%s', (name, handler, keyName, lead) => {
       expect((await handler(req(keyName, lead), {})).status).not.toBe(502);
     }
   });
+
+  /**
+   * The FHA sender computed `firstName` and then never interpolated it, so it
+   * was the only one of the three that opened with no greeting. Nothing here
+   * caught that: the suite asserted the status, the recipient and that an
+   * attachment existed, none of which changes when the body does.
+   */
+  it('greets the lead by name', async () => {
+    await handler(req(keyName, { ...lead, firstName: 'Marisol' }), {});
+    const { html, text } = resendCalls[0].body as { html: string; text?: string };
+    expect(html).toContain('Marisol');
+    if (text) expect(text).toContain('Marisol');
+  });
+
+  it('falls back to a greeting that still reads when no name was captured', async () => {
+    // A phone-first lead can reach here with no first name at all. "Hi ," is
+    // worse than no personalisation.
+    await handler(req(keyName, { ...lead, firstName: '' }), {});
+    const { html } = resendCalls[0].body as { html: string };
+    expect(html).toContain('there');
+    expect(html).not.toMatch(/Hi\s*,/);
+    expect(html).not.toMatch(/Hey\s*,/);
+  });
+
+  it('escapes the name instead of letting it into the markup', async () => {
+    await handler(req(keyName, { ...lead, firstName: '<script>alert(1)</script>' }), {});
+    const { html } = resendCalls[0].body as { html: string };
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('sends from the verified domain, which is what SPF and DKIM are set up for', async () => {
+    await handler(req(keyName, lead), {});
+    expect(String((resendCalls[0].body as { from: string }).from)).toContain('@realdarrentsai.com');
+  });
+
+  it('attaches a file with a name the recipient can make sense of', async () => {
+    await handler(req(keyName, lead), {});
+    const attachments = (resendCalls[0].body as { attachments: Array<{ filename: string }> }).attachments;
+    expect(attachments[0].filename).toMatch(/\.(pdf|xlsx)$/);
+  });
 });

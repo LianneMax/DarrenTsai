@@ -246,6 +246,69 @@ describe('link clicks', () => {
   });
 });
 
+/**
+ * GTM is the single client-side tag deployment path for this site, and
+ * "exactly one container, installed once" is a hard operating rule rather than
+ * a preference: a second Google tag duplicates every conversion, which corrupts
+ * the Ads bidding signal that the ad spend is steered by. Nothing tested any
+ * part of it, so a stray snippet pasted into one landing page would ship.
+ */
+describe('Google Tag Manager is installed exactly once', () => {
+  const CONTAINER = 'GTM-N7Z8Q4QF';
+  /** Every page a visitor can land on. */
+  const PAGES = [
+    'index.html',
+    'mortgage-calculator/index.html',
+    'public/dscr/index.html',
+    'public/fha/index.html',
+    'public/realestateinvesting/index.html',
+  ];
+  const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
+
+  beforeEach(() => { document.head.innerHTML = ''; });
+
+  it('injects one container loader, for the expected container', () => {
+    load({ url: 'https://realdarrentsai.com/' });
+    const loaders = [...document.head.querySelectorAll('script[src]')]
+      .map((s) => s.getAttribute('src')!)
+      .filter((src) => src.includes('googletagmanager.com/gtm.js'));
+    expect(loaders).toHaveLength(1);
+    expect(loaders[0]).toContain(`id=${CONTAINER}`);
+  });
+
+  it('opens dataLayer with gtm.start, so events pushed before it loads are replayed', () => {
+    const dt = load({ url: 'https://realdarrentsai.com/?gclid=EARLY' });
+    dt.track('generate_lead', { lead_source: 'dscr' });
+    const layer = window.dataLayer as Record<string, unknown>[];
+    expect(layer[0]).toHaveProperty('gtm.start');
+    expect(layer.some((e) => e.event === 'generate_lead')).toBe(true);
+  });
+
+  it('names the container in exactly one place in the codebase', () => {
+    // Every page gets GTM through this file. A container id appearing in a page
+    // as well would mean a second install.
+    expect(SOURCE.match(new RegExp(CONTAINER, 'g'))).toHaveLength(1);
+  });
+
+  it.each(PAGES)('%s carries the noscript iframe and no second loader', (page) => {
+    const html = read(page);
+    // The noscript half is per-page by necessity: it cannot be injected by a
+    // script that does not run.
+    expect(html).toContain(`googletagmanager.com/ns.html?id=${CONTAINER}`);
+    // But the loader half must not be. This is the duplicate-install check.
+    expect(html).not.toContain('googletagmanager.com/gtm.js');
+  });
+
+  it.each(PAGES)('%s installs no second Google tag beside GTM', (page) => {
+    const html = read(page);
+    // A raw gtag.js/AW- snippet alongside GTM is the specific thing that
+    // double-counts conversions. The onboarding material supplied one.
+    expect(html).not.toMatch(/googletagmanager\.com\/gtag\/js/);
+    expect(html).not.toMatch(/\bAW-\d{6,}/);
+    expect(html).not.toMatch(/\bgtag\s*\(/);
+  });
+});
+
 describe('track()', () => {
   it('pushes the event with the attribution snapshot merged in', () => {
     const dt = load({ url: 'https://realdarrentsai.com/?gclid=EVT&utm_source=google' });

@@ -26,9 +26,15 @@ describe.each(PAGES)('/%s submit errors', (page) => {
 });
 
 /*
- * The 502-vs-503/422 checks and the window.open checks that used to live here
- * were regexes over source files. They are now real tests that invoke the code:
- * tests/guide-endpoints.test.ts and tests/quote-tab.test.ts.
+ * The 502-vs-503/422 checks that used to live here were regexes over source
+ * files. They are now real tests that invoke the handlers:
+ * tests/guide-endpoints.test.ts.
+ *
+ * The window.open checks are gone rather than moved. They covered the
+ * third-party HELOC hand-off (a second tab to the Figure white-label soft-pull,
+ * with the visitor's name and email in the query string) and the popup-blocker
+ * fallback around it. That journey was retired in fcb514b along with quoteTab.ts
+ * and the generic outbound_click event, so there is nothing left to test.
  */
 
 /**

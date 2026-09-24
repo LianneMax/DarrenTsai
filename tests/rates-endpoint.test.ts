@@ -119,6 +119,45 @@ describe('it never returns a number it is unsure about', () => {
     },
   );
 
+  /**
+   * The accept side of the same bounds. Without these the guard is only tested
+   * from one direction, so widening it to nonsense, or narrowing it until it
+   * rejects a real rate, both pass. A rejected real rate is the worse failure:
+   * it shows every visitor the static fallback indefinitely and looks like
+   * nothing is wrong.
+   */
+  it.each(['0.51', '3.25', '6.35', '18', '29.99'])(
+    'accepts a rate inside the plausible band: %s',
+    async (value) => {
+      store = {};
+      mockFred({ MORTGAGE30US: fredOk(value), MORTGAGE15US: fredOk('5.62') });
+      const res = await handler(req(), ctx);
+      expect(res.status).toBe(200);
+      await expect(res.json()).resolves.toMatchObject({ rate30: Number(value) });
+    },
+  );
+
+  it.each(['0.5', '30'])('refuses the exact boundary value %s', async (value) => {
+    // The bounds are exclusive on purpose: a literal 0.5% or 30% 30-year is a
+    // format change at FRED, not a mortgage rate.
+    mockFred({ MORTGAGE30US: fredOk(value), MORTGAGE15US: fredOk('5.62') });
+    expect((await handler(req(), ctx)).status).toBe(502);
+  });
+
+  it('refuses a negative rate rather than rendering it', async () => {
+    mockFred({ MORTGAGE30US: fredOk('-6.35'), MORTGAGE15US: fredOk('5.62') });
+    expect((await handler(req(), ctx)).status).toBe(502);
+  });
+
+  it('does not store a 15-year rate it would refuse to serve', async () => {
+    // A bad 15-year is survivable, but it must be dropped, not passed through:
+    // the client renders whatever number arrives.
+    mockFred({ MORTGAGE30US: fredOk('6.35'), MORTGAGE15US: fredOk('99') });
+    const body = await (await handler(req(), ctx)).json();
+    expect(body.rate30).toBe(6.35);
+    expect(body.rate15).toBeNull();
+  });
+
   it('serves the 30-year alone when only the 15-year is missing', async () => {
     // The 30-year drives every headline number; the client keeps its own
     // 15-year fallback and the caption still says the rates are current.

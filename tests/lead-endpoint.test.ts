@@ -95,6 +95,56 @@ describe('request guards', () => {
     expect(res.status).toBe(200);
   });
 
+  /**
+   * The allowlist is the only thing keeping this endpoint from being a free
+   * relay into Darren's Sheet, his CRM and his Resend sending domain. It was
+   * tested from the easy direction only: one allowed host and one obviously
+   * foreign one. These are the near-misses, which is what an abuser would
+   * actually send.
+   */
+  it.each([
+    'https://realdarrentsai.com.evil.com',
+    'https://notrealdarrentsai.com',
+    'https://realdarrentsai.com.attacker.io',
+    'https://evil.netlify.app.attacker.com',
+    'https://netlify.app',
+    'https://evilnetlify.app',
+    'not a url at all',
+  ])('rejects the lookalike origin %s', async (origin) => {
+    const res = await handler(req(LEAD, { origin }), ctx);
+    expect(res.status).toBe(403);
+    expect(upstreamCalled()).toBe(false);
+  });
+
+  it.each([
+    'https://realdarrentsai.com',
+    'https://www.realdarrentsai.com',
+    'https://REALDARRENTSAI.COM',
+    'https://realdarrentsai.com:443',
+  ])('allows the real site as %s', async (origin) => {
+    expect((await handler(req(LEAD, { origin }), ctx)).status).toBe(200);
+  });
+
+  it('falls back to the referer when there is no origin header', async () => {
+    // Some browsers omit Origin on a same-origin POST, which would 403 every
+    // form on the site if the referer were not read too.
+    const r = new Request('https://realdarrentsai.com/api/lead', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', referer: 'https://realdarrentsai.com/dscr/' },
+      body: JSON.stringify(LEAD),
+    });
+    const res = await handler(r, ctx);
+    expect(res.status).toBe(200);
+    expect(upstreamCalled()).toBe(true);
+  });
+
+  it('does not send a rescue email for a request it refused', async () => {
+    // A blocked origin is not a lost lead. Mailing on it would let anyone flood
+    // the inbox the real alerts arrive in.
+    await handler(req(LEAD, { origin: 'https://evil.example.com' }), ctx);
+    expect(rescueSent()).toBe(false);
+  });
+
   it('rejects malformed JSON', async () => {
     const bad = new Request('https://realdarrentsai.com/api/lead', {
       method: 'POST',

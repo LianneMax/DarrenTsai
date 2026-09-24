@@ -23,6 +23,12 @@ type Harness = {
   doPost: (e: { postData: { contents: string } }) => unknown;
   tabs: Map<string, Tab>;
   mail: Array<{ to: string; subject: string; body: string }>;
+  /**
+   * Every URL doPost tried to fetch. It must stay empty: an assertion that the
+   * stub "throws if it tries" is worthless on its own, because doPost catches
+   * everything and answers success:false rather than propagating.
+   */
+  http: string[];
   /** The row a tab holds, as a header -> value object. */
   rowOf: (tabName: string, index?: number) => Record<string, unknown>;
 };
@@ -30,6 +36,7 @@ type Harness = {
 function load(): Harness {
   const tabs = new Map<string, Tab>();
   const mail: Array<{ to: string; subject: string; body: string }> = [];
+  const http: string[] = [];
 
   function makeSheet(tab: Tab) {
     const sheet = {
@@ -80,7 +87,7 @@ function load(): Harness {
   const stubs = `
     var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
     var SpreadsheetApp = { openById: function(){ return __ss; } };
-    var UrlFetchApp = { fetch: function(){ throw new Error('doPost must not make HTTP calls'); } };
+    var UrlFetchApp = { fetch: function(url){ __http.push(String(url)); throw new Error('doPost must not make HTTP calls'); } };
     var Logger = { log: function(){} };
     var MailApp = { sendEmail: function(m){ __mail.push(m); } };
     var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){}, remove: function(){} }; } };
@@ -88,13 +95,14 @@ function load(): Harness {
     var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; }, everyDays: function(){ return { atHour: function(){ return { create: function(){} }; } }; } }; } }; } };
     var ContentService = { createTextOutput: function(t){ return { setMimeType: function(){ return { __body: t }; } }; }, MimeType: { JSON: 'json' } };
   `;
-  const factory = new Function('__ss', '__mail', `${stubs}\n${SOURCE}\nreturn { doPost: doPost };`);
-  const { doPost } = factory(spreadsheet, mail) as { doPost: Harness['doPost'] };
+  const factory = new Function('__ss', '__mail', '__http', `${stubs}\n${SOURCE}\nreturn { doPost: doPost };`);
+  const { doPost } = factory(spreadsheet, mail, http) as { doPost: Harness['doPost'] };
 
   return {
     doPost,
     tabs,
     mail,
+    http,
     rowOf(tabName: string, index = 1) {
       const tab = tabs.get(tabName);
       if (!tab) throw new Error(`no tab named ${tabName}; got ${[...tabs.keys()].join(', ')}`);
@@ -260,6 +268,28 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     expect(h.rowOf('Leads')).toMatchObject({ Source: 'brand-new-funnel' });
   });
 
+  /**
+   * heloc-hei was retired: HELOC and home-equity intent is the homepage
+   * debt-consolidation funnel now, and /yt/heloc and /yt/equity point there.
+   * Nothing sends the old source, but a stale link, a bookmarked form or a
+   * replayed payload still could, and it must degrade to a saved lead rather
+   * than a crash or a resurrected tab.
+   */
+  it('files a retired heloc-hei payload in Leads instead of recreating its tab', () => {
+    const res = post(h, {
+      source: 'heloc-hei', email: 'equity@example.com', state: 'CA',
+      firstName: 'Hal', magnet: 'HELOC vs HEI', ...ATTR,
+    });
+    expect(res.success).toBe(true);
+    expect(h.tabs.has('HELOC vs HEI')).toBe(false);
+    expect(h.rowOf('Leads')).toMatchObject({
+      Source: 'heloc-hei',
+      Email: 'equity@example.com',
+      'Licensed?': 'Yes',
+      'UTM Source': 'google', // attribution survives the fall-through
+    });
+  });
+
   it('marks an out-of-state lead unlicensed but still records it', () => {
     post(h, { source: 'dscr', email: 'ny@example.com', state: 'NY' });
     expect(h.rowOf('DSCR')['Licensed?']).toBe('No');
@@ -281,9 +311,32 @@ describe('every lead is queued for follow-up exactly once', () => {
     expect(h.tabs.get('Follow-ups')!.rows.length).toBe(4); // header + 3
   });
 
-  it('makes no HTTP call inside doPost — the stub throws if it tries', () => {
-    // Bonzo and the guide senders used to run here and blew the 8s proxy budget.
-    expect(() => post(h, { source: 'dscr', email: 'jane@example.com' })).not.toThrow();
+  /**
+   * Bonzo and the guide senders used to run here and blew the 8s proxy budget:
+   * the lead saved, but the visitor was shown an error and Darren got a false
+   * "LEAD NOT SAVED" alert.
+   *
+   * This used to be asserted as `expect(() => post(...)).not.toThrow()`, which
+   * proved nothing. doPost wraps its whole body in try/catch and answers
+   * success:false, so it would never propagate the stub's throw — the test
+   * passed identically whether or not an HTTP call was made. The call is now
+   * recorded and counted.
+   */
+  it('makes no HTTP call inside doPost', () => {
+    const res = post(h, { source: 'dscr', email: 'jane@example.com' });
+    expect(h.http).toEqual([]);
+    // And the belt-and-braces version of the same claim: had it called out, the
+    // stub's throw would have been swallowed into exactly these two signals.
+    expect(res.success).toBe(true);
+    expect(h.mail).toHaveLength(0);
+  });
+
+  it('still queues the follow-up when the lead is one the guide senders serve', () => {
+    // The guide call must happen later, off the response path, but the row that
+    // makes it happen has to exist before doPost replies.
+    post(h, { source: 'fha', email: 'ben@example.com' });
+    expect(h.http).toEqual([]);
+    expect(h.rowOf('Follow-ups')).toMatchObject({ Status: 'pending', Source: 'fha' });
   });
 });
 
