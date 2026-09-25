@@ -19,7 +19,15 @@
 
     <!-- Must run before any form handler can submit. ~2KB, no network work. -->
     <script src="/attribution.js"></script>
+    <script src="/booking-chooser.js"></script>
     <script src="/email-suggest.js"></script>
+
+    <!-- CallRail Dynamic Number Insertion: swaps the business number for the
+         visitor's pool number. Loaded here rather than at the end of <body>
+         because the static number is visible and dialable from first paint;
+         a call placed in that window is attributed to the wrong pool, or to
+         no campaign at all. swap.js is small and non-blocking to parse. -->
+    <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
@@ -28,7 +36,5 @@
     <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/mortgage-main.tsx"></script>
-    <!-- CallRail Dynamic Number Insertion: swaps the business number for the visitor's pool number. -->
-    <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
   </body>
 </html>

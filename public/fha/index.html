@@ -13,7 +13,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <script src="/attribution.js"></script>
+  <script src="/booking-chooser.js"></script>
   <script src="/email-suggest.js"></script>
+
+  <!-- CallRail Dynamic Number Insertion: swaps the business number for the
+       visitor's pool number. Loaded here rather than at the end of <body>
+       because the static number is visible and dialable from first paint;
+       a call placed in that window is attributed to the wrong pool, or to
+       no campaign at all. swap.js is small and non-blocking to parse. -->
+  <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Calendly is injected on first click (see loadCalendly below). It used to
      load eagerly here, putting a render-blocking third-party stylesheet in
@@ -1062,7 +1070,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- MOBILE STICKY BAR -->
 <div class="mobile-sticky-bar" id="mobileStickyBar">
   <a href="#get-fha-estimate" class="cta solid-accent">Get the free calculator</a>
-  <button type="button" id="mobileStickyCallBtn" class="cta outline">Call</button>
+  <!-- A real tel: link, as on /dscr/ and /realestateinvesting/. This said "Call"
+       and opened Calendly, which is the wrong promise on the one device where
+       dialling is the native action. CallRail swaps the number; attribution.js
+       fires phone_click off the href. -->
+  <a href="tel:+17148875432" class="cta outline">Call</a>
 </div>
 
 <div class="wrap">
@@ -1706,22 +1718,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     js.async = true;
     document.head.appendChild(js);
   }
-  function openCalendly() {
+  /** Straight to Calendly. Reached only once the visitor has chosen to schedule. */
+  function openCalendlyDirect() {
+    if (window.DT) window.DT.track('calendly_open', { page_path: location.pathname });
     if (window.Calendly) {
       window.Calendly.initPopupWidget({ url: CALENDLY_URL });
     } else {
       // Start fetching for next time, and send this click straight through so
-      // it is never swallowed by the wait.
+      // it is never swallowed by the wait. Rarer now that the chooser warms the
+      // widget while the visitor is reading it.
       loadCalendly();
       window.open(CALENDLY_URL, '_blank', 'noopener');
     }
+  }
+
+  // Every booking CTA lands here. The chooser offers the call alongside the
+  // schedule, so someone ready to talk now is not pushed into booking a future
+  // slot. See public/booking-chooser.js for why that matters to attribution.
+  // If it failed to load, fall through rather than leaving the button dead.
+  function openCalendly() {
+    if (window.DTBooking) {
+      window.DTBooking.open({ onSchedule: openCalendlyDirect, onOpen: loadCalendly });
+      return;
+    }
+    openCalendlyDirect();
   }
   $('openCalendlyBtn').addEventListener('click', openCalendly);
   $('openLeadCalendlyBtn').addEventListener('click', openCalendly);
   const ctaCalendlyBtn = $('ctaCalendlyBtn');
   if (ctaCalendlyBtn) ctaCalendlyBtn.addEventListener('click', openCalendly);
-  const mobileStickyCallBtn = $('mobileStickyCallBtn');
-  if (mobileStickyCallBtn) mobileStickyCallBtn.addEventListener('click', openCalendly);
 </script>
 
 <!-- CONTACT MODAL — canonical copy of the main site's Contact modal
@@ -2175,8 +2200,5 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   });
 })();
 </script>
-
-<!-- CallRail Dynamic Number Insertion: swaps the business number for the visitor's pool number. -->
-<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
 </body>
 </html>
