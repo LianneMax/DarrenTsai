@@ -207,3 +207,16 @@ or the lead lands on the generic tab with its fields dropped:
   the attribution and Ads checks, and the gotchas that read as bugs but are not.
 - `/dscr/`, `/fha/` and `/realestateinvesting/` were discovered but not yet
   indexed by Google. Monitor, do not repeatedly resubmit.
+- **Nothing reads the Sheet except this script.** No Zapier, no Make, no
+  third-party automation subscribes to it; confirmed with Lianne on 26 Sep 2026.
+  A funnel review claimed the calculator tab fed Zapier into a Saxton HELOC
+  registration, which held up the Debt Consolidation column change until it was
+  disproved. The claim most likely described the Figure white-label HELOC
+  hand-off, a second tab carrying the visitor's name and email in the query
+  string, retired in `fcb514b` along with `quoteTab.ts`.
+
+  Worth knowing for the next audit that raises it, because grepping this repo
+  cannot settle the question either way: an automation subscribes to the Sheet
+  on Google's side and leaves no trace here. The live integrations are Bonzo
+  (from `pushToBonzo`), Resend (via the Netlify guide senders), CallRail
+  (client-side number swap) and GTM/GA4. That is the whole list.

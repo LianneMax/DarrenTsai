@@ -49,7 +49,7 @@ magnet forms, and three copies of the contact modal.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 12 files / 440 tests, all passing |
+| Tests | Vitest + jsdom, 13 files / 456 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -59,7 +59,7 @@ magnet forms, and three copies of the contact modal.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (440 tests)
+npm test         # vitest run (456 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -191,11 +191,32 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 440 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 456 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.
-- Calendly is tracked as `calendly_open` only; real booking tracking is still to
-  do.
+- Every "Book a Call" CTA opens a chooser (`public/booking-chooser.js`): call
+  now, or schedule. The call half is a real `tel:` anchor, so CallRail swaps the
+  number and `phone_click` fires with no extra code, which puts urgent leads on
+  the one path that is already an Ads conversion. The schedule half fires
+  `calendly_open`. Completed Calendly *bookings* are still untracked: the popup
+  posts a message we could listen for, but the first click on a page opens a new
+  tab we cannot see into, so the count would silently under-report. A Calendly
+  webhook is the only complete answer and needs a paid plan.
+- `docs/MANUAL-TEST-RUNBOOK.md` is the by-hand verification pass: every funnel,
+  the attribution and Ads checks, and the gotchas that read as bugs but are not.
 - `/dscr/`, `/fha/` and `/realestateinvesting/` were discovered but not yet
   indexed by Google. Monitor, do not repeatedly resubmit.
+- **Nothing reads the Sheet except this script.** No Zapier, no Make, no
+  third-party automation subscribes to it; confirmed with Lianne on 26 Sep 2026.
+  A funnel review claimed the calculator tab fed Zapier into a Saxton HELOC
+  registration, which held up the Debt Consolidation column change until it was
+  disproved. The claim most likely described the Figure white-label HELOC
+  hand-off, a second tab carrying the visitor's name and email in the query
+  string, retired in `fcb514b` along with `quoteTab.ts`.
+
+  Worth knowing for the next audit that raises it, because grepping this repo
+  cannot settle the question either way: an automation subscribes to the Sheet
+  on Google's side and leaves no trace here. The live integrations are Bonzo
+  (from `pushToBonzo`), Resend (via the Netlify guide senders), CallRail
+  (client-side number swap) and GTM/GA4. That is the whole list.
