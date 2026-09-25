@@ -2,11 +2,11 @@ import { useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import type { MortgageInputs } from '../types/mortgage';
-import { LEAD_ENDPOINT, EMAIL, NMLS, DRE } from '../config';
+import { EMAIL, NMLS, DRE } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openCalendly } from '../utils/calendly';
-import { getAttribution, track } from '../utils/attribution';
+import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
 
 const emailSchema = z.string().email();
@@ -84,6 +84,12 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
 
   const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+
+  const submitLead = useLeadSubmit({
+    formId: 'home-contact-modal',
+    thankYouPath: '/thank-you/contact',
+    thankYouTitle: 'Thank You — Contact',
+  });
   const formRef = useRef<HTMLFormElement>(null);
 
   const set = (key: keyof FormState) => (
@@ -143,49 +149,18 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       timestamp: new Date().toISOString(),
     };
 
-    try {
-      const res = await fetch(LEAD_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, ...getAttribution() }),
-      });
-      // Same-origin, so unlike the old no-cors post the status is readable and
-      // a failure actually reaches the visitor instead of showing a checkmark.
-      if (!res.ok) {
-        // A 422 with field:"email" is the one failure the visitor can fix: the
-        // domain has no mail server, and nothing was saved. Keep them on the
-        // form with the message against the email field rather than showing the
-        // generic failure state, which tells them not to resubmit.
-        if (res.status === 422) {
-          const fix = await res.json().catch(() => null);
-          if (fix && fix.field === 'email' && fix.message) {
-            setErrors((prev) => ({ ...prev, email: String(fix.message) }));
-            setStatus('idle');
-            return;
-          }
-        }
-        throw new Error(`lead-endpoint-${res.status}`);
-      }
+    const result = await submitLead(payload);
 
-      track('generate_lead', {
-        lead_source: payload.source,
-        form_id: 'home-contact-modal',
-        page_path: window.location.pathname,
-        user_data: {
-          email: payload.email,
-          phone_number: payload.phone,
-          address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state },
-        },
-      });
-      track('virtual_page_view', {
-        page_path: '/thank-you/contact',
-        page_title: 'Thank You — Contact',
-      });
-
-      setStatus('success');
-    } catch {
-      setStatus('error');
+    // A 422 on the email keeps the visitor on the form with the message against
+    // the field, rather than the generic failure state, which tells them not to
+    // resubmit. Nothing was saved in that case, so resubmitting is the fix.
+    if (!result.ok && result.kind === 'fieldError') {
+      setErrors((prev) => ({ ...prev, [result.field]: result.message }));
+      setStatus('idle');
+      return;
     }
+
+    setStatus(result.ok ? 'success' : 'error');
   };
 
   if (status === 'success') {
