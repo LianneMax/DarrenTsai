@@ -20,13 +20,7 @@
  * So these tests read the request body Bonzo would have received.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
-const SOURCE = readFileSync(resolve(__dirname, '../google-apps-script.js'), 'utf8');
-
-type Tab = { name: string; rows: unknown[][] };
-type FetchCall = { url: string; options: Record<string, unknown> };
+import { loadGas, recordingFetch, type Tab, type FetchCall } from './helpers/gas-harness';
 
 type Harness = {
   processFollowUps: () => void;
@@ -37,92 +31,17 @@ type Harness = {
 };
 
 function load(props: Record<string, string>): Harness {
-  const tabs = new Map<string, Tab>();
   const fetches: FetchCall[] = [];
 
-  function makeSheet(tab: Tab) {
-    const sheet = {
-      appendRow(values: unknown[]) { tab.rows.push(values); },
-      getLastRow: () => tab.rows.length,
-      getLastColumn: () => (tab.rows[0] ? tab.rows[0].length : 0),
-      setFrozenRows: () => sheet,
-      getRange(row: number, col: number, numRows: number, numCols: number) {
-        return {
-          setValues(values: unknown[][]) {
-            for (let r = 0; r < numRows; r++) {
-              const target = (tab.rows[row - 1 + r] ??= []);
-              for (let c = 0; c < numCols; c++) target[col - 1 + c] = values[r][c];
-            }
-            return this;
-          },
-          getValues() {
-            const out: unknown[][] = [];
-            for (let r = 0; r < numRows; r++) {
-              const src = tab.rows[row - 1 + r] ?? [];
-              out.push(src.slice(col - 1, col - 1 + numCols));
-            }
-            return out;
-          },
-          setFontWeight: () => ({ setBackground: () => ({ setFontColor: () => ({}) }) }),
-          setBackground: () => ({ setFontColor: () => ({}) }),
-          setFontColor: () => ({}),
-        };
-      },
-    };
-    return sheet;
-  }
-
-  const spreadsheet = {
-    getSheetByName(name: string) {
-      const tab = tabs.get(name);
-      return tab ? makeSheet(tab) : null;
-    },
-    insertSheet(name: string) {
-      const tab: Tab = { name, rows: [] };
-      tabs.set(name, tab);
-      return makeSheet(tab);
-    },
-  };
-
-  const stubs = `
-    var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(k){ return __props[k] || ''; } }; } };
-    var SpreadsheetApp = { openById: function(){ return __ss; }, flush: function(){} };
-    var UrlFetchApp = { fetch: function(url, options){
-      __fetches.push({ url: url, options: options || {} });
-      return { getResponseCode: function(){ return 200; }, getContentText: function(){ return '{"data":{"id":4242}}'; } };
-    } };
-    var Logger = { log: function(){} };
-    var MailApp = { sendEmail: function(){} };
-    var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){}, remove: function(){} }; } };
-    var LockService = { getScriptLock: function(){ return { waitLock: function(){}, tryLock: function(){ return true; }, releaseLock: function(){} }; } };
-    var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; }, everyDays: function(){ return { atHour: function(){ return { create: function(){} }; } }; } }; } }; } };
-    var ContentService = { createTextOutput: function(t){ return { setMimeType: function(){ return { __body: t }; } }; }, MimeType: { JSON: 'json' } };
-  `;
-  const factory = new Function(
-    '__ss', '__fetches', '__props',
-    `${stubs}\n${SOURCE}\nreturn { processFollowUps: processFollowUps };`,
-  );
-  const { processFollowUps } = factory(spreadsheet, fetches, props) as Pick<Harness, 'processFollowUps'>;
-
-  const HEADERS = ['Queued At', 'Status', 'Processed At', 'Error', 'Source', 'Email', 'Payload'];
-
-  return {
-    processFollowUps,
-    tabs,
-    fetches,
+  // No keyed replies: every call answers 200 with the same prospect id, which is
+  // what the pinned-note assertions read back out of the create response.
+  const { gas, tabs, queue } = loadGas<Pick<Harness, 'processFollowUps'>>({
+    exports: ['processFollowUps'],
     props,
-    queue(payload) {
-      let tab = tabs.get('Follow-ups');
-      if (!tab) {
-        tab = { name: 'Follow-ups', rows: [HEADERS] };
-        tabs.set('Follow-ups', tab);
-      }
-      tab.rows.push([
-        new Date().toISOString(), 'pending', '', '',
-        payload.source ?? '', payload.email ?? '', JSON.stringify(payload),
-      ]);
-    },
-  };
+    fetch: recordingFetch(fetches, [], '{"data":{"id":4242}}'),
+  });
+
+  return { processFollowUps: gas.processFollowUps, tabs, fetches, props, queue };
 }
 
 /** No per-source campaign overrides, so the constants in the file are exercised. */

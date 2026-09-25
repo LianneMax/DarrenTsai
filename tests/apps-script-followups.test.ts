@@ -13,13 +13,7 @@
  * leaves behind, plus which HTTP calls it made.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
-const SOURCE = readFileSync(resolve(__dirname, '../google-apps-script.js'), 'utf8');
-
-type Tab = { name: string; rows: unknown[][] };
-type FetchCall = { url: string; options: Record<string, unknown> };
+import { loadGas, recordingFetch, type Tab, type FetchCall } from './helpers/gas-harness';
 
 type Harness = {
   processFollowUps: () => void;
@@ -40,7 +34,6 @@ type Harness = {
 };
 
 function load(): Harness {
-  const tabs = new Map<string, Tab>();
   const mail: Array<{ to: string; subject: string; body: string }> = [];
   const fetches: FetchCall[] = [];
   const replies: Array<{ match: string; code: number; body?: string }> = [];
@@ -55,99 +48,23 @@ function load(): Harness {
     BONZO_CAMPAIGN_ID: '100',
   };
 
-  function makeSheet(tab: Tab) {
-    const sheet = {
-      appendRow(values: unknown[]) { tab.rows.push(values); },
-      getLastRow: () => tab.rows.length,
-      getLastColumn: () => (tab.rows[0] ? tab.rows[0].length : 0),
-      setFrozenRows: () => sheet,
-      getRange(row: number, col: number, numRows: number, numCols: number) {
-        return {
-          setValues(values: unknown[][]) {
-            for (let r = 0; r < numRows; r++) {
-              const target = (tab.rows[row - 1 + r] ??= []);
-              for (let c = 0; c < numCols; c++) target[col - 1 + c] = values[r][c];
-            }
-            return this;
-          },
-          getValues() {
-            const out: unknown[][] = [];
-            for (let r = 0; r < numRows; r++) {
-              const src = tab.rows[row - 1 + r] ?? [];
-              out.push(src.slice(col - 1, col - 1 + numCols));
-            }
-            return out;
-          },
-          setFontWeight: () => ({ setBackground: () => ({ setFontColor: () => ({}) }) }),
-          setBackground: () => ({ setFontColor: () => ({}) }),
-          setFontColor: () => ({}),
-        };
-      },
-    };
-    return sheet;
-  }
-
-  const spreadsheet = {
-    getSheetByName(name: string) {
-      const tab = tabs.get(name);
-      return tab ? makeSheet(tab) : null;
-    },
-    insertSheet(name: string) {
-      const tab: Tab = { name, rows: [] };
-      tabs.set(name, tab);
-      return makeSheet(tab);
-    },
-  };
-
-  const stubs = `
-    var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(k){ return __props[k] || ''; } }; } };
-    var SpreadsheetApp = { openById: function(){ return __ss; }, flush: function(){} };
-    var UrlFetchApp = { fetch: function(url, options){
-      __fetches.push({ url: url, options: options || {} });
-      var r = { code: 200 };
-      for (var i = 0; i < __replies.length; i++) {
-        if (String(url).indexOf(__replies[i].match) !== -1) { r = __replies[i]; break; }
-      }
-      return { getResponseCode: function(){ return r.code; }, getContentText: function(){ return r.body || '{"data":{"id":1}}'; } };
-    } };
-    var Logger = { log: function(){} };
-    var MailApp = { sendEmail: function(m){ __mail.push(m); } };
-    var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){}, remove: function(){} }; } };
-    var LockService = { getScriptLock: function(){ return { waitLock: function(){}, tryLock: function(){ return true; }, releaseLock: function(){} }; } };
-    var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; }, everyDays: function(){ return { atHour: function(){ return { create: function(){} }; } }; } }; } }; } };
-    var ContentService = { createTextOutput: function(t){ return { setMimeType: function(){ return { __body: t }; } }; }, MimeType: { JSON: 'json' } };
-  `;
-  const factory = new Function(
-    '__ss', '__mail', '__fetches', '__replies', '__props',
-    `${stubs}\n${SOURCE}\nreturn { processFollowUps: processFollowUps, sendGuideDigest: sendGuideDigest };`,
-  );
-  const api = factory(spreadsheet, mail, fetches, replies, props) as Pick<Harness, 'processFollowUps' | 'sendGuideDigest'>;
-
-  const HEADERS = ['Queued At', 'Status', 'Processed At', 'Error', 'Source', 'Email', 'Payload'];
+  const { gas, tabs, queue, statusOf } = loadGas<Pick<Harness, 'processFollowUps' | 'sendGuideDigest'>>({
+    exports: ['processFollowUps', 'sendGuideDigest'],
+    props,
+    onMail: (m) => mail.push(m),
+    fetch: recordingFetch(fetches, replies),
+  });
 
   return {
-    ...api,
+    ...gas,
     tabs,
     mail,
     fetches,
     props,
+    queue,
+    statusOf,
     reply(urlFragment, code, body) {
       replies.push({ match: urlFragment, code, body });
-    },
-    queue(payload, status = 'pending', processedAt = '') {
-      let tab = tabs.get('Follow-ups');
-      if (!tab) {
-        tab = { name: 'Follow-ups', rows: [HEADERS] };
-        tabs.set('Follow-ups', tab);
-      }
-      tab.rows.push([
-        new Date().toISOString(), status, processedAt, '',
-        payload.source ?? '', payload.email ?? '', JSON.stringify(payload),
-      ]);
-    },
-    statusOf(row = 1) {
-      const r = tabs.get('Follow-ups')!.rows[row];
-      return { status: String(r[1]), processedAt: r[2], error: String(r[3] ?? '') };
     },
   };
 }

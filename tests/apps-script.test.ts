@@ -12,7 +12,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { loadGas as loadHarness } from './helpers/gas-harness';
 
+// Read separately from the harness: most of the describes below assert on the
+// raw source text rather than on the evaluated bindings.
 const SOURCE = readFileSync(resolve(__dirname, '../google-apps-script.js'), 'utf8');
 
 type Gas = {
@@ -46,30 +49,28 @@ type Gas = {
   effectiveClickIdType: (d: Record<string, unknown>) => string;
 };
 
-/** Evaluate the Apps Script source with GAS globals stubbed, and expose its top-level bindings. */
+/**
+ * Evaluate the Apps Script source with GAS globals stubbed, and expose its
+ * top-level bindings.
+ *
+ * `spreadsheet: false` because this file only reads pure helpers and the header
+ * arrays; it never drives a function that touches a sheet, so openById hands
+ * back a bare {} exactly as it always did. The Range surface ensureHeaders needs
+ * comes from fakeSheet() below, which is a different shape from the shared fake.
+ */
 function loadGas(): Gas {
-  const names = [
-    'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
-    'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'ensureHeaders',
-    'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
-    'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
-    'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
-    'GUIDE_BACKOFF_MIN', 'FOLLOWUP_ORPHAN_MS', 'guideBackoffMs', 'claimDecision',
-    'guideDigestRows', 'formatGuideDigest', 'FOLLOWUP_COL', 'DEBUG_HEADERS',
-  ];
-  const stubs = `
-    var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
-    var SpreadsheetApp = { openById: function(){ return {}; } };
-    var UrlFetchApp = { fetch: function(){ return { getResponseCode: function(){ return 200; }, getContentText: function(){ return '{}'; } }; } };
-    var Logger = { log: function(){} };
-    var MailApp = { sendEmail: function(){} };
-    var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){} }; } };
-    var LockService = { getScriptLock: function(){ return { waitLock: function(){}, tryLock: function(){ return true; }, releaseLock: function(){} }; } };
-    var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; } }; } }; } };
-    var ContentService = { createTextOutput: function(){ return { setMimeType: function(){ return {}; } }; }, MimeType: { JSON: 'json' } };
-  `;
-  const factory = new Function(`${stubs}\n${SOURCE}\nreturn { ${names.join(', ')} };`);
-  return factory() as Gas;
+  return loadHarness<Gas>({
+    spreadsheet: false,
+    exports: [
+      'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
+      'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'ensureHeaders',
+      'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
+      'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
+      'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
+      'GUIDE_BACKOFF_MIN', 'FOLLOWUP_ORPHAN_MS', 'guideBackoffMs', 'claimDecision',
+      'guideDigestRows', 'formatGuideDigest', 'FOLLOWUP_COL', 'DEBUG_HEADERS',
+    ],
+  }).gas;
 }
 
 let gas: Gas;
