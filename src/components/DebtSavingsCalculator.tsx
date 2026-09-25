@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import { LEAD_ENDPOINT, RATES_ENDPOINT, EMAIL } from '../config';
-import { getAttribution, track } from '../utils/attribution';
+import { RATES_ENDPOINT, EMAIL } from '../config';
+import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
@@ -188,6 +188,16 @@ export default function DebtSavingsCalculator() {
   const [usState,   setUsState]   = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
+  // The button used to stay live through the request, so a double click wrote
+  // two Sheet rows and created two Bonzo prospects for one person. LeadForm has
+  // always guarded this; this was the one form that did not.
+  const [sending,   setSending]   = useState(false);
+
+  const postLead = useLeadSubmit({
+    formId: 'debt-savings-calculator',
+    thankYouPath: '/thank-you/debt-savings',
+    thankYouTitle: 'Thank You — Debt Savings',
+  });
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -205,6 +215,35 @@ export default function DebtSavingsCalculator() {
   const newLoan    = mb + totBal;
   const refiPmt    = calcPmt(newLoan, rate30, 30);
   const refiSave   = todayTotal - refiPmt;
+
+  // The borrower's current mortgage, as they described it. Both are optional:
+  // every number above is computed without them, because the visitor gives us
+  // their current payment directly and that is all the comparison needs.
+  const mr = parseFloat(mtgRate) || 0;
+  const mt = parseFloat(mtgTerm) || 0;
+
+  /**
+   * The same-payoff-date option.
+   *
+   * WHY THIS IS HERE. The refi above re-amortises everything over a fresh 30
+   * years. Someone three years into a 30-year at 3.5% has 27 years left, and
+   * silently handing them 30 more at today's higher rate makes the monthly
+   * saving look better than the trade really is. That is the standard and fair
+   * criticism of a consolidation refi, and the two fields below were being
+   * collected and then thrown away, so the tool had the answer and never used it.
+   *
+   * Run at the term they have left, the saving usually survives anyway: it is
+   * the 24.99% card rate doing the damage, not the mortgage term. So this is the
+   * stronger case to show a borrower, not the weaker one.
+   *
+   * Everything here stays 0 unless both fields are filled in, and every use of
+   * it is guarded, so leaving them blank behaves exactly as before.
+   */
+  const sameTermYears   = mt > 0 ? Math.min(Math.max(mt, 5), 30) : 0;
+  const refiSameTermPmt = sameTermYears > 0 ? calcPmt(newLoan, rate30, sameTermYears) : 0;
+  const refiSameTermSave = refiSameTermPmt > 0 ? todayTotal - refiSameTermPmt : 0;
+  /** Years the 30-year option adds back onto their payoff date. */
+  const yearsAdded      = mt > 0 && mt < 30 ? 30 - mt : 0;
 
   const heloanAmt   = hv > 0 && mb > 0 ? Math.max(Math.min(totBal, hv * 0.85 - mb), 0) : 0;
   const heloanPmt   = calcPmt(heloanAmt, heloanTier, heloanTerm);
@@ -235,6 +274,9 @@ export default function DebtSavingsCalculator() {
   };
 
   const submitLead = async () => {
+    // Belt and braces with the disabled button: a keyboard repeat or a second
+    // click landing in the same tick would otherwise still get through.
+    if (sending) return;
     if (!fname || !phone || !email || !usState) {
       setErrorMsg('Please fill in your name, phone, email, and state.');
       return;
@@ -255,6 +297,10 @@ export default function DebtSavingsCalculator() {
       bestTimeToCall: bestTime, leadSource: leadSrc,
       monthlySavings: Math.round(bestSave),
       homeValue: hv, mortgageBalance: mb, mortgagePayment: mp,
+      // Optional, and sent as 0 when not given. Darren reads these before he
+      // calls: the rate they are giving up and the years they have left are the
+      // first two things that decide whether a consolidation is worth doing.
+      mortgageRate: mr, mortgageTerm: mt,
       totalDebtBalance: totBal, totalDebtPayment: totPmt,
       refiMonthlyPayment: Math.round(refiPmt),
       refiMonthlySavings: Math.round(refiSave),
@@ -265,41 +311,20 @@ export default function DebtSavingsCalculator() {
       timestamp: new Date().toISOString(),
     };
 
-    try {
-      const res = await fetch(LEAD_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, ...getAttribution() }),
-      });
-      if (!res.ok) {
-        if (res.status === 422) {
-          const fix = await res.json().catch(() => null);
-          if (fix && fix.field === 'email' && fix.message) {
-            // A dead email domain is the one failure the visitor can still
-            // fix, and the only one where nothing was saved. Keep them here.
-            setErrorMsg(String(fix.message));
-            return;
-          }
-        }
-        throw new Error(`lead-endpoint-${res.status}`);
-      }
+    setSending(true);
+    const result = await postLead(payload);
+    // Released on every path except success, where the form is replaced by the
+    // success card and there is no button left to re-enable.
+    if (!result.ok) setSending(false);
 
-      track('generate_lead', {
-        lead_source: payload.source,
-        form_id: 'debt-savings-calculator',
-        page_path: window.location.pathname,
-        user_data: {
-          email: payload.email,
-          phone_number: payload.phone,
-          address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state },
-        },
-      });
-      track('virtual_page_view', {
-        page_path: '/thank-you/debt-savings',
-        page_title: 'Thank You — Debt Savings',
-      });
-      setSubmitted(true);
-    } catch {
+    // A dead email domain is the one failure the visitor can still fix, and the
+    // only one where nothing was saved. Keep them here with the server's message.
+    if (!result.ok && result.kind === 'fieldError') {
+      setErrorMsg(result.message);
+      return;
+    }
+
+    if (!result.ok) {
       // Say so plainly rather than showing a success state we cannot stand
       // behind. The lead endpoint mails Darren a rescue copy on its own side,
       // but the visitor should still know their details may not have landed.
@@ -307,7 +332,10 @@ export default function DebtSavingsCalculator() {
         "We couldn't save your details on our end. " +
         `Please try again in a moment, or email ${EMAIL} and Darren will pick it up.`
       );
+      return;
     }
+
+    setSubmitted(true)
   };
 
   // ── Step tab bar ───────────────────────────────────────────────────────────
@@ -632,7 +660,51 @@ export default function DebtSavingsCalculator() {
                     Save {fmt(refiSave)}/mo
                   </div>
                 )}
+                {/*
+                  What the monthly saving costs. A borrower who knows they are
+                  restarting the clock, and giving up a rate they will not see
+                  again, can weigh this properly; one who is not told finds out
+                  later. Only shown when they gave us the numbers to say it with.
+                */}
+                {(yearsAdded > 0 || mr > 0) && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+                    {yearsAdded > 0 && <>Adds {yearsAdded} {yearsAdded === 1 ? 'year' : 'years'} to your payoff</>}
+                    {yearsAdded > 0 && mr > 0 && <br />}
+                    {mr > 0 && <>Trades your {mr.toFixed(2)}% rate for about {rate30.toFixed(2)}%</>}
+                  </div>
+                )}
               </div>
+
+              {/*
+                The same option without restarting the clock. Usually still shows
+                a saving, because the card rates are what is doing the damage,
+                not the mortgage term. Appears only once they tell us the term.
+              */}
+              {refiSameTermPmt > 0 && (
+                <div style={{
+                  border: '2px solid var(--teal)', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Refi, Same Payoff Date</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiSameTermPmt)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New {sameTermYears}YR fixed</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                    Est. APR: {(rate30 + 0.20).toFixed(2)}%
+                  </div>
+                  {refiSameTermSave > 0 && (
+                    <div style={{
+                      display: 'inline-block', marginTop: 8,
+                      background: '#D5F4D2', color: '#35785C',
+                      borderRadius: 20, padding: '3px 12px',
+                      fontSize: 12, fontWeight: 700,
+                    }}>
+                      Save {fmt(refiSameTermSave)}/mo
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+                    Keeps your current payoff date
+                  </div>
+                </div>
+              )}
 
               {/* HELOAN */}
               <div style={{
@@ -825,11 +897,21 @@ export default function DebtSavingsCalculator() {
               className="btn btn-rose btn-full"
               style={{ marginBottom: 18 }}
               onClick={submitLead}
+              disabled={sending}
             >
-              Get My Free Savings Analysis
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {sending ? (
+                <>
+                  <span className="btn-spinner" aria-hidden="true" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  Get My Free Savings Analysis
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </>
+              )}
             </button>
 
             {/* Book a call block */}

@@ -90,10 +90,20 @@ function isLicensedState(state) {
   return LICENSED_STATES.indexOf(String(state).trim().toUpperCase()) !== -1;
 }
 
-// FHA licensed campaign id (script-property override wins, else the known id above).
-function getFhaCampaignId(props) {
-  return props.getProperty('BONZO_FHA_CAMPAIGN_ID') || FHA_CAMPAIGN_ID;
-}
+// Which Bonzo campaign each funnel enrolls into. A Script Property always wins
+// over the id above, so a campaign can be re-pointed without a deploy.
+//
+// This was three near-identical if/else branches, of which only FHA had a
+// helper. The asymmetry was the tell: adding a funnel meant copying a branch and
+// remembering which of the two shapes to copy. A funnel's campaign is one row
+// here now. Anything absent from this table falls back to BONZO_CAMPAIGN_ID, and
+// a lead with no campaign configured at all posts to bare /prospects rather than
+// to /prospects/campaign/undefined.
+const FUNNEL_CAMPAIGNS = {
+  'dscr':                  { prop: 'BONZO_DSCR_CAMPAIGN_ID', fallback: DSCR_CAMPAIGN_ID },
+  'fha':                   { prop: 'BONZO_FHA_CAMPAIGN_ID',  fallback: FHA_CAMPAIGN_ID },
+  'real-estate-investing': { prop: 'BONZO_REI_CAMPAIGN_ID',  fallback: REI_CAMPAIGN_ID }
+};
 
 // Ad attribution, captured by public/attribution.js and sent with every form.
 // ALWAYS appended to the END of a header array and the END of the matching row,
@@ -215,6 +225,11 @@ const DEBT_CONSOLIDATION_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Best Time to Call', 'Lead Source',
   'Home Value', 'Mortgage Balance', 'Mortgage Payment',
+  // These two sit mid-array, which is the one exception to the append-only rule
+  // in this file, and it was only safe because the two columns were inserted
+  // into the live tab by hand FIRST, so every historical row shifted right with
+  // its headers. Do not repeat this pattern: anything else new goes at the end.
+  'Mortgage Rate', 'Mortgage Term',
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
   'Refi Monthly Payment', 'Refi Monthly Savings',
   'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
@@ -445,16 +460,16 @@ function pushToBonzo(data) {
   // entirely; still logged in Sheets either way.)
 
   // Campaign routing per source; everything else falls back to the default campaign.
-  var campaignId;
-  if (data.source === 'dscr') {
-    campaignId = props.getProperty('BONZO_DSCR_CAMPAIGN_ID') || DSCR_CAMPAIGN_ID;
-  } else if (data.source === 'fha') {
-    campaignId = getFhaCampaignId(props); // "FHA Calculator Campaign: Licensed" (145797)
-  } else if (data.source === 'real-estate-investing') {
-    campaignId = props.getProperty('BONZO_REI_CAMPAIGN_ID') || REI_CAMPAIGN_ID;
-  } else {
-    campaignId = props.getProperty('BONZO_CAMPAIGN_ID');
-  }
+  // hasOwnProperty, not a bare lookup: data.source arrives from the posted form
+  // body, and a source of 'constructor' or '__proto__' would otherwise find an
+  // inherited property, read as a configured funnel, and send the lead to bare
+  // /prospects instead of the default campaign.
+  const funnelCampaign = Object.prototype.hasOwnProperty.call(FUNNEL_CAMPAIGNS, data.source)
+    ? FUNNEL_CAMPAIGNS[data.source]
+    : null;
+  const campaignId = funnelCampaign
+    ? (props.getProperty(funnelCampaign.prop) || funnelCampaign.fallback)
+    : props.getProperty('BONZO_CAMPAIGN_ID');
   const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
 
   const tags = [];
@@ -771,6 +786,8 @@ function doPost(e) {
         data.homeValue            || 0,
         data.mortgageBalance      || 0,
         data.mortgagePayment      || 0,
+        data.mortgageRate         || 0,
+        data.mortgageTerm         || 0,
         data.totalDebtBalance     || 0,
         data.totalDebtPayment     || 0,
         data.monthlySavings       || 0,

@@ -12,12 +12,7 @@
  * value up under its header, never by column index, which is the whole point.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
-const SOURCE = readFileSync(resolve(__dirname, '../google-apps-script.js'), 'utf8');
-
-type Tab = { name: string; rows: unknown[][] };
+import { loadGas, type Tab } from './helpers/gas-harness';
 
 type Harness = {
   doPost: (e: { postData: { contents: string } }) => unknown;
@@ -34,84 +29,21 @@ type Harness = {
 };
 
 function load(): Harness {
-  const tabs = new Map<string, Tab>();
   const mail: Array<{ to: string; subject: string; body: string }> = [];
   const http: string[] = [];
 
-  function makeSheet(tab: Tab) {
-    const sheet = {
-      appendRow(values: unknown[]) {
-        tab.rows.push(values);
-      },
-      getLastRow: () => tab.rows.length,
-      getLastColumn: () => (tab.rows[0] ? tab.rows[0].length : 0),
-      setFrozenRows: () => sheet,
-      getRange(row: number, col: number, numRows: number, numCols: number) {
-        return {
-          setValues(values: unknown[][]) {
-            for (let r = 0; r < numRows; r++) {
-              const target = (tab.rows[row - 1 + r] ??= []);
-              for (let c = 0; c < numCols; c++) target[col - 1 + c] = values[r][c];
-            }
-            return this;
-          },
-          getValues() {
-            const out: unknown[][] = [];
-            for (let r = 0; r < numRows; r++) {
-              const source = tab.rows[row - 1 + r] ?? [];
-              out.push(source.slice(col - 1, col - 1 + numCols));
-            }
-            return out;
-          },
-          setFontWeight: () => ({ setBackground: () => ({ setFontColor: () => ({}) }) }),
-          setBackground: () => ({ setFontColor: () => ({}) }),
-          setFontColor: () => ({}),
-        };
-      },
-    };
-    return sheet;
-  }
-
-  const spreadsheet = {
-    getSheetByName(name: string) {
-      const tab = tabs.get(name);
-      return tab ? makeSheet(tab) : null;
+  // Records the URL and then throws, which is the assertion this file is built
+  // around: doPost must reach no network at all.
+  const { gas, tabs, rowOf } = loadGas<{ doPost: Harness['doPost'] }>({
+    exports: ['doPost'],
+    onMail: (m) => mail.push(m),
+    fetch: (url) => {
+      http.push(String(url));
+      throw new Error('doPost must not make HTTP calls');
     },
-    insertSheet(name: string) {
-      const tab: Tab = { name, rows: [] };
-      tabs.set(name, tab);
-      return makeSheet(tab);
-    },
-  };
+  });
 
-  const stubs = `
-    var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(){ return ''; } }; } };
-    var SpreadsheetApp = { openById: function(){ return __ss; } };
-    var UrlFetchApp = { fetch: function(url){ __http.push(String(url)); throw new Error('doPost must not make HTTP calls'); } };
-    var Logger = { log: function(){} };
-    var MailApp = { sendEmail: function(m){ __mail.push(m); } };
-    var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){}, remove: function(){} }; } };
-    var LockService = { getScriptLock: function(){ return { waitLock: function(){}, tryLock: function(){ return true; }, releaseLock: function(){} }; } };
-    var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; }, everyDays: function(){ return { atHour: function(){ return { create: function(){} }; } }; } }; } }; } };
-    var ContentService = { createTextOutput: function(t){ return { setMimeType: function(){ return { __body: t }; } }; }, MimeType: { JSON: 'json' } };
-  `;
-  const factory = new Function('__ss', '__mail', '__http', `${stubs}\n${SOURCE}\nreturn { doPost: doPost };`);
-  const { doPost } = factory(spreadsheet, mail, http) as { doPost: Harness['doPost'] };
-
-  return {
-    doPost,
-    tabs,
-    mail,
-    http,
-    rowOf(tabName: string, index = 1) {
-      const tab = tabs.get(tabName);
-      if (!tab) throw new Error(`no tab named ${tabName}; got ${[...tabs.keys()].join(', ')}`);
-      const headers = tab.rows[0] as string[];
-      const row = tab.rows[index];
-      if (!row) throw new Error(`tab ${tabName} has no row at ${index}`);
-      return Object.fromEntries(headers.map((h, i) => [h, row[i]]));
-    },
-  };
+  return { doPost: gas.doPost, tabs, mail, http, rowOf };
 }
 
 function post(h: Harness, payload: Record<string, unknown>) {
@@ -210,6 +142,47 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     // The calculator can legitimately send 0, and 0 must not become ''.
     post(h, { source: 'DebtConsolidation', email: 'z@example.com', homeValue: 0, monthlySavings: 0 });
     expect(h.rowOf('Debt Consolidation', 2)['Home Value']).toBe(0);
+  });
+
+  /**
+   * The current rate and term were collected from the visitor and then thrown
+   * away for a long time, so Darren called without knowing the two numbers that
+   * decide whether a consolidation is worth doing at all.
+   *
+   * Asserted by header name, never by index: these two are the only columns in
+   * the file inserted mid-array rather than appended, and the tab had to be
+   * migrated by hand to match. If the header row and the row builder ever drift
+   * apart again, this is what says so.
+   */
+  it('Debt Consolidation keeps the current rate and term, between payment and debts', () => {
+    post(h, {
+      source: 'DebtConsolidation', email: 'rate@example.com', state: 'CA',
+      mortgagePayment: 2600, mortgageRate: 3.5, mortgageTerm: 27,
+      totalDebtBalance: 26500, ...ATTR,
+    });
+    const row = h.rowOf('Debt Consolidation');
+    expect(row).toMatchObject({
+      'Mortgage Payment': 2600,
+      'Mortgage Rate': 3.5,
+      'Mortgage Term': 27,
+      'Total Debt Balance': 26500,
+    });
+
+    const headers = h.tabs.get('Debt Consolidation')!.rows[0] as string[];
+    expect(headers.indexOf('Mortgage Rate')).toBe(headers.indexOf('Mortgage Payment') + 1);
+    expect(headers.indexOf('Mortgage Term')).toBe(headers.indexOf('Mortgage Rate') + 1);
+    expect(headers.indexOf('Total Debt Balance')).toBe(headers.indexOf('Mortgage Term') + 1);
+  });
+
+  it('files a Debt Consolidation lead that skipped the optional rate and term', () => {
+    // Both are optional on the form, so a blank must land as 0 rather than
+    // shifting every column to its right.
+    post(h, { source: 'DebtConsolidation', email: 'norate@example.com', totalDebtBalance: 900 });
+    expect(h.rowOf('Debt Consolidation')).toMatchObject({
+      'Mortgage Rate': 0,
+      'Mortgage Term': 0,
+      'Total Debt Balance': 900,
+    });
   });
 
   it('Debt Consolidation records licensed state, after the attribution columns', () => {
