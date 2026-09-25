@@ -257,10 +257,29 @@ function section(title: string, rowsHtml: string): string {
 }
 
 /**
+ * How much of the raw submission the alert carries.
+ *
+ * The raw block used to embed the whole payload, twice (HTML and plain text),
+ * with escapeHtml able only to grow it. That was fine while the only callers
+ * were the upstream-failure paths, where the body is a normal lead of a few
+ * hundred characters. It stops being fine now the oversized-payload path also
+ * rescues: that body is over 100,000 characters by definition, and mailing it
+ * twice is how an alert about a lost lead becomes an alert nobody can open.
+ *
+ * 20,000 is far above any real submission, so a genuine lead is still recorded
+ * in full and nothing about the existing alerts changes.
+ */
+const RAW_MAX = 20_000;
+
+/**
  * Builds the alert. Pure and separate from the send, so the wording and the
  * field handling can be reasoned about (and tested) without a network call.
  */
 export function buildRescueEmail(reason: string, payload: string, uncertain: boolean) {
+  const rawShown =
+    payload.length > RAW_MAX
+      ? `${payload.slice(0, RAW_MAX)}\n\n[truncated, ${payload.length} characters total]`
+      : payload;
   let lead: Record<string, unknown> = {};
   let parsedOk = false;
   try {
@@ -376,7 +395,7 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
     `<tr><td style="padding:20px 28px 28px 28px;">` +
     `<div style="font-family:${ALERT_FONT};font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#6b7280;padding-bottom:6px;">` +
     `Raw submission${parsedOk ? "" : " (could not be parsed)"}</div>` +
-    `<div style="background-color:#f5f7f9;border:1px solid #e6ebf0;border-radius:8px;padding:14px 16px;font-family:Menlo,Consolas,monospace;font-size:11px;line-height:17px;color:#6b7280;word-break:break-all;white-space:pre-wrap;">${escapeHtml(payload)}</div>` +
+    `<div style="background-color:#f5f7f9;border:1px solid #e6ebf0;border-radius:8px;padding:14px 16px;font-family:Menlo,Consolas,monospace;font-size:11px;line-height:17px;color:#6b7280;word-break:break-all;white-space:pre-wrap;">${escapeHtml(rawShown)}</div>` +
     `</td></tr>` +
 
     `</table></td></tr></table></body></html>`;
@@ -390,7 +409,7 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
     (name ? `\nName:  ${name}` : "") +
     (email ? `\nEmail: ${email}` : "") +
     (phone ? `\nPhone: ${phone}` : "") +
-    `\n\nReason: ${reason}\n\nRaw submission:\n${payload}\n`;
+    `\n\nReason: ${reason}\n\nRaw submission:\n${rawShown}\n`;
 
   return { subject, html, text };
 }
@@ -428,6 +447,26 @@ export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
   if (!originAllowed(req)) return jsonResponse(403, { error: "forbidden" });
 
+  // The body is read before the config check on purpose. Both of the checks
+  // below refuse a lead that a real visitor submitted, and refusing it silently
+  // is the worst outcome in this codebase: the forms tell the visitor their
+  // details reached Darren and that there is no need to submit again. That is
+  // only true if something actually carries the lead out, so both paths now send
+  // the rescue email, and the rescue needs the body in hand to do it.
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    // Nothing was read, so there is nothing to rescue. A real form cannot reach
+    // this: it would mean the request stream itself failed.
+    return jsonResponse(400, { error: "unreadable body" });
+  }
+
+  if (raw.length > 100_000) {
+    await rescueEmail(`Payload too large (${raw.length} characters); not forwarded`, raw);
+    return jsonResponse(413, { error: "payload too large" });
+  }
+
   // Accepts both spellings. The canonical name is APPS_SCRIPT_WEBHOOK_URL
   // (Google's product is "Apps Script"), but APP_SCRIPT_WEBHOOK_URL is what is
   // currently set in Netlify. Reading both means a rename in either direction
@@ -439,16 +478,15 @@ export default async (req: Request, _context: Context) => {
     console.error(
       "Neither APPS_SCRIPT_WEBHOOK_URL nor APP_SCRIPT_WEBHOOK_URL is set; leads cannot be forwarded",
     );
+    // The one failure that takes every form on the site down at once, and the
+    // one where nothing downstream has the lead at all. Without this the whole
+    // site can lose every lead it receives with nobody told.
+    await rescueEmail(
+      "Lead endpoint not configured: neither APPS_SCRIPT_WEBHOOK_URL nor APP_SCRIPT_WEBHOOK_URL is set",
+      raw,
+    );
     return jsonResponse(500, { error: "lead endpoint not configured" });
   }
-
-  let raw: string;
-  try {
-    raw = await req.text();
-  } catch {
-    return jsonResponse(400, { error: "unreadable body" });
-  }
-  if (raw.length > 100_000) return jsonResponse(413, { error: "payload too large" });
 
   let payload: Record<string, unknown>;
   try {

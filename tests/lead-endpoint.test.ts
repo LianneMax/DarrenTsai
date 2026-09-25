@@ -162,6 +162,16 @@ describe('request guards', () => {
     expect(upstreamCalled()).toBe(false);
   });
 
+  /**
+   * Refusing it is right; refusing it silently is not. Every form on the site
+   * answers a 413 with "your details were passed to Darren, no need to submit
+   * again", so something has to actually carry the lead out.
+   */
+  it('still rescues an oversized lead rather than dropping it silently', async () => {
+    await handler(req({ ...LEAD, blob: 'x'.repeat(200_000) }), ctx);
+    expect(rescueSent()).toBe(true);
+  });
+
   it('requires an email or a phone', async () => {
     const res = await handler(req({ firstName: 'Jane' }), ctx);
     expect(res.status).toBe(400);
@@ -197,6 +207,22 @@ describe('configuration', () => {
     const res = await handler(req(LEAD), ctx);
     expect(res.status).toBe(500);
     expect(upstreamCalled()).toBe(false);
+  });
+
+  /**
+   * The worst failure this endpoint has, and the one it used to handle worst.
+   * A missing or renamed webhook variable takes every form on the site down at
+   * once: nothing reaches the Sheet, nothing reaches Bonzo, and the visitor is
+   * told not to submit again. Without this alert that can run for days unnoticed.
+   */
+  it('mails the lead when the webhook is unset, since nothing downstream has it', async () => {
+    vi.stubGlobal('Netlify', {
+      env: { get: (k: string) => (k === 'RESEND_API_KEY' ? 're_test' : undefined) },
+    });
+    const res = await handler(req(LEAD), ctx);
+    expect(res.status).toBe(500);
+    expect(upstreamCalled()).toBe(false);
+    expect(rescueSent()).toBe(true);
   });
 
   // Production had APP_SCRIPT_WEBHOOK_URL set while the code read
@@ -351,6 +377,28 @@ describe('buildRescueEmail', () => {
     expect(html).toContain('Raw submission');
     expect(text).toContain('jane@gmail.com');
     expect(text).toContain('Timed out after 9000ms');
+  });
+
+  /**
+   * The oversized-payload path rescues too, and that body is over 100,000
+   * characters by definition. Embedded whole, in both the HTML and the text
+   * part, it produces an alert about a lost lead that nobody can open.
+   */
+  it('caps an enormous raw payload in both parts, and says it did', () => {
+    const huge = JSON.stringify({ ...JSON.parse(PAYLOAD), blob: 'x'.repeat(200_000) });
+    const { html, text } = buildRescueEmail('Payload too large', huge, false);
+    expect(html.length).toBeLessThan(huge.length);
+    expect(text.length).toBeLessThan(huge.length);
+    expect(text).toContain('[truncated,');
+    expect(html).toContain('[truncated,');
+    // The part that identifies the lead survives the cut.
+    expect(text).toContain('jane@gmail.com');
+  });
+
+  it('leaves a normal payload untouched', () => {
+    const { text } = buildRescueEmail('x', PAYLOAD, false);
+    expect(text).not.toContain('[truncated,');
+    expect(text).toContain(PAYLOAD);
   });
 
   it('still sends when the payload is not JSON', () => {
