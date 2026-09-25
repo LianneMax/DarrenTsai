@@ -154,8 +154,19 @@ are kept and flagged, never dropped, because they are still worth a referral.
 | On a phone | **Call is listed first.** On a desktop, Schedule is first |
 | The number shown | A **CallRail pool number**, not (714) 887-5432. If it reads the real number, CallRail's swap did not run |
 | Tapping the call option on a phone | Opens the dialler. After a real >60s call, it appears in CallRail within a few minutes |
-| Picking "Schedule a time" | Calendly opens, and `calendly_open` fires in Tag Assistant |
+| Picking "Schedule a time" | The **calendar appears in the same panel**, not a popup and not a new tab. `calendly_open` fires in Tag Assistant |
+| The calendar | Loads within a couple of seconds. A "Back" link returns to the two options |
 | Escape, or clicking outside | Closes the panel |
+
+**Then book a real slot**, using a `zztest+` address. `calendly_booking` should
+fire in Tag Assistant the moment Calendly confirms. That event is the whole
+reason the calendar is inline rather than in a popup, so it is the one to check
+most carefully. Cancel the booking in Calendly afterwards.
+
+If the calendar opens in a **new browser tab** instead of in the panel, the
+widget script did not load in time and the page fell back. `calendly_booking`
+cannot fire on that path, so report it rather than treating the booking as
+tracked.
 
 Check this on at least the homepage and one landing page, since they run separate
 copies of the page code.
@@ -316,7 +327,9 @@ and worth reporting:
    lead, not two.
 2. **Mortgage rate and term.** Step 2 collects both and they now reach the Sheet
    and the results screen. See case 1.4.
-3. **Booking was untracked.** "Book a Call" now opens a chooser. See case 1.7.
+3. **Booking was untracked.** "Book a Call" now opens a chooser, and the
+   calendar renders inline so a completed booking fires `calendly_booking`.
+   See case 1.7.
 4. **A lost lead with no alert.** If the site cannot reach the Sheet, Darren now
    gets a rescue email on every path that loses a lead, not just some of them.
 

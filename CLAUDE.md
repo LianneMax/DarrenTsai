@@ -198,11 +198,20 @@ or the lead lands on the generic tab with its fields dropped:
 - Every "Book a Call" CTA opens a chooser (`public/booking-chooser.js`): call
   now, or schedule. The call half is a real `tel:` anchor, so CallRail swaps the
   number and `phone_click` fires with no extra code, which puts urgent leads on
-  the one path that is already an Ads conversion. The schedule half fires
-  `calendly_open`. Completed Calendly *bookings* are still untracked: the popup
-  posts a message we could listen for, but the first click on a page opens a new
-  tab we cannot see into, so the count would silently under-report. A Calendly
-  webhook is the only complete answer and needs a paid plan.
+  the one path that is already an Ads conversion. The schedule half renders the
+  calendar **inline, in the same panel**, and fires `calendly_open`.
+- Inline is what makes `calendly_booking` possible. Calendly announces a booking
+  by posting a message to its parent window; in its own popup, and especially in
+  the new tab the old first-click fallback opened, we were not the parent, so
+  completed bookings could not be counted and a paid-plan webhook looked like
+  the only answer. Rendered inline the iframe is ours, so every booking is
+  visible. The listener checks `e.origin` against calendly.com, which is the
+  security boundary and not a nicety: without it any page could post a forged
+  booking. `calendly_booking` is an observation event and must **never** be
+  imported into Ads, for the same reason as `phone_click`.
+- Tests count as passing only with the whole suite: `tests/booking-chooser.test.ts`
+  loads the source once per file rather than per test, because the message
+  listener is registered at evaluation and re-evaluating stacks listeners.
 - `docs/MANUAL-TEST-RUNBOOK.md` is the by-hand verification pass: every funnel,
   the attribution and Ads checks, and the gotchas that read as bugs but are not.
 - `/dscr/`, `/fha/` and `/realestateinvesting/` were discovered but not yet

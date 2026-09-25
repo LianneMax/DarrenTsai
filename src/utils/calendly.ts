@@ -1,12 +1,13 @@
-// Calendly popup helper — same URL and popup-with-new-tab-fallback behaviour
-// used by Nav, the calculators, and the static landing pages.
+// Booking, for the React side.
 //
-// The widget's script and stylesheet used to load eagerly in <head> on every
-// page, putting a render-blocking third-party stylesheet in front of first
-// paint for something nobody sees until they click "Book a call". They are now
-// injected on first use, and the pre-existing window.open fallback covers the
-// gap while the script downloads, so a fast clicker still gets a booking page.
-import { track } from './attribution';
+// The behaviour lives in public/booking-chooser.js, which owns the chooser, the
+// inline calendar, the widget loading and the two tracking events. It is a
+// plain script on window so the three hand-written landing pages share the
+// exact same implementation; each runtime used to carry its own copy of the
+// loader, and the copies had already started to disagree.
+//
+// What is left here is the fallback for when that script has not loaded, so a
+// booking CTA is never a dead button.
 
 export const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
 
@@ -18,7 +19,10 @@ type CalendlyWindow = Window & {
 };
 
 type BookingWindow = Window & {
-  DTBooking?: { open: (o: { onSchedule: () => void; onOpen?: () => void }) => void };
+  DTBooking?: {
+    open: (o: { onSchedule?: () => void; onOpen?: () => void }) => void;
+    preload: () => void;
+  };
 };
 
 let loading: Promise<void> | null = null;
@@ -43,36 +47,29 @@ function loadWidget(): Promise<void> {
   return loading;
 }
 
-/** Straight to Calendly. Reached only once the visitor has chosen to schedule. */
+/**
+ * Last resort: Calendly in its own popup, or a new tab while the widget is
+ * still downloading. Neither is observable, which is why the inline calendar
+ * exists, but a booking we cannot count still beats a button that does nothing.
+ *
+ * Does not fire calendly_open. booking-chooser.js owns that event so it fires
+ * exactly once whichever path is taken.
+ */
 function openCalendlyDirect() {
-  track('calendly_open', { page_path: window.location.pathname });
-
   const cal = (window as CalendlyWindow).Calendly;
   if (cal && typeof cal.initPopupWidget === 'function') {
     cal.initPopupWidget({ url: CALENDLY_URL });
     return;
   }
-
-  // Not loaded yet: start fetching for next time, and send this click straight
-  // to Calendly in a new tab so it is never swallowed by the wait. Rarer now
-  // that the chooser warms the widget while the visitor is reading it.
   loadWidget().catch(() => { /* the new tab already handled this click */ });
   window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer');
 }
 
-/**
- * Every booking CTA on the site lands here. It offers the call and the schedule
- * in one place rather than assuming everybody wants to schedule: see
- * public/booking-chooser.js for why that matters to attribution.
- *
- * The chooser is a plain script on window so the three hand-written landing
- * pages can share this exact implementation. If it has not loaded for any
- * reason, fall through to Calendly rather than leaving the button dead.
- */
+/** Every booking CTA on the site lands here. */
 export function openCalendly() {
   const booking = (window as BookingWindow).DTBooking;
   if (booking && typeof booking.open === 'function') {
-    booking.open({ onSchedule: openCalendlyDirect, onOpen: preloadCalendly });
+    booking.open({ onSchedule: openCalendlyDirect });
     return;
   }
   openCalendlyDirect();
@@ -80,5 +77,10 @@ export function openCalendly() {
 
 /** Warm the widget when a booking CTA scrolls into view or is hovered. */
 export function preloadCalendly() {
+  const booking = (window as BookingWindow).DTBooking;
+  if (booking && typeof booking.preload === 'function') {
+    booking.preload();
+    return;
+  }
   loadWidget().catch(() => { /* best effort */ });
 }

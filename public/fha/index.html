@@ -1718,15 +1718,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     js.async = true;
     document.head.appendChild(js);
   }
-  /** Straight to Calendly. Reached only once the visitor has chosen to schedule. */
+  // Last resort, used only if booking-chooser.js did not load. Neither the
+  // popup nor a new tab is observable, which is why the chooser renders the
+  // calendar inline instead. Does not fire calendly_open: that file owns the
+  // event so it fires exactly once whichever path is taken.
   function openCalendlyDirect() {
-    if (window.DT) window.DT.track('calendly_open', { page_path: location.pathname });
     if (window.Calendly) {
       window.Calendly.initPopupWidget({ url: CALENDLY_URL });
     } else {
-      // Start fetching for next time, and send this click straight through so
-      // it is never swallowed by the wait. Rarer now that the chooser warms the
-      // widget while the visitor is reading it.
       loadCalendly();
       window.open(CALENDLY_URL, '_blank', 'noopener');
     }
@@ -1734,11 +1733,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   // Every booking CTA lands here. The chooser offers the call alongside the
   // schedule, so someone ready to talk now is not pushed into booking a future
-  // slot. See public/booking-chooser.js for why that matters to attribution.
-  // If it failed to load, fall through rather than leaving the button dead.
+  // slot, and it renders the calendar inline so a completed booking can be
+  // counted. See public/booking-chooser.js.
   function openCalendly() {
     if (window.DTBooking) {
-      window.DTBooking.open({ onSchedule: openCalendlyDirect, onOpen: loadCalendly });
+      window.DTBooking.open({ onSchedule: openCalendlyDirect });
       return;
     }
     openCalendlyDirect();
