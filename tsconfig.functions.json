@@ -1,0 +1,27 @@
+{
+  // The Netlify Functions were invisible to `npm run build`: tsconfig.app.json
+  // includes only "src" and tsconfig.node.json only "vite.config.ts", so
+  // netlify/**/*.mts was never typechecked by anything. A missing @types/node
+  // sat there unnoticed while the editor reported "Cannot find module
+  // 'node:dns/promises'" in lead.mts. These files handle every lead on the
+  // site; they are the last place that should be unchecked.
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.functions.tsbuildinfo",
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "types": ["node"]
+  },
+  "include": ["netlify/**/*.mts", "netlify/**/*.ts"]
+}
