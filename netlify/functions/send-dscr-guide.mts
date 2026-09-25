@@ -21,7 +21,8 @@
 
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import type { Config, Context } from "@netlify/functions";
+import type { Config } from "@netlify/functions";
+import { escapeHtml, guideSender, toBase64 } from "./guide-shared.mts";
 
 const TEMPLATE_URL = "https://realdarrentsai.com/magnets/dscr-rate-cashflow-guide.pdf";
 const FONT_URLS = {
@@ -29,7 +30,6 @@ const FONT_URLS = {
   semiBold: "https://realdarrentsai.com/fonts/Outfit-SemiBold.ttf",
   bold: "https://realdarrentsai.com/fonts/Outfit-Bold.ttf",
 };
-const FROM = "Darren Tsai <darren@realdarrentsai.com>";
 
 // Cover page geometry — MUST mirror the COVER_* constants in
 // scripts/build_dscr_pdf.py's draw_cover() exactly (same formulas, same
@@ -50,12 +50,10 @@ const BOX_TOP = INTRO_Y2 - 24;
 const BOX_LABEL_Y = BOX_TOP - 28;
 const ROW_H = 28;
 const ROW_Y = [0, 1, 2, 3].map((i) => BOX_LABEL_Y - 24 - i * ROW_H);
-// Nothing here masks below the last row, so this one is unread. It is kept
-// because this block mirrors draw_cover() in scripts/build_dscr_pdf.py formula
-// for formula, and a gap in that chain is how the two drift: the next constant
-// added below it would be derived from a number that is no longer written down.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const BOX_BOTTOM = ROW_Y[3] - 14;
+// The chain continues in draw_cover() with BOX_BOTTOM = ROW_Y[3] - 14, which
+// nothing here needs: this function masks individual rows, never below the last
+// one. Left written down rather than bound, so the next constant derived from it
+// has its formula to hand and the two files stay mirrorable line for line.
 const VALUE_RIGHT_X = PAGE_W - MARGIN - 20;
 const VALUE_LEFT_X = 350; // mask-rect left edge for the value column
 
@@ -67,17 +65,6 @@ const WHITE = rgb(1, 1, 1);
 // Cache bytes across warm invocations.
 let templateBytes: ArrayBuffer | null = null;
 let fontCache: { regular: ArrayBuffer; semiBold: ArrayBuffer; bold: ArrayBuffer } | null = null;
-
-function jsonResponse(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
 
 // The email itself is a short, plain message — the branded "Your Scenario"
 // card lives on the PDF's cover page now (see draw_cover() in
@@ -334,69 +321,21 @@ async function buildPersonalizedPdf(lead: {
   };
 }
 
-export default async (req: Request, _context: Context) => {
-  if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
-
-  const apiKey = req.headers.get("x-api-key");
-  if (!apiKey || apiKey !== Netlify.env.get("DSCR_GUIDE_API_KEY")) {
-    return jsonResponse(401, { error: "unauthorized" });
-  }
-
-  const resendKey = Netlify.env.get("RESEND_API_KEY");
-  if (!resendKey) return jsonResponse(500, { error: "RESEND_API_KEY not configured" });
-
-  let lead: Record<string, string>;
-  try {
-    lead = await req.json();
-  } catch {
-    return jsonResponse(400, { error: "invalid json body" });
-  }
-
-  if (!lead.email) return jsonResponse(400, { error: "email required" });
-
-  try {
+export default guideSender({
+  name: "send-dscr-guide",
+  apiKeyEnv: "DSCR_GUIDE_API_KEY",
+  subject: "[PDF] Your DSCR Rate Snapshot and Guide",
+  buildEmailHtml,
+  // The only sender that builds its attachments per lead rather than serving a
+  // published file: the cover page is redrawn with this lead's numbers.
+  buildAttachments: async (lead) => {
     const { rateBytes, guideBytes } = await buildPersonalizedPdf(lead);
-    const rateBase64 = Buffer.from(rateBytes).toString("base64");
-    const guideBase64 = Buffer.from(guideBytes).toString("base64");
-
-    const emailRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        from: FROM,
-        to: [lead.email],
-        subject: "[PDF] Your DSCR Rate Snapshot and Guide",
-        html: buildEmailHtml(lead),
-        attachments: [
-          { filename: "your-dscr-rate.pdf", content: rateBase64 },
-          { filename: "dscr-cashflow-guide.pdf", content: guideBase64 },
-        ],
-      }),
-    });
-
-    if (!emailRes.ok) {
-      const detail = await emailRes.text();
-      console.error("resend send failed", emailRes.status, detail);
-      // Tell the caller whether trying again can help. 429 and 5xx are Resend
-      // being busy or down; anything else (422 invalid address, 403 unverified
-      // domain) fails identically on every retry, so it must not be retried.
-      const retryable = emailRes.status === 429 || emailRes.status >= 500;
-      return jsonResponse(retryable ? 503 : 422, {
-        error: retryable ? "email send failed" : "email rejected",
-        resendStatus: emailRes.status,
-        detail: detail.slice(0, 300),
-      });
-    }
-
-    return jsonResponse(200, { success: true });
-  } catch (err) {
-    console.error("send-dscr-guide error", err);
-    return jsonResponse(500, { error: String(err) });
-  }
-};
+    return [
+      { filename: "your-dscr-rate.pdf", content: toBase64(rateBytes) },
+      { filename: "dscr-cashflow-guide.pdf", content: toBase64(guideBytes) },
+    ];
+  },
+});
 
 export const config: Config = {
   path: "/api/send-dscr-guide",
