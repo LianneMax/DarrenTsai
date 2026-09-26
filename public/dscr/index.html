@@ -928,19 +928,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="grid">
         <div class="field">
           <label for="rent">Monthly Market Rent</label>
-          <div class="input-shell"><span>$</span><input type="number" id="rent" placeholder="e.g. 2400" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="rent" placeholder="e.g. 2,400" min="0"></div>
         </div>
         <div class="field">
           <label for="price">Purchase Price</label>
-          <div class="input-shell"><span>$</span><input type="number" id="price" placeholder="e.g. 320000" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="price" placeholder="e.g. 320,000" min="0"></div>
         </div>
         <div class="field">
           <label for="tax">Annual Property Tax</label>
-          <div class="input-shell"><span>$</span><input type="number" id="tax" placeholder="e.g. 3600" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="tax" placeholder="e.g. 3,600" min="0"></div>
         </div>
         <div class="field">
           <label for="insurance">Annual Insurance</label>
-          <div class="input-shell"><span>$</span><input type="number" id="insurance" placeholder="e.g. 1800" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="insurance" placeholder="e.g. 1,800" min="0"></div>
         </div>
         <div class="field">
           <label for="hoa">Monthly HOA <span class="hint">(if any)</span></label>
@@ -1132,6 +1132,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // Down Payment / Purchase Price are numeric fields) and can carry the
   // calculator INPUTS, not just the outputs Darren would otherwise have to
   // reverse-engineer from the ratio.
+  // Whether the calculator has every input its result depends on. The opt-in
+  // form reads it, so an empty calculator sends no snapshot rather than zeros.
+  let dscrReady = false;
+
   let lastCalc = {
     price: 0, downAmount: 0, loanAmount: 0,
     rent: 0, tax: 0, insurance: 0, hoa: 0, pi: 0, pitia: 0,
@@ -1177,11 +1181,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const monthlyIns = insurance/12;
     const pitia = pi + monthlyTax + monthlyIns + hoa;
 
-    // Nothing is claimed until both of the numbers the ratio is made of are
-    // the visitor's own. Everything below still runs, so the moment the second
-    // one is typed the card is already correct.
-    const dscrHasInputs = rent > 0 && price > 0;
+    // Nothing is claimed until every number the ratio is made of is the
+    // visitor's own. Everything below still runs, so the moment the last one is
+    // typed the card is already correct.
+    //
+    // Tax and insurance are in that list, not just rent and price. They are two
+    // of the four parts of PITIA, and treating a blank as $0 does not make the
+    // ratio approximate, it makes it wrong in the flattering direction: rent
+    // 2,000 against price 300,000 alone reads 1.26 "Qualifies", and the same
+    // property with ordinary tax and insurance reads 0.98 "Below standard".
+    // HOA stays optional because the field says "if any" and $0 is a real
+    // answer for a property without one.
+    const dscrHasInputs = rent > 0 && price > 0 && tax > 0 && insurance > 0;
     $('resultCard').classList.toggle('is-waiting', !dscrHasInputs);
+    $('resultWaiting').textContent = (rent > 0 && price > 0)
+      ? 'Add the annual property tax and insurance to see your DSCR. They are two of the four parts of the payment the rent has to cover.'
+      : 'Enter the monthly rent and the purchase price and your DSCR appears here.';
+    // Read by the opt-in form, so a guide can never claim a ratio that was
+    // computed from blanks.
+    dscrReady = dscrHasInputs;
 
     const dscr = pitia > 0 ? (rent / pitia) : 0;
     const qualifies = dscr >= 1.00;
@@ -1529,23 +1547,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       firstName, lastName, email, phone, state,
       source: 'dscr',
       magnet: 'DSCR Rate & Cash Flow Guide',
-      dscr: $('dscrNumber').textContent.replace('DSCR ratio', '').trim(),
-      downPayment: dpEl.value + '%',
-      rate: $('outRate').textContent,
-      loanAmount: $('outLoan').textContent,
+      // Everything the calculator produced, or nothing at all.
+      //
+      // The form sits below the calculator and can be submitted without it. It
+      // used to send the outputs regardless: DSCR 0.00, Loan $0, Rate 7.63%
+      // (the starting tier) and Down Payment 25% (where the slider happens to
+      // sit). None of that was chosen, all of it reached the Sheet and Bonzo,
+      // and the guide email attached a rate snapshot drawn from it.
+      //
+      // Blank is honest and stays blank the whole way down: addMortgageFields
+      // skips empty values, so Bonzo gets no loan_amount or interest_rate, and
+      // send-dscr-guide drops the snapshot PDF and its "the exact numbers you
+      // just ran" line when the ratio is missing.
+      dscr: dscrReady ? $('dscrNumber').textContent.replace('DSCR ratio', '').trim() : '',
+      downPayment: dscrReady ? dpEl.value + '%' : '',
+      rate: dscrReady ? $('outRate').textContent : '',
+      loanAmount: dscrReady ? $('outLoan').textContent : '',
       // Exact figures for Bonzo's numeric Mortgage fields. The four above are
       // display strings kept as-is because the Sheet columns and the PDF cover
       // already render them that way.
-      downPaymentAmount: Math.round(lastCalc.downAmount),
-      purchasePrice: Math.round(lastCalc.price),
+      downPaymentAmount: dscrReady ? Math.round(lastCalc.downAmount) : '',
+      purchasePrice: dscrReady ? Math.round(lastCalc.price) : '',
       // The calculator inputs themselves, so Darren can see the scenario the
       // lead actually built rather than just the ratio it produced.
-      monthlyRent: Math.round(lastCalc.rent),
-      annualTax: Math.round(lastCalc.tax),
-      annualInsurance: Math.round(lastCalc.insurance),
-      monthlyHoa: Math.round(lastCalc.hoa),
-      monthlyPI: Math.round(lastCalc.pi),
-      monthlyPitia: Math.round(lastCalc.pitia),
+      monthlyRent: dscrReady ? Math.round(lastCalc.rent) : '',
+      annualTax: dscrReady ? Math.round(lastCalc.tax) : '',
+      annualInsurance: dscrReady ? Math.round(lastCalc.insurance) : '',
+      monthlyHoa: dscrReady ? Math.round(lastCalc.hoa) : '',
+      monthlyPI: dscrReady ? Math.round(lastCalc.pi) : '',
+      monthlyPitia: dscrReady ? Math.round(lastCalc.pitia) : '',
       timestamp: new Date().toISOString(),
     };
 
@@ -1613,6 +1643,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // optional loan fields from whatever the calculator is currently showing —
   // same behaviour as the main site, which seeds LeadForm from its calculator.
   window.LF_CONTACT_PREFILL = function () {
+    // Only once the visitor has actually run the calculator.
+    //
+    // The outputs exist from page load: #outRate shows the rate for the
+    // slider's starting tier whatever else is blank, so the Contact modal
+    // opened with Interest Rate already reading 7.63% and saved it to the
+    // Leads tab as the visitor's own answer. That is the same defect as the
+    // homepage's example debts and the $330,000 / 6.41% the mortgage
+    // calculator used to hand over.
+    //
+    // rent and price are the two the DSCR is made of, so they are the test
+    // for "was this tool used".
+    var rent = parseFloat($('rent').value) || 0;
+    var price = parseFloat($('price').value) || 0;
+    if (!(rent > 0 && price > 0)) return {};
     return {
       loanAmount: $('outLoan').textContent.replace(/[^0-9]/g, ''),
       annualRate: $('outRate').textContent.replace(/[^0-9.]/g, ''),
@@ -1680,7 +1724,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <div class="lf-group">
           <label class="lf-label" for="cGoals">Your Goals <span class="lf-optional">(optional)</span></label>
-          <textarea class="lf-input lf-textarea" id="cGoals" rows="3" placeholder="e.g. Lower my monthly payments, pay off credit card debt, save for a rental property…"></textarea>
+          <textarea class="lf-input lf-textarea" id="cGoals" rows="3" placeholder="e.g. Buying a rental in Phoenix, want to know if the rent covers it"></textarea>
           <span class="lf-error" id="cGoalsError"></span>
         </div>
 
@@ -1718,13 +1762,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <label class="lf-label" for="cLoanAmount">Loan Amount <span class="lf-optional">(optional)</span></label>
             <div class="lf-prefix-wrap">
               <span class="lf-prefix">$</span>
-              <input class="lf-input lf-has-prefix" type="text" id="cLoanAmount" inputmode="numeric">
+              <input class="lf-input lf-has-prefix" type="text" id="cLoanAmount" inputmode="numeric" placeholder="e.g. 400,000">
             </div>
           </div>
           <div class="lf-group">
             <label class="lf-label" for="cRate">Interest Rate <span class="lf-optional">(optional)</span></label>
             <div class="lf-suffix-wrap">
-              <input class="lf-input lf-has-suffix" type="number" step="0.01" min="0.1" max="30" id="cRate">
+              <input class="lf-input lf-has-suffix" type="number" step="0.01" min="0.1" max="30" id="cRate" placeholder="e.g. 6.5">
               <span class="lf-suffix">%</span>
             </div>
           </div>
@@ -2031,7 +2075,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       phone: phone,
       state: state,
       loanAmount: parseFloat(el('cLoanAmount').value.replace(/[^0-9.]/g, '')) || 0,
-      termYears: 30,
+      // Blank, not 30. No Contact form on this site asks for a term, and every
+      // one of them was writing 30 into the Leads tab as though the visitor had
+      // said so.
+      termYears: '',
       annualRate: parseFloat(el('cRate').value) || 0,
       message: goals,
       target: target,

@@ -109,8 +109,44 @@ describe('the DSCR calculator does not arrive pre-filled either', () => {
     }
   });
 
-  it('holds the result back until rent and price are given', () => {
-    expect(DSCR).toContain('dscrHasInputs');
+  it('holds the result back until every input the ratio needs is given', () => {
+    // R4-1. Tax and insurance are two of the four parts of PITIA, and a blank
+    // counted as $0 does not make the ratio approximate, it makes it wrong in
+    // the flattering direction: rent 2,000 against price 300,000 alone reads
+    // 1.26 "Qualifies", the same property with ordinary tax and insurance
+    // reads 0.98 "Below standard", and the 1.26 reached the Sheet, Bonzo and
+    // the PDF. HOA stays optional: the field says "if any" and $0 is a real
+    // answer.
+    expect(DSCR).toContain('const dscrHasInputs = rent > 0 && price > 0 && tax > 0 && insurance > 0;');
+    expect(DSCR).toContain('Add the annual property tax and insurance to see your DSCR');
+  });
+
+  it('sends nothing from the calculator when the calculator was not used', () => {
+    // R3-3. The opt-in sits below the calculator and can be submitted without
+    // it. Blank is honest and stays blank the whole way down: addMortgageFields
+    // skips empty values, so Bonzo gets no loan_amount or interest_rate.
+    for (const field of ['dscr:', 'downPayment:', 'rate:', 'loanAmount:', 'monthlyRent:', 'annualTax:']) {
+      const line = DSCR.split(/\r?\n/).find((l) => l.trim().startsWith(field));
+      expect(line, `payload field ${field} not found`).toBeDefined();
+      expect(line, `${field} is sent unconditionally`).toContain('dscrReady ?');
+    }
+  });
+
+  it('does not hand the Contact modal a rate nobody chose', () => {
+    // R3-1. #outRate shows the starting tier's rate from page load, so the
+    // modal opened with Interest Rate reading 7.63% and saved it as the
+    // visitor's own answer.
+    const prefill = DSCR.slice(
+      DSCR.indexOf('window.LF_CONTACT_PREFILL'),
+      DSCR.indexOf('window.LF_CONTACT_PREFILL') + 1200,
+    );
+    expect(prefill).toContain('if (!(rent > 0 && price > 0)) return {};');
+  });
+
+  it('sends a blank term, not 30', () => {
+    // R3-9. No Contact form on this site asks for a term.
+    expect(DSCR).not.toContain('termYears: 30,');
+    expect(DSCR).toContain("termYears: '',");
   });
 });
 
