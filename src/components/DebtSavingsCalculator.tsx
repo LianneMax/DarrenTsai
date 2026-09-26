@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import { RATES_ENDPOINT, EMAIL } from '../config';
+import { RATES_ENDPOINT, EMAIL, SAVINGS_RANGE } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
@@ -161,9 +161,17 @@ export default function DebtSavingsCalculator() {
   }, []);
 
   // Debts
+  //
+  // WHY THESE START EMPTY. They used to load pre-filled with a $8,500 credit
+  // card and an $18,000 auto loan. The inputs render `value={d.bal || ''}`, so a
+  // zero shows the placeholder and reads as an example, but a real number reads
+  // as the visitor's own. Both 26 Sep test leads walked straight past step 1 and
+  // sent $26,500 of debt and $670/mo that nobody had typed, which reached the
+  // Sheet and reached Darren as fact. An empty row cannot lie about a stranger's
+  // finances; the placeholders still show what the field wants.
   const [debts, setDebts] = useState<Debt[]>([
-    { id: 1, type: 'Credit Card', bal: 8500,  pmt: 250, rate: 24.99 },
-    { id: 2, type: 'Auto Loan',   bal: 18000, pmt: 420, rate: 7.5  },
+    { id: 1, type: 'Credit Card', bal: 0, pmt: 0, rate: 0 },
+    { id: 2, type: 'Auto Loan',   bal: 0, pmt: 0, rate: 0 },
   ]);
 
   // Home
@@ -192,6 +200,14 @@ export default function DebtSavingsCalculator() {
   // two Sheet rows and created two Bonzo prospects for one person. LeadForm has
   // always guarded this; this was the one form that did not.
   const [sending,   setSending]   = useState(false);
+  // State alone was not enough. `sending` is read from the render that is already
+  // on screen, and React has not re-rendered by the time a second click lands in
+  // the same tick, so `b.click(); b.click()` still sent two requests: two Sheet
+  // rows 2 ms apart, two Follow-ups, and a Bonzo 422 that mailed Darren a LEAD
+  // PIPELINE FAILURE for a lead that had in fact arrived. A ref is written
+  // synchronously, so the second click sees it. The state stays, because it is
+  // what re-renders the button.
+  const inFlight = useRef(false);
 
   const postLead = useLeadSubmit({
     formId: 'debt-savings-calculator',
@@ -253,6 +269,26 @@ export default function DebtSavingsCalculator() {
 
   const bestSave = Math.max(refiSave > 0 ? refiSave : 0, heloanSave > 0 ? heloanSave : 0);
 
+  /**
+   * How far the visitor is allowed to go.
+   *
+   * WHY THIS EXISTS. With the example debts removed, an untouched tool computes
+   * from nothing: step 3 used to render "HELOAN $0/mo" beside "Save $670/mo",
+   * which is not a comparison, it is a contradiction shown to a stranger. The
+   * grey placeholders (650000, 350000) also read as pre-filled values, so a
+   * visitor could reach the comparison believing the tool had their numbers.
+   *
+   * The gate covers the pill tabs as well as the Continue buttons, because the
+   * tabs jump to any step directly and were the easier way past this. Going
+   * backwards is always allowed: re-reading what you typed is not a risk.
+   */
+  const hasDebt = debts.some(d => (d.bal || 0) > 0 && (d.pmt || 0) > 0);
+  const hasHome = hv > 0 && mb > 0 && mp > 0;
+  const furthestStep = !hasDebt ? 1 : !hasHome ? 2 : 4;
+  const gateMessage = !hasDebt
+    ? 'Add at least one debt with a balance and a monthly payment, so the comparison is about your money and not an example.'
+    : 'Enter your home value, mortgage balance and monthly payment. Without them there is nothing to compare your debts against.';
+
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const addDebt = () =>
@@ -267,6 +303,10 @@ export default function DebtSavingsCalculator() {
   };
 
   const goStep = (n: number) => {
+    if (n > step && n > furthestStep) {
+      setErrorMsg(gateMessage);
+      return;
+    }
     setStep(n);
     setTimeout(() => {
       document.getElementById('savings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -276,7 +316,7 @@ export default function DebtSavingsCalculator() {
   const submitLead = async () => {
     // Belt and braces with the disabled button: a keyboard repeat or a second
     // click landing in the same tick would otherwise still get through.
-    if (sending) return;
+    if (inFlight.current || sending) return;
     if (!fname || !phone || !email || !usState) {
       setErrorMsg('Please fill in your name, phone, email, and state.');
       return;
@@ -311,11 +351,15 @@ export default function DebtSavingsCalculator() {
       timestamp: new Date().toISOString(),
     };
 
+    inFlight.current = true;
     setSending(true);
     const result = await postLead(payload);
     // Released on every path except success, where the form is replaced by the
     // success card and there is no button left to re-enable.
-    if (!result.ok) setSending(false);
+    if (!result.ok) {
+      inFlight.current = false;
+      setSending(false);
+    }
 
     // A dead email domain is the one failure the visitor can still fix, and the
     // only one where nothing was saved. Keep them here with the server's message.
@@ -451,7 +495,7 @@ export default function DebtSavingsCalculator() {
                       <span className="input-prefix">$</span>
                       <input
                         type="number" className="form-input input-has-prefix"
-                        value={d.bal || ''} placeholder="5000"
+                        value={d.bal || ''} placeholder="e.g. 5000"
                         onChange={(e) => updateDebt(d.id, 'bal', e.target.value)}
                       />
                     </div>
@@ -464,7 +508,7 @@ export default function DebtSavingsCalculator() {
                       <span className="input-prefix">$</span>
                       <input
                         type="number" className="form-input input-has-prefix"
-                        value={d.pmt || ''} placeholder="150"
+                        value={d.pmt || ''} placeholder="e.g. 150"
                         onChange={(e) => updateDebt(d.id, 'pmt', e.target.value)}
                       />
                     </div>
@@ -476,7 +520,7 @@ export default function DebtSavingsCalculator() {
                     <div className="input-suffix-wrap">
                       <input
                         type="number" step="0.1" className="form-input input-has-suffix"
-                        value={d.rate || ''} placeholder="24.99"
+                        value={d.rate || ''} placeholder="e.g. 24.99"
                         onChange={(e) => updateDebt(d.id, 'rate', e.target.value)}
                       />
                       <span className="input-suffix">%</span>
@@ -521,6 +565,12 @@ export default function DebtSavingsCalculator() {
               </div>
             )}
 
+            {!hasDebt && (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 10 }}>
+                Enter at least one debt to continue. The grey numbers are examples, not your figures.
+              </p>
+            )}
+
             <button className="btn btn-teal btn-full" onClick={() => goStep(2)}>
               Continue to Home Info
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -547,7 +597,7 @@ export default function DebtSavingsCalculator() {
                 <div className="input-prefix-wrap">
                   <span className="input-prefix">$</span>
                   <input type="number" className="form-input input-has-prefix"
-                    placeholder="650000" value={homeValue}
+                    placeholder="e.g. 650000" value={homeValue}
                     onChange={(e) => setHomeValue(e.target.value)} />
                 </div>
               </div>
@@ -556,7 +606,7 @@ export default function DebtSavingsCalculator() {
                 <div className="input-prefix-wrap">
                   <span className="input-prefix">$</span>
                   <input type="number" className="form-input input-has-prefix"
-                    placeholder="350000" value={mtgBalance}
+                    placeholder="e.g. 350000" value={mtgBalance}
                     onChange={(e) => setMtgBalance(e.target.value)} />
                 </div>
               </div>
@@ -568,7 +618,7 @@ export default function DebtSavingsCalculator() {
                 <div className="input-prefix-wrap">
                   <span className="input-prefix">$</span>
                   <input type="number" className="form-input input-has-prefix"
-                    placeholder="2200" value={mtgPayment}
+                    placeholder="e.g. 2200" value={mtgPayment}
                     onChange={(e) => setMtgPayment(e.target.value)} />
                 </div>
               </div>
@@ -576,7 +626,7 @@ export default function DebtSavingsCalculator() {
                 <label className="input-label">Current Mortgage Rate</label>
                 <div className="input-suffix-wrap">
                   <input type="number" step="0.1" className="form-input input-has-suffix"
-                    placeholder="3.5" value={mtgRate}
+                    placeholder="e.g. 3.5" value={mtgRate}
                     onChange={(e) => setMtgRate(e.target.value)} />
                   <span className="input-suffix">%</span>
                 </div>
@@ -584,7 +634,7 @@ export default function DebtSavingsCalculator() {
               <div>
                 <label className="input-label">Remaining Term (yrs)</label>
                 <input type="number" className="form-input"
-                  placeholder="27" value={mtgTerm}
+                  placeholder="e.g. 27" value={mtgTerm}
                   onChange={(e) => setMtgTerm(e.target.value)} />
               </div>
             </div>
@@ -595,6 +645,12 @@ export default function DebtSavingsCalculator() {
                 <Chip label="Available Equity" value={fmt(hv - mb)} bg="var(--navy)" />
                 <Chip label="Current LTV"      value={pct(mb / hv * 100)} bg="var(--teal)" />
               </div>
+            )}
+
+            {!hasHome && (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 10 }}>
+                Home value, mortgage balance and monthly payment are needed for the comparison. The grey numbers are examples.
+              </p>
             )}
 
             <button className="btn btn-teal btn-full" onClick={() => goStep(3)}>
@@ -815,8 +871,14 @@ export default function DebtSavingsCalculator() {
             <h3 className="card-heading" style={{ fontSize: 20, marginBottom: 6 }}>
               Let's Get You Real Numbers
             </h3>
+            {/* The visitor's own result, not a range. Step 3 has just shown them a
+                number; quoting a different one here is what made the page read as
+                sales copy rather than a tool. The range is only the fallback for
+                the case where nothing could be computed. */}
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 22 }}>
-              A 15-minute call could free up $900 – $1,500 every month, no hard pull, no obligation.
+              {bestSave > 0
+                ? `Your numbers show about ${fmt(bestSave)} a month freed up. A 15-minute call confirms what is really available, no hard pull, no obligation.`
+                : `A 15-minute call could free up ${SAVINGS_RANGE} every month, no hard pull, no obligation.`}
             </p>
 
             <div className="dsc-grid-2" style={{ marginBottom: 12 }}>
@@ -1005,7 +1067,9 @@ export default function DebtSavingsCalculator() {
             cursor: 'pointer',
           }}
         >
-          Most clients save $900 – $1,500/month, talk to Darren today →
+          {bestSave > 0
+            ? `Your result: about ${fmt(bestSave)}/month freed up, talk to Darren today →`
+            : `Most clients save ${SAVINGS_RANGE}/month, talk to Darren today →`}
         </div>
       )}
 

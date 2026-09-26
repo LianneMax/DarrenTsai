@@ -1,4 +1,4 @@
-import { NMLS, DRE, COMPANY } from '../config';
+import { NMLS, DRE, COMPANY, SAVINGS_RANGE, SAVINGS_RANGE_BASIS } from '../config';
 
 interface Props {
   onOpenContact: () => void;
@@ -66,11 +66,11 @@ export default function Hero({ onOpenContact }: Props) {
 
             <div className="hero-stat">
               <div className="hero-stat-value">
-                <span className="hero-stat-num">$1,500 – $3,000</span>
+                <span className="hero-stat-num">{SAVINGS_RANGE}</span>
                 <span className="hero-stat-range">/mo</span>
               </div>
               <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 6, display: 'block', lineHeight: 1.5 }}>
-                Based on consolidating $75,000–$150,000 in high-interest debt. Individual results will vary.
+                {SAVINGS_RANGE_BASIS}
               </span>
             </div>
 

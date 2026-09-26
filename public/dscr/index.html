@@ -547,6 +547,13 @@
   .cta.solid-teal{background:var(--teal);color:var(--white);}
   .cta.solid-teal:hover{background:var(--teal);box-shadow:0 8px 24px rgba(81,118,134,0.35);}
 
+  .result-waiting{margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);}
+  .dscr-card-result:not(.is-waiting) .result-waiting{display:none;}
+  .dscr-card-result.is-waiting #statusPillWrap,
+  .dscr-card-result.is-waiting .result-hero,
+  .dscr-card-result.is-waiting #resultNote,
+  .dscr-card-result.is-waiting .pitia-breakdown,
+  .dscr-card-result.is-waiting .microdisclaimer{display:none;}
   .microdisclaimer{
     font-size:0.75rem;
     color:var(--text-muted);
@@ -919,23 +926,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="grid">
         <div class="field">
           <label for="rent">Monthly Market Rent</label>
-          <div class="input-shell"><span>$</span><input type="number" id="rent" value="2400" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="rent" placeholder="e.g. 2400" min="0"></div>
         </div>
         <div class="field">
           <label for="price">Purchase Price</label>
-          <div class="input-shell"><span>$</span><input type="number" id="price" value="320000" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="price" placeholder="e.g. 320000" min="0"></div>
         </div>
         <div class="field">
           <label for="tax">Annual Property Tax</label>
-          <div class="input-shell"><span>$</span><input type="number" id="tax" value="3600" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="tax" placeholder="e.g. 3600" min="0"></div>
         </div>
         <div class="field">
           <label for="insurance">Annual Insurance</label>
-          <div class="input-shell"><span>$</span><input type="number" id="insurance" value="1800" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="insurance" placeholder="e.g. 1800" min="0"></div>
         </div>
         <div class="field">
           <label for="hoa">Monthly HOA <span class="hint">(if any)</span></label>
-          <div class="input-shell"><span>$</span><input type="number" id="hoa" value="0" min="0"></div>
+          <div class="input-shell"><span>$</span><input type="number" id="hoa" placeholder="e.g. 0" min="0"></div>
         </div>
       </div>
 
@@ -965,8 +972,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
 
     <!-- RESULTS -->
-    <div class="dscr-card dscr-card-result">
+    <div class="dscr-card dscr-card-result is-waiting" id="resultCard">
       <p class="section-label">Your Result</p>
+      <!-- Shown until the visitor has given a rent and a price. The calculator
+           used to load with a $2,400 rent against a $320,000 price and announce
+           "Qualifies, 1.12" before anyone had typed anything, and three of the
+           five DSCR rows in the Sheet are that untouched sample submitted as a
+           real deal. A result nobody asked for is not a result. -->
+      <p class="result-waiting" id="resultWaiting">Enter the monthly rent and the purchase price and your DSCR appears here.</p>
       <div id="statusPillWrap">
         <span class="status-pill pass" id="statusPill">Qualifies for a DSCR loan</span>
       </div>
@@ -1160,6 +1173,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const monthlyTax = tax/12;
     const monthlyIns = insurance/12;
     const pitia = pi + monthlyTax + monthlyIns + hoa;
+
+    // Nothing is claimed until both of the numbers the ratio is made of are
+    // the visitor's own. Everything below still runs, so the moment the second
+    // one is typed the card is already correct.
+    const dscrHasInputs = rent > 0 && price > 0;
+    $('resultCard').classList.toggle('is-waiting', !dscrHasInputs);
 
     const dscr = pitia > 0 ? (rent / pitia) : 0;
     const qualifies = dscr >= 1.00;

@@ -17,3 +17,19 @@ export const NMLS = "2438102";
 export const DRE = "02103705";
 export const COMPANY = "Saxton Mortgage";
 export const COMPANY_NMLS = "1717191";
+
+// One savings claim for the whole site.
+//
+// WHY THIS IS A CONSTANT. The 26 Sep audit found three different numbers on the
+// homepage at once: the hero card said $1,500–$3,000/mo, the sticky bar and the
+// calculator's step 4 said $900–$1,500/mo, and the tool's own default result was
+// $334/mo. A visitor who has just been shown $334 and is then told a call could
+// free up $900–$1,500 has been given a reason to distrust the number they came
+// for. Every hard-coded range on the marketing surfaces now reads from here, so
+// they cannot drift apart again.
+//
+// The conservative range was kept. The figure itself still needs Saxton sign-off;
+// change it in this one place when it lands.
+export const SAVINGS_RANGE = "$900 – $1,500";
+export const SAVINGS_RANGE_BASIS =
+  "Typical range for the debt loads this calculator was built around. Your own figure is calculated below. Individual results will vary.";
