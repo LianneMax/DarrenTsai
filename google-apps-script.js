@@ -162,11 +162,66 @@ function effectiveClickIdType(d) {
   return d.clickIdType || d.firstClickIdType || '';
 }
 
+/**
+ * Triage columns, appended to every lead-bearing tab.
+ *
+ * WHY. The Sheet holds four real leads and more than twenty test rows, with
+ * nothing to tell them apart, so the one question anyone actually asks it —
+ * "how are we doing" — cannot be answered without reading every row by eye.
+ * And once a lead is found there is nowhere to record that it was worked, so
+ * the Sheet cannot say which of the four were ever called.
+ *
+ * Status and Contacted are deliberately left blank for a person to fill in.
+ * This is a stopgap until HubSpot: a CRM owns lead state properly, and the
+ * point here is only to stop the record being unreadable in the meantime.
+ *
+ * Appended, never inserted. ensureHeaders() writes past the sheet's current
+ * last column, so these appear on their own the next time each tab is written
+ * to, with no manual migration and no historical row disturbed.
+ */
+const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
+
+/**
+ * The addresses used for testing, matched with any +tag stripped.
+ *
+ * An explicit list, not a rule. "Has a plus tag" would be the easy test and it
+ * is wrong: plus addressing is a thing real people use, and mislabelling a real
+ * lead as a test is how a real lead stops being called.
+ */
+const TEST_EMAILS = [
+  'liannemaxbalbastro@gmail.com',
+  'lmbalbastro@gmail.com',
+  'lianne_balbastro@dlsu.edu.ph',
+  'darren@realdarrentsai.com'
+];
+
+function isTestLead(d) {
+  const email = String((d && d.email) || '').trim().toLowerCase();
+  if (email) {
+    const at = email.indexOf('@');
+    if (at > 0) {
+      const local = email.slice(0, at).split('+')[0];
+      const bare = local + email.slice(at);
+      if (TEST_EMAILS.indexOf(bare) !== -1) return true;
+    }
+  }
+  // 555-01xx is the reserved fictional range, so a phone in it was never a real
+  // person. This is the fallback for a test run from an address not listed above.
+  const digits = String((d && d.phone) || '').replace(/\D/g, '');
+  if (/^1?\d{3}55501\d{2}$/.test(digits)) return true;
+  return false;
+}
+
+/** Test?, then two blank cells for a person to fill in. */
+function triageRow(d) {
+  return [isTestLead(d) ? 'TEST' : '', '', ''];
+}
+
 const LEAD_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
   'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
   'Target Outcome', 'Timeline', 'Source', 'Licensed?'
-].concat(ATTR_HEADERS);
+].concat(ATTR_HEADERS, TRIAGE_HEADERS);
 
 // Newsletter is a different shape: email only, no name or phone, and no
 // attribution columns. Nothing on the site sends source 'newsletter' any more,
@@ -179,7 +234,7 @@ const QUALIFY_HEADERS = [
   'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
   'Loan Type', 'Timeline', 'Price Range', 'Credit Range',
   'Employment', 'Notes', 'Source'
-].concat(ATTR_HEADERS);
+].concat(ATTR_HEADERS, TRIAGE_HEADERS);
 
 // Each landing funnel gets its OWN sheet tab with columns matching its actual
 // inputs/outputs — no shared blank columns. `row(d)` returns cells in header order.
@@ -205,29 +260,29 @@ function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 const SOURCE_SCHEMAS = {
   'dscr': {
     tab: 'DSCR',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?'], ATTR_HEADERS),
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
     row: function (d) {
       return commonLeadRow(d).concat([
         d.magnet || '', d.source, d.dscr || '', d.downPayment || '', d.loanAmount || '', d.rate || '', licensedCell(d)
-      ], attrRow(d));
+      ], attrRow(d), triageRow(d));
     }
   },
   'self-employed': {
     tab: 'Self-Employed',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d)); }
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d), triageRow(d)); }
   },
   'fha': {
     tab: 'FHA',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Credit Score', 'Licensed?'], ATTR_HEADERS),
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Credit Score', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
     row: function (d) {
-      return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)], attrRow(d));
+      return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)], attrRow(d), triageRow(d));
     }
   },
   'real-estate-investing': {
     tab: 'Real Estate Investing',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d)); }
+    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
+    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d), triageRow(d)); }
   }
 };
 
@@ -250,7 +305,7 @@ const DEBT_CONSOLIDATION_HEADERS = [
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
   'Refi Monthly Payment', 'Refi Monthly Savings',
   'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
-].concat(ATTR_HEADERS, ['Licensed?']);
+].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS);
 
 
 function getOrCreateSheet(ss, name, headers) {
@@ -511,6 +566,12 @@ function pushToBonzo(data) {
     // from the posted body and '__proto__' would otherwise find an inherited
     // property.
     tags.push('contact', CONTACT_SOURCES[data.source]);
+    // What they said they want, as a filter. 'access-equity' in particular:
+    // /yt/heloc and /yt/equity both land on the homepage, which has no HELOC
+    // page of its own, so this tag is the only place that intent is legible
+    // until one exists.
+    if (data.target) tags.push('target:' + bonzoTag(data.target));
+    if (data.timeline) tags.push('timeline:' + bonzoTag(data.timeline));
   }
   else if (data.source === 'DebtConsolidation') tags.push('debt-consolidation', 'HELOC/cash-out interest');
   else if (data.source === 'newsletter') tags.push('newsletter');
@@ -860,7 +921,7 @@ function doPost(e) {
         data.employment  || '',
         data.notes       || '',
         'QualifyForm'
-      ].concat(attrRow(data)));
+      ].concat(attrRow(data), triageRow(data)));
     } else if (data.source === 'DebtConsolidation') {
       const sheet = getOrCreateSheet(ss, 'Debt Consolidation', DEBT_CONSOLIDATION_HEADERS);
       sheet.appendRow([
@@ -884,7 +945,7 @@ function doPost(e) {
         data.refiMonthlySavings   || 0,
         data.heloanMonthlyPayment || 0,
         data.heloanMonthlySavings || 0,
-      ].concat(attrRow(data), [licensedCell(data)]));
+      ].concat(attrRow(data), [licensedCell(data)], triageRow(data)));
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
       sheet.appendRow([
@@ -902,7 +963,7 @@ function doPost(e) {
         data.timeline             || '',
         data.source               || 'SimpleMortgageCalculator',
         licensedCell(data)
-      ].concat(attrRow(data)));
+      ].concat(attrRow(data), triageRow(data)));
     }
 
     // Queue the slow work instead of doing it here. pushToBonzo plus the guide

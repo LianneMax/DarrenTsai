@@ -191,10 +191,13 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     expect(h.rowOf('Debt Consolidation', 1)['Licensed?']).toBe('Yes');
     expect(h.rowOf('Debt Consolidation', 2)['Licensed?']).toBe('No');
 
-    // Last column, so no historical cell to its left changed meaning.
+    // Immediately after the attribution block, so no historical cell to its
+    // left changed meaning. Not "last": the triage columns were appended after
+    // it later, by the same append-only rule that put it here.
     const headers = h.tabs.get('Debt Consolidation')!.rows[0] as string[];
-    expect(headers[headers.length - 1]).toBe('Licensed?');
-    expect(headers[headers.length - 2]).toBe('First Touch At');
+    const licensed = headers.indexOf('Licensed?');
+    expect(licensed).toBeGreaterThan(-1);
+    expect(headers[licensed - 1]).toBe('First Touch At');
   });
 
   it('extends an older Debt Consolidation tab without disturbing its rows', () => {
@@ -363,5 +366,57 @@ describe('failures are reported, not swallowed', () => {
     const res = h.doPost({ postData: { contents: '' } }) as { __body: string };
     expect(JSON.parse(res.__body).success).toBe(true);
     expect(h.tabs.has('Leads')).toBe(true);
+  });
+});
+
+/**
+ * Telling a test row from a lead.
+ *
+ * The Sheet holds four real leads and more than twenty test rows with nothing
+ * to separate them, so the one question anyone asks it — how are we doing —
+ * cannot be answered without reading every row by eye.
+ */
+describe('triage columns', () => {
+  const LEAD = { source: 'DebtConsolidation', state: 'CA', ...ATTR };
+
+  it('flags a test address, with or without a plus tag', () => {
+    post(h, { ...LEAD, email: 'liannemaxbalbastro+case14@gmail.com' });
+    post(h, { ...LEAD, email: 'lmbalbastro@gmail.com' });
+    expect(h.rowOf('Debt Consolidation', 1)['Test?']).toBe('TEST');
+    expect(h.rowOf('Debt Consolidation', 2)['Test?']).toBe('TEST');
+  });
+
+  it('flags a 555-01xx phone, which was never a real person', () => {
+    post(h, { ...LEAD, email: 'someone@example.com', phone: '(714) 555-0122' });
+    expect(h.rowOf('Debt Consolidation', 1)['Test?']).toBe('TEST');
+  });
+
+  it('leaves a real lead alone, plus tag and all', () => {
+    // The rule is an explicit list, not "has a plus tag". Plus addressing is
+    // something real people use, and mislabelling a real lead as a test is how
+    // a real lead stops being called.
+    post(h, { ...LEAD, email: 'sam+mortgage@gmail.com', phone: '(714) 882-1190' });
+    expect(h.rowOf('Debt Consolidation', 1)['Test?']).toBe('');
+  });
+
+  it('leaves Status and Contacted for a person to fill in', () => {
+    post(h, { ...LEAD, email: 'sam@example.com' });
+    const row = h.rowOf('Debt Consolidation', 1);
+    expect(row['Status']).toBe('');
+    expect(row['Contacted']).toBe('');
+  });
+
+  it('reaches every lead-bearing tab', () => {
+    for (const [source, tab] of [
+      ['dscr', 'DSCR'],
+      ['fha', 'FHA'],
+      ['real-estate-investing', 'Real Estate Investing'],
+      ['MortgageCalculator', 'Leads'],
+      ['QualifyForm', 'Qualify'],
+    ] as const) {
+      const fresh = load();
+      post(fresh, { source, email: 'liannemaxbalbastro+x@gmail.com', state: 'CA', ...ATTR });
+      expect(fresh.rowOf(tab, 1)['Test?'], tab).toBe('TEST');
+    }
   });
 });

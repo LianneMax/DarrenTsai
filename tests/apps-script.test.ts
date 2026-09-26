@@ -149,9 +149,12 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
   it('puts Licensed? after attribution on Debt Consolidation, and nowhere else', () => {
     // Pinned because it looks like a mistake and is not: see the header comment
     // on DEBT_CONSOLIDATION_HEADERS.
+    // The invariant is "immediately after attribution", not "last": the triage
+    // columns were appended after it later, by the same append-only rule.
     const dc = gas.DEBT_CONSOLIDATION_HEADERS;
-    expect(dc[dc.length - 1]).toBe('Licensed?');
-    expect(dc[dc.length - 2]).toBe(gas.ATTR_HEADERS[gas.ATTR_HEADERS.length - 1]);
+    const licensed = dc.indexOf('Licensed?');
+    expect(licensed).toBeGreaterThan(-1);
+    expect(dc[licensed - 1]).toBe(gas.ATTR_HEADERS[gas.ATTR_HEADERS.length - 1]);
     // Every other tab still has it before the attribution block.
     for (const key of Object.keys(gas.SOURCE_SCHEMAS)) {
       const headers = gas.SOURCE_SCHEMAS[key].headers;
