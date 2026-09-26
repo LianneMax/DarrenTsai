@@ -22,6 +22,11 @@
 import { LEAD_ENDPOINT } from '../config';
 import { getAttribution, track } from '../utils/attribution';
 
+/** booking-chooser.js, when it is on the page. Absent in tests and on a cold load. */
+type BookingWindow = Window & {
+  DTBooking?: { identify?: (lead: { name?: string; email?: string }) => void };
+};
+
 /**
  * The fields every form supplies. The index signature carries the rest, which
  * differs per funnel (the calculator sends its debt rows, the modal its loan
@@ -90,6 +95,21 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
         page_path: thankYouPath,
         page_title: thankYouTitle,
       });
+
+      // Every success state offers "Book a Free Strategy Call" next. Someone who
+      // has just typed their name and email into this form should not be asked
+      // for both again by the calendar; that retype is where a booking gets
+      // abandoned. Held in memory by booking-chooser.js for this page view only,
+      // and only ever used to prefill Calendly's own form.
+      try {
+        const booking = (window as BookingWindow).DTBooking;
+        if (booking && typeof booking.identify === 'function') {
+          booking.identify({
+            name: [payload.firstName, payload.lastName].filter(Boolean).join(' ').trim(),
+            email: payload.email,
+          });
+        }
+      } catch { /* a booking convenience must never fail a saved lead */ }
 
       return { ok: true };
     } catch {

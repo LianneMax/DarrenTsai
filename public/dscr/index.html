@@ -2043,6 +2043,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         window.DT.track('virtual_page_view', { page_path: '/thank-you/dscr-contact', page_title: 'Thank You — Contact' });
       }
       el('contactSuccessHeading').textContent = "You're all set, " + firstName + '!';
+      // The success state's next button is "Book a Free Strategy Call". Hand the
+      // chooser the two fields Calendly would otherwise ask for again, which is
+      // where a booking gets abandoned. In memory for this page view only.
+      try {
+        if (window.DTBooking && window.DTBooking.identify) {
+          window.DTBooking.identify({ name: (firstName + ' ' + lastName).trim(), email: email });
+        }
+      } catch (e) { /* never let a convenience break a saved lead */ }
       form.classList.add('hide');
       success.classList.add('show');
     } catch (err) {

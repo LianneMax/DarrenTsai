@@ -41,6 +41,7 @@
   var PHONE_HREF = 'tel:+17148875432';
 
   var CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
+  var CALENDLY_ORIGIN = 'https://calendly.com';
   var WIDGET_CSS = 'https://assets.calendly.com/assets/external/widget.css';
   var WIDGET_JS = 'https://assets.calendly.com/assets/external/widget.js';
 
@@ -49,6 +50,28 @@
   var overlay = null;
   var lastFocus = null;
   var widgetLoading = false;
+
+  /**
+   * How long the calendar gets before we offer a way out.
+   *
+   * In the Claude app's browser it sat on Calendly's own spinner for over
+   * twenty seconds, twice, with no escape and no Call option left on screen,
+   * because the options are replaced by the calendar. In Chrome the same embed
+   * was up in three to five seconds. Eight is well clear of a slow-but-working
+   * load and well inside the point where someone gives up on a page.
+   */
+  var STALL_MS = 8000;
+
+  /**
+   * Who is booking, when we happen to know.
+   *
+   * Set by the lead forms after a successful submit. Somebody who filled in
+   * seven fields thirty seconds ago should not be asked for their name and
+   * email again by the calendar; that retype is where a booking gets abandoned.
+   * Nothing is read from storage and nothing is guessed: if no form ran, the
+   * calendar asks as it always did.
+   */
+  var knownLead = null;
 
   function track(event, params) {
     try {
@@ -90,6 +113,10 @@
     var js = document.createElement('script');
     js.src = WIDGET_JS;
     js.async = true;
+    // A blocked or failed script must be retryable rather than permanent:
+    // widgetLoading stays true otherwise and every later open falls straight
+    // through to the new tab for the rest of the session.
+    js.onerror = function () { widgetLoading = false; };
     document.head.appendChild(js);
   }
 
@@ -105,7 +132,10 @@
       'transform:translateY(8px);transition:transform .15s ease;margin:auto;}' +
       '.dt-book-overlay.dt-open .dt-book-card{transform:none;}' +
       // Wider once the calendar is in, which needs the room to lay out a month.
+      // 520px gets Calendly's narrow layout, which pushes the date grid below
+      // the fold on a desktop screen. Wider once there is room for it.
       '.dt-book-card.dt-cal{max-width:520px;padding:18px;}' +
+      '@media(min-width:780px){.dt-book-card.dt-cal{max-width:720px;}}' +
       '.dt-book-title{margin:0 0 4px;font-size:19px;line-height:26px;font-weight:700;color:#0f202d;}' +
       '.dt-book-sub{margin:0 0 18px;font-size:14px;line-height:21px;color:#6b7280;}' +
       '.dt-book-opts{display:flex;flex-direction:column;gap:10px;}' +
@@ -115,8 +145,10 @@
       '.dt-book-opt:hover,.dt-book-opt:focus-visible{border-color:#c0334d;background:#fff7f8;outline:none;}' +
       '.dt-book-ico{flex:0 0 40px;height:40px;border-radius:10px;display:flex;align-items:center;' +
       'justify-content:center;background:#f1f5f8;color:#223d55;}' +
-      '.dt-book-opt-t{font-size:15px;font-weight:700;color:#0f202d;line-height:20px;}' +
-      '.dt-book-opt-s{font-size:13px;color:#6b7280;line-height:18px;margin-top:1px;}' +
+      // Both are block: as inline spans they ran together into
+      // "Call (714) 942-4217Straight through, no waiting".
+      '.dt-book-opt-t{display:block;font-size:15px;font-weight:700;color:#0f202d;line-height:20px;}' +
+      '.dt-book-opt-s{display:block;font-size:13px;color:#6b7280;line-height:18px;margin-top:1px;}' +
       '.dt-book-close{margin:16px auto 0;display:block;background:none;border:0;cursor:pointer;' +
       'font-family:inherit;font-size:13px;color:#6b7280;text-decoration:underline;padding:4px;}' +
       '.dt-book-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}' +
@@ -127,6 +159,8 @@
       // short laptop screen; the overlay scrolls if it still does not fit.
       '.dt-book-frame{min-width:280px;height:680px;max-height:72vh;}' +
       '.dt-book-wait{font-size:13px;color:#6b7280;text-align:center;padding:28px 0;}' +
+      '.dt-book-stall{padding:18px 4px 4px;font-family:inherit;}' +
+      '.dt-book-stall p{margin:0 0 14px;font-size:14px;line-height:21px;color:#6b7280;}' +
       // Call first on a phone, where tapping a number is the native action and
       // Calendly is a multi-step form. Schedule first on desktop, where a number
       // is only something to write down. One markup, ordered by CSS.
@@ -214,7 +248,76 @@
     var config = { url: CALENDLY_URL, parentElement: frame };
     var utm = utmFromAttribution();
     if (utm) config.utm = utm;
+    if (knownLead) config.prefill = knownLead;
     cal.initInlineWidget(config);
+    watchForStall(card, frame);
+  }
+
+  /**
+   * Give the visitor a way out if the calendar never arrives.
+   *
+   * Calendly renders its own spinner and has no failure state of its own, so a
+   * blocked or very slow iframe looks identical to one that is about to appear,
+   * forever. Worse, by this point the two options have been replaced, so the
+   * Call route is off screen as well.
+   *
+   * The iframe's load event is the signal. It fires whether or not Calendly
+   * itself then renders, which is the right side to err on: a false "it loaded"
+   * costs nothing because the calendar really is there, while a false stall
+   * would talk over a working booking.
+   */
+  function watchForStall(card, frame) {
+    var settled = false;
+    var timer = window.setTimeout(function () {
+      if (settled || !card.parentNode) return;
+      settled = true;
+      showStall(card, frame);
+    }, STALL_MS);
+
+    function settle() {
+      settled = true;
+      window.clearTimeout(timer);
+    }
+
+    // initInlineWidget creates the iframe synchronously, but do not rely on it.
+    var iframe = frame.querySelector('iframe');
+    if (iframe) {
+      iframe.addEventListener('load', settle);
+      return;
+    }
+    var poll = window.setInterval(function () {
+      if (settled || !card.parentNode) { window.clearInterval(poll); return; }
+      var late = frame.querySelector('iframe');
+      if (late) {
+        window.clearInterval(poll);
+        late.addEventListener('load', settle);
+      }
+    }, 250);
+  }
+
+  /** The two routes that still work when the embed does not. */
+  function showStall(card, frame) {
+    var out = document.createElement('div');
+    out.className = 'dt-book-stall';
+    out.innerHTML =
+      '<p>The calendar is taking longer than it should. These both still work:</p>' +
+      '<div class="dt-book-opts">' +
+      '<a class="dt-book-opt dt-book-call" href="' + PHONE_HREF + '">' +
+      '<span class="dt-book-ico">' + PHONE_ICON + '</span>' +
+      '<span><span class="dt-book-opt-t">Call ' + PHONE_DISPLAY + '</span>' +
+      '<span class="dt-book-opt-s">Call Darren directly</span></span></a>' +
+      '<a class="dt-book-opt dt-book-sched" href="' + CALENDLY_URL + '" target="_blank" rel="noopener">' +
+      '<span class="dt-book-ico">' + CAL_ICON + '</span>' +
+      '<span><span class="dt-book-opt-t">Open the calendar in a new tab</span>' +
+      '<span class="dt-book-opt-s">Free 15 minute call</span></span></a>' +
+      '</div>';
+    // Left above the frame rather than replacing it: the embed may still arrive,
+    // and pulling it out would throw away a booking that was one second away.
+    card.insertBefore(out, frame);
+    // A booking made in that new tab cannot be counted, for the same reason the
+    // inline embed exists. Recorded so a run of stalls is visible in GA4 rather
+    // than looking like people simply not booking.
+    track('calendly_stalled', { page_path: window.location.pathname });
   }
 
   /**
@@ -244,7 +347,7 @@
       '<a class="dt-book-opt dt-book-call" href="' + PHONE_HREF + '">' +
       '<span class="dt-book-ico">' + PHONE_ICON + '</span>' +
       '<span><span class="dt-book-opt-t">Call ' + PHONE_DISPLAY + '</span>' +
-      '<span class="dt-book-opt-s">Straight through, no waiting</span></span></a>' +
+      '<span class="dt-book-opt-s">Call Darren directly</span></span></a>' +
       '<button type="button" class="dt-book-opt dt-book-sched">' +
       '<span class="dt-book-ico">' + CAL_ICON + '</span>' +
       '<span><span class="dt-book-opt-t">Schedule a time</span>' +
@@ -300,12 +403,31 @@
    * duplication this site's tracking is arranged to avoid.
    */
   window.addEventListener('message', function (e) {
-    if (String(e.origin).indexOf('calendly.com') === -1) return;
+    // Exact match, not a substring: indexOf('calendly.com') also accepts
+    // https://calendly.com.attacker.example, a domain anyone can register and
+    // serve a forged booking from.
+    if (e.origin !== CALENDLY_ORIGIN) return;
     var d = e.data;
     if (!d || typeof d.event !== 'string') return;
     if (d.event !== 'calendly.event_scheduled') return;
     track('calendly_booking', { page_path: window.location.pathname });
   });
 
-  window.DTBooking = { open: open, close: close, preload: loadWidget };
+  /**
+   * Tell the chooser who this visitor is, after a form has already asked them.
+   *
+   * Called from the lead submit paths. Held in memory for the page view only:
+   * it is never stored, never sent anywhere, and only ever reaches Calendly's
+   * own booking form, which was going to ask for the same two fields anyway.
+   */
+  function identify(lead) {
+    // An empty call clears it. A form that submits with nothing in those fields
+    // should not leave a previous visitor's name sitting in the calendar.
+    if (!lead || (!lead.email && !lead.name)) { knownLead = null; return; }
+    knownLead = {};
+    if (lead.name) knownLead.name = String(lead.name).trim();
+    if (lead.email) knownLead.email = String(lead.email).trim();
+  }
+
+  window.DTBooking = { open: open, close: close, preload: loadWidget, identify: identify };
 })();

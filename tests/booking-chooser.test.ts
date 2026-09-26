@@ -29,6 +29,7 @@ type Booking = {
   open: (o: { onSchedule?: () => void; onOpen?: () => void }) => void;
   close: () => void;
   preload: () => void;
+  identify: (lead: { name?: string; email?: string }) => void;
 };
 
 type InlineConfig = { url: string; parentElement: Element; utm?: Record<string, string> };
@@ -42,6 +43,7 @@ const overlay = () => document.querySelector('.dt-book-overlay');
 const callLink = () => document.querySelector('.dt-book-call') as HTMLAnchorElement | null;
 const schedBtn = () => document.querySelector('.dt-book-sched') as HTMLButtonElement | null;
 const frame = () => document.querySelector('.dt-book-frame');
+const stall = () => document.querySelector('.dt-book-stall');
 
 /** A message as Calendly's iframe posts it. */
 function postFromCalendly(event: string, origin = 'https://calendly.com') {
@@ -54,7 +56,9 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  vi.useRealTimers();
   booking.close();
+  booking.identify({ name: '', email: '' });
   document.body.innerHTML = '';
   track = vi.fn();
   (window as unknown as { DT: unknown }).DT = { track, attr: () => ({}) };
@@ -181,10 +185,17 @@ describe('a completed booking', () => {
     expect(booked).toHaveLength(1);
   });
 
-  it('ignores a forged message from another origin', () => {
+  it.each([
+    'https://evil.example.com',
+    // The one that a substring check waved through. Anyone can register
+    // calendly.com.attacker.example and post from it.
+    'https://calendly.com.attacker.example',
+    'https://notcalendly.com',
+    'http://calendly.com',
+  ])('ignores a forged message from %s', (origin) => {
     // The origin check is the security boundary: without it any page could
     // inflate the booking count.
-    postFromCalendly('calendly.event_scheduled', 'https://evil.example.com');
+    postFromCalendly('calendly.event_scheduled', origin);
     expect(track.mock.calls.filter((c) => c[0] === 'calendly_booking')).toHaveLength(0);
   });
 
@@ -224,5 +235,101 @@ describe('dismissing', () => {
     booking.open({});
     booking.open({});
     expect(document.querySelectorAll('.dt-book-overlay')).toHaveLength(1);
+  });
+});
+
+describe('when the calendar stalls', () => {
+  // Seen live: in one browser the embed sat on Calendly's own spinner for over
+  // twenty seconds, twice, with no way out. Calendly has no failure state, and
+  // by that point the Call option has been replaced by the calendar, so the
+  // visitor is left with a spinner and nothing else.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  function scheduleAndWait(ms: number) {
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    vi.advanceTimersByTime(ms);
+  }
+
+  it('says nothing while the calendar is still plausibly coming', () => {
+    scheduleAndWait(7000);
+    expect(stall()).toBeNull();
+  });
+
+  it('offers the phone and a new tab once it has waited long enough', () => {
+    scheduleAndWait(8500);
+    const out = stall();
+    expect(out).not.toBeNull();
+
+    const call = out!.querySelector('a.dt-book-call') as HTMLAnchorElement;
+    expect(call.getAttribute('href')).toMatch(/^tel:\+?\d+$/);
+
+    const tab = out!.querySelector('a.dt-book-sched') as HTMLAnchorElement;
+    expect(tab.getAttribute('href')).toContain('calendly.com');
+    expect(tab.getAttribute('target')).toBe('_blank');
+    expect(tab.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('leaves the embed in place, in case it is one second away', () => {
+    scheduleAndWait(8500);
+    expect(frame()).not.toBeNull();
+  });
+
+  it('records the stall, so a run of them is visible rather than looking like nobody booked', () => {
+    scheduleAndWait(8500);
+    expect(track.mock.calls.filter((c) => c[0] === 'calendly_stalled')).toHaveLength(1);
+  });
+
+  it('says nothing once the calendar has loaded', () => {
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    // initInlineWidget is stubbed, so stand in the iframe it would have made.
+    const iframe = document.createElement('iframe');
+    frame()!.appendChild(iframe);
+    vi.advanceTimersByTime(300); // the poll picks it up
+    iframe.dispatchEvent(new Event('load'));
+    vi.advanceTimersByTime(20000);
+    expect(stall()).toBeNull();
+  });
+
+  it('says nothing after the panel has been closed', () => {
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    booking.close();
+    vi.advanceTimersByTime(20000);
+    expect(stall()).toBeNull();
+  });
+});
+
+describe('a visitor who has already given their details', () => {
+  it('does not have to type them into Calendly again', () => {
+    booking.identify({ name: 'Sam Homeowner', email: 'sam@example.com' });
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: Record<string, string> };
+    expect(config.prefill).toEqual({ name: 'Sam Homeowner', email: 'sam@example.com' });
+  });
+
+  it('asks as it always did when no form has run', () => {
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: unknown };
+    expect(config.prefill).toBeUndefined();
+  });
+
+  it('ignores an empty identify rather than sending blank fields', () => {
+    booking.identify({ name: '', email: '' });
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: unknown };
+    expect(config.prefill).toBeUndefined();
   });
 });
