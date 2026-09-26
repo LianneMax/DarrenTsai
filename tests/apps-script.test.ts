@@ -208,9 +208,11 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
       const after = doPost.slice(doPost.indexOf(`getOrCreateSheet(ss, '${tabName}'`));
       const upToNextBranch = after.slice(0, after.indexOf('getOrCreateSheet', 10) + 1 || after.length);
       expect(
-        // `concat(attrRow(data)` without the closing paren, so a branch that
-        // appends a further column after it still counts.
-        upToNextBranch.includes('concat(attrRow(data)') || upToNextBranch.includes('schema.row(data)'),
+        // Whitespace-tolerant: a branch that concatenates several lists reads
+        // better broken across lines, and the invariant is that attrRow(data)
+        // is in there, not that it is on one line. No closing paren either, so
+        // a branch that appends a further column after it still counts.
+        /concat\(\s*attrRow\(data\)/.test(upToNextBranch) || upToNextBranch.includes('schema.row(data)'),
         `the "${tabName}" branch writes a row without concat(attrRow(data)), so its ` +
         `${headersConst} attribution columns would stay blank`,
       ).toBe(true);

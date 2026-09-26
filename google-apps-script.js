@@ -305,7 +305,11 @@ const DEBT_CONSOLIDATION_HEADERS = [
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
   'Refi Monthly Payment', 'Refi Monthly Savings',
   'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
-].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS);
+  // 'HELOAN Credit Tier' and 'HELOAN Term' are appended below rather than
+  // placed next to the other HELOAN columns, where they read best. This tab
+  // already holds rows written under the current order and the append-only
+  // rule is what keeps them readable.
+].concat(ATTR_HEADERS, ['Licensed?'], ['HELOAN Credit Tier', 'HELOAN Term'], TRIAGE_HEADERS);
 
 
 function getOrCreateSheet(ss, name, headers) {
@@ -535,6 +539,19 @@ function isReturningProspect(code, text) {
 }
 
 function pushToBonzo(data) {
+  // A test lead is not a prospect.
+  //
+  // The Sheet has flagged them since @37, but they were still enrolled in live
+  // campaigns: three `TEST R4 ...` prospects sat Active in DSCR Campaign, FHA
+  // Calculator Campaign and Real Estate Investing, where they receive the real
+  // nurture sequence and pollute every campaign metric Darren reads. The row
+  // is still written and the guide is still sent, so a test run still proves
+  // the whole path; only the CRM is spared.
+  if (isTestLead(data)) {
+    logDebug(SpreadsheetApp.openById(SPREADSHEET_ID), 'pushToBonzo: test lead, not enrolled', data.email);
+    return;
+  }
+
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('BONZO_API_KEY');
   if (!token) { Logger.log('pushToBonzo: no BONZO_API_KEY set, skipping'); return; } // Bonzo not configured yet — skip silently, Sheets still logs the lead
@@ -936,16 +953,31 @@ function doPost(e) {
         data.homeValue            || 0,
         data.mortgageBalance      || 0,
         data.mortgagePayment      || 0,
-        data.mortgageRate         || 0,
-        data.mortgageTerm         || 0,
+        // Blank, not 0, for everything the visitor may not have given.
+        //
+        // Mortgage Rate and Mortgage Term are optional fields, and `|| 0` wrote
+        // a 0 into both on every submit that skipped them, which reads as a 0%
+        // rate on a 0-year term rather than as "not asked". The HELOAN figures
+        // are the same: they are only computed once a credit tier and a term
+        // are chosen, and a 0 there looks like a priced option worth nothing.
+        data.mortgageRate         || '',
+        data.mortgageTerm         || '',
         data.totalDebtBalance     || 0,
         data.totalDebtPayment     || 0,
-        data.monthlySavings       || 0,
+        data.monthlySavings       || '',
         data.refiMonthlyPayment   || 0,
         data.refiMonthlySavings   || 0,
-        data.heloanMonthlyPayment || 0,
-        data.heloanMonthlySavings || 0,
-      ].concat(attrRow(data), [licensedCell(data)], triageRow(data)));
+        data.heloanMonthlyPayment || '',
+        data.heloanMonthlySavings || '',
+      ].concat(
+        attrRow(data),
+        [licensedCell(data)],
+        // What the HELOAN figures above were priced at. Without them a saving
+        // quoted at the 680+ tier is indistinguishable from one quoted at 580,
+        // and the tool used to pick 680+ on the visitor's behalf.
+        [data.heloanCreditTier || '', data.heloanTermYears || ''],
+        triageRow(data)
+      ));
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
       sheet.appendRow([

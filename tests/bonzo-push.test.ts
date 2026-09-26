@@ -71,7 +71,7 @@ function push(payload: Record<string, unknown>, props: Record<string, string> = 
 const DSCR_LEAD = {
   source: 'dscr', magnet: 'DSCR Rate & Cash Flow Guide',
   firstName: 'Jane', lastName: 'Investor', email: 'jane@example.com',
-  phone: '7145550123', state: 'CA',
+  phone: '7148821190', state: 'CA',
   dscr: '1.17', downPayment: '25%', loanAmount: '$240,000', rate: '7.00%',
   downPaymentAmount: 80000, purchasePrice: 320000,
   monthlyRent: 2400, monthlyPitia: 2047, monthlyPI: 1600,
@@ -139,7 +139,7 @@ describe('the prospect carries the lead, not just an email', () => {
       first_name: 'Jane',
       last_name: 'Investor',
       email: 'jane@example.com',
-      phone: '7145550123',
+      phone: '7148821190',
       source: 'dscr',
     });
   });
@@ -360,5 +360,43 @@ describe('a contact lead carries its stated goal', () => {
     const { prospect } = push({ source: 'home-contact', email: 'a@example.com', state: 'CA' });
     expect(prospect!.tags.join(' ')).not.toContain('target:');
     expect(prospect!.tags.join(' ')).not.toContain('timeline:');
+  });
+});
+
+/**
+ * R3-4: a test lead is not a prospect.
+ *
+ * The Sheet has flagged them since @37, but they were still enrolled in live
+ * campaigns: three `TEST R4 ...` prospects sat Active in DSCR Campaign, FHA
+ * Calculator Campaign and Real Estate Investing, receiving the real nurture
+ * sequence and polluting every campaign metric Darren reads.
+ */
+describe('test leads stay out of Bonzo', () => {
+  it('creates no prospect for a listed test address', () => {
+    const { calls } = push({ source: 'dscr', email: 'liannemaxbalbastro+r5@gmail.com', state: 'CA' });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('creates no prospect for a reserved 555-01xx phone', () => {
+    const { calls } = push({
+      source: 'dscr', email: 'someone@example.com', phone: '(714) 555-0122', state: 'CA',
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('still enrolls a real lead who happens to use a plus tag', () => {
+    // The rule is the same explicit list the Test? column uses. Plus
+    // addressing is something real people do, and skipping their Bonzo push
+    // would be a lead that is never worked.
+    const { prospect } = push({ source: 'dscr', email: 'sam+mortgage@gmail.com', state: 'CA' });
+    expect(prospect).not.toBeNull();
+  });
+
+  it('says so where a lead is traced', () => {
+    const h = load(BASE_PROPS);
+    h.queue({ source: 'dscr', email: 'lmbalbastro@gmail.com', state: 'CA' });
+    h.processFollowUps();
+    const debug = h.tabs.get('Debug');
+    expect(JSON.stringify(debug ? debug.rows : [])).toContain('test lead, not enrolled');
   });
 });

@@ -175,14 +175,42 @@ describe('each funnel writes to its own tab, under its own headers', () => {
   });
 
   it('files a Debt Consolidation lead that skipped the optional rate and term', () => {
-    // Both are optional on the form, so a blank must land as 0 rather than
-    // shifting every column to its right.
+    // R3-7. Both are optional on the form, so a blank must land BLANK, while
+    // still holding its column so nothing to the right shifts. It used to land
+    // as 0, which reads as a 0% mortgage rate on a 0-year term: an answer,
+    // rather than a question nobody was asked.
     post(h, { source: 'DebtConsolidation', email: 'norate@example.com', totalDebtBalance: 900 });
     expect(h.rowOf('Debt Consolidation')).toMatchObject({
-      'Mortgage Rate': 0,
-      'Mortgage Term': 0,
+      'Mortgage Rate': '',
+      'Mortgage Term': '',
       'Total Debt Balance': 900,
     });
+  });
+
+  it('records what the HELOAN figures were priced at', () => {
+    // R3-7. The tool used to pick the 680+ tier and a 10-year term on the
+    // visitor's behalf, so a saving quoted at the best credit band was
+    // indistinguishable in the Sheet from one the visitor actually chose.
+    post(h, {
+      source: 'DebtConsolidation', email: 'tier@example.com', totalDebtBalance: 900,
+      heloanCreditTier: '10.49', heloanTermYears: '15',
+      heloanMonthlyPayment: 812, heloanMonthlySavings: 240,
+    });
+    expect(h.rowOf('Debt Consolidation')).toMatchObject({
+      'HELOAN Credit Tier': '10.49',
+      'HELOAN Term': '15',
+      'HELOAN Monthly Payment': 812,
+    });
+  });
+
+  it('leaves the HELOAN columns blank when no tier was chosen', () => {
+    post(h, { source: 'DebtConsolidation', email: 'notier@example.com', totalDebtBalance: 900 });
+    const row = h.rowOf('Debt Consolidation');
+    expect(row['HELOAN Credit Tier']).toBe('');
+    expect(row['HELOAN Term']).toBe('');
+    expect(row['HELOAN Monthly Payment']).toBe('');
+    expect(row['HELOAN Monthly Savings']).toBe('');
+    expect(row['Monthly Savings']).toBe('');
   });
 
   it('Debt Consolidation records licensed state, after the attribution columns', () => {

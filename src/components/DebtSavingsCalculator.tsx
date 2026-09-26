@@ -169,9 +169,12 @@ export default function DebtSavingsCalculator() {
   // sent $26,500 of debt and $670/mo that nobody had typed, which reached the
   // Sheet and reached Darren as fact. An empty row cannot lie about a stranger's
   // finances; the placeholders still show what the field wants.
+  // No type either. Pre-labelling the rows "Credit Card" and "Auto Loan" meant
+  // someone with two cards typed their second card into a row that says Auto
+  // Loan, and the type travels in the payload and the rescue email.
   const [debts, setDebts] = useState<Debt[]>([
-    { id: 1, type: 'Credit Card', bal: 0, pmt: 0, rate: 0 },
-    { id: 2, type: 'Auto Loan',   bal: 0, pmt: 0, rate: 0 },
+    { id: 1, type: '', bal: 0, pmt: 0, rate: 0 },
+    { id: 2, type: '', bal: 0, pmt: 0, rate: 0 },
   ]);
 
   // Home
@@ -182,8 +185,14 @@ export default function DebtSavingsCalculator() {
   const [mtgTerm,    setMtgTerm]    = useState('');
 
   // HELOAN options
-  const [heloanTier, setHeloanTier] = useState(8.99);
-  const [heloanTerm, setHeloanTerm] = useState(10);
+  //
+  // Empty, not 8.99 and 10. They opened pre-answered at the best credit tier
+  // (680+) and a 10-year term, so a visitor who never looked at them was shown
+  // a saving priced at a credit score nobody asked about, and that figure went
+  // to the Sheet as Monthly Savings. Someone at 600 would have seen a very
+  // different number. Strings because "not chosen" has no numeric value.
+  const [heloanTier, setHeloanTier] = useState('');
+  const [heloanTerm, setHeloanTerm] = useState('');
 
   // Lead form
   const [fname,     setFname]     = useState('');
@@ -191,8 +200,12 @@ export default function DebtSavingsCalculator() {
   const [phone,     setPhone]     = useState('');
   const [email,     setEmail]     = useState('');
   const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
-  const [bestTime,  setBestTime]  = useState('Morning (8am–12pm)');
-  const [leadSrc,   setLeadSrc]   = useState('YouTube');
+  // Both empty. They opened on "Morning" and "YouTube", and both were written
+  // to the Sheet as the visitor's answer: Best Time to Call and Lead Source
+  // were the form's own defaults on every untouched submit. They stay optional,
+  // so an untouched dropdown sends blank rather than blocking the lead.
+  const [bestTime,  setBestTime]  = useState('');
+  const [leadSrc,   setLeadSrc]   = useState('');
   const [usState,   setUsState]   = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
@@ -261,10 +274,18 @@ export default function DebtSavingsCalculator() {
   /** Years the 30-year option adds back onto their payoff date. */
   const yearsAdded      = mt > 0 && mt < 30 ? 30 - mt : 0;
 
+  // Nothing is priced until the visitor says at what credit and over how long.
+  // Both are 0 while unchosen, calcPmt returns 0 for a 0 rate or a 0 term, and
+  // every figure below is guarded on that, so the HELOAN column shows no
+  // payment and no saving rather than the best-case one.
+  const tierRate  = parseFloat(heloanTier) || 0;
+  const tierYears = parseInt(heloanTerm, 10) || 0;
+  const heloanPriced = tierRate > 0 && tierYears > 0;
+
   const heloanAmt   = hv > 0 && mb > 0 ? Math.max(Math.min(totBal, hv * 0.85 - mb), 0) : 0;
-  const heloanPmt   = calcPmt(heloanAmt, heloanTier, heloanTerm);
-  const heloanTotal = mp + heloanPmt;
-  const heloanSave  = todayTotal - heloanTotal;
+  const heloanPmt   = heloanPriced ? calcPmt(heloanAmt, tierRate, tierYears) : 0;
+  const heloanTotal = heloanPmt > 0 ? mp + heloanPmt : 0;
+  const heloanSave  = heloanPmt > 0 ? todayTotal - heloanTotal : 0;
   const cltv        = hv > 0 ? (mb + heloanAmt) / hv * 100 : 0;
 
   const bestSave = Math.max(refiSave > 0 ? refiSave : 0, heloanSave > 0 ? heloanSave : 0);
@@ -292,7 +313,7 @@ export default function DebtSavingsCalculator() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const addDebt = () =>
-    setDebts(prev => [...prev, { id: uid(), type: 'Credit Card', bal: 0, pmt: 0, rate: 0 }]);
+    setDebts(prev => [...prev, { id: uid(), type: '', bal: 0, pmt: 0, rate: 0 }]);
 
   const removeDebt = (id: number) =>
     setDebts(prev => prev.filter(d => d.id !== id));
@@ -334,18 +355,25 @@ export default function DebtSavingsCalculator() {
     const payload = {
       firstName: fname, lastName: lname, phone, email,
       state: usState,
+      // Blank when untouched, never the dropdown's opening position.
       bestTimeToCall: bestTime, leadSource: leadSrc,
-      monthlySavings: Math.round(bestSave),
+      monthlySavings: bestSave > 0 ? Math.round(bestSave) : '',
       homeValue: hv, mortgageBalance: mb, mortgagePayment: mp,
       // Optional, and sent as 0 when not given. Darren reads these before he
       // calls: the rate they are giving up and the years they have left are the
       // first two things that decide whether a consolidation is worth doing.
-      mortgageRate: mr, mortgageTerm: mt,
+      // Blank, not 0. A 0% mortgage rate and a 0-year term read as answers,
+      // and both fields are optional.
+      mortgageRate: mr > 0 ? mr : '', mortgageTerm: mt > 0 ? mt : '',
       totalDebtBalance: totBal, totalDebtPayment: totPmt,
       refiMonthlyPayment: Math.round(refiPmt),
       refiMonthlySavings: Math.round(refiSave),
-      heloanMonthlyPayment: Math.round(heloanPmt),
-      heloanMonthlySavings: Math.round(heloanSave),
+      heloanMonthlyPayment: heloanPmt > 0 ? Math.round(heloanPmt) : '',
+      heloanMonthlySavings: heloanSave > 0 ? Math.round(heloanSave) : '',
+      // The two answers the HELOAN figures were priced at, so Darren can see
+      // what assumption produced them. Without these a saving quoted at 680+
+      // is indistinguishable from one quoted at 580.
+      heloanCreditTier: heloanTier, heloanTermYears: heloanTerm,
       debts,
       source: 'DebtConsolidation',
       timestamp: new Date().toISOString(),
@@ -509,7 +537,7 @@ export default function DebtSavingsCalculator() {
                       <span className="input-prefix">$</span>
                       <input
                         type="number" className="form-input input-has-prefix"
-                        value={d.bal || ''} placeholder="e.g. 5000"
+                        value={d.bal || ''} placeholder="e.g. 5,000"
                         onChange={(e) => updateDebt(d.id, 'bal', e.target.value)}
                       />
                     </div>
@@ -611,7 +639,7 @@ export default function DebtSavingsCalculator() {
                 <div className="input-prefix-wrap">
                   <span className="input-prefix">$</span>
                   <input type="number" className="form-input input-has-prefix"
-                    placeholder="e.g. 650000" value={homeValue}
+                    placeholder="e.g. 650,000" value={homeValue}
                     onChange={(e) => setHomeValue(e.target.value)} />
                 </div>
               </div>
@@ -620,7 +648,7 @@ export default function DebtSavingsCalculator() {
                 <div className="input-prefix-wrap">
                   <span className="input-prefix">$</span>
                   <input type="number" className="form-input input-has-prefix"
-                    placeholder="e.g. 350000" value={mtgBalance}
+                    placeholder="e.g. 350,000" value={mtgBalance}
                     onChange={(e) => setMtgBalance(e.target.value)} />
                 </div>
               </div>
@@ -632,7 +660,7 @@ export default function DebtSavingsCalculator() {
                 <div className="input-prefix-wrap">
                   <span className="input-prefix">$</span>
                   <input type="number" className="form-input input-has-prefix"
-                    placeholder="e.g. 2200" value={mtgPayment}
+                    placeholder="e.g. 2,200" value={mtgPayment}
                     onChange={(e) => setMtgPayment(e.target.value)} />
                 </div>
               </div>
@@ -781,11 +809,23 @@ export default function DebtSavingsCalculator() {
                 border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
               }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Fixed HELOAN</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(heloanTotal)}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Keep mortgage + HELOAN</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                  Est. APR: {(heloanTier + 0.20).toFixed(2)}%
-                </div>
+                {heloanPriced ? (
+                  <>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(heloanTotal)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Keep mortgage + HELOAN</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                      Est. APR: {(tierRate + 0.20).toFixed(2)}%
+                    </div>
+                  </>
+                ) : (
+                  // A HELOAN rate is a credit-score question, and the spread
+                  // across these tiers is five points. Showing the 680+ number
+                  // to someone who has not said is not a default, it is a quote
+                  // for a different person.
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                    Pick your credit range and a term below to price this option.
+                  </div>
+                )}
                 {heloanSave > 0 && (
                   <div style={{
                     display: 'inline-block', marginTop: 8,
@@ -805,14 +845,14 @@ export default function DebtSavingsCalculator() {
                 <label className="input-label">HELOAN Credit Tier</label>
                 <CustomSelect
                   id="heloan-tier"
-                  value={String(heloanTier)}
+                  value={heloanTier}
                   options={[
                     { value: '13.99', label: '580–619 (est. 13.99%)' },
                     { value: '11.99', label: '620–659 (est. 11.99%)' },
                     { value: '10.49', label: '660–679 (est. 10.49%)' },
                     { value: '8.99',  label: '680+ (est. 8.99%)' },
                   ]}
-                  onChange={(v) => setHeloanTier(parseFloat(v))}
+                  onChange={setHeloanTier}
                   placeholder="Select credit tier…"
                 />
               </div>
@@ -820,14 +860,14 @@ export default function DebtSavingsCalculator() {
                 <label className="input-label">HELOAN Term</label>
                 <CustomSelect
                   id="heloan-term"
-                  value={String(heloanTerm)}
+                  value={heloanTerm}
                   options={[
                     { value: '5',  label: '5 Years' },
                     { value: '10', label: '10 Years' },
                     { value: '15', label: '15 Years' },
                     { value: '30', label: '30 Years' },
                   ]}
-                  onChange={(v) => setHeloanTerm(parseInt(v, 10))}
+                  onChange={setHeloanTerm}
                   placeholder="Select term…"
                 />
               </div>
@@ -857,9 +897,9 @@ export default function DebtSavingsCalculator() {
               <BreakdownRow label="HELOAN Amount (total debt)" value={heloanAmt > 0 ? fmt(heloanAmt) : '—'} />
               <BreakdownRow
                 label="HELOAN Rate / Term"
-                value={heloanAmt > 0 ? `${pct(heloanTier)} / ${heloanTerm} yr` : '—'}
+                value={heloanPriced && heloanAmt > 0 ? `${pct(tierRate)} / ${tierYears} yr` : '—'}
               />
-              <BreakdownRow label="Estimated APR"             value={pct(heloanTier + 0.20)} />
+              <BreakdownRow label="Estimated APR"             value={heloanPriced ? pct(tierRate + 0.20) : '—'} />
               <BreakdownRow label="HELOAN Monthly Payment"    value={heloanPmt > 0 ? fmt(heloanPmt)   : '—'} />
               <BreakdownRow label="Existing Mortgage Payment" value={mp > 0 ? fmt(mp) : '—'} />
               <BreakdownRow label="Combined CLTV"             value={cltv > 0 ? pct(cltv) : '—'} />
@@ -998,26 +1038,16 @@ export default function DebtSavingsCalculator() {
               )}
             </button>
 
-            {/* Book a call block */}
-            <div style={{
-              background: 'var(--light-bg)', border: '1px solid #e2e5ed',
-              borderRadius: 10, padding: 18,
-            }}>
-              <strong style={{ color: 'var(--navy)', display: 'block', marginBottom: 6 }}>
-                Book a call with Darren
-              </strong>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
-                Skip the wait, pick a time that works for you and get your personalized
-                savings review in 15 minutes.
-              </p>
-              <button onClick={openCalendly} className="btn btn-rose btn-sm">
-                Schedule a Free 15-Min Call
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
+            {/* The booking card that used to sit here has gone. It opened
+                Calendly without submitting, so a visitor who had just entered
+                their debts, their home value and their mortgage could book a
+                call and never create a Sheet row: Darren took the call with
+                none of it. One extra step for someone who only wants to book,
+                against every booked call arriving with its numbers. Booking
+                lives on the success card below, where the lead is already
+                saved and Calendly can be prefilled. The header and sticky
+                "Book a Call" buttons are untouched, since no numbers exist
+                there to lose. */}
           </div>
         )}
 
@@ -1037,7 +1067,10 @@ export default function DebtSavingsCalculator() {
               Book a Free Strategy Call
             </button>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 14 }}>
-              Questions? Call or text:{' '}
+              {/* Not "text". CallRail swaps this for a pool number, and texts to
+                  a pool number land in CallRail's messaging inbox rather than on
+                  Darren's phone, so the offer was one nobody was answering. */}
+              Questions? Call:{' '}
               <a href="tel:7148875432" style={{ color: 'var(--navy)', fontWeight: 600 }}>
                 (714) 887-5432
               </a>

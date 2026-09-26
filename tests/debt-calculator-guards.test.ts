@@ -209,3 +209,73 @@ describe('the FHA estimator agrees with the page around it', () => {
     expect(FHA).not.toContain('Check your email for your FHA payment breakdown');
   });
 });
+
+/**
+ * R3-7, R3-8, R4-4, R4-7: the Monthly Reset's preset answers.
+ *
+ * The empty-debt and empty-home gates already held, but once those were in the
+ * rest of the form was answered for the visitor: HELOAN Credit Tier 680+,
+ * HELOAN Term 10 Years, Best Time to Call Morning, How Did You Find Me
+ * YouTube. All four reached the Sheet as fact, and the savings figure was
+ * priced at the best credit band, five points better than the worst.
+ */
+describe('the Monthly Reset answers nothing on the visitor behalf', () => {
+  it('opens every describe-the-person dropdown unchosen', () => {
+    expect(CALC).toContain("useState('');");
+    for (const decl of [
+      'const [heloanTier, setHeloanTier] = useState',
+      'const [heloanTerm, setHeloanTerm] = useState',
+      'const [bestTime,  setBestTime]  = useState',
+      'const [leadSrc,   setLeadSrc]   = useState',
+    ]) {
+      const line = CALC.split(/\r?\n/).find((l) => l.includes(decl));
+      expect(line, `${decl} not found`).toBeDefined();
+      expect(line, `${decl} opens pre-answered`).toContain("useState('')");
+    }
+  });
+
+  it('starts the debt rows with no type', () => {
+    // R4-7. Someone with two cards typed into a row labelled "Auto Loan".
+    const defaults = CALC.slice(
+      CALC.indexOf('const [debts, setDebts]'),
+      CALC.indexOf('// Home'),
+    );
+    expect(defaults).not.toContain("'Credit Card'");
+    expect(defaults).not.toContain("'Auto Loan'");
+    expect(CALC).toContain("{ id: uid(), type: '', bal: 0, pmt: 0, rate: 0 }");
+  });
+
+  it('prices no HELOAN until a tier and a term are chosen', () => {
+    expect(CALC).toContain('const heloanPriced = tierRate > 0 && tierYears > 0;');
+    expect(CALC).toContain('const heloanPmt   = heloanPriced ? calcPmt(heloanAmt, tierRate, tierYears) : 0;');
+    expect(CALC).toContain('Pick your credit range and a term below to price this option.');
+  });
+
+  it('sends blank rather than zero for anything not given', () => {
+    expect(CALC).toContain("mortgageRate: mr > 0 ? mr : '', mortgageTerm: mt > 0 ? mt : ''");
+    expect(CALC).toContain("monthlySavings: bestSave > 0 ? Math.round(bestSave) : ''");
+    expect(CALC).toContain("heloanMonthlyPayment: heloanPmt > 0 ? Math.round(heloanPmt) : ''");
+    expect(CALC).toContain("heloanMonthlySavings: heloanSave > 0 ? Math.round(heloanSave) : ''");
+  });
+
+  it('sends what the HELOAN figures were priced at', () => {
+    expect(CALC).toContain('heloanCreditTier: heloanTier, heloanTermYears: heloanTerm');
+  });
+
+  it('has no booking shortcut that skips the form', () => {
+    // R3-8. Step 4's booking card opened Calendly without submitting, so a
+    // visitor who had just entered their debts, home value and mortgage could
+    // book a call and never create a Sheet row. Booking lives on the success
+    // card, where the lead is already saved.
+    const step4 = CALC.slice(CALC.indexOf('{step === 4 && !submitted &&'), CALC.indexOf('{submitted && ('));
+    expect(step4).not.toContain('openCalendly');
+    expect(step4).not.toContain('Schedule a Free 15-Min Call');
+    expect(CALC.slice(CALC.indexOf('{submitted && ('))).toContain('Book a Free Strategy Call');
+  });
+
+  it('does not offer a text nobody answers', () => {
+    // R4-4. CallRail swaps this number for a pool number, and texts to a pool
+    // number land in CallRail's messaging inbox, not on Darren's phone.
+    expect(CALC).not.toContain('Call or text');
+  });
+});

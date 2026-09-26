@@ -74,7 +74,7 @@ beforeEach(() => { h = load(); });
 
 const DSCR_LEAD = {
   source: 'dscr', firstName: 'Jane', lastName: 'Investor', email: 'jane@example.com',
-  phone: '7145550123', state: 'CA', dscr: '1.17', downPayment: '25%',
+  phone: '7148821190', state: 'CA', dscr: '1.17', downPayment: '25%',
   loanAmount: '$240,000', rate: '7.00%',
 };
 
@@ -281,7 +281,7 @@ describe('the daily digest', () => {
 describe('the contact confirmation', () => {
   const CONTACT_LEAD = {
     source: 'home-contact', firstName: 'Sam', lastName: 'Homeowner',
-    email: 'sam@example.com', phone: '7145550144', state: 'CA',
+    email: 'sam@example.com', phone: '7148821191', state: 'CA',
     message: 'Want to clear two credit cards',
   };
 
