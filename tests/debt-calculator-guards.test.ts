@@ -27,6 +27,7 @@ const CALC = read('src/components/DebtSavingsCalculator.tsx');
 const HERO = read('src/components/Hero.tsx');
 const CONFIG = read('src/config.ts');
 const DSCR = read('public/dscr/index.html');
+const FHA = read('public/fha/index.html');
 
 describe('the calculator does not arrive pre-filled', () => {
   it('starts both debt rows empty', () => {
@@ -110,5 +111,65 @@ describe('the DSCR calculator does not arrive pre-filled either', () => {
 
   it('holds the result back until rent and price are given', () => {
     expect(DSCR).toContain('dscrHasInputs');
+  });
+});
+
+/**
+ * The FHA page's own calculator.
+ *
+ * The page has been titled "FHA Mortgage Calculator" since it shipped and the
+ * calculator was an .xlsx emailed after an opt-in. Most of this page's traffic
+ * comes from YouTube on a phone, where a spreadsheet cannot be opened at all,
+ * so the promise in the title was kept for almost nobody, and the success copy
+ * promised a "payment breakdown" built from numbers the visitor had never been
+ * asked for.
+ *
+ * Scanned rather than executed: it is inline ES5 in a hand-written page with no
+ * build step. What matters most is that its constants and the explainer copy
+ * above it cannot drift apart, because the page would then contradict itself in
+ * two places a borrower can see at once.
+ */
+describe('the FHA estimator agrees with the page around it', () => {
+  it('exists on the page the title names', () => {
+    expect(FHA).toContain('id="fha-calculator"');
+    expect(FHA).toContain('FHA PAYMENT ESTIMATOR');
+  });
+
+  it('uses the upfront MIP the explainer quotes', () => {
+    expect(FHA).toContain('var UFMIP_RATE = 0.0175;');
+    expect(FHA).toContain('Upfront MIP is 1.75%');
+  });
+
+  it('uses the two annual MIP tiers the explainer quotes', () => {
+    expect(FHA).toContain('var MIP_HIGH_LTV = 0.0055;');
+    expect(FHA).toContain('var MIP_LOW_LTV = 0.0050;');
+    expect(FHA).toContain('annual MIP rises from 0.50% to 0.55%');
+  });
+
+  it('charges MIP on the financed balance, like the worked example', () => {
+    // $386,650 at 0.50% is $161 a month, which is the figure in the explainer.
+    // On the base loan it would be $158, and the page would disagree with
+    // itself two sections apart.
+    expect(FHA).toContain('var mip = totalLoan * mipRate / 12;');
+    expect(FHA).toContain('MIP adds $161');
+  });
+
+  it('knows the minimum down payment it advertises', () => {
+    expect(FHA).toContain('var MIN_DOWN_PCT = 3.5;');
+    expect(FHA).toContain('3.5%');
+  });
+
+  it('starts empty and holds the result back', () => {
+    for (const id of ['fhaPrice', 'fhaDown', 'fhaRate', 'fhaTax', 'fhaIns', 'fhaHoa']) {
+      const tag = FHA.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`));
+      expect(tag, `input#${id} not found`).not.toBeNull();
+      expect(tag![0]).not.toMatch(/\bvalue="[\d.]/);
+      expect(tag![0]).toMatch(/placeholder="e\.g\./);
+    }
+    expect(FHA).toContain("resultCard.classList.toggle('is-waiting', !ready)");
+  });
+
+  it('no longer promises a breakdown of numbers it never asked for', () => {
+    expect(FHA).not.toContain('Check your email for your FHA payment breakdown');
   });
 });

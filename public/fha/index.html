@@ -564,6 +564,38 @@
   .licensed-item svg{color:var(--navy);flex-shrink:0;}
 
   /* --- Explainer + form grid --- */
+  /* ---------- On-page FHA payment estimator ---------- */
+  /* The page has called itself an FHA calculator since it shipped, and the
+     calculator was an .xlsx attachment emailed after an opt-in. Most of the
+     traffic here arrives from YouTube on a phone, where a spreadsheet cannot be
+     opened at all, so the promise in the title was kept for almost nobody. */
+  .fha-calc-section{padding-top:64px;padding-bottom:8px;}
+  .fha-calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;}
+  @media (max-width:860px){ .fha-calc-grid{grid-template-columns:1fr;} }
+  .fha-calc-head{max-width:64ch;margin:0 0 28px;}
+  .fha-calc-head h2{margin:0 0 10px;}
+  .fha-calc-head p{font-size:1rem;line-height:1.6;color:var(--text-muted);margin:0;}
+  .fha-out-hero{text-align:center;padding:10px 0 4px;}
+  .fha-out-num{
+    font-family:'Outfit', sans-serif;font-weight:700;font-size:2.6rem;
+    line-height:1.1;color:var(--navy);
+  }
+  .fha-out-unit{display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);margin-top:6px;}
+  .fha-row{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    padding:9px 0;border-bottom:1px solid var(--line);font-size:0.92rem;
+  }
+  .fha-row:last-child{border-bottom:none;}
+  .fha-row .k{color:var(--text-muted);}
+  .fha-row .v{font-weight:600;color:var(--navy);}
+  .fha-row.total{font-weight:700;}
+  .fha-row.total .k{color:var(--navy);}
+  .fha-waiting{margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);}
+  .fha-result:not(.is-waiting) .fha-waiting{display:none;}
+  .fha-result.is-waiting .fha-out-hero,
+  .fha-result.is-waiting .fha-breakdown,
+  .fha-result.is-waiting .fha-note{display:none;}
+  .fha-note{font-size:0.8rem;line-height:1.6;color:var(--text-muted);margin:14px 0 0;}
   .explainer-section{padding-top:72px;padding-bottom:64px;}
   .explainer-grid{display:grid;grid-template-columns:1fr 460px;gap:56px;align-items:end;}
   .explainer-left h2{margin-bottom:14px;}
@@ -879,10 +911,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="hero-left">
       <span class="hero-eyebrow anim anim-1">Free FHA Mortgage Calculator</span>
       <h1 class="hero-title anim anim-2">Know your real FHA payment before you shop.</h1>
-      <p class="hero-sub anim anim-3">Mortgage insurance, taxes, and homeowners insurance included, not the payment most calculators show you. Tell me where to send it and the full breakdown lands in your inbox.</p>
+      <p class="hero-sub anim anim-3">Mortgage insurance, taxes, and homeowners insurance included, not the payment most calculators show you. Run it right here, then get the spreadsheet version emailed if you want to keep playing with it.</p>
       <div class="hero-cta-row anim anim-4">
-        <a href="#get-fha-estimate" class="cta solid-accent">Get the free calculator</a>
-        <span class="hero-cta-note">No credit pull. No cost.</span>
+        <a href="#fha-calculator" class="cta solid-accent">Work out my payment</a>
+        <span class="hero-cta-note">No email needed. No credit pull.</span>
       </div>
       <div class="hero-stats-divider anim anim-4"></div>
       <div class="hero-stats anim anim-4">
@@ -1003,7 +1035,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                   </select>
                 </div>
                 <span class="field-error" id="mStateError"></span>
-          <span class="lf-hint" id="mStateHint" hidden></span>
+                <span class="lf-hint" id="mStateHint" hidden></span>
               </div>
             </div>
             <div class="field">
@@ -1027,9 +1059,94 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <div class="lead-success" id="leadSuccess">
             <div class="check">✓</div>
             <h3>You're all set.</h3>
-            <p>Check your email for your FHA payment breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
+            <p>Check your email for the FHA calculator spreadsheet. Darren will also reach out shortly to walk through your actual rate and terms.</p>
             <button type="button" class="cta outline" style="width:100%;margin-top:18px;" id="openLeadCalendlyBtn">Book a Free Strategy Call</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ON-PAGE FHA PAYMENT ESTIMATOR -->
+<!--
+  The calculator this page is named after.
+
+  It used to be an .xlsx emailed after an opt-in, which most of this page's
+  traffic (YouTube, on a phone) cannot open, and the success copy promised a
+  "payment breakdown" built from numbers the visitor had never been asked for.
+  The spreadsheet still goes out; this is the version that works where the
+  visitor already is, and it asks for nothing to use.
+
+  Starts empty, like every other calculator on the site after 26 Sep 2026: an
+  input that arrives pre-filled gets submitted as if the visitor typed it.
+-->
+<section class="fha-calc-section reveal" id="fha-calculator">
+  <div class="container-1080">
+    <div class="fha-calc-head">
+      <p class="section-label">FHA payment estimator</p>
+      <h2>Your real FHA payment, right here.</h2>
+      <p>Principal, interest, both mortgage insurance premiums, taxes and insurance. No email needed, nothing to download.</p>
+    </div>
+
+    <div class="fha-calc-grid">
+      <div class="card">
+        <div class="card-section">
+          <p class="section-label">The property</p>
+          <div class="grid">
+            <div class="field">
+              <label for="fhaPrice">Purchase Price</label>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaPrice" placeholder="e.g. 400000" min="0"></div>
+            </div>
+            <div class="field">
+              <label for="fhaDown">Down Payment <span class="hint">3.5% minimum</span></label>
+              <div class="input-shell"><input type="number" id="fhaDown" placeholder="e.g. 3.5" min="0" step="0.5"><span style="padding:0 16px 0 0;">%</span></div>
+            </div>
+            <div class="field">
+              <label for="fhaRate">Interest Rate</label>
+              <div class="input-shell"><input type="number" id="fhaRate" placeholder="e.g. 6.5" min="0" step="0.01"><span style="padding:0 16px 0 0;">%</span></div>
+            </div>
+            <div class="field">
+              <label for="fhaTax">Annual Property Tax</label>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaTax" placeholder="e.g. 4920" min="0"></div>
+            </div>
+            <div class="field">
+              <label for="fhaIns">Annual Home Insurance</label>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaIns" placeholder="e.g. 1500" min="0"></div>
+            </div>
+            <div class="field">
+              <label for="fhaHoa">Monthly HOA <span class="hint">if any</span></label>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaHoa" placeholder="e.g. 0" min="0"></div>
+            </div>
+          </div>
+          <p class="fha-note" id="fhaDownNote" hidden></p>
+        </div>
+      </div>
+
+      <div class="card fha-result is-waiting" id="fhaResult">
+        <div class="card-section">
+          <p class="section-label">Your monthly payment</p>
+          <p class="fha-waiting" id="fhaWaiting">Enter a purchase price and an interest rate and your payment appears here.</p>
+
+          <div class="fha-out-hero">
+            <div class="fha-out-num" id="fhaTotal">$0</div>
+            <span class="fha-out-unit">per month, all in</span>
+          </div>
+
+          <div class="fha-breakdown">
+            <div class="fha-row"><span class="k">Base loan amount</span><span class="v" id="fhaBaseLoan">$0</span></div>
+            <div class="fha-row"><span class="k">Upfront MIP, 1.75%, financed</span><span class="v" id="fhaUfmip">$0</span></div>
+            <div class="fha-row"><span class="k">Total financed</span><span class="v" id="fhaTotalLoan">$0</span></div>
+            <div class="fha-row"><span class="k">Principal &amp; interest</span><span class="v" id="fhaPI">$0</span></div>
+            <div class="fha-row"><span class="k">Monthly MIP <span id="fhaMipRate"></span></span><span class="v" id="fhaMip">$0</span></div>
+            <div class="fha-row"><span class="k">Property tax</span><span class="v" id="fhaTaxOut">$0</span></div>
+            <div class="fha-row"><span class="k">Home insurance</span><span class="v" id="fhaInsOut">$0</span></div>
+            <div class="fha-row"><span class="k">HOA</span><span class="v" id="fhaHoaOut">$0</span></div>
+            <div class="fha-row total"><span class="k">Total monthly payment</span><span class="v" id="fhaTotalRow">$0</span></div>
+          </div>
+
+          <p class="fha-note">Estimate only, on a 30-year fixed FHA loan. FHA charges annual MIP on the average outstanding balance; this uses the starting balance, so the real figure drifts slightly below it over time. Not a rate lock or a quote.</p>
+          <button type="button" class="cta solid-accent" id="fhaCalcCta" style="width:100%;justify-content:center;margin-top:16px;">Get my real rate</button>
         </div>
       </div>
     </div>
@@ -1430,6 +1547,111 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </script>
 
 <script>
+  // ============================================================
+  // FHA PAYMENT ESTIMATOR
+  //
+  // The rules, all from the page's own explainer above so the two cannot
+  // disagree:
+  //   - upfront MIP is 1.75% of the base loan, financed into it
+  //   - annual MIP is 0.55% above 95% LTV, 0.50% at or below it
+  //   - 3.5% is the minimum down payment on an FHA loan
+  //
+  // FHA charges annual MIP on the average outstanding balance. This uses the
+  // starting balance, which every consumer estimator does and which overstates
+  // slightly rather than under: the number a borrower plans around should not
+  // be the optimistic one.
+  // ============================================================
+  (function () {
+    var priceEl = document.getElementById('fhaPrice');
+    if (!priceEl) return;
+    var downEl = document.getElementById('fhaDown');
+    var rateEl = document.getElementById('fhaRate');
+    var taxEl = document.getElementById('fhaTax');
+    var insEl = document.getElementById('fhaIns');
+    var hoaEl = document.getElementById('fhaHoa');
+    var resultCard = document.getElementById('fhaResult');
+    var downNote = document.getElementById('fhaDownNote');
+
+    var UFMIP_RATE = 0.0175;
+    var MIP_HIGH_LTV = 0.0055;
+    var MIP_LOW_LTV = 0.0050;
+    var MIN_DOWN_PCT = 3.5;
+    var TERM_MONTHS = 360;
+
+    function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+    function num(el) { return parseFloat(el.value) || 0; }
+    function put(id, text) { document.getElementById(id).textContent = text; }
+
+    function monthlyPI(loan, annualRatePct) {
+      var r = annualRatePct / 100 / 12;
+      if (!loan) return 0;
+      if (r === 0) return loan / TERM_MONTHS;
+      var factor = Math.pow(1 + r, TERM_MONTHS);
+      return loan * r * factor / (factor - 1);
+    }
+
+    function calculate() {
+      var price = num(priceEl);
+      var downPct = num(downEl);
+      var rate = num(rateEl);
+
+      // Said, not enforced. Someone typing 3 has made a mistake worth pointing
+      // out; refusing their input would just look broken.
+      var belowMinimum = downPct > 0 && downPct < MIN_DOWN_PCT;
+      downNote.hidden = !belowMinimum;
+      if (belowMinimum) {
+        downNote.textContent = 'FHA needs at least ' + MIN_DOWN_PCT + '% down. The figures below use what you entered.';
+      }
+
+      var ready = price > 0 && rate > 0;
+      resultCard.classList.toggle('is-waiting', !ready);
+
+      var downAmount = price * (downPct / 100);
+      var baseLoan = Math.max(price - downAmount, 0);
+      var ltv = price > 0 ? baseLoan / price : 0;
+      var mipRate = ltv > 0.95 ? MIP_HIGH_LTV : MIP_LOW_LTV;
+
+      var ufmip = baseLoan * UFMIP_RATE;
+      var totalLoan = baseLoan + ufmip;
+
+      var pi = monthlyPI(totalLoan, rate);
+      // On the financed balance, not the base loan: FHA charges annual MIP on
+      // the outstanding principal, and financed upfront MIP is part of it. This
+      // is the same basis as the worked example in the explainer above ($161 a
+      // month on $386,650 at 0.50%), so the two cannot disagree.
+      var mip = totalLoan * mipRate / 12;
+      var tax = num(taxEl) / 12;
+      var ins = num(insEl) / 12;
+      var hoa = num(hoaEl);
+      var total = pi + mip + tax + ins + hoa;
+
+      put('fhaBaseLoan', money(baseLoan));
+      put('fhaUfmip', money(ufmip));
+      put('fhaTotalLoan', money(totalLoan));
+      put('fhaPI', money(pi));
+      put('fhaMip', money(mip));
+      put('fhaMipRate', baseLoan > 0 ? '(' + (mipRate * 100).toFixed(2) + '%)' : '');
+      put('fhaTaxOut', money(tax));
+      put('fhaInsOut', money(ins));
+      put('fhaHoaOut', money(hoa));
+      put('fhaTotal', money(total));
+      put('fhaTotalRow', money(total));
+    }
+
+    [priceEl, downEl, rateEl, taxEl, insEl, hoaEl].forEach(function (el) {
+      el.addEventListener('input', calculate);
+    });
+    calculate();
+
+    var cta = document.getElementById('fhaCalcCta');
+    if (cta) {
+      cta.addEventListener('click', function () {
+        var form = document.getElementById('get-fha-estimate');
+        if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  })();
+
   // ---------------------------------------------------------
   // Lead capture wiring:
   // Submissions post source:"fha" to /api/lead, which forwards them
