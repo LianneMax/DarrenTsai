@@ -283,17 +283,43 @@ describe('when the calendar stalls', () => {
     expect(track.mock.calls.filter((c) => c[0] === 'calendly_stalled')).toHaveLength(1);
   });
 
-  it('says nothing once the calendar has loaded', () => {
+  it.each(['calendly.event_type_viewed', 'calendly.page_height'])(
+    'says nothing once Calendly reports it has rendered (%s)',
+    (event) => {
+      widgetReady();
+      booking.open({});
+      schedBtn()!.click();
+      postFromCalendly(event);
+      vi.advanceTimersByTime(20000);
+      expect(stall()).toBeNull();
+    },
+  );
+
+  it('still fires when the iframe loads but nothing renders in it', () => {
+    // The defect this replaced. The watcher settled on the iframe's `load`
+    // event, which fired about two seconds in, while Calendly's content then
+    // sat blank for fifteen to twenty seconds. `load` means the document
+    // arrived, not that a calendar is on screen, so the fallback had already
+    // been cancelled and never fired once in real use.
     widgetReady();
     booking.open({});
     schedBtn()!.click();
-    // initInlineWidget is stubbed, so stand in the iframe it would have made.
     const iframe = document.createElement('iframe');
     frame()!.appendChild(iframe);
-    vi.advanceTimersByTime(300); // the poll picks it up
     iframe.dispatchEvent(new Event('load'));
-    vi.advanceTimersByTime(20000);
-    expect(stall()).toBeNull();
+    vi.advanceTimersByTime(8500);
+    expect(stall()).not.toBeNull();
+  });
+
+  it('ignores a forged "it rendered" from another origin', () => {
+    // Suppressing the fallback is exactly what an attacker would want here:
+    // it is the visitor's only way out of a blank panel.
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    postFromCalendly('calendly.event_type_viewed', 'https://calendly.com.attacker.example');
+    vi.advanceTimersByTime(8500);
+    expect(stall()).not.toBeNull();
   });
 
   it('says nothing after the panel has been closed', () => {
@@ -314,6 +340,29 @@ describe('a visitor who has already given their details', () => {
     schedBtn()!.click();
     const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: Record<string, string> };
     expect(config.prefill).toEqual({ name: 'Sam Homeowner', email: 'sam@example.com' });
+  });
+
+  it('puts the name and email on the URL as well, where they can be seen', () => {
+    // R3-5. config.prefill is the documented route and is still passed, but the
+    // 27 Sep audit could not confirm it arrived: the iframe src carried
+    // neither value and the details step was not reachable. The URL is
+    // checkable by reading the src, and Calendly accepts both, so they agree
+    // whichever one it reads.
+    booking.identify({ name: 'Sam Homeowner', email: 'sam@example.com' });
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig;
+    expect(config.url).toContain('name=Sam%20Homeowner');
+    expect(config.url).toContain('email=sam%40example.com');
+  });
+
+  it('leaves the URL alone when nobody has identified', () => {
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig;
+    expect(config.url).toBe('https://calendly.com/realdarrentsai/15min');
   });
 
   it('asks as it always did when no form has run', () => {

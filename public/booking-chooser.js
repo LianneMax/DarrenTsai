@@ -73,6 +73,13 @@
    */
   var knownLead = null;
 
+  /**
+   * Set by watchForStall while a calendar is loading, called by the message
+   * listener when Calendly says it has rendered. Null the rest of the time, so
+   * a stray message from a closed panel does nothing.
+   */
+  var onCalendlyRender = null;
+
   function track(event, params) {
     try {
       if (window.DT && window.DT.track) window.DT.track(event, params);
@@ -184,6 +191,7 @@
 
   function close() {
     if (!overlay) return;
+    onCalendlyRender = null; // nothing left to render into
     var node = overlay;
     overlay = null;
     node.classList.remove('dt-open');
@@ -196,6 +204,26 @@
 
   function onKey(e) {
     if (e.key === 'Escape') close();
+  }
+
+  /**
+   * The booking URL, carrying the visitor's name and email when we know them.
+   *
+   * `config.prefill` is the documented way to do this and is still passed
+   * below, but the 27 Sep audit could not confirm it arrived: the iframe's src
+   * carried no name or email, and the details step was not reachable in the
+   * browser being used. Rather than leave it unverifiable, the two values also
+   * go on the URL, which Calendly has always accepted and which anyone can
+   * check by reading the iframe's src in devtools. Passing both is harmless:
+   * they agree, so whichever path Calendly reads wins the same answer.
+   */
+  function calendlyUrlFor(lead) {
+    if (!lead) return CALENDLY_URL;
+    var parts = [];
+    if (lead.name) parts.push('name=' + encodeURIComponent(lead.name));
+    if (lead.email) parts.push('email=' + encodeURIComponent(lead.email));
+    if (!parts.length) return CALENDLY_URL;
+    return CALENDLY_URL + (CALENDLY_URL.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
   }
 
   /** Attribution carried into Calendly's own record of the booking. */
@@ -245,7 +273,7 @@
     card.querySelector('.dt-book-close').addEventListener('click', close);
 
     var frame = card.querySelector('.dt-book-frame');
-    var config = { url: CALENDLY_URL, parentElement: frame };
+    var config = { url: calendlyUrlFor(knownLead), parentElement: frame };
     var utm = utmFromAttribution();
     if (utm) config.utm = utm;
     if (knownLead) config.prefill = knownLead;
@@ -261,38 +289,34 @@
    * forever. Worse, by this point the two options have been replaced, so the
    * Call route is off screen as well.
    *
-   * The iframe's load event is the signal. It fires whether or not Calendly
-   * itself then renders, which is the right side to err on: a false "it loaded"
-   * costs nothing because the calendar really is there, while a false stall
-   * would talk over a working booking.
+   * WHY NOT THE IFRAME'S LOAD EVENT. That was the first attempt and it never
+   * fired the fallback once, because it is the wrong signal: `load` means the
+   * iframe document arrived, which happened about two seconds in, while
+   * Calendly's own content then sat blank for fifteen to twenty seconds. The
+   * watcher had already settled and there was nothing left to fire.
+   *
+   * Calendly says so itself. The widget posts `calendly.event_type_viewed`
+   * when the booking page is up and `calendly.page_height` when it has laid
+   * out, both from https://calendly.com. Either one means a visitor is looking
+   * at a calendar. Waiting for those means the fallback fires on exactly the
+   * case it was written for: the iframe is there, and nothing is in it.
    */
   function watchForStall(card, frame) {
     var settled = false;
     var timer = window.setTimeout(function () {
       if (settled || !card.parentNode) return;
       settled = true;
+      onCalendlyRender = null;
       showStall(card, frame);
     }, STALL_MS);
 
     function settle() {
       settled = true;
+      onCalendlyRender = null;
       window.clearTimeout(timer);
     }
 
-    // initInlineWidget creates the iframe synchronously, but do not rely on it.
-    var iframe = frame.querySelector('iframe');
-    if (iframe) {
-      iframe.addEventListener('load', settle);
-      return;
-    }
-    var poll = window.setInterval(function () {
-      if (settled || !card.parentNode) { window.clearInterval(poll); return; }
-      var late = frame.querySelector('iframe');
-      if (late) {
-        window.clearInterval(poll);
-        late.addEventListener('load', settle);
-      }
-    }, 250);
+    onCalendlyRender = settle;
   }
 
   /** The two routes that still work when the embed does not. */
@@ -409,6 +433,15 @@
     if (e.origin !== CALENDLY_ORIGIN) return;
     var d = e.data;
     if (!d || typeof d.event !== 'string') return;
+
+    // Proof that a calendar is actually on screen, which is what the stall
+    // watcher is waiting for. Handled here because this is the one listener
+    // that has already checked the origin, and a forged "it rendered" would
+    // suppress the fallback exactly when it is needed.
+    if (d.event === 'calendly.event_type_viewed' || d.event === 'calendly.page_height') {
+      if (typeof onCalendlyRender === 'function') onCalendlyRender();
+    }
+
     if (d.event !== 'calendly.event_scheduled') return;
     track('calendly_booking', { page_path: window.location.pathname });
   });
