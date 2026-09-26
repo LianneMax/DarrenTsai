@@ -343,3 +343,63 @@ describe('the contact confirmation', () => {
     expect(h.mail.map((m) => m.subject).join(' ')).not.toContain('FAILURE');
   });
 });
+
+/**
+ * A lead who comes back.
+ *
+ * Bonzo answers 422 "already exists" for an email it already holds, which is
+ * exactly what happens when someone who downloaded one guide returns for
+ * another. Until 26 Sep 2026 that was reported to Darren as a LEAD PIPELINE
+ * FAILURE, so he was being paged about his own returning leads: the fastest way
+ * to teach someone to ignore an alert that matters.
+ */
+describe('a returning lead is not a failure', () => {
+  const DUPLICATE = '{"message":"The email has already been taken."}';
+
+  it('does not alert when Bonzo says the prospect already exists', () => {
+    h.reply('getbonzo.com', 422, DUPLICATE);
+    h.queue(DSCR_LEAD);
+    h.processFollowUps();
+
+    expect(h.mail.map((m) => m.subject).join(' ')).not.toContain('FAILURE');
+  });
+
+  it('records it where a lead is traced, rather than silently', () => {
+    h.reply('getbonzo.com', 422, DUPLICATE);
+    h.queue(DSCR_LEAD);
+    h.processFollowUps();
+
+    const debug = h.tabs.get('Debug');
+    const text = JSON.stringify(debug ? debug.rows : []);
+    expect(text).toContain('returning lead');
+    expect(text).toContain('jane@example.com');
+  });
+
+  it('still sends the guide they came back for', () => {
+    // The whole point of the visit. Bonzo's answer must not stop it.
+    h.reply('getbonzo.com', 422, DUPLICATE);
+    h.queue(DSCR_LEAD);
+    h.processFollowUps();
+
+    expect(guideCalls(h).map((f) => f.url).join(' ')).toContain('send-dscr-guide');
+    expect(h.statusOf().status).toBe('done');
+  });
+
+  it('still alerts on a 422 that is a real rejection', () => {
+    // Narrow on purpose: 422 is also how a malformed body comes back, and
+    // silencing that would hide a genuine break.
+    h.reply('getbonzo.com', 422, '{"message":"The phone field is invalid."}');
+    h.queue(DSCR_LEAD);
+    h.processFollowUps();
+
+    expect(h.mail.map((m) => m.subject).join(' ')).toContain('FAILURE');
+  });
+
+  it('still alerts on a 500', () => {
+    h.reply('getbonzo.com', 500, 'upstream exploded');
+    h.queue(DSCR_LEAD);
+    h.processFollowUps();
+
+    expect(h.mail.map((m) => m.subject).join(' ')).toContain('FAILURE');
+  });
+});

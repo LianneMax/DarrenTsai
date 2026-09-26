@@ -466,6 +466,19 @@ function postBonzoNote(prospectId, content, token) {
   }
 }
 
+/**
+ * Bonzo's "this email is already a prospect" answer, told apart from a genuine
+ * failure.
+ *
+ * Deliberately narrow: a 422 alone is not enough, because 422 is also how a
+ * malformed body comes back, and silencing that would hide a real break. Both
+ * the status and the wording have to match.
+ */
+function isReturningProspect(code, text) {
+  if (code !== 422) return false;
+  return /already\s+(exists|been\s+taken)|has\s+already\s+been\s+taken|duplicate/i.test(String(text || ''));
+}
+
 function pushToBonzo(data) {
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('BONZO_API_KEY');
@@ -587,7 +600,26 @@ function pushToBonzo(data) {
     // The lead is already safe in Sheets, so a Bonzo failure is not fatal — but
     // it does mean nobody gets nurtured, which is invisible without an alert.
     const code = resp.getResponseCode();
-    if (code < 200 || code >= 300) {
+    if (isReturningProspect(code, resp.getContentText())) {
+      // Not a failure. Bonzo answers 422 "already exists" when the email is
+      // already a prospect, which is precisely what happens when someone who
+      // downloaded one guide comes back for another — a good event, reported as
+      // a LEAD PIPELINE FAILURE until 26 Sep 2026. Darren was being paged about
+      // his own returning leads, which is the fastest way to teach someone to
+      // ignore an alert that matters.
+      //
+      // What it does mean is real and worth being plain about: the prospect is
+      // NOT enrolled in this funnel's campaign and their tags are NOT updated,
+      // so a DSCR lead who returns for the FHA guide stays tagged as they were.
+      // Fixing that needs an update-by-email call, and this account's v3
+      // behaviour has to be verified live before anything here relies on it,
+      // the way the Mortgage fields were. It is a HubSpot-era job.
+      //
+      // The row still goes to the Debug tab, which is the trustworthy record of
+      // what happened to a lead, so a returning lead is visible when looked for
+      // rather than announced.
+      logDebug(SpreadsheetApp.openById(SPREADSHEET_ID), 'pushToBonzo: returning lead, already a prospect, not re-enrolled', data.email);
+    } else if (code < 200 || code >= 300) {
       alertFailure(
         'Bonzo push failed with HTTP ' + code + ' (lead IS in the sheet, but was not enrolled):\n' +
         resp.getContentText().slice(0, 500),
