@@ -30,7 +30,14 @@ export default function MortgageCalculatorApp() {
       <Calculator inputs={inputs} setInputs={setInputs} summary={summary} onOpenContact={openContact} />
       <Footer />
 
-      {contactOpen && <ContactModal currentInputs={inputs} onClose={closeContact} />}
+      {contactOpen && <ContactModal
+          currentInputs={inputs}
+          onClose={closeContact}
+          leadSource="mortgage-calculator-contact"
+          formId="mortgage-calculator-contact-modal"
+          prefillNumbers
+          nextStep="He has the numbers from your schedule, so the call can start with your actual payment."
+        />}
     </>
   );
 }

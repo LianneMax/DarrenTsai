@@ -202,12 +202,24 @@ describe('tags say what kind of lead this is', () => {
     ['real-estate-investing', ['real-estate-investing', 'case-study', 'priority:p5']],
     ['DebtConsolidation', ['debt-consolidation']],
     ['MortgageCalculator', ['mortgage-calculator']],
+    // The contact modal, one entry per page. All five posted
+    // 'MortgageCalculator' until 26 Sep 2026, so every one of these arrived in
+    // Bonzo tagged identically and Darren could not tell which page the lead
+    // had been reading when they asked him to call.
+    ['home-contact', ['contact', 'home']],
+    ['mortgage-calculator-contact', ['contact', 'mortgage-calculator']],
+    ['dscr-contact', ['contact', 'dscr']],
+    ['fha-contact', ['contact', 'fha']],
+    ['rei-contact', ['contact', 'real-estate-investing']],
   ])('%s is tagged for its funnel', (source, expected) => {
     const { prospect } = push({ source, email: 'a@example.com', state: 'CA' });
     for (const tag of expected) expect(prospect!.tags, source).toContain(tag);
   });
 
-  it.each(['dscr', 'fha', 'real-estate-investing', 'DebtConsolidation', 'MortgageCalculator'])(
+  it.each([
+    'dscr', 'fha', 'real-estate-investing', 'DebtConsolidation', 'MortgageCalculator',
+    'home-contact', 'mortgage-calculator-contact', 'dscr-contact', 'fha-contact', 'rei-contact',
+  ])(
     '%s says whether the state is one Darren is licensed in',
     (source) => {
       expect(push({ source, email: 'a@example.com', state: 'CA' }).prospect!.tags)
@@ -216,6 +228,14 @@ describe('tags say what kind of lead this is', () => {
         .toContain('unlicensed-state');
     },
   );
+
+  it('does not mistake a contact lead for the funnel it sits on', () => {
+    // 'dscr-contact' shares a prefix with 'dscr' but is not the DSCR magnet: it
+    // has no ratio, no guide to send, and should not be tagged 'investor'.
+    const { prospect } = push({ source: 'dscr-contact', email: 'a@example.com', state: 'CA' });
+    expect(prospect!.tags).not.toContain('investor');
+    expect(prospect!.tags).not.toContain('priority:p2');
+  });
 
   it('records the state itself, normalised, so it can be filtered on', () => {
     expect(push({ source: 'dscr', email: 'a@example.com', state: ' ca ' }).prospect!.tags)

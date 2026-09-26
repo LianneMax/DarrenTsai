@@ -4,11 +4,24 @@ import LeadForm from './LeadForm';
 interface Props {
   currentInputs: MortgageInputs;
   onClose: () => void;
+  /** One lead_source per page, so the Sheet and Bonzo can tell the pages apart. */
+  leadSource: string;
+  formId: string;
+  /** Only the mortgage calculator page pre-fills the optional loan numbers. */
+  prefillNumbers?: boolean;
+  nextStep: string;
 }
 
 // Lifted out of App.tsx unchanged so the homepage and the mortgage calculator
 // page open the identical modal rather than drifting apart.
-export default function ContactModal({ currentInputs, onClose }: Props) {
+export default function ContactModal({
+  currentInputs,
+  onClose,
+  leadSource,
+  formId,
+  prefillNumbers,
+  nextStep,
+}: Props) {
   return (
     <div
       className="modal-overlay"
@@ -30,7 +43,14 @@ export default function ContactModal({ currentInputs, onClose }: Props) {
           <p className="modal-sub">
             No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.
           </p>
-          <LeadForm currentInputs={currentInputs} onClose={onClose} />
+          <LeadForm
+            currentInputs={currentInputs}
+            onClose={onClose}
+            leadSource={leadSource}
+            formId={formId}
+            prefillNumbers={prefillNumbers}
+            nextStep={nextStep}
+          />
         </div>
       </div>
     </div>

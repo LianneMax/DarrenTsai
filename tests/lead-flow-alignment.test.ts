@@ -40,14 +40,21 @@ function leadSendingFiles(): string[] {
 }
 
 /**
- * The `source` values the site actually sends. Matches both the React object
- * literal (`source: 'dscr'`) and the landing pages' JSON (`"source": "dscr"`).
+ * The `source` values the site actually sends. Matches the React object literal
+ * (`source: 'dscr'`), the landing pages' JSON (`"source": "dscr"`), and the
+ * `leadSource="home-contact"` prop, because the contact modal is one shared
+ * component whose source is handed to it by whichever page mounts it. Without
+ * that last form a page could mount the modal with an unrouted source and this
+ * file would not notice.
  */
 function sourcesSentByTheSite(): Set<string> {
   const found = new Set<string>();
   for (const file of leadSendingFiles()) {
     const text = readFileSync(resolve(ROOT, file), 'utf8');
     for (const m of text.matchAll(/["']?\bsource["']?\s*:\s*["']([A-Za-z][\w-]*)["']/g)) {
+      found.add(m[1]);
+    }
+    for (const m of text.matchAll(/\bleadSource=["']([A-Za-z][\w-]*)["']/g)) {
       found.add(m[1]);
     }
   }
@@ -86,13 +93,36 @@ describe('every lead the site sends has somewhere to land', () => {
   });
 
   /**
-   * MortgageCalculator is the intended catch-all: it has no funnel-specific
+   * The contact modal is the intended catch-all: it has no funnel-specific
    * columns, so the generic Leads tab holds everything it sends. Any OTHER
    * unrouted source is a bug — it means a funnel's own fields are being dropped.
+   *
+   * There is one entry per page the modal lives on. Until 26 Sep 2026 there was
+   * a single 'MortgageCalculator' for all five, which is why the Sheet's Source
+   * column, the Bonzo tags and the GA4 event could not tell a DSCR investor from
+   * a homeowner after equity. Each of these has a tag branch in pushToBonzo,
+   * asserted below, so falling through here costs nothing but the tab.
    */
-  it('routes every funnel source explicitly, with only the generic form falling through', () => {
-    const unrouted = [...SITE_SOURCES].filter((s) => !ROUTES.has(s));
-    expect(unrouted).toEqual(['MortgageCalculator']);
+  const CONTACT_SOURCES = [
+    'dscr-contact',
+    'fha-contact',
+    'home-contact',
+    'mortgage-calculator-contact',
+    'rei-contact',
+  ];
+
+  it('routes every funnel source explicitly, with only the contact modal falling through', () => {
+    const unrouted = [...SITE_SOURCES].filter((s) => !ROUTES.has(s)).sort();
+    expect(unrouted).toEqual(CONTACT_SOURCES);
+  });
+
+  it('gives every contact source its own Bonzo tag branch', () => {
+    // Without this they land on the `else` and are all tagged
+    // 'mortgage-calculator' again, which is the defect this replaced.
+    const table = GAS.slice(GAS.indexOf('const CONTACT_SOURCES'), GAS.indexOf('const FUNNEL_CAMPAIGNS'));
+    for (const source of CONTACT_SOURCES) {
+      expect(table, `no Bonzo tag for ${source}`).toContain(`'${source}'`);
+    }
   });
 
   it('gives each routed source its own tab, so two funnels never share one', () => {

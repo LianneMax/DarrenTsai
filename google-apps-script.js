@@ -99,6 +99,23 @@ function isLicensedState(state) {
 // here now. Anything absent from this table falls back to BONZO_CAMPAIGN_ID, and
 // a lead with no campaign configured at all posts to bare /prospects rather than
 // to /prospects/campaign/undefined.
+/**
+ * The contact modal, per page.
+ *
+ * Every copy of it posted source:'MortgageCalculator' from every page until
+ * 26 Sep 2026, so the Sheet's Source column, the Bonzo tags and the GA4 event
+ * all said the same thing wherever the lead came from. These sources have no
+ * funnel-specific columns, so they still fall through doPost to the generic
+ * Leads tab, which holds every field they send; only the label changes.
+ */
+const CONTACT_SOURCES = {
+  'home-contact':                'home',
+  'mortgage-calculator-contact': 'mortgage-calculator',
+  'dscr-contact':                'dscr',
+  'fha-contact':                 'fha',
+  'rei-contact':                 'real-estate-investing'
+};
+
 const FUNNEL_CAMPAIGNS = {
   'dscr':                  { prop: 'BONZO_DSCR_CAMPAIGN_ID', fallback: DSCR_CAMPAIGN_ID },
   'fha':                   { prop: 'BONZO_FHA_CAMPAIGN_ID',  fallback: FHA_CAMPAIGN_ID },
@@ -473,7 +490,16 @@ function pushToBonzo(data) {
   const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
 
   const tags = [];
-  if (data.source === 'DebtConsolidation') tags.push('debt-consolidation', 'HELOC/cash-out interest');
+  if (Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, data.source)) {
+    // The contact modal, one entry per page it lives on. Every copy used to post
+    // 'MortgageCalculator', so a DSCR investor and a homeowner after equity
+    // arrived in Bonzo tagged identically and Darren had no way to open the
+    // right conversation. hasOwnProperty, not a bare lookup: data.source comes
+    // from the posted body and '__proto__' would otherwise find an inherited
+    // property.
+    tags.push('contact', CONTACT_SOURCES[data.source]);
+  }
+  else if (data.source === 'DebtConsolidation') tags.push('debt-consolidation', 'HELOC/cash-out interest');
   else if (data.source === 'newsletter') tags.push('newsletter');
   else if (data.source === 'QualifyForm') {
     tags.push('qualify-form');
@@ -507,6 +533,7 @@ function pushToBonzo(data) {
   if (
     LANDING_SOURCES.indexOf(data.source) !== -1 ||
     data.source === 'DebtConsolidation' ||
+    tags.indexOf('contact') !== -1 ||
     tags.indexOf('mortgage-calculator') !== -1
   ) {
     tags.push(isLicensedState(data.state) ? 'licensed-state' : 'unlicensed-state');
@@ -699,9 +726,39 @@ function sendFhaGuide(ss, data) {
   });
 }
 
+/**
+ * The contact modal's instant reply.
+ *
+ * Not a magnet: there is no attachment, and what it sends is the calendar, so
+ * someone who has just asked to be contacted can pick a time instead of waiting.
+ * Every magnet form sent the visitor something and this one, the form that asks
+ * the most, sent nothing at all.
+ *
+ * SKIPS rather than rejects when its Script Properties are missing, which is the
+ * one place this differs from postGuide's own handling. A guide is a promise the
+ * page made and a missing one is a failure worth alerting on; this email is not
+ * promised anywhere, so an unset property must not turn every contact lead's
+ * follow-up row red and mail Darren a LEAD PIPELINE FAILURE for a lead that
+ * arrived perfectly. It also means the Netlify function and this file can be
+ * deployed in either order.
+ */
+function sendContactConfirmation(ss, data) {
+  if (!Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, data.source)) return { outcome: 'skipped' };
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('NETLIFY_CONTACT_CONFIRM_URL') || !props.getProperty('NETLIFY_CONTACT_CONFIRM_KEY')) {
+    return { outcome: 'skipped' };
+  }
+  return postGuide(ss, 'sendContactConfirmation', 'NETLIFY_CONTACT_CONFIRM_URL', 'NETLIFY_CONTACT_CONFIRM_KEY', {
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
+    email: data.email || '',
+    message: data.message || ''
+  });
+}
+
 /** Run whichever guide applies to this lead (at most one does). */
 function sendGuideFor(ss, data) {
-  const results = [sendDscrGuide(ss, data), sendReiGuide(ss, data), sendFhaGuide(ss, data)];
+  const results = [sendDscrGuide(ss, data), sendReiGuide(ss, data), sendFhaGuide(ss, data), sendContactConfirmation(ss, data)];
   for (let i = 0; i < results.length; i++) {
     if (results[i] && results[i].outcome !== 'skipped') return results[i];
   }

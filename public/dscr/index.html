@@ -1619,9 +1619,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- CONTACT MODAL — canonical copy of the main site's Contact modal
      (App.tsx shell + LeadForm.tsx fields). Identical markup on /dscr,
-     /fha and /realestateinvesting. Submits source:"MortgageCalculator"
-     so the Apps Script writes it to the "Leads" tab and Bonzo tags it
-     mortgage-calculator + licensed-state/unlicensed-state + state:XX. -->
+     /fha and /realestateinvesting, apart from the source it posts.
+     Submits source:"dscr-contact": the Apps Script writes it to the "Leads"
+     tab and Bonzo tags it dscr-contact + contact +
+     licensed-state/unlicensed-state + state:XX. Every page used to post
+     "MortgageCalculator", so nothing downstream could tell a DSCR lead from
+     an equity lead on the homepage. -->
 <div class="lf-overlay" id="contactOverlay" role="dialog" aria-modal="true" aria-labelledby="lfTitle">
   <div class="lf-panel">
     <div class="lf-form" id="contactForm">
@@ -1635,7 +1638,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
       <div class="lf-body">
         <p class="lf-sub">No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.</p>
-        <p class="lf-note"><strong>* Required</strong>: All starred fields must be filled in before submitting.</p>
+        <p class="lf-note"><strong>* Required</strong>: name, email, phone and state. The rest is optional.</p>
 
         <div class="lf-row-2">
           <div class="lf-group">
@@ -1644,7 +1647,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <span class="lf-error" id="cFirstNameError"></span>
           </div>
           <div class="lf-group">
-            <label class="lf-label" for="cLastName">Last Name <span class="lf-req">*</span></label>
+            <label class="lf-label" for="cLastName">Last Name <span class="lf-optional">(optional)</span></label>
             <input class="lf-input" type="text" id="cLastName" autocomplete="family-name">
             <span class="lf-error" id="cLastNameError"></span>
           </div>
@@ -1672,14 +1675,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
 
         <div class="lf-group">
-          <label class="lf-label" for="cGoals">Your Goals <span class="lf-req">*</span></label>
+          <label class="lf-label" for="cGoals">Your Goals <span class="lf-optional">(optional)</span></label>
           <textarea class="lf-input lf-textarea" id="cGoals" rows="3" placeholder="e.g. Lower my monthly payments, pay off credit card debt, save for a rental property…"></textarea>
           <span class="lf-error" id="cGoalsError"></span>
         </div>
 
         <div class="lf-row-2">
           <div class="lf-group">
-            <label class="lf-label" for="cTarget">Target Outcome <span class="lf-req">*</span></label>
+            <label class="lf-label" for="cTarget">Target Outcome <span class="lf-optional">(optional)</span></label>
             <select class="lf-input" id="cTarget">
               <option value="">Select a target…</option>
               <option value="lower-payment">Lower my monthly payment</option>
@@ -1692,7 +1695,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <span class="lf-error" id="cTargetError"></span>
           </div>
           <div class="lf-group">
-            <label class="lf-label" for="cTimeline">Timeline <span class="lf-req">*</span></label>
+            <label class="lf-label" for="cTimeline">Timeline <span class="lf-optional">(optional)</span></label>
             <select class="lf-input" id="cTimeline">
               <option value="">Select a timeframe…</option>
               <option value="immediately">As soon as possible</option>
@@ -1754,9 +1757,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 // form code. Any nav/hamburger "Contact" button opens it via the
 // data-lf-contact attribute or the #openContactBtn id.
 //
-// Payload posts source:"MortgageCalculator" — the Apps Script doPost
+// Payload posts source:"dscr-contact" — the Apps Script doPost
 // else-branch writes it to the "Leads" tab, and pushToBonzo tags it
-// mortgage-calculator + licensed-state/unlicensed-state + state:XX.
+// dscr-contact + contact + licensed-state/unlicensed-state + state:XX.
 // A page can prefill the two optional loan fields by defining
 // window.LF_CONTACT_PREFILL = () => ({ loanAmount, annualRate }).
 // ============================================================
@@ -1976,15 +1979,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     var valid = true;
     if (!firstName) { setError('FirstName', 'Required'); valid = false; }
-    if (!lastName) { setError('LastName', 'Required'); valid = false; }
     if (!email) { setError('Email', 'Required'); valid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
     if (!phone) { setError('Phone', 'Required'); valid = false; }
     else if (!validPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
     if (!state) { setError('State', 'Required'); valid = false; }
-    if (!goals) { setError('Goals', 'Required'); valid = false; }
-    if (!target) { setError('Target', 'Required'); valid = false; }
-    if (!timeline) { setError('Timeline', 'Required'); valid = false; }
     if (!valid) return;
 
     var payload = {
@@ -1999,7 +1998,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       message: goals,
       target: target,
       timeline: timeline,
-      source: 'MortgageCalculator',
+      source: 'dscr-contact',
       timestamp: new Date().toISOString()
     };
 

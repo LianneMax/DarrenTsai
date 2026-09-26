@@ -33,7 +33,13 @@ export default function App() {
       <Education />
       <Footer />
 
-      {contactOpen && <ContactModal currentInputs={inputs} onClose={closeContact} />}
+      {contactOpen && <ContactModal
+          currentInputs={inputs}
+          onClose={closeContact}
+          leadSource="home-contact"
+          formId="home-contact-modal"
+          nextStep="In the meantime, the savings calculator above shows your full breakdown."
+        />}
     </>
   );
 }

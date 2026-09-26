@@ -270,3 +270,76 @@ describe('the daily digest', () => {
     expect(h.mail[0].to.split(',').length).toBe(2);
   });
 });
+
+/**
+ * The contact modal's instant reply.
+ *
+ * Every magnet form sent the visitor something. The contact modal, the form that
+ * asks the most, sent nothing at all until 26 Sep 2026, so a visitor who pressed
+ * "Send My Info to Darren" had no proof it arrived and no way to move first.
+ */
+describe('the contact confirmation', () => {
+  const CONTACT_LEAD = {
+    source: 'home-contact', firstName: 'Sam', lastName: 'Homeowner',
+    email: 'sam@example.com', phone: '7145550144', state: 'CA',
+    message: 'Want to clear two credit cards',
+  };
+
+  function configured(): Harness {
+    const harness = load();
+    harness.props.NETLIFY_CONTACT_CONFIRM_URL = 'https://realdarrentsai.com/api/send-contact-confirmation';
+    harness.props.NETLIFY_CONTACT_CONFIRM_KEY = 'test-key';
+    return harness;
+  }
+
+  it('emails a contact lead its confirmation and marks the row done', () => {
+    const c = configured();
+    c.queue(CONTACT_LEAD);
+    c.processFollowUps();
+
+    const sent = guideCalls(c);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].url).toContain('send-contact-confirmation');
+    expect(c.statusOf().status).toBe('done');
+  });
+
+  it('carries what the visitor wrote, so the reply is not generic', () => {
+    const c = configured();
+    c.queue(CONTACT_LEAD);
+    c.processFollowUps();
+    expect(String(guideCalls(c)[0].options.payload)).toContain('Want to clear two credit cards');
+  });
+
+  it.each(['dscr-contact', 'fha-contact', 'rei-contact', 'mortgage-calculator-contact'])(
+    'covers the copy of the modal on every page (%s)',
+    (source) => {
+      const c = configured();
+      c.queue({ ...CONTACT_LEAD, source });
+      c.processFollowUps();
+      expect(guideCalls(c).map((f) => f.url).join(' ')).toContain('send-contact-confirmation');
+    },
+  );
+
+  it('sends nothing on a magnet lead, which has its own guide', () => {
+    const c = configured();
+    c.queue(DSCR_LEAD);
+    c.processFollowUps();
+    const urls = guideCalls(c).map((f) => f.url).join(' ');
+    expect(urls).toContain('send-dscr-guide');
+    expect(urls).not.toContain('send-contact-confirmation');
+  });
+
+  it('skips quietly when its Script Properties are not set yet', () => {
+    // The one deliberate difference from the guide senders. A missing guide is a
+    // broken promise worth alerting on; this email is promised nowhere, so an
+    // unset property must not turn every contact lead red and mail Darren a LEAD
+    // PIPELINE FAILURE for a lead that arrived perfectly. It also lets the
+    // Netlify function and the Apps Script be deployed in either order.
+    h.queue(CONTACT_LEAD);
+    h.processFollowUps();
+
+    expect(guideCalls(h)).toHaveLength(0);
+    expect(h.statusOf().status).toBe('done');
+    expect(h.mail.map((m) => m.subject).join(' ')).not.toContain('FAILURE');
+  });
+});

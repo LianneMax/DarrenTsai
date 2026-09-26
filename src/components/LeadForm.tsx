@@ -14,6 +14,25 @@ const emailSchema = z.string().email();
 interface Props {
   currentInputs: MortgageInputs;
   onClose: () => void;
+  /**
+   * Where this copy of the modal lives. Every contact lead used to post
+   * the source 'MortgageCalculator' from every page, so the Sheet, the Bonzo tags
+   * and GA4 could not tell an equity lead on the homepage from a DSCR lead on
+   * `/dscr/`. One value per page and form, and Apps Script has a tag branch for
+   * each of them.
+   */
+  leadSource: string;
+  /** GA4 / dataLayer form id, likewise one per page. */
+  formId: string;
+  /**
+   * Only `/mortgage-calculator/` pre-fills the optional loan numbers, because
+   * there they are numbers the visitor typed themselves. Everywhere else they
+   * were the calculator's own defaults, and a real May lead is on record at
+   * $330,000 / 6.41% because of it: figures nobody gave us, logged as theirs.
+   */
+  prefillNumbers?: boolean;
+  /** What to point the visitor at afterwards. Was "the savings calculator above" on every page. */
+  nextStep: string;
 }
 
 interface FormState {
@@ -65,7 +84,14 @@ const TARGET_OPTIONS = [
 // reopened the modal in the same tab was shown a success screen they had not
 // earned and could not submit again, which silently suppressed second leads.
 // Success now lives purely in component state.
-export default function LeadForm({ currentInputs, onClose }: Props) {
+export default function LeadForm({
+  currentInputs,
+  onClose,
+  leadSource,
+  formId,
+  prefillNumbers = false,
+  nextStep,
+}: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const [form, setForm] = useState<FormState>(() => ({
@@ -74,8 +100,8 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     email: '',
     phone: '',
     state: '',
-    loanAmount: currentInputs.loanAmount.toLocaleString('en-US'),
-    annualRate: currentInputs.annualRate.toString(),
+    loanAmount: prefillNumbers ? currentInputs.loanAmount.toLocaleString('en-US') : '',
+    annualRate: prefillNumbers ? currentInputs.annualRate.toString() : '',
     termYears: currentInputs.termYears.toString(),
     goals: '',
     timeline: '',
@@ -86,7 +112,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const submitLead = useLeadSubmit({
-    formId: 'home-contact-modal',
+    formId,
     thankYouPath: '/thank-you/contact',
     thankYouTitle: 'Thank You — Contact',
   });
@@ -107,8 +133,14 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
 
   const validate = (): boolean => {
     const errs: FieldErrors = {};
+    // Required: first name, email, phone, state. Nothing else.
+    //
+    // It used to be eight, including a free-text "Your Goals" paragraph, a
+    // target and a timeline. Every one of those is a reason to close the modal,
+    // and none of them is needed to call someone back: Darren asks them on the
+    // call, better, in thirty seconds. They are still here and still sent when
+    // filled in, because a lead who volunteers their goal is a better lead.
     if (!form.firstName.trim()) errs.firstName = 'Required';
-    if (!form.lastName.trim())  errs.lastName  = 'Required';
     if (!form.email.trim()) {
       errs.email = 'Required';
     } else if (!emailSchema.safeParse(form.email.trim()).success) {
@@ -120,9 +152,6 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       errs.phone = 'Enter a valid US phone number';
     }
     if (!form.state)           errs.state    = 'Required';
-    if (!form.goals.trim())    errs.goals    = 'Required';
-    if (!form.timeline)        errs.timeline = 'Required';
-    if (!form.target)          errs.target   = 'Required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -145,7 +174,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       message:  form.goals.trim(),
       target:   form.target,
       timeline: form.timeline,
-      source: 'MortgageCalculator',
+      source: leadSource,
       timestamp: new Date().toISOString(),
     };
 
@@ -169,8 +198,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
         <div className="success-check" role="img" aria-label="Success">✓</div>
         <h3 className="success-heading">You're all set, {form.firstName}!</h3>
         <p className="success-body">
-          Darren will review your numbers and be in touch shortly. In the meantime,
-          check out the savings calculator above to see your full breakdown.
+          Darren will review your numbers and be in touch shortly. {nextStep}
         </p>
         <button
           onClick={openCalendly}
@@ -193,7 +221,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
       {/* Note */}
       <p className="modal-note">
-        <strong>* Required</strong>: All starred fields must be filled in before submitting.
+        <strong>* Required</strong>: name, email, phone and state. The rest is optional.
       </p>
 
       {status === 'error' && (
@@ -223,7 +251,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
         </div>
         <div className="input-group" style={{ marginBottom: 0 }}>
           <label htmlFor="lf-lastName" className="input-label">
-            Last Name <span style={{ color: 'var(--rose)' }}>*</span>
+            Last Name <span className="optional-tag">(optional)</span>
           </label>
           <input
             id="lf-lastName" type="text"
@@ -297,7 +325,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       {/* Goals */}
       <div className="input-group">
         <label htmlFor="lf-goals" className="input-label">
-          Your Goals <span style={{ color: 'var(--rose)' }}>*</span>
+          Your Goals <span className="optional-tag">(optional)</span>
         </label>
         <textarea
           id="lf-goals"
@@ -314,7 +342,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
       <div className="form-row-2" style={{ marginBottom: 16 }}>
         <div className="input-group" style={{ marginBottom: 0 }}>
           <label htmlFor="lf-target" className="input-label">
-            Target Outcome <span style={{ color: 'var(--rose)' }}>*</span>
+            Target Outcome <span className="optional-tag">(optional)</span>
           </label>
           <CustomSelect
             id="lf-target"
@@ -331,7 +359,7 @@ export default function LeadForm({ currentInputs, onClose }: Props) {
         </div>
         <div className="input-group" style={{ marginBottom: 0 }}>
           <label htmlFor="lf-timeline" className="input-label">
-            Timeline <span style={{ color: 'var(--rose)' }}>*</span>
+            Timeline <span className="optional-tag">(optional)</span>
           </label>
           <CustomSelect
             id="lf-timeline"
