@@ -697,6 +697,8 @@
   .lf-input.lf-has-prefix{padding-left:30px;}
   .lf-input.lf-has-suffix{padding-right:36px;}
   .lf-error{display:block;font-size:0.8rem;color:#d2566d;margin-top:5px;font-weight:500;}
+  .lf-hint{display:block;font-size:0.8rem;color:#6b7280;margin-top:5px;line-height:1.5;}
+  .lf-hint[hidden]{display:none;}
   .lf-submit{
     display:inline-flex;align-items:center;justify-content:center;gap:8px;
     width:100%;padding:15px;margin-top:8px;border:none;border-radius:8px;
@@ -838,7 +840,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <span class="hero-stat-rule-line"></span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
       </div>
-      <div class="hero-stat-num" id="statValueToday" data-target="170000">$0</div>
+      <!-- The real figure is in the HTML, and the count-up animates from it rather
+           than to it. It used to read $0 until the script ran, so anyone on a slow
+           connection, with JavaScript blocked, or reading the source saw a case
+           study whose headline number was zero. -->
+      <div class="hero-stat-num" id="statValueToday" data-target="170000">$170,000</div>
       <div class="hero-stat-label">Estimated value today</div>
       <div class="hero-stat-grid">
         <div>
@@ -946,6 +952,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               </select>
             </div>
             <span class="field-error" id="lStateError"></span>
+          <span class="lf-hint" id="lStateHint" hidden></span>
           </div>
           <button class="cta" id="submitLead" style="width:100%;font-size:0.95rem;font-weight:700;padding:15px 22px;box-shadow:0 8px 20px rgba(33,158,188,.3);">Send Me The Case Study</button>
           <p class="form-note">Free forever. Unsubscribe anytime.</p>
@@ -1711,6 +1718,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <option value="">Select your state…</option>
           </select>
           <span class="lf-error" id="cStateError"></span>
+          <span class="lf-hint" id="cStateHint" hidden></span>
         </div>
 
         <div class="lf-group">
@@ -1726,6 +1734,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               <option value="">Select a target…</option>
               <option value="lower-payment">Lower my monthly payment</option>
               <option value="pay-off-debt">Pay off high-interest debt</option>
+              <option value="access-equity">Access my home equity</option>
               <option value="buy-home">Purchase a home</option>
               <option value="refinance">Refinance my existing mortgage</option>
               <option value="invest">Investment property</option>
@@ -1828,6 +1837,39 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     opt.value = s[0];
     opt.textContent = s[1];
     stateSelect.appendChild(opt);
+  });
+
+  // Every state is accepted and always will be: an out-of-area lead is still
+  // worth having, pushToBonzo tags it unlicensed-state, and Darren refers it.
+  // What was missing was telling the visitor. Someone in New York filled in the
+  // form, got a green checkmark, and found out later.
+  var LICENSED_STATES = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'];
+  // The magnet form on this page says the same thing. Its select lives in the
+  // page's own script, so it is wired by id rather than by a shared handler.
+  (function () {
+    var magnet = document.getElementById('lState');
+    var magnetHint = document.getElementById('lStateHint');
+    if (!magnet || !magnetHint) return;
+    magnet.addEventListener('change', function () {
+      var chosen = magnet.value;
+      var known = !chosen || LICENSED_STATES.indexOf(chosen) !== -1;
+      magnetHint.hidden = known;
+      if (!known) {
+        magnetHint.textContent = 'Darren is licensed in ' + LICENSED_STATES.join(' · ') +
+          '. Send your details anyway and he will point you to someone who can help where you are.';
+      }
+    });
+  })();
+  stateSelect.addEventListener('change', function () {
+    var hint = el('cStateHint');
+    if (!hint) return;
+    var chosen = stateSelect.value;
+    var known = !chosen || LICENSED_STATES.indexOf(chosen) !== -1;
+    hint.hidden = known;
+    if (!known) {
+      hint.textContent = 'Darren is licensed in ' + LICENSED_STATES.join(' · ') +
+        '. Send your details anyway and he will point you to someone who can help where you are.';
+    }
   });
 
   // Searchable combobox over the native <select>, which stays in the DOM

@@ -23,6 +23,17 @@ export interface YearlySummary {
   totalPrincipal: number;
   totalInterest: number;
   endingBalance: number;
+  /**
+   * Where this calendar year's payments sit in the schedule.
+   *
+   * The rows used to be grouped in fixed blocks of twelve from payment one and
+   * labelled startYear + n, which is only correct for a loan starting in
+   * January. A mortgage starting in September 2026 counted twelve payments into
+   * 2026, so every label was a partial year adrift and the last one read 2055
+   * while the summary above it said the loan is paid off in September 2056.
+   */
+  firstPaymentIndex: number;
+  paymentCount: number;
 }
 
 export interface MortgageSummary {

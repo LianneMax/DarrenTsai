@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import { RATES_ENDPOINT, EMAIL, SAVINGS_RANGE } from '../config';
+import { RATES_ENDPOINT, EMAIL, SAVINGS_RANGE, LICENSED_STATES, isLicensedState } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
@@ -401,10 +401,24 @@ export default function DebtSavingsCalculator() {
         <div ref={headerRef} className="section-header reveal">
           <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Monthly Reset</span>
           <h2 className="section-title" style={{ color: 'var(--teal)' }}>Boost Your Monthly Cashflow</h2>
+          {/* Names the products by the words a viewer arrives with. /yt/heloc and
+              /yt/equity both land here, because HELOC and home-equity intent is
+              served by this funnel and has no page of its own yet, and someone
+              who has just watched a HELOC video needs to recognise that within a
+              second of landing. */}
           <p className="section-sub">
             You have a low mortgage rate but "expensive" credit card and other debt.
-            This tool shows you how to use your home's value to get rid of those high-interest
-            bills and keep more cash every month.
+            This tool compares your options for tapping your home's equity, a HELOAN or
+            a cash-out refinance, to clear those high-interest bills and keep more cash
+            every month.
+          </p>
+          {/* Said plainly rather than implied. A HELOC is a revolving line and
+              this tool prices the two fixed alternatives, so claiming to be a
+              HELOC calculator would be wrong; leaving the word out entirely sent
+              every HELOC viewer looking for a page that does not exist. */}
+          <p className="section-sub" style={{ marginTop: 10 }}>
+            Looking at a HELOC? This compares the two fixed alternatives Darren places most
+            often, so you can see what each one costs before you decide.
           </p>
           <ul style={{
             listStyle: 'none', padding: 0, margin: '16px auto 0',
@@ -951,6 +965,14 @@ export default function DebtSavingsCalculator() {
               <div>
                 <label className="input-label">State</label>
                 <StateSelect id="us-state" value={usState} onChange={setUsState} placeholder="Select…" />
+                {/* Said before they submit. The lead is still saved and Darren
+                    still refers it; what was missing was telling the visitor. */}
+                {usState && !isLicensedState(usState) && (
+                  <span className="email-hint">
+                    Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and
+                    he will point you to someone who can help where you are.
+                  </span>
+                )}
               </div>
             </div>
 

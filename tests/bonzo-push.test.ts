@@ -335,3 +335,30 @@ describe('the DSCR scenario note', () => {
     expect(push({ source: 'dscr', email: 'a@example.com', state: 'CA' }).note).toBeUndefined();
   });
 });
+
+/**
+ * What a contact lead said they want.
+ *
+ * 'access-equity' matters most: /yt/heloc and /yt/equity both land on the
+ * homepage, which has no HELOC page of its own, so this tag is the only place
+ * that intent is legible until one exists. Before 26 Sep 2026 the Target
+ * Outcome dropdown had no equity option at all, so a viewer who had just
+ * watched a HELOC video had nothing to pick that matched what they came for.
+ */
+describe('a contact lead carries its stated goal', () => {
+  it('tags the target and the timeline', () => {
+    const { prospect } = push({
+      source: 'home-contact', email: 'a@example.com', state: 'CA',
+      target: 'access-equity', timeline: '1-3mo',
+    });
+    expect(prospect!.tags).toContain('target:access-equity');
+    expect(prospect!.tags).toContain('timeline:1-3mo');
+  });
+
+  it('leaves them off when the visitor did not say', () => {
+    // Both are optional fields now, so an absent one must not become 'target:'.
+    const { prospect } = push({ source: 'home-contact', email: 'a@example.com', state: 'CA' });
+    expect(prospect!.tags.join(' ')).not.toContain('target:');
+    expect(prospect!.tags.join(' ')).not.toContain('timeline:');
+  });
+});

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import type { MortgageInputs } from '../types/mortgage';
-import { EMAIL, NMLS, DRE } from '../config';
+import { EMAIL, NMLS, DRE, LICENSED_STATES, isLicensedState } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openCalendly } from '../utils/calendly';
@@ -74,6 +74,11 @@ const TARGET_OPTIONS = [
   { value: '', label: 'Select a target…' },
   { value: 'lower-payment', label: 'Lower my monthly payment' },
   { value: 'pay-off-debt', label: 'Pay off high-interest debt' },
+  // /yt/heloc and /yt/equity send real traffic here, and until 26 Sep 2026 a
+  // viewer who had just watched a HELOC video had no option that matched what
+  // they came for. Until a dedicated page exists, this is how that intent is
+  // recorded: it reaches Bonzo as target:access-equity and is filterable.
+  { value: 'access-equity', label: 'Access my home equity' },
   { value: 'buy-home', label: 'Purchase a home' },
   { value: 'refinance', label: 'Refinance my existing mortgage' },
   { value: 'invest', label: 'Investment property' },
@@ -320,6 +325,15 @@ export default function LeadForm({
           }}
         />
         {errors.state && <span className="field-error">{errors.state}</span>}
+        {/* Said before they submit, not after. The lead is still saved and
+            Darren still refers it, but a visitor who finds out afterwards has
+            been let down by a form that looked like it was listening. */}
+        {form.state && !isLicensedState(form.state) && (
+          <span className="email-hint">
+            Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and he
+            will point you to someone who can help where you are.
+          </span>
+        )}
       </div>
 
       {/* Goals */}

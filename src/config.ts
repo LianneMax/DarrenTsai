@@ -33,3 +33,16 @@ export const COMPANY_NMLS = "1717191";
 export const SAVINGS_RANGE = "$900 – $1,500";
 export const SAVINGS_RANGE_BASIS =
   "Typical range for the debt loads this calculator was built around. Your own figure is calculated below. Individual results will vary.";
+
+// The eight states Darren is licensed in.
+//
+// The forms accept every state and always will: an out-of-area lead is still
+// worth having, Apps Script tags it `unlicensed-state` in Bonzo, and Darren
+// refers it. What was missing was telling the visitor. Someone in New York
+// filled in seven fields, got a green checkmark, and found out later, which is
+// a worse first impression than a sentence would have been.
+export const LICENSED_STATES = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'] as const;
+
+export function isLicensedState(abbr: string): boolean {
+  return (LICENSED_STATES as readonly string[]).indexOf(String(abbr || '').trim().toUpperCase()) !== -1;
+}

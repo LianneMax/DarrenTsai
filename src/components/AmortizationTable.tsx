@@ -14,11 +14,13 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
   const [allExpanded, setAllExpanded] = useState(false);
   const ref = useScrollReveal<HTMLDivElement>(120);
 
-  // Group monthly rows by year index
+  // Group monthly rows by calendar year. The summary carries its own slice
+  // bounds, because the first and last years are usually partial: a loan taken
+  // out in September has four payments in its first calendar year, not twelve.
   const yearGroups = useMemo(() =>
-    yearlyData.map((ys, i) => ({
+    yearlyData.map((ys) => ({
       summary: ys,
-      months: schedule.slice(i * 12, (i + 1) * 12),
+      months: schedule.slice(ys.firstPaymentIndex, ys.firstPaymentIndex + ys.paymentCount),
     })),
     [schedule, yearlyData]
   );
