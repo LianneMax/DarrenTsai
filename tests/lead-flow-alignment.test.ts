@@ -253,13 +253,15 @@ describe('audit fixes stay fixed', () => {
     // It collects State but was neither a LANDING_SOURCE nor tagged
     // mortgage-calculator, so an out-of-area lead there looked identical to a
     // workable one in both the Sheet and Bonzo.
-    expect(GAS).toContain("].concat(ATTR_HEADERS, ['Licensed?']);");
+    expect(GAS).toContain("].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS);");
     expect(GAS).toContain("data.source === 'DebtConsolidation' ||");
   });
 
-  it("puts that column last, because the tab's existing rows cannot shift", () => {
-    // The append-only rule: inserting 'Licensed?' where it reads best would
-    // change the meaning of every historical cell to its right.
+  it("appends that column rather than placing it where it reads best", () => {
+    // The append-only rule: inserting 'Licensed?' into the literal would change
+    // the meaning of every historical cell to its right. It was the last column
+    // when it was added; the triage columns were appended after it later, by
+    // the same rule, which is why this checks the append and not the position.
     const headers = /const DEBT_CONSOLIDATION_HEADERS = \[([\s\S]*?)\.concat\(([^;]*?)\);/.exec(GAS)!;
     expect(headers[1]).not.toContain("'Licensed?'"); // not in the literal
     expect(headers[2]).toContain("ATTR_HEADERS, ['Licensed?']"); // appended after
