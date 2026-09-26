@@ -71,8 +71,23 @@ let fontCache: { regular: ArrayBuffer; semiBold: ArrayBuffer; bold: ArrayBuffer 
 // scripts/build_dscr_pdf.py), not here. Only the signature block carries
 // any styling. Table-based layout, inline styles only: standard practice
 // for email client compatibility (no external stylesheets).
-function buildEmailHtml(lead: { firstName?: string }) {
+/**
+ * Did this lead actually run the calculator?
+ *
+ * The opt-in form sits below the calculator and can be submitted without it.
+ * It used to send the outputs anyway, so a lead who typed nothing got an email
+ * saying "here are the exact numbers you just ran" with a snapshot PDF reading
+ * DSCR 0.00 on a $0 loan at 7.63%. The page sends blanks now; this is the
+ * server side of the same decision, and it also covers any older payload still
+ * sitting in the follow-up queue.
+ */
+export function hasSnapshot(lead: { dscr?: string }) {
+  return (parseFloat(String(lead.dscr || "").replace(/[^0-9.]/g, "")) || 0) > 0;
+}
+
+function buildEmailHtml(lead: { firstName?: string; dscr?: string }) {
   const firstName = escapeHtml(lead.firstName || "there");
+  const snapshot = hasSnapshot(lead);
   const FONT = "Arial,Helvetica,sans-serif";
 
   return `<!doctype html>
@@ -82,7 +97,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
-<title>Your DSCR Rate Snapshot and Guide</title>
+<title>${snapshot ? "Your DSCR Rate Snapshot and Guide" : "Your DSCR Rate &amp; Cash Flow Guide"}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
   @media only screen and (max-width:620px){
@@ -93,7 +108,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
 </style>
 </head>
 <body style="margin:0;padding:0;background-color:#f5f7f9;">
-<span style="display:none;font-size:1px;color:#f5f7f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">The exact numbers you just ran, plus the full DSCR Rate and Cash Flow Guide. Page 3 is the one to read first.</span>
+<span style="display:none;font-size:1px;color:#f5f7f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${snapshot ? "The exact numbers you just ran, plus the full DSCR Rate and Cash Flow Guide. Page 3 is the one to read first." : "The full DSCR Rate and Cash Flow Guide. Page 3 is the one to read first."}</span>
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5f7f9;">
 <tr><td align="center" style="padding:32px 12px;">
@@ -119,7 +134,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
 
   <tr>
     <td class="pad" style="padding:36px 40px 8px 40px;font-family:${FONT};">
-      <div class="h1" style="font-size:28px;line-height:34px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.02em;color:#223d55;">Your DSCR rate snapshot and guide</div>
+      <div class="h1" style="font-size:28px;line-height:34px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.02em;color:#223d55;">${snapshot ? "Your DSCR rate snapshot and guide" : "Your DSCR rate &amp; cash flow guide"}</div>
     </td>
   </tr>
 
@@ -130,7 +145,9 @@ function buildEmailHtml(lead: { firstName?: string }) {
   </tr>
   <tr>
     <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
-      Here are the exact numbers you just ran, along with the full DSCR Rate &amp; Cash Flow Guide, attached below.
+      ${snapshot
+        ? "Here are the exact numbers you just ran, along with the full DSCR Rate &amp; Cash Flow Guide, attached below."
+        : "Here is the full DSCR Rate &amp; Cash Flow Guide, attached below. If you run the calculator on the page and send the form again, I will include a rate snapshot for your own property, or just reply with the rent and the price and I will work it out with you."}
     </td>
   </tr>
 
@@ -324,15 +341,24 @@ async function buildPersonalizedPdf(lead: {
 export default guideSender({
   name: "send-dscr-guide",
   apiKeyEnv: "DSCR_GUIDE_API_KEY",
-  subject: "[PDF] Your DSCR Rate Snapshot and Guide",
+  subject: (lead) =>
+    hasSnapshot(lead)
+      ? "[PDF] Your DSCR Rate Snapshot and Guide"
+      : "[PDF] Your DSCR Rate & Cash Flow Guide",
   buildEmailHtml,
   // The only sender that builds its attachments per lead rather than serving a
   // published file: the cover page is redrawn with this lead's numbers.
+  //
+  // Unless there are no numbers. A lead who submitted without touching the
+  // calculator gets the guide alone: a cover page reading DSCR 0.00 on a $0
+  // loan is worse than no cover page, because it looks like a quote.
   buildAttachments: async (lead) => {
     const { rateBytes, guideBytes } = await buildPersonalizedPdf(lead);
+    const guide = { filename: "dscr-cashflow-guide.pdf", content: toBase64(guideBytes) };
+    if (!hasSnapshot(lead)) return [guide];
     return [
       { filename: "your-dscr-rate.pdf", content: toBase64(rateBytes) },
-      { filename: "dscr-cashflow-guide.pdf", content: toBase64(guideBytes) },
+      guide,
     ];
   },
 });

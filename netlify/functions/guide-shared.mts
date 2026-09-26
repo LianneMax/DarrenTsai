@@ -40,7 +40,13 @@ export type GuideSpec = {
   name: string;
   /** Netlify env var holding this endpoint's shared secret. */
   apiKeyEnv: string;
-  subject: string;
+  /**
+   * A function when the subject depends on the lead. The DSCR sender needs it:
+   * an opt-in submitted with an untouched calculator gets the guide with no
+   * rate snapshot, so "Your DSCR Rate Snapshot and Guide" would name an
+   * attachment that is not there.
+   */
+  subject: string | ((lead: Record<string, string>) => string);
   buildEmailHtml: (lead: Record<string, string>) => string;
   /**
    * Built inside the try, so a failed template fetch or a pdf-lib error lands
@@ -110,7 +116,7 @@ export function guideSender(spec: GuideSpec) {
         body: JSON.stringify({
           from: FROM,
           to: [lead.email],
-          subject: spec.subject,
+          subject: typeof spec.subject === "function" ? spec.subject(lead) : spec.subject,
           html: spec.buildEmailHtml(lead),
           attachments,
         }),

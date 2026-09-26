@@ -187,3 +187,57 @@ describe.each(FUNCS)('%s', (name, handler, keyName, lead) => {
     expect(attachments[0].filename).toMatch(/\.(pdf|xlsx)$/);
   });
 });
+
+/**
+ * R3-3: an opt-in sent with an untouched calculator.
+ *
+ * The DSCR form sits below the calculator and can be submitted without it. It
+ * used to send the outputs anyway, so a lead who typed nothing got an email
+ * headed "here are the exact numbers you just ran" with a snapshot PDF reading
+ * DSCR 0.00 on a $0 loan at 7.63% — the starting tier rate and the slider's
+ * resting position, neither of which anyone chose. A cover page like that is
+ * worse than no cover page, because it looks like a quote.
+ */
+describe('the DSCR guide only claims a snapshot when there is one', () => {
+  const BASE = { firstName: 'Jane', lastName: 'Doe', email: 'jane@gmail.com' };
+
+  async function send(lead: Record<string, string>) {
+    const res = await (dscrHandler as Handler)(req('DSCR_GUIDE_API_KEY', lead), {});
+    expect(res.status).toBe(200);
+    return resendCalls[0].body as { subject: string; html: string; attachments: Array<{ filename: string }> };
+  }
+
+  it('attaches the rate snapshot when the calculator was run', async () => {
+    const sent = await send({ ...BASE, dscr: '1.25', downPayment: '20', rate: '7.1', loanAmount: '400000' });
+    expect(sent.attachments.map((a) => a.filename)).toEqual([
+      'your-dscr-rate.pdf',
+      'dscr-cashflow-guide.pdf',
+    ]);
+    expect(sent.subject).toContain('Snapshot');
+    expect(sent.html).toContain('the exact numbers you just ran');
+  });
+
+  it('sends the guide alone when the calculator was not', async () => {
+    const sent = await send({ ...BASE, dscr: '', downPayment: '', rate: '', loanAmount: '' });
+    expect(sent.attachments.map((a) => a.filename)).toEqual(['dscr-cashflow-guide.pdf']);
+  });
+
+  it('does not name a snapshot in the subject that is not attached', async () => {
+    const sent = await send({ ...BASE, dscr: '' });
+    expect(sent.subject).not.toContain('Snapshot');
+    expect(sent.subject).toContain('Cash Flow Guide');
+  });
+
+  it('does not claim numbers the visitor never ran', async () => {
+    const sent = await send({ ...BASE, dscr: '' });
+    expect(sent.html).not.toContain('the exact numbers you just ran');
+    expect(sent.html).toContain('run the calculator on the page');
+  });
+
+  it('treats a zero ratio as no snapshot, not as a ratio of zero', async () => {
+    // What the page used to send: DSCR 0.00 from an untouched calculator.
+    // Older payloads sitting in the follow-up queue still look like this.
+    const sent = await send({ ...BASE, dscr: '0.00', rate: '7.63', loanAmount: '$0' });
+    expect(sent.attachments.map((a) => a.filename)).toEqual(['dscr-cashflow-guide.pdf']);
+  });
+});
