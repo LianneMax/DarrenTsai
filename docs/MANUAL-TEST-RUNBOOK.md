@@ -98,17 +98,26 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 
 ### Case 1.4 - Debt Consolidation
 
-1. Go to the homepage. Work through all four steps of the savings calculator.
-2. Fill in the contact step. State: **CA**. Submit.
+1. Go to the homepage. **Before touching anything, try "Continue to Home Info".**
+   It should stop you and say a debt is needed. The two debt rows must be empty,
+   with grey `e.g. ...` placeholders, not a filled-in credit card and auto loan.
+2. Enter one debt. Try "See My Comparison" with step 2 blank: it should stop you
+   too. Then fill in step 2.
+3. Work through all four steps and fill in the contact step. State: **CA**. Submit.
 
 | Check | Expect |
 | --- | --- |
 | Site | Success card, "You're all set!" |
-| Sheet tab `Debt Consolidation` | New row with the savings figures. **`Licensed?` is the very last column, after the attribution columns.** That is correct, see section 4 |
+| Sheet tab `Debt Consolidation` | New row with the savings figures. **`Licensed?` sits after the attribution columns**, with `Test?`, `Status` and `Contacted` after it. That is correct, see section 4 |
+| Sheet `Test?` | **`TEST`**, because you used a `zztest+` address on a listed test account. A real lead's cell is blank |
 | Sheet `Mortgage Rate` / `Mortgage Term` | The values you typed in step 2, sitting **between `Mortgage Payment` and `Total Debt Balance`** |
 | An older row, e.g. Steven Salas | Still reads correctly: `29656.8` under `Total Debt Balance`, with the two new cells blank |
 | Bonzo tags | `debt-consolidation`, `HELOC/cash-out interest`, `licensed-state`, `state:CA` |
 | Email | **None.** This funnel has no guide |
+
+Check the savings figure on step 4 and on the mobile sticky bar: both should now
+echo **your own computed number**, not a `$900 - $1,500` range. The range only
+appears when nothing could be computed.
 
 In step 2, fill in the mortgage rate (e.g. `3.5`) and years remaining (e.g. `27`).
 On the results screen you should then see a third card, **"Refi, Same Payoff
@@ -122,14 +131,44 @@ report it.
 
 ### Case 1.5 - Contact modal
 
-1. Open the contact modal from the homepage nav. Fill it in. State: **CA**.
+1. Open the contact modal from the homepage nav.
+2. **Fill in only name, email, phone and state**, and submit. It should go
+   through: Goals, Target Outcome and Timeline are optional now, and marked so.
+3. Check the Loan Amount and Interest Rate fields are **blank**. They used to
+   carry the calculator's defaults, $330,000 and 6.41%, which is why a real May
+   lead is on record at a rate they never gave.
 
 | Check | Expect |
 | --- | --- |
 | Site | "You're all set, ZZTest!" |
 | Sheet tab `Leads` | New row, not a funnel tab |
-| Bonzo tags | `mortgage-calculator`, `licensed-state`, `state:CA` |
-| Email | None |
+| Sheet `Source` | **`home-contact`**, not `MortgageCalculator` |
+| Bonzo tags | `contact`, `home`, `licensed-state`, `state:CA` |
+| Email to the visitor | See below |
+
+**Repeat on `/dscr/`** and check `Source` reads `dscr-contact` and Bonzo tags
+read `contact` + `dscr`, **without** `investor` or `priority:p2`, which belong
+to the DSCR magnet and not to someone who used the contact form on that page.
+The same holds for `/fha/` (`fha-contact`), `/realestateinvesting/`
+(`rei-contact`) and `/mortgage-calculator/` (`mortgage-calculator-contact`).
+On `/mortgage-calculator/` the loan numbers **should** be pre-filled: there
+they are the visitor's own.
+
+**The confirmation email.** The modal now sends an instant reply carrying
+Darren's calendar. It stays silent until all three of these exist, and the Apps
+Script skips rather than fails without them, so no alert fires in the meantime:
+
+```
+Netlify env var   CONTACT_CONFIRM_API_KEY      = <new random string>
+Script Property   NETLIFY_CONTACT_CONFIRM_URL  = https://realdarrentsai.com/api/send-contact-confirmation
+Script Property   NETLIFY_CONTACT_CONFIRM_KEY  = <same random string>
+```
+
+Once they are set: the email should arrive within about a minute, address the
+visitor by first name, quote back whatever they wrote in Goals if they wrote
+anything, and its "Pick a time" link should carry
+`utm_source=email&utm_medium=confirmation&utm_campaign=contact-modal`. Before
+they are set, expect **no email**, no alert, and a `done` row in `Follow-ups`.
 
 ### Case 1.6 - Out of state
 
@@ -141,8 +180,13 @@ report it.
 | Bonzo | Prospect still created and still enrolled |
 | Bonzo tags | `unlicensed-state` and `state:NY` |
 
+| The form itself | On picking NY, a grey line appears under the State field naming the eight states. It must **not** block the submit |
+
 Darren is licensed in AZ, CA, FL, HI, OR, PA, TN and TX only. Out of area leads
 are kept and flagged, never dropped, because they are still worth a referral.
+What changed is that the visitor is told before they submit rather than finding
+out afterwards. Check this on a magnet form and a contact modal: they are
+separate implementations.
 
 ### Case 1.7 - Book a Call offers both options
 
@@ -156,7 +200,22 @@ are kept and flagged, never dropped, because they are still worth a referral.
 | Tapping the call option on a phone | Opens the dialler. After a real >60s call, it appears in CallRail within a few minutes |
 | Picking "Schedule a time" | The **calendar appears in the same panel**, not a popup and not a new tab. `calendly_open` fires in Tag Assistant |
 | The calendar | Loads within a couple of seconds. A "Back" link returns to the two options |
+| On a desktop | The panel widens to ~720px and the **date grid is visible without scrolling**. At 520px Calendly falls back to its narrow layout and the dates sit below the fold |
+| The two option lines | On their own lines. They used to run together as "Call (714) 942-4217Straight through, no waiting" |
+| The call option's sub-line | Reads "Call Darren directly". It used to promise "Straight through, no waiting", which a forwarded cell cannot always keep |
 | Escape, or clicking outside | Closes the panel |
+
+**The stall fallback.** In DevTools, block `calendly.com` (Network > right-click
+> Block request domain), then pick "Schedule a time". After **8 seconds** a
+block should appear **above** the frame offering the phone number and "Open the
+calendar in a new tab", and `calendly_stalled` should fire. The calendar frame
+stays where it is on purpose: the embed may still be one second away. Unblock
+and confirm the fallback does not appear on a normal load.
+
+**The prefill.** Submit any lead form first, then open the chooser from that
+same success card and pick "Schedule a time". Calendly's own form should already
+hold the name and email you just typed. Reload the page and open the chooser
+without submitting: it should ask for them as before.
 
 **Then book a real slot**, using a `zztest+` address. `calendly_booking` should
 fire in Tag Assistant the moment Calendly confirms. That event is the whole
@@ -170,6 +229,45 @@ tracked.
 
 Check this on at least the homepage and one landing page, since they run separate
 copies of the page code.
+
+### Case 1.8 - The FHA calculator is on the FHA page
+
+The page has been titled "FHA Mortgage Calculator" since it shipped while the
+calculator was a spreadsheet emailed after an opt-in, which most of this page's
+traffic (YouTube, on a phone) cannot open at all.
+
+1. Open `/fha/` and use the hero button, which should now read **"Work out my
+   payment"** and jump to the estimator rather than the opt-in form.
+
+| Check | Expect |
+| --- | --- |
+| On load | Every input **empty**, with `e.g. ...` placeholders, and no result: "Enter a purchase price and an interest rate" |
+| Price `400000`, down `5`, rate `7` | Base loan **$380,000**, upfront MIP **$6,650**, total financed **$386,650** |
+| Monthly MIP | **$161**, labelled `(0.50%)`. These are the same figures as the worked example in the explainer above, which is the point |
+| Down payment `3` | A line appears saying FHA needs at least 3.5%. It must **not** refuse the input |
+| Down payment `3.5` | The MIP label switches to `(0.55%)`, because LTV is now above 95% |
+| On a phone | The two cards stack and everything stays readable |
+
+The opt-in still sends the spreadsheet. The success copy should now say the
+spreadsheet is what arrives, not "your FHA payment breakdown", which was a
+breakdown of numbers the form never asked for.
+
+### Case 1.9 - A returning lead is not a failure
+
+1. Submit a **second** lead using an email address Bonzo already holds, e.g.
+   repeat an earlier test address rather than a fresh `+tag`.
+
+| Check | Expect |
+| --- | --- |
+| Alert inbox | **No** "LEAD PIPELINE FAILURE" email |
+| Sheet tab `Debug` | A row reading "returning lead, already a prospect, not re-enrolled", with the email |
+| The guide | **Still sent.** Coming back for a second guide is the whole point |
+| `Follow-ups` row | `done` |
+
+Known and not fixed here: the returning prospect is **not** enrolled in the new
+funnel's campaign and their Bonzo tags are not updated. A DSCR lead who returns
+for the FHA guide stays tagged as they were. That needs an update-by-email call
+and belongs with the HubSpot work.
 
 ---
 
@@ -332,6 +430,25 @@ and worth reporting:
    See case 1.7.
 4. **A lost lead with no alert.** If the site cannot reach the Sheet, Darren now
    gets a rescue email on every path that loses a lead, not just some of them.
+5. **Double submit, properly.** The greyed-out button was not enough: two clicks
+   in the same tick both got through, because the button's state is read from the
+   render already on screen. In DevTools, `b.click(); b.click()` should now send
+   one `/api/lead`, not two 2ms apart.
+6. **Example numbers submitted as real data.** No calculator arrives pre-filled
+   any more. If any of the three loads with numbers already in it, that is the
+   regression: those numbers get submitted as the visitor's own.
+7. **Three savings claims on one page.** The homepage said $1,500-$3,000/mo,
+   $900-$1,500/mo and $334/mo at the same time. One constant now, and the
+   visitor's own figure wherever there is one.
+8. **Every contact lead labelled MortgageCalculator.** One source per page now.
+   See case 1.5.
+9. **A forged booking could be counted.** The origin check on Calendly's message
+   was a substring, so `calendly.com.attacker.example` passed it. Exact match now.
+10. **The payment schedule ended a year early.** Yearly rows were blocks of twelve
+   from payment one, so a loan starting in September counted twelve payments into
+   its first calendar year. The last year of the table now matches the Payoff Date
+   card above it, and that card names the month of the final payment rather than
+   the month after.
 
 ---
 

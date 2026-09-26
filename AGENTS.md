@@ -37,6 +37,17 @@ Visitor (paid click / YouTube link / organic)
 Eight submit paths feed `/api/lead`: two React forms, three static landing-page
 magnet forms, and three copies of the contact modal.
 
+**Every copy of the contact modal posts its own `source`**, one per page:
+`home-contact`, `mortgage-calculator-contact`, `dscr-contact`, `fha-contact`,
+`rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
+Sheet's Source column, the Bonzo tags and the GA4 event said the same thing
+wherever the lead came from. They have no funnel-specific columns, so they still
+fall through `doPost` to the generic Leads tab; what they must each have is a
+branch in `CONTACT_SOURCES` (Apps Script) or they are all tagged
+`mortgage-calculator` again. `tests/lead-flow-alignment.test.ts` reads the
+`leadSource` prop as well as `source:` literals, so a page that mounts the modal
+with an unrouted source fails there.
+
 ## Tech stack
 
 | Layer | Choice |
@@ -49,7 +60,7 @@ magnet forms, and three copies of the contact modal.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 13 files / 456 tests, all passing |
+| Tests | Vitest + jsdom, 15 files / 541 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -59,7 +70,7 @@ magnet forms, and three copies of the contact modal.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (456 tests)
+npm test         # vitest run (541 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -117,6 +128,23 @@ comment naming the failure it prevents, often with a date and measured numbers
 (FRED latency, timeout budgets, verified Bonzo API behaviour). Match this. A
 change that removes a guard should say why the guard is no longer needed; a
 change that adds one should say what went wrong without it.
+
+**No calculator arrives pre-filled.** All three (homepage savings, DSCR, FHA)
+used to load with a worked example already in their inputs, and because an input
+looks no different once filled, a visitor who walked past it submitted the
+example as fact: $26,500 of debt nobody owed reached the Sheet and reached
+Darren, and three of the five DSCR rows are the untouched sample. Inputs start
+empty, every numeric placeholder reads `e.g. ...`, and each tool holds its
+result back until it has the fields the result is made of. The homepage steps
+are gated forwards only, including the pill tabs, which were the easier way
+past. `tests/debt-calculator-guards.test.ts` scans for all of it.
+
+**One savings claim, from one constant.** The homepage carried three at once:
+`$1,500–$3,000/mo` in the hero, `$900–$1,500/mo` in the sticky bar and step 4,
+and the tool's own default of `$334/mo`. `SAVINGS_RANGE` in `src/config.ts` is
+the single source; step 4 and the sticky bar echo the visitor's own computed
+figure when there is one, and the range is only the fallback. The figure itself
+needs Saxton sign-off.
 
 **Sheet columns are append-only.** New headers go at the *end* of a header array
 and the end of the matching row builder, never inserted mid-array.
@@ -191,7 +219,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 456 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 541 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.
@@ -212,8 +240,42 @@ or the lead lands on the generic tab with its fields dropped:
 - Tests count as passing only with the whole suite: `tests/booking-chooser.test.ts`
   loads the source once per file rather than per test, because the message
   listener is registered at evaluation and re-evaluating stacks listeners.
+- The booking panel offers a way out after 8s (`STALL_MS`): Calendly has no
+  failure state of its own, so a blocked iframe looks exactly like one about to
+  appear, forever, and by then the Call option has been replaced by the
+  calendar. The fallback is added **above** the frame rather than instead of it,
+  because the embed may still be one second away. `calendly_stalled` is tracked
+  so a run of stalls looks different from people simply not booking.
+- `DTBooking.identify({name, email})` prefills the calendar after a form has
+  already asked. In memory for the page view only: never stored, never sent
+  anywhere, only ever reaches Calendly's own form. An empty call clears it, so
+  one visitor's name cannot sit in the next one's calendar.
+- **A returning lead is not a failure.** Bonzo answers 422 "already exists" for
+  an email it already holds, which is what happens when someone who downloaded
+  one guide comes back for another. That was mailed to Darren as a LEAD PIPELINE
+  FAILURE until 26 Sep 2026, which is the fastest way to teach someone to ignore
+  the one alert standing between a lost lead and silence. It goes to the Debug
+  tab now. `isReturningProspect` matches on the status AND the wording, narrowly,
+  because 422 is also how a malformed body comes back. What it does not fix: a
+  returning prospect is still not enrolled in the new campaign and their tags are
+  not updated. That needs an update-by-email call whose v3 behaviour must be
+  verified live first, the way the Mortgage fields were.
+- **The contact modal's confirmation email is built but silent.** Every magnet
+  form sent the visitor something; the modal, the form that asks the most, sent
+  nothing. `netlify/functions/send-contact-confirmation.mts` carries the calendar
+  rather than an attachment, with UTMs on the link. It needs
+  `CONTACT_CONFIRM_API_KEY` (Netlify) plus `NETLIFY_CONTACT_CONFIRM_URL` and
+  `NETLIFY_CONTACT_CONFIRM_KEY` (Script Properties). `sendContactConfirmation`
+  **skips** rather than fails without them, which is the one deliberate
+  difference from the guide senders: a missing guide is a broken promise worth
+  alerting on, this email is promised nowhere, and an unset property must not
+  turn every contact lead's row red.
 - `docs/MANUAL-TEST-RUNBOOK.md` is the by-hand verification pass: every funnel,
   the attribution and Ads checks, and the gotchas that read as bugs but are not.
+- `audit.md` is the 26 Sep 2026 lead-path audit, ranked, with a file and line per
+  item. Items 6, 8, 14 and 16 are GTM, CallRail and YouTube settings that code
+  cannot reach; everything else in its Fix first table is fixed in code as of
+  `125c445` and awaiting a live check.
 - `/dscr/`, `/fha/` and `/realestateinvesting/` were discovered but not yet
   indexed by Google. Monitor, do not repeatedly resubmit.
 - **Nothing reads the Sheet except this script.** No Zapier, no Make, no
