@@ -1096,7 +1096,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <div class="grid">
             <div class="field">
               <label for="fhaPrice">Purchase Price</label>
-              <div class="input-shell"><span>$</span><input type="number" id="fhaPrice" placeholder="e.g. 400000" min="0"></div>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaPrice" placeholder="e.g. 400,000" min="0"></div>
             </div>
             <div class="field">
               <label for="fhaDown">Down Payment <span class="hint">3.5% minimum</span></label>
@@ -1108,11 +1108,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
             <div class="field">
               <label for="fhaTax">Annual Property Tax</label>
-              <div class="input-shell"><span>$</span><input type="number" id="fhaTax" placeholder="e.g. 4920" min="0"></div>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaTax" placeholder="e.g. 4,920" min="0"></div>
             </div>
             <div class="field">
               <label for="fhaIns">Annual Home Insurance</label>
-              <div class="input-shell"><span>$</span><input type="number" id="fhaIns" placeholder="e.g. 1500" min="0"></div>
+              <div class="input-shell"><span>$</span><input type="number" id="fhaIns" placeholder="e.g. 1,500" min="0"></div>
             </div>
             <div class="field">
               <label for="fhaHoa">Monthly HOA <span class="hint">if any</span></label>
@@ -1130,7 +1130,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
           <div class="fha-out-hero">
             <div class="fha-out-num" id="fhaTotal">$0</div>
-            <span class="fha-out-unit">per month, all in</span>
+            <span class="fha-out-unit" id="fhaTotalLabel">per month, all in</span>
           </div>
 
           <div class="fha-breakdown">
@@ -1571,6 +1571,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     var hoaEl = document.getElementById('fhaHoa');
     var resultCard = document.getElementById('fhaResult');
     var downNote = document.getElementById('fhaDownNote');
+    var waiting = document.getElementById('fhaWaiting');
+    var totalLabel = document.getElementById('fhaTotalLabel');
 
     var UFMIP_RATE = 0.0175;
     var MIP_HIGH_LTV = 0.0055;
@@ -1603,8 +1605,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         downNote.textContent = 'FHA needs at least ' + MIN_DOWN_PCT + '% down. The figures below use what you entered.';
       }
 
-      var ready = price > 0 && rate > 0;
+      // Down payment is required too.
+      //
+      // A blank one was read as 0, so price 400,000 and rate 6.5 alone showed
+      // "$2,759 per month, all in": a 100% loan, which FHA does not do, with $0
+      // tax and $0 insurance. Nothing was saved, but the visitor was shown a
+      // payment that cannot exist and would plan around it.
+      var ready = price > 0 && rate > 0 && downPct >= MIN_DOWN_PCT;
       resultCard.classList.toggle('is-waiting', !ready);
+      waiting.textContent = (price > 0 && rate > 0)
+        ? 'Add a down payment of at least ' + MIN_DOWN_PCT + '% to see your payment.'
+        : 'Enter a purchase price and an interest rate and your payment appears here.';
+
+      // "All in" is a promise about escrow. Until tax and insurance are in, the
+      // total is principal, interest and MIP only, and it says so rather than
+      // quietly understating the real payment by several hundred a month.
+      var escrowed = num(taxEl) > 0 && num(insEl) > 0;
+      totalLabel.textContent = escrowed
+        ? 'per month, all in'
+        : 'per month, before taxes and insurance';
 
       var downAmount = price * (downPct / 100);
       var baseLoan = Math.max(price - downAmount, 0);
@@ -1642,6 +1661,33 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       el.addEventListener('input', calculate);
     });
     calculate();
+
+    /**
+     * What the visitor put into the estimator, for the opt-in form to send.
+     *
+     * The page asks for six numbers and then sent Darren none of them, so a
+     * lead arrived with a name and a credit range and no idea what they were
+     * looking at. Every field is independent: a blank one stays blank rather
+     * than becoming a 0, because 0 down and $0 of insurance are both real
+     * answers somewhere and neither was given here.
+     */
+    window.FHA_ESTIMATE = function () {
+      function val(el) { return el.value.trim() === '' ? '' : (parseFloat(el.value) || 0); }
+      var price = num(priceEl), downPct = num(downEl), rate = num(rateEl);
+      var priced = price > 0 && rate > 0 && downPct >= MIN_DOWN_PCT;
+      return {
+        fhaPrice: val(priceEl),
+        fhaDownPct: val(downEl),
+        fhaRate: val(rateEl),
+        fhaTax: val(taxEl),
+        fhaInsurance: val(insEl),
+        fhaHoa: val(hoaEl),
+        // Only the figure the page actually stood behind.
+        fhaMonthlyPayment: priced
+          ? Math.round(parseFloat(document.getElementById('fhaTotal').textContent.replace(/[^0-9.]/g, '')) || 0)
+          : ''
+      };
+    };
 
     var cta = document.getElementById('fhaCalcCta');
     if (cta) {
@@ -1858,10 +1904,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const firstName = firstSpace === -1 ? name : name.slice(0, firstSpace);
     const lastName  = firstSpace === -1 ? '' : name.slice(firstSpace + 1);
 
+    // Whatever the visitor typed into the estimator above, when they used it.
+    var estimate = typeof window.FHA_ESTIMATE === 'function' ? window.FHA_ESTIMATE() : {};
+
     const payload = {
       firstName, lastName, email, phone, state, creditScore,
       source: 'fha',
       magnet: 'FHA Mortgage Calculator',
+      fhaPrice: estimate.fhaPrice || '',
+      fhaDownPct: estimate.fhaDownPct || '',
+      fhaRate: estimate.fhaRate || '',
+      fhaTax: estimate.fhaTax || '',
+      fhaInsurance: estimate.fhaInsurance || '',
+      fhaHoa: estimate.fhaHoa || '',
+      fhaMonthlyPayment: estimate.fhaMonthlyPayment || '',
       timestamp: new Date().toISOString(),
     };
 
@@ -2033,7 +2089,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <div class="lf-group">
           <label class="lf-label" for="cGoals">Your Goals <span class="lf-optional">(optional)</span></label>
-          <textarea class="lf-input lf-textarea" id="cGoals" rows="3" placeholder="e.g. Lower my monthly payments, pay off credit card debt, save for a rental property…"></textarea>
+          <textarea class="lf-input lf-textarea" id="cGoals" rows="3" placeholder="e.g. First home, about $400k, want to keep the payment under $2,800"></textarea>
           <span class="lf-error" id="cGoalsError"></span>
         </div>
 
@@ -2071,13 +2127,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <label class="lf-label" for="cLoanAmount">Loan Amount <span class="lf-optional">(optional)</span></label>
             <div class="lf-prefix-wrap">
               <span class="lf-prefix">$</span>
-              <input class="lf-input lf-has-prefix" type="text" id="cLoanAmount" inputmode="numeric">
+              <input class="lf-input lf-has-prefix" type="text" id="cLoanAmount" inputmode="numeric" placeholder="e.g. 400,000">
             </div>
           </div>
           <div class="lf-group">
             <label class="lf-label" for="cRate">Interest Rate <span class="lf-optional">(optional)</span></label>
             <div class="lf-suffix-wrap">
-              <input class="lf-input lf-has-suffix" type="number" step="0.01" min="0.1" max="30" id="cRate">
+              <input class="lf-input lf-has-suffix" type="number" step="0.01" min="0.1" max="30" id="cRate" placeholder="e.g. 6.5">
               <span class="lf-suffix">%</span>
             </div>
           </div>
@@ -2098,7 +2154,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="lf-body">
         <div class="lf-success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="lf-success-heading" id="contactSuccessHeading">You're all set!</h3>
-        <p class="lf-success-body">Darren will review your numbers and be in touch shortly.</p>
+        <p class="lf-success-body" id="contactSuccessBody">Darren will reach out within 1 business day.</p>
         <button type="button" class="lf-success-cta" id="contactSuccessCalendly">Book a Free Strategy Call</button>
         <button type="button" class="lf-success-close" id="closeContactSuccess">Close</button>
       </div>
@@ -2384,7 +2440,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       phone: phone,
       state: state,
       loanAmount: parseFloat(el('cLoanAmount').value.replace(/[^0-9.]/g, '')) || 0,
-      termYears: 30,
+      // Blank, not 30. No Contact form on this site asks for a term.
+      termYears: '',
       annualRate: parseFloat(el('cRate').value) || 0,
       message: goals,
       target: target,
@@ -2434,6 +2491,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         window.DT.track('virtual_page_view', { page_path: '/thank-you/fha-contact', page_title: 'Thank You — Contact' });
       }
       el('contactSuccessHeading').textContent = "You're all set, " + firstName + '!';
+      // Only claim numbers when numbers were sent. The four-field submit is the
+      // common case, and it was telling someone who gave none that Darren would
+      // review theirs.
+      var bodyEl = el('contactSuccessBody');
+      if (bodyEl) {
+        bodyEl.textContent = (el('cLoanAmount').value.trim() || el('cRate').value.trim())
+          ? 'Darren will review your numbers and be in touch shortly.'
+          : 'Darren will reach out within 1 business day.';
+      }
       // The success state's next button is "Book a Free Strategy Call". Hand the
       // chooser the two fields Calendly would otherwise ask for again, which is
       // where a booking gets abandoned. In memory for this page view only.

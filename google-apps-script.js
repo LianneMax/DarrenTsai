@@ -274,9 +274,26 @@ const SOURCE_SCHEMAS = {
   },
   'fha': {
     tab: 'FHA',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Credit Score', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
+    // The estimator's inputs are appended AFTER the triage columns, which is
+    // where the append-only rule puts anything added later. The page has had a
+    // payment estimator since 125c445 and sent Darren none of it, so an FHA
+    // lead arrived as a name and a credit range with no idea what they were
+    // looking at. Each cell is blank unless the visitor filled that field.
+    headers: COMMON_LEAD.concat(
+      ['Magnet', 'Source', 'Credit Score', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS,
+      ['Purchase Price', 'Down Payment %', 'Rate', 'Annual Tax', 'Annual Insurance', 'Monthly HOA', 'Est. Monthly Payment']
+    ),
     row: function (d) {
-      return commonLeadRow(d).concat([d.magnet || '', d.source, d.creditScore || '', licensedCell(d)], attrRow(d), triageRow(d));
+      return commonLeadRow(d).concat(
+        [d.magnet || '', d.source, d.creditScore || '', licensedCell(d)],
+        attrRow(d),
+        triageRow(d),
+        [
+          d.fhaPrice || '', d.fhaDownPct || '', d.fhaRate || '',
+          d.fhaTax || '', d.fhaInsurance || '', d.fhaHoa || '',
+          d.fhaMonthlyPayment || ''
+        ]
+      );
     }
   },
   'real-estate-investing': {
