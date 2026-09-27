@@ -322,11 +322,20 @@ const DEBT_CONSOLIDATION_HEADERS = [
   'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
   'Refi Monthly Payment', 'Refi Monthly Savings',
   'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
-  // 'HELOAN Credit Tier' and 'HELOAN Term' are appended below rather than
-  // placed next to the other HELOAN columns, where they read best. This tab
-  // already holds rows written under the current order and the append-only
+  // 'HELOAN Credit Tier' and 'HELOAN Term' are appended at the very END rather
+  // than placed next to the other HELOAN columns, where they read best. This
+  // tab already holds rows written under the current order and the append-only
   // rule is what keeps them readable.
-].concat(ATTR_HEADERS, ['Licensed?'], ['HELOAN Credit Tier', 'HELOAN Term'], TRIAGE_HEADERS);
+  //
+  // AFTER the triage columns, not before them. They went in before on @38 and
+  // it corrupted the live tab: the triage columns were already the last three
+  // on the sheet, so ensureHeaders, which only writes PAST the current last
+  // column, appended 'Status' and 'Contacted' a second time and the two new
+  // names never appeared. Rows were then written in this file's order against
+  // the sheet's older order, so a lead's TEST flag landed under Contacted and a
+  // chosen credit tier would have landed under Test?. "Append" means the end of
+  // the whole list, not the end of the part that reads sensibly.
+].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS, ['HELOAN Credit Tier', 'HELOAN Term']);
 
 
 function getOrCreateSheet(ss, name, headers) {
@@ -989,11 +998,15 @@ function doPost(e) {
       ].concat(
         attrRow(data),
         [licensedCell(data)],
+        triageRow(data),
         // What the HELOAN figures above were priced at. Without them a saving
         // quoted at the 680+ tier is indistinguishable from one quoted at 580,
         // and the tool used to pick 680+ on the visitor's behalf.
-        [data.heloanCreditTier || '', data.heloanTermYears || ''],
-        triageRow(data)
+        //
+        // Last, matching DEBT_CONSOLIDATION_HEADERS. These two sat before
+        // triageRow on @38, which put every cell from Test? onwards one or two
+        // columns out of step with its header.
+        [data.heloanCreditTier || '', data.heloanTermYears || '']
       ));
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);

@@ -253,7 +253,7 @@ describe('audit fixes stay fixed', () => {
     // It collects State but was neither a LANDING_SOURCE nor tagged
     // mortgage-calculator, so an out-of-area lead there looked identical to a
     // workable one in both the Sheet and Bonzo.
-    expect(GAS).toContain("].concat(ATTR_HEADERS, ['Licensed?'], ['HELOAN Credit Tier', 'HELOAN Term'], TRIAGE_HEADERS);");
+    expect(GAS).toContain("].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS, ['HELOAN Credit Tier', 'HELOAN Term']);");
     expect(GAS).toContain("data.source === 'DebtConsolidation' ||");
   });
 
