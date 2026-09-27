@@ -375,13 +375,18 @@ describe('the calendar gets a width Calendly can lay out in', () => {
     expect(config.url).toContain('hide_event_type_details=1');
   });
 
-  it('leaves the phone layout alone', () => {
+  it('drops it on a phone too, where there is least room for it', () => {
+    // R8-6 reversed the original R6-1 rule here. Hiding the block from 780px up
+    // left it in place on exactly the smallest screen: on a phone it takes
+    // about 350px of a 585px panel, so the visitor scrolled inside the panel to
+    // reach a day. It is now hidden at every width except the two-column one,
+    // where it is the left column.
     atWidth(390);
     widgetReady();
     booking.open({});
     schedBtn()!.click();
     const config = initInline.mock.calls[0][0] as InlineConfig;
-    expect(config.url).not.toContain('hide_event_type_details');
+    expect(config.url).toContain('hide_event_type_details=1');
   });
 
   it('hides the GDPR banner at every width, since it covers the top of the frame', () => {

@@ -278,12 +278,8 @@
     if (e.key === 'Escape') close();
   }
 
-  /**
-   * The width at which the card is wide enough for Calendly's two-column
-   * layout, and the width below which it is a phone and left alone.
-   */
+  /** The width at which the card is wide enough for Calendly's two columns. */
   var SIDE_BY_SIDE_MIN = 1200;
-  var DETAILS_HIDE_MIN = 780;
 
   /**
    * The URL the inline widget is given. Embed options only, no visitor data.
@@ -301,10 +297,13 @@
    * read out of devtools.
    *
    * hide_event_type_details is decided here rather than in CSS because it is
-   * Calendly's own content: between the two thresholds the card stays 720px and
-   * gets the stacked layout whatever we do, so the avatar and description block
-   * is only pushing the calendar down. Above SIDE_BY_SIDE_MIN that same block
-   * IS the left column, so it stays.
+   * Calendly's own content: at any width below SIDE_BY_SIDE_MIN the panel gets
+   * a stacked layout whatever we do, so the avatar and description block is
+   * only pushing the calendar down. It was hidden from 780px up at first, which
+   * left it in place on exactly the screen with least room for it: on a phone
+   * the block takes about 350px of a 585px panel, so the visitor scrolled
+   * inside the panel to reach a day. Above SIDE_BY_SIDE_MIN that same block IS
+   * the left column, so there it stays.
    *
    * hide_gdpr_banner: the banner covers the top of the frame for EU visitors,
    * on an embed they have already chosen to open.
@@ -312,7 +311,7 @@
   function embedUrl() {
     var parts = ['hide_gdpr_banner=1'];
     var w = window.innerWidth || 0;
-    if (w >= DETAILS_HIDE_MIN && w < SIDE_BY_SIDE_MIN) parts.push('hide_event_type_details=1');
+    if (w < SIDE_BY_SIDE_MIN) parts.push('hide_event_type_details=1');
     return CALENDLY_URL + '?' + parts.join('&');
   }
 
