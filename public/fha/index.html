@@ -241,8 +241,11 @@
   .cselect-panel.open{opacity:1;visibility:visible;transform:translateY(0);}
   .cselect-search{border-bottom:1px solid var(--line);padding:6px;}
   .cselect-search input{
+    /* 16px, not 0.9rem: iOS Safari zooms the page whenever a focused field is
+       under 16px, and the visitor has to pinch back out in the middle of the
+       form. Every other field on the site is already 16px. */
     width:100%;border:none;outline:none;background:var(--light-bg);border-radius:6px;
-    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:0.9rem;color:var(--text-dark);
+    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:16px;color:var(--text-dark);
   }
   .cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
   .cselect-option{
@@ -905,8 +908,11 @@
   .lf-cselect-panel.open{display:block;}
   .lf-cselect-search{border-bottom:1px solid #e5e7eb;padding:6px;}
   .lf-cselect-search input{
+    /* 16px, not 0.9rem: iOS Safari zooms the page whenever a focused field is
+       under 16px, and the visitor has to pinch back out in the middle of the
+       form. Every other field on the site is already 16px. */
     width:100%;border:none;outline:none;background:#f5f7f9;border-radius:6px;
-    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:0.9rem;color:#1a1a2e;
+    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:16px;color:#1a1a2e;
   }
   .lf-cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
   .lf-cselect-option{
