@@ -173,9 +173,16 @@ export default function LeadForm({
       email:     form.email.trim(),
       phone:     form.phone.trim(),
       state:     form.state,
-      loanAmount: parseFloat(form.loanAmount.replace(/[^0-9.]/g, '')) || 0,
-      termYears:  parseInt(form.termYears) || 30,
-      annualRate: parseFloat(form.annualRate) || 0,
+      // Blank, not 0 and not 30.
+      //
+      // No Contact form on this site asks for a term, and `|| 30` wrote 30 into
+      // the Leads tab for every one of them. The term only means something here
+      // when the visitor has actually used the mortgage calculator, which is
+      // what prefillNumbers says. Loan and rate are optional fields: a blank one
+      // is a question nobody answered, not a $0 loan at 0%.
+      loanAmount: parseFloat(form.loanAmount.replace(/[^0-9.]/g, '')) || '',
+      termYears:  prefillNumbers ? (parseInt(form.termYears) || '') : '',
+      annualRate: parseFloat(form.annualRate) || '',
       message:  form.goals.trim(),
       target:   form.target,
       timeline: form.timeline,
@@ -202,8 +209,13 @@ export default function LeadForm({
       <div className="success-state" style={{ padding: '16px 0 8px' }}>
         <div className="success-check" role="img" aria-label="Success">✓</div>
         <h3 className="success-heading">You're all set, {form.firstName}!</h3>
+        {/* Only claim numbers when numbers were sent. The four-field submit is
+            the common case and it says "your numbers" to someone who gave
+            none, which is the same promise the page could not keep elsewhere. */}
         <p className="success-body">
-          Darren will review your numbers and be in touch shortly. {nextStep}
+          {form.loanAmount.trim() || form.annualRate.trim()
+            ? `Darren will review your numbers and be in touch shortly. ${nextStep}`
+            : 'Darren will reach out within 1 business day.'}
         </p>
         <button
           onClick={openCalendly}
@@ -401,6 +413,7 @@ export default function LeadForm({
             <input
               id="lf-loanAmount" type="text"
               className="form-input input-has-prefix"
+              placeholder="e.g. 400,000"
               value={form.loanAmount}
               onChange={(e) => {
                 const raw = e.target.value.replace(/[^0-9]/g, '');
@@ -418,6 +431,7 @@ export default function LeadForm({
             <input
               id="lf-rate" type="number" step="0.01" min="0.1" max="30"
               className="form-input input-has-suffix"
+              placeholder="e.g. 6.5"
               value={form.annualRate} onChange={set('annualRate')}
             />
             <span className="input-suffix">%</span>

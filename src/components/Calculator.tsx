@@ -79,7 +79,11 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
     inputs.loanAmount.toLocaleString('en-US')
   );
 
-  const interestRatio = summary.totalInterest / inputs.loanAmount;
+  // Nothing is shown until there is a loan and a rate to show it for. With
+  // both empty the summary is all zeros and the payoff date is a real date,
+  // which reads as a calculated answer rather than an empty form.
+  const hasLoan = inputs.loanAmount > 0 && inputs.annualRate > 0;
+  const interestRatio = inputs.loanAmount > 0 ? summary.totalInterest / inputs.loanAmount : 0;
   const interestPct = Math.round(interestRatio * 100);
 
   const handleLoanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +133,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                   value={loanDisplay}
                   onChange={handleLoanChange}
                   onBlur={handleLoanBlur}
-                  placeholder="330,000"
+                  placeholder="e.g. 330,000"
                 />
               </div>
             </div>
@@ -166,7 +170,8 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                   min="0.1"
                   max="30"
                   className="form-input input-has-suffix"
-                  value={inputs.annualRate}
+                  placeholder="e.g. 6.5"
+                  value={inputs.annualRate || ''}
                   onChange={(e) =>
                     setInputs((prev) => ({ ...prev, annualRate: parseFloat(e.target.value) || 0 }))
                   }
@@ -226,6 +231,14 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
               Payment Summary
             </h3>
 
+            {!hasLoan && (
+              <p className="section-sub" style={{ textAlign: 'left', margin: '4px 0 0' }}>
+                Enter a loan amount and an interest rate and your payment, total interest
+                and payoff date appear here.
+              </p>
+            )}
+
+            {hasLoan && (
             <div className="stats-grid">
               <StatCard
                 label="Est. Principal &amp; Interest"
@@ -261,7 +274,9 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 style={{ gridColumn: 'span 2' }}
               />
             </div>
+            )}
 
+            {hasLoan && (
             <div className="insight-callout">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
@@ -272,6 +287,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 <strong>{interestPct}%</strong> in interest relative to the amount borrowed.
               </span>
             </div>
+            )}
 
             <a
               href="#contact"
@@ -290,12 +306,14 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
 
         {/* Chart. The placeholder reserves the chart's height so loading it
             does not shove the table down the page and cost us CLS. */}
-        <Suspense fallback={<div style={{ height: 360 }} aria-hidden="true" />}>
-          <AmortizationChart schedule={summary.schedule} yearlyData={summary.yearlyData} />
-        </Suspense>
+        {hasLoan && (
+          <Suspense fallback={<div style={{ height: 360 }} aria-hidden="true" />}>
+            <AmortizationChart schedule={summary.schedule} yearlyData={summary.yearlyData} />
+          </Suspense>
+        )}
 
         {/* Table */}
-        <AmortizationTable schedule={summary.schedule} yearlyData={summary.yearlyData} />
+        {hasLoan && <AmortizationTable schedule={summary.schedule} yearlyData={summary.yearlyData} />}
 
         {/* Legal footnote */}
         <p style={{

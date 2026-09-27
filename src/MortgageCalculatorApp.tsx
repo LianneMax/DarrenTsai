@@ -35,7 +35,9 @@ export default function MortgageCalculatorApp() {
           onClose={closeContact}
           leadSource="mortgage-calculator-contact"
           formId="mortgage-calculator-contact-modal"
-          prefillNumbers
+          // Only once the calculator holds the visitor's own numbers. With the
+          // inputs opening empty this is exactly "was the calculator used".
+          prefillNumbers={inputs.loanAmount > 0 && inputs.annualRate > 0}
           nextStep="He has the numbers from your schedule, so the call can start with your actual payment."
         />}
     </>

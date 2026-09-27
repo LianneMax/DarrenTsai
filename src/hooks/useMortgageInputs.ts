@@ -11,10 +11,21 @@ const SESSION_KEY = 'dt_mortgage_inputs';
 
 const now = new Date();
 
+// The calculator opens empty.
+//
+// It used to open on a real $330,000 loan at 6.41%, and the Contact modal on
+// that page copies whatever the calculator holds. A visitor who opened Contact
+// without touching a slider therefore sent $330,000 / 6.41% / 30 years as
+// their own figures, which is how a real May lead came to be logged at 6.41%.
+//
+// Term and start date keep their positions. They are tool settings the visitor
+// can see and change, not claims about the person, and a term dropdown with
+// nothing in it is just awkward. They only go out with a lead once the
+// calculator has actually been used.
 export const defaultInputs: MortgageInputs = {
-  loanAmount: 330000,
+  loanAmount: 0,
   termYears: 30,
-  annualRate: 6.41,
+  annualRate: 0,
   startMonth: now.getMonth() + 1,
   startYear: now.getFullYear(),
 };
