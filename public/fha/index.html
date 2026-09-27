@@ -597,7 +597,18 @@
   .fha-result.is-waiting .fha-note{display:none;}
   .fha-note{font-size:0.8rem;line-height:1.6;color:var(--text-muted);margin:14px 0 0;}
   .explainer-section{padding-top:72px;padding-bottom:64px;}
-  .explainer-grid{display:grid;grid-template-columns:1fr 460px;gap:56px;align-items:end;}
+  /* minmax(0,...) on both, and a breakpoint with room to spare.
+     ---------------------------------------------------------------------
+     `1fr` is minmax(auto,1fr), so the left column could not go below its own
+     min-content width: at 850px the surplus went outside the page instead of
+     inside the column, the page scrolled to 1043px and the lead form was cut
+     off at the right edge. It still overhung by ~40px at 1024px.
+
+     The single-column breakpoint was 820px, which is far too late: 460px of
+     form plus a 56px gap leaves the left column nothing worth reading well
+     before that, so it now stacks at 1080px. Between 1081px and the widths
+     where the grid is comfortable, minmax keeps it inside the page. */
+  .explainer-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,460px);gap:56px;align-items:end;}
   .explainer-left h2{margin-bottom:14px;}
   .explainer-lede{font-size:1rem;line-height:1.6;color:var(--text-muted);max-width:60ch;margin:0 0 36px;}
   .explainer-numbered{display:grid;grid-template-columns:1fr 1fr;gap:28px 32px;}
@@ -640,6 +651,14 @@
     padding:10px 16px;gap:10px;align-items:center;
   }
   .mobile-sticky-bar .cta{flex:1;padding:11px 14px;font-size:0.88rem;}
+
+  /* R8-1. One column while the form still has its full width. The sticky
+     position goes with the second column: pinned inside a single-column flow
+     it would sit over the content below it. */
+  @media(max-width:1080px){
+    .explainer-grid{grid-template-columns:1fr;gap:32px;}
+    .explainer-form{order:-1;position:static;}
+  }
 
   @media(max-width:820px){
     .hero{padding:40px 0;}
