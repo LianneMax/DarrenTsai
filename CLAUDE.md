@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 15 files / 541 tests, all passing |
+| Tests | Vitest + jsdom, 17 files / 643 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -219,7 +219,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 541 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 643 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.
@@ -247,9 +247,27 @@ or the lead lands on the generic tab with its fields dropped:
   because the embed may still be one second away. `calendly_stalled` is tracked
   so a run of stalls looks different from people simply not booking.
 - `DTBooking.identify({name, email})` prefills the calendar after a form has
-  already asked. In memory for the page view only: never stored, never sent
-  anywhere, only ever reaches Calendly's own form. An empty call clears it, so
-  one visitor's name cannot sit in the next one's calendar.
+  already asked. Every submit path calls it, the three guide forms included:
+  they did not until 27 Sep, so anyone who asked for a guide and then booked met
+  an empty calendar form. Held in memory and in `sessionStorage` (`dt_known_lead`),
+  per tab, because in memory alone it died on a reload and on every move to
+  another page of the site. Name and email only, never sent anywhere, only ever
+  handed to Calendly's own form. An empty call clears both, so one visitor's name
+  cannot sit in the next one's calendar.
+- **Prefill goes through `config.prefill` and nowhere else.** It was also put on
+  the embed URL for a while so the iframe `src` could be read in devtools, but
+  `widget.js` serialises `prefill` into that same `src`, so each field arrived
+  twice and nothing documents which copy wins. On 27 Sep the `src` carried both
+  and Calendly's details step was still empty. The query string is still the only
+  route for the new-tab fallback, which has no widget and so no `prefill`.
+- **The calendar's width is load-bearing.** Calendly picks its layout from the
+  width of the element it is handed, not the viewport: 1100px and up is side by
+  side, 650 to 1099px is stacked behind an avatar and description block, under
+  650px is the phone layout. The panel was 720px, so every desktop visitor got
+  the stacked one with a blank band above it and no date visible without
+  scrolling inside the panel. Above 1200px the card is 1160px so the frame clears
+  1100px; between 780 and 1199px it stays 720px and passes
+  `hide_event_type_details=1` instead, which puts the month grid at the top.
 - **A returning lead is not a failure.** Bonzo answers 422 "already exists" for
   an email it already holds, which is what happens when someone who downloaded
   one guide comes back for another. That was mailed to Darren as a LEAD PIPELINE

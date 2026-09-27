@@ -332,6 +332,65 @@ describe('when the calendar stalls', () => {
   });
 });
 
+/** Pretend the window is this wide, for the duration of one test. */
+function atWidth(px: number) {
+  Object.defineProperty(window, 'innerWidth', { value: px, configurable: true, writable: true });
+}
+
+describe('the calendar gets a width Calendly can lay out in', () => {
+  // R6-1. Calendly picks its layout from the width of the element it is given:
+  // 1100px and up is side by side, 650 to 1099 is stacked behind an avatar and
+  // description block, under 650 is the phone layout. The card was 720px on
+  // every desktop, so every desktop got the stacked one with a blank band above
+  // it and the first date below the fold.
+  it('keeps the details block on a screen wide enough for two columns', () => {
+    atWidth(1440);
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig;
+    expect(config.url).not.toContain('hide_event_type_details');
+  });
+
+  it('drops that block at the widths that only get the stacked layout', () => {
+    atWidth(1000);
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig;
+    expect(config.url).toContain('hide_event_type_details=1');
+  });
+
+  it('leaves the phone layout alone', () => {
+    atWidth(390);
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig;
+    expect(config.url).not.toContain('hide_event_type_details');
+  });
+
+  it('hides the GDPR banner at every width, since it covers the top of the frame', () => {
+    for (const px of [390, 1000, 1440]) {
+      atWidth(px);
+      widgetReady();
+      booking.open({});
+      schedBtn()!.click();
+      const config = initInline.mock.calls.pop()![0] as InlineConfig;
+      expect(config.url).toContain('hide_gdpr_banner=1');
+      booking.close();
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('gives the wide card room for the frame Calendly needs', () => {
+    // The 1100px threshold is the reason for the number, so it is worth pinning
+    // rather than leaving as a magic max-width someone tidies downwards.
+    expect(SOURCE).toContain('@media(min-width:1200px){.dt-book-card.dt-cal{max-width:1160px;}');
+    expect(SOURCE).toContain('.dt-book-card.dt-cal .dt-book-frame{height:700px;max-height:85vh;}');
+  });
+});
+
 describe('a visitor who has already given their details', () => {
   it('does not have to type them into Calendly again', () => {
     booking.identify({ name: 'Sam Homeowner', email: 'sam@example.com' });
@@ -342,27 +401,37 @@ describe('a visitor who has already given their details', () => {
     expect(config.prefill).toEqual({ name: 'Sam Homeowner', email: 'sam@example.com' });
   });
 
-  it('puts the name and email on the URL as well, where they can be seen', () => {
-    // R3-5. config.prefill is the documented route and is still passed, but the
-    // 27 Sep audit could not confirm it arrived: the iframe src carried
-    // neither value and the details step was not reachable. The URL is
-    // checkable by reading the src, and Calendly accepts both, so they agree
-    // whichever one it reads.
+  it('passes each value exactly once, and only through prefill', () => {
+    // R6-2. R3-5 put the name and email on the embed URL as well, so that the
+    // iframe src could be read in devtools. widget.js serialises config.prefill
+    // into that same src, so the src then carried each field twice and nothing
+    // says which copy Calendly reads. On 27 Sep it carried both and the details
+    // step was still empty. Prefill is the documented route; it is now the only
+    // one, and the point of this test is that it stays the only one.
     booking.identify({ name: 'Sam Homeowner', email: 'sam@example.com' });
     widgetReady();
     booking.open({});
     schedBtn()!.click();
-    const config = initInline.mock.calls[0][0] as InlineConfig;
-    expect(config.url).toContain('name=Sam%20Homeowner');
-    expect(config.url).toContain('email=sam%40example.com');
+    const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: Record<string, string> };
+    expect(config.prefill).toEqual({ name: 'Sam Homeowner', email: 'sam@example.com' });
+    // Counted across everything handed to Calendly, not just the URL: a second
+    // route reappearing anywhere in the config is the failure being guarded.
+    const passed = JSON.stringify({ url: config.url, utm: config.utm, prefill: config.prefill });
+    expect(passed.split('Sam Homeowner')).toHaveLength(2);
+    expect(passed.split('sam@example.com')).toHaveLength(2);
+    expect(config.url).not.toContain('name=');
+    expect(config.url).not.toContain('email=');
   });
 
-  it('leaves the URL alone when nobody has identified', () => {
+  it('carries no visitor data on the embed URL when nobody has identified', () => {
+    atWidth(1000);
     widgetReady();
     booking.open({});
     schedBtn()!.click();
     const config = initInline.mock.calls[0][0] as InlineConfig;
-    expect(config.url).toBe('https://calendly.com/realdarrentsai/15min');
+    expect(config.url).toBe(
+      'https://calendly.com/realdarrentsai/15min?hide_gdpr_banner=1&hide_event_type_details=1',
+    );
   });
 
   it('asks as it always did when no form has run', () => {
@@ -380,5 +449,66 @@ describe('a visitor who has already given their details', () => {
     schedBtn()!.click();
     const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: unknown };
     expect(config.prefill).toBeUndefined();
+  });
+});
+
+describe('the known lead survives leaving the page', () => {
+  // R6-2. It used to live in memory alone, so a reload, or a move from a guide
+  // page to the homepage, threw it away and the calendar asked again.
+  it('is written to sessionStorage, name and email only', () => {
+    booking.identify({ name: 'Sam Homeowner', email: 'sam@example.com' });
+    expect(JSON.parse(window.sessionStorage.getItem('dt_known_lead')!)).toEqual({
+      name: 'Sam Homeowner',
+      email: 'sam@example.com',
+    });
+  });
+
+  it('is cleared by an empty identify, storage included', () => {
+    booking.identify({ name: 'Sam Homeowner', email: 'sam@example.com' });
+    booking.identify({ name: '', email: '' });
+    expect(window.sessionStorage.getItem('dt_known_lead')).toBeNull();
+  });
+
+  it('is read back by a fresh page view in the same tab', () => {
+    window.sessionStorage.setItem(
+      'dt_known_lead',
+      JSON.stringify({ name: 'Sam Homeowner', email: 'sam@example.com' }),
+    );
+    // Deliberately last in the file: evaluating the source again registers a
+    // second message listener, which would make one posted booking look like
+    // two for every test after this point.
+    new Function(SOURCE)();
+    const fresh = (window as unknown as { DTBooking: Booking }).DTBooking;
+    widgetReady();
+    fresh.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: Record<string, string> };
+    expect(config.prefill).toEqual({ name: 'Sam Homeowner', email: 'sam@example.com' });
+    fresh.close();
+  });
+
+  it('survives storage being unavailable', () => {
+    // Private mode and blocked site data both throw here, and a forgotten name
+    // must never take the booking panel down with it.
+    const real = window.sessionStorage.getItem;
+    window.sessionStorage.getItem = () => { throw new Error('blocked'); };
+    try {
+      expect(() => new Function(SOURCE)()).not.toThrow();
+    } finally {
+      window.sessionStorage.getItem = real;
+    }
+  });
+});
+
+describe('every form that asks for a name and email hands them over', () => {
+  // R6-2 found the gap: the three Contact modals called identify, the three
+  // guide forms on the same three pages did not, so anyone who asked for a
+  // guide and then booked met an empty calendar form.
+  const PAGES = ['dscr', 'fha', 'realestateinvesting'];
+
+  it.each(PAGES)('%s calls identify from both its forms', (slug) => {
+    const html = readFileSync(resolve(__dirname, '../public/' + slug + '/index.html'), 'utf8');
+    const calls = html.match(/DTBooking\.identify\(/g) || [];
+    expect(calls).toHaveLength(2);
   });
 });

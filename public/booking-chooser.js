@@ -68,10 +68,45 @@
    * Set by the lead forms after a successful submit. Somebody who filled in
    * seven fields thirty seconds ago should not be asked for their name and
    * email again by the calendar; that retype is where a booking gets abandoned.
-   * Nothing is read from storage and nothing is guessed: if no form ran, the
-   * calendar asks as it always did.
+   * Nothing is guessed: if no form ran, the calendar asks as it always did.
+   *
+   * Kept in sessionStorage as well as in memory, which is the R6-2 change. In
+   * memory alone it died on a reload and on every move to another page of the
+   * site, so somebody who filled in a guide form and then went looking for the
+   * booking button arrived at the calendar as a stranger. sessionStorage is per
+   * tab and goes when the tab does. Name and email only, the two fields
+   * Calendly's own form was going to ask for anyway; it is read back only to
+   * hand to that form and is sent nowhere else.
    */
-  var knownLead = null;
+  var LEAD_KEY = 'dt_known_lead';
+
+  /** Whatever a previous page view in this tab already knew. */
+  function readLead() {
+    try {
+      var raw = window.sessionStorage.getItem(LEAD_KEY);
+      if (!raw) return null;
+      var saved = JSON.parse(raw);
+      if (!saved || (!saved.name && !saved.email)) return null;
+      var lead = {};
+      if (saved.name) lead.name = String(saved.name);
+      if (saved.email) lead.email = String(saved.email);
+      return lead;
+    } catch (e) {
+      // Private mode, blocked storage, or something else's value under our key.
+      // A forgotten name is a small cost; a throw here would take the whole
+      // booking panel down with it.
+      return null;
+    }
+  }
+
+  function writeLead(lead) {
+    try {
+      if (lead) window.sessionStorage.setItem(LEAD_KEY, JSON.stringify(lead));
+      else window.sessionStorage.removeItem(LEAD_KEY);
+    } catch (e) { /* storage is the convenience, not the feature */ }
+  }
+
+  var knownLead = readLead();
 
   /**
    * Set by watchForStall while a calendar is loading, called by the message
@@ -143,6 +178,20 @@
       // the fold on a desktop screen. Wider once there is room for it.
       '.dt-book-card.dt-cal{max-width:520px;padding:18px;}' +
       '@media(min-width:780px){.dt-book-card.dt-cal{max-width:720px;}}' +
+      // R6-1. Calendly picks its layout from the width of the element it is
+      // handed, not from the viewport: 1100px and up gives the side-by-side
+      // layout (Darren's details left, month grid and times right), 650 to
+      // 1099px gives the stacked one, under 650px the phone one. At 720px every
+      // desktop visitor got stacked, which puts the avatar and description
+      // first and a tall blank band above the card, so the first date was below
+      // the fold and had to be scrolled to inside the panel.
+      //
+      // 1160px of card less 18px of padding each side leaves the frame 1124px,
+      // clear of the 1100px threshold with room for a scrollbar. The taller
+      // frame is what makes the times column reachable without scrolling; it is
+      // scoped to the wide breakpoint so short laptops keep the 72vh cap below.
+      '@media(min-width:1200px){.dt-book-card.dt-cal{max-width:1160px;}' +
+      '.dt-book-card.dt-cal .dt-book-frame{height:700px;max-height:85vh;}}' +
       '.dt-book-title{margin:0 0 4px;font-size:19px;line-height:26px;font-weight:700;color:#0f202d;}' +
       '.dt-book-sub{margin:0 0 18px;font-size:14px;line-height:21px;color:#6b7280;}' +
       '.dt-book-opts{display:flex;flex-direction:column;gap:10px;}' +
@@ -207,15 +256,47 @@
   }
 
   /**
-   * The booking URL, carrying the visitor's name and email when we know them.
+   * The width at which the card is wide enough for Calendly's two-column
+   * layout, and the width below which it is a phone and left alone.
+   */
+  var SIDE_BY_SIDE_MIN = 1200;
+  var DETAILS_HIDE_MIN = 780;
+
+  /**
+   * The URL the inline widget is given. Embed options only, no visitor data.
    *
-   * `config.prefill` is the documented way to do this and is still passed
-   * below, but the 27 Sep audit could not confirm it arrived: the iframe's src
-   * carried no name or email, and the details step was not reachable in the
-   * browser being used. Rather than leave it unverifiable, the two values also
-   * go on the URL, which Calendly has always accepted and which anyone can
-   * check by reading the iframe's src in devtools. Passing both is harmless:
-   * they agree, so whichever path Calendly reads wins the same answer.
+   * Name and email used to go on here as well as through `config.prefill`,
+   * which is what R6-2 removed: widget.js serialises `prefill` into the iframe
+   * src itself, so passing both meant the src carried `name` and `email` twice
+   * and nothing documents which one Calendly reads. On 27 Sep the src
+   * demonstrably carried them and the details step was still empty, which makes
+   * the duplicate the best explanation available without a browser to watch it
+   * in. Prefill is the documented route, so prefill is the only route now.
+   *
+   * hide_event_type_details is decided here rather than in CSS because it is
+   * Calendly's own content: between the two thresholds the card stays 720px and
+   * gets the stacked layout whatever we do, so the avatar and description block
+   * is only pushing the calendar down. Above SIDE_BY_SIDE_MIN that same block
+   * IS the left column, so it stays.
+   *
+   * hide_gdpr_banner: the banner covers the top of the frame for EU visitors,
+   * on an embed they have already chosen to open.
+   */
+  function embedUrl() {
+    var parts = ['hide_gdpr_banner=1'];
+    var w = window.innerWidth || 0;
+    if (w >= DETAILS_HIDE_MIN && w < SIDE_BY_SIDE_MIN) parts.push('hide_event_type_details=1');
+    return CALENDLY_URL + '?' + parts.join('&');
+  }
+
+  /**
+   * The booking URL for the new-tab fallback, carrying the visitor's name and
+   * email when we know them.
+   *
+   * A plain link has no widget, so no `prefill` option and no `utm` option,
+   * which is why the query string is still the only route here. The embed
+   * options above are deliberately not added: they describe an iframe this link
+   * does not open.
    */
   function calendlyUrlFor(lead, utm) {
     var parts = [];
@@ -287,7 +368,7 @@
     card.querySelector('.dt-book-close').addEventListener('click', close);
 
     var frame = card.querySelector('.dt-book-frame');
-    var config = { url: calendlyUrlFor(knownLead), parentElement: frame };
+    var config = { url: embedUrl(), parentElement: frame };
     var utm = utmFromAttribution();
     if (utm) config.utm = utm;
     if (knownLead) config.prefill = knownLead;
@@ -463,17 +544,20 @@
   /**
    * Tell the chooser who this visitor is, after a form has already asked them.
    *
-   * Called from the lead submit paths. Held in memory for the page view only:
-   * it is never stored, never sent anywhere, and only ever reaches Calendly's
-   * own booking form, which was going to ask for the same two fields anyway.
+   * Called from every lead submit path, the three guide forms included since
+   * R6-2. Held for this tab only, in memory and in sessionStorage: never sent
+   * anywhere, and only ever handed to Calendly's own booking form, which was
+   * going to ask for the same two fields anyway.
    */
   function identify(lead) {
-    // An empty call clears it. A form that submits with nothing in those fields
-    // should not leave a previous visitor's name sitting in the calendar.
-    if (!lead || (!lead.email && !lead.name)) { knownLead = null; return; }
+    // An empty call clears it, storage included. A form that submits with
+    // nothing in those fields should not leave a previous visitor's name sitting
+    // in the calendar, and that now outlives the page view.
+    if (!lead || (!lead.email && !lead.name)) { knownLead = null; writeLead(null); return; }
     knownLead = {};
     if (lead.name) knownLead.name = String(lead.name).trim();
     if (lead.email) knownLead.email = String(lead.email).trim();
+    writeLead(knownLead);
   }
 
   window.DTBooking = { open: open, close: close, preload: loadWidget, identify: identify };
