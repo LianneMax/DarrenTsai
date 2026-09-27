@@ -1,6 +1,6 @@
 # realdarrentsai.com lead-path audit
 
-Last updated 27 Sep 2026 · Max (with Claude) · re-tested live against `origin/main` at `d277ad3`, Apps Script deployment @39 (round R6)
+Last updated 28 Sep 2026 · Max (with Claude) · re-tested live against `origin/main` at `d3210e6`, Apps Script deployment @39 (round R7)
 
 The pipes work and most of the first-round fixes are live and verified (27 Sep). Round 5 (`87f7166..d3a246c`) then fixed every remaining code item: the forms that sent or showed values the visitor never chose (R3-1, R3-3, R3-7, R3-9, R3-10, R4-1 to R4-9) and the booking path that could stall or lose data (R3-2, R3-5, R3-8). All of it is **fixed in code and not verified live**, and the Apps Script part is **not yet deployed**. What remains genuinely outside the code: GTM tags (#6, #16, R3-6), the CallRail pool (#8), four YouTube descriptions (#14), and the confirmation-email settings.
 
@@ -10,7 +10,75 @@ This file is written for people and for Claude Code. Every open item has a file 
 
 **Status key:** Open · Partly fixed · Fixed in code (not re-checked live) · Fixed (verified live 27 Sep).
 
-**Where to start:** "Re-test R6" (directly below) is the current state. Every code item from R3, R4 and R5 is fixed and verified live. Two booking issues are open (R6-1 calendar layout, R6-2 name/email prefill), plus the non-code setup (GTM tags, CallRail pool, YouTube descriptions, confirmation-email settings). The sections after it keep the history of each item, the field rules and the audit checklist.
+**Where to start:** "Re-test R7" (directly below). One code item is open: R7-1, the Calendly name/email prefill, with a proven cause and fix. Everything else from R3 to R6 is fixed and verified live. Non-code setup still open: GTM tags, CallRail pool, YouTube descriptions, confirmation-email settings.
+
+---
+
+## Re-test R7, 28 Sep: live verification of `d3210e6` (Apps Script @39)
+
+Tested in the Claude in-app browser **while it was visible**, so Calendly actually rendered this time. Clean clone of `d3210e6`: **643 tests pass, lint, tsc and build clean.** One test lead: `liannemaxbalbastro+r7-rei@gmail.com` (REI guide form, (714) 555-0171).
+
+**R6-1 is fixed. R6-2 is only half fixed: our side now hands Calendly the name and email correctly, but Calendly still doesn't show them. The cause is found and the fix is proven by hand (R7-1).**
+
+| Item | What I checked | Result |
+| --- | --- | --- |
+| R6-1 at 1440px | Book a Call → Schedule on `/dscr/` | Card 1160px, frame 1124px × 700px. Calendly side by side: Darren's details left, month grid and time zone right. No stall message (`calendly.page_height` and `calendly.event_type_viewed` both received) |
+| R6-1 at 1000px | Same | Card 720px, URL has `hide_event_type_details=1`, "Select a Date & Time" and the month grid are the first thing in the panel. Calendly still leaves ~60px of its own white space above its card; acceptable |
+| R6-1 phone width (539px pane) | Same | Phone layout, unchanged |
+| R6-2 guide form | Submit REI "Send Me The Case Study" | `sessionStorage.dt_known_lead` = `{"name":"TEST R7 REI Guide","email":"liannemaxbalbastro+r7-rei@gmail.com"}` |
+| R6-2 across pages | Move to `/dscr/`, Book a Call → Schedule | `initInlineWidget` receives `prefill: {name, email}` from storage (checked by wrapping the call). Iframe `src` carries only embed options: `…/15min?embed_domain=realdarrentsai.com&embed_type=Inline&hide_gdpr_banner=1` |
+| R6-2 on screen | Pick Sep 30, 2:45am → Next | **Name and Email empty** on "Enter Details" |
+
+### New issue found (R7)
+
+| # | Priority | Status | What's wrong | Where | Fix | Expected behavior (how to verify) |
+| --- | --- | --- | --- | --- | --- | --- |
+| R7-1 | P2 | Fixed in code (commit 2442cac) | **Calendly's `prefill` is sent before the booking page listens, so it's lost.** The current `widget.js` no longer puts prefill in the iframe URL at all (checked: calling `Calendly.initInlineWidget` with `prefill` and with or without `utm` gives a `src` with no `name`/`email`). It posts a `calendly.prefill` message into the frame around the frame's load; the booking page isn't listening yet, and the details step opens empty. That explains every failed check so far, including the R5/R6 URL version, which Calendly also ignored. **Proven by hand:** on the empty details step, posting `{event: 'calendly.prefill', payload: {name, email}}` to the iframe from the parent page filled both Name and Email immediately. The same diagnosis and fix are described in [this public fix for the same widget behaviour](https://github.com/aminsaedi/prompthealth-frontend/pull/115) | `public/booking-chooser.js`: the Calendly message listener (the one that already checks `e.origin !== CALENDLY_ORIGIN` and handles `calendly.event_type_viewed` / `calendly.page_height` / `calendly.event_scheduled`), and `open()` where `config.prefill` is set | Keep `config.prefill` as is. When a known lead exists, also post `{event: 'calendly.prefill', payload: {name, email}}` to **that panel's iframe** (`frame.querySelector('iframe').contentWindow`, target origin `https://calendly.com`) when Calendly reports (a) `calendly.event_type_viewed` and (b) `calendly.date_and_time_selected`. For (b), send once straight away and once more after ~500ms, because the details form draws just after that event. Only react to messages whose `e.source` is that iframe's `contentWindow` and whose origin is `https://calendly.com`; send only name and email; do nothing when there is no known lead; stop when the panel closes. Add tests for: no message without a lead, message only to the Calendly frame and origin, sent on both events | Visible Chrome window: submit any form (guide, Contact or homepage), Book a Call → Schedule → pick a time → Next: Name and Email are filled. Same after a reload and after moving to another page in the same tab. In a new tab: empty |
+
+Not a bug: Calendly shows **+63** in the phone field because it picks the country from the visitor's location. US visitors get +1. Phone can't be prefilled through the embed.
+
+### Round 8, 28 Sep: what was fixed in code
+
+Commit `2442cac` on `main`. **651 tests pass, lint, tsc and build clean.** Front
+end deployed by Netlify. **No Apps Script change**, so deployment @39 stands.
+
+Not verified live. It needs a visible browser and the details step, which is how
+it was found.
+
+**My R6-2 explanation was wrong and is corrected in the code comments.** I wrote
+that `widget.js` serialises `prefill` into the iframe `src`, so passing it on the
+URL as well meant each field arrived twice. Max's check with a visible browser
+shows the `src` carries no prefill at all, with or without `utm`. The values are
+posted into the frame instead, too early to be heard. Removing them from the URL
+in R6-2 was still right, for a different reason: on that path Calendly ignores
+them, and the embed `src` is the one thing here a visitor can read out of
+devtools.
+
+**Where I did something other than the suggested fix, and why:**
+
+- **The `e.source` check gates the prefill branch only**, not the whole listener.
+  That branch is the one that posts something back, so it is the one that needs
+  to know *which* frame it is answering. Requiring a source on the others would
+  change two behaviours that have nothing to do with R7-1: `calendly_booking`
+  from the popup fallback, where the frame is not ours, and the stall watcher,
+  whose job is to react to the first sign of life from Calendly.
+- **The target origin is named, never `'*'`.** This message carries the visitor's
+  name and email; a wildcard hands them to whatever happens to be in the frame.
+- **The pending re-send is cleared in `close()`.** It re-reads the frame when it
+  fires as well, so a panel closed inside the 500ms window posts nothing.
+- **The `calendly_stalled` path is untouched.** `calendly.date_and_time_selected`
+  is not treated as a render signal: by then the watcher has long settled on
+  `event_type_viewed` or `page_height`, and adding a third signal would only
+  make the stall test harder to reason about.
+- **One test pins that `config.prefill` is still passed.** It is what Calendly
+  documents, it costs nothing, and if Calendly fixes the timing at their end it is
+  the route that should win.
+
+### Test data from this round (R7)
+
+- [ ] Sheet: `TEST R7 REI Guide` (Real Estate Investing) plus Follow-ups and Debug rows
+- [ ] Gmail: one REI case-study email to `+r7-rei`
+- No Calendly booking was made (stopped at the details step)
 
 ---
 
@@ -45,8 +113,8 @@ Two more things seen in the same test (see R6-1): the calendar sits under a larg
 
 | # | Priority | Status | What's wrong | Where | Fix | Expected behavior (how to verify) |
 | --- | --- | --- | --- | --- | --- | --- |
-| R6-1 | P2 | Fixed in code (commit f2890f0) | **The booking calendar is cramped and stacked.** The panel is 720px wide on desktop. Calendly picks its layout from the width of the element it's embedded in: **1100px or more** gives the side-by-side layout (details left, calendar and times right); **650–1099px** gives the stacked layout we have (avatar, title and description on top, calendar below, with a large blank band above the card); under 650px is the phone layout ([Calendly: embed layout and sizing](https://calendly.com/help/how-to-control-your-embed-layout-and-sizing)). The visitor has to scroll inside the panel before they see a single date | `public/booking-chooser.js` styles: `.dt-book-card.dt-cal{max-width:520px…}`, `@media(min-width:780px){.dt-book-card.dt-cal{max-width:720px;}}`, `.dt-book-frame{min-width:280px;height:680px;max-height:72vh;}` | On viewports **≥ 1200px**, widen the calendar card so the frame itself is at least 1100px wide (the card has 18px padding each side, so card max-width ≈ 1160px), and give the frame about 700px height (`max-height` ~85vh) so dates and times show without scrolling. Between 780 and 1199px, keep the current width but add `hide_event_type_details=1` to the Calendly URL (decided when the panel opens, from the window width), so the calendar starts at the top instead of under the avatar block. Keep the phone layout as is. Also pass `hide_gdpr_banner=1`. Don't change the Back / Close row | At 1440px wide: the calendar opens side by side (Darren's details on the left, month grid and times on the right), no blank band above it, dates visible without scrolling inside the panel. At ~1000px wide: the month grid is the first thing in the panel. On a phone: unchanged |
-| R6-2 | P2 | Fixed in code (commits 1920ed0, f2890f0) | **Calendly doesn't fill in the visitor's name and email.** The iframe URL does carry `name=` and `email=` after a form submit (checked in R5 and R6), but on Max's visible test the details step was empty. Two gaps in our code make this worse whatever Calendly's reason: (a) the three guide forms (DSCR "Get My Real Rate", FHA "Get the Free Calculator", REI "Send Me The Case Study") never call `DTBooking.identify`, only the Contact modals and React forms do, so booking after a guide request never has a name or email; (b) the known lead lives only in memory, so a reload or moving to another page loses it | `public/booking-chooser.js` (`knownLead`, `identify`, `calendlyUrlFor`, `config.prefill`); guide-form submit handlers in `public/dscr/index.html` (~1507), `public/fha/index.html` (~1838), `public/realestateinvesting/index.html` (~1343) | 1) Call `DTBooking.identify({name, email})` after a successful submit of each guide form, same as the Contact modals. 2) Keep the known lead in `sessionStorage` (name and email only; per tab; wrapped in try/catch) and read it back when the chooser loads, so it survives a reload and a move to another page. 3) For the inline widget, pass the name and email the documented way only, through `Calendly.initInlineWidget({ prefill: { name, email } })` ([Calendly: pre-fill in an embed](https://calendly.com/help/how-to-pre-fill-invitee-information-in-an-embed)), and log (in a test, not the console) the final iframe `src` to make sure `name` and `email` appear exactly once. Keep the URL parameters on the new-tab fallback link, where there is no widget. 4) Say in the commit what you found about why the URL version didn't fill the form, if you can tell | In a visible Chrome window: submit any form on any page (including a guide form), click Schedule, pick a time: Name and Email are filled. Reload the page, Book a Call → Schedule → pick a time: still filled |
+| R6-1 | P2 | Fixed, verified live R7 (commit f2890f0) | **The booking calendar is cramped and stacked.** The panel is 720px wide on desktop. Calendly picks its layout from the width of the element it's embedded in: **1100px or more** gives the side-by-side layout (details left, calendar and times right); **650–1099px** gives the stacked layout we have (avatar, title and description on top, calendar below, with a large blank band above the card); under 650px is the phone layout ([Calendly: embed layout and sizing](https://calendly.com/help/how-to-control-your-embed-layout-and-sizing)). The visitor has to scroll inside the panel before they see a single date | `public/booking-chooser.js` styles: `.dt-book-card.dt-cal{max-width:520px…}`, `@media(min-width:780px){.dt-book-card.dt-cal{max-width:720px;}}`, `.dt-book-frame{min-width:280px;height:680px;max-height:72vh;}` | On viewports **≥ 1200px**, widen the calendar card so the frame itself is at least 1100px wide (the card has 18px padding each side, so card max-width ≈ 1160px), and give the frame about 700px height (`max-height` ~85vh) so dates and times show without scrolling. Between 780 and 1199px, keep the current width but add `hide_event_type_details=1` to the Calendly URL (decided when the panel opens, from the window width), so the calendar starts at the top instead of under the avatar block. Keep the phone layout as is. Also pass `hide_gdpr_banner=1`. Don't change the Back / Close row | At 1440px wide: the calendar opens side by side (Darren's details on the left, month grid and times on the right), no blank band above it, dates visible without scrolling inside the panel. At ~1000px wide: the month grid is the first thing in the panel. On a phone: unchanged |
+| R6-2 | P2 | Partly fixed (commits 1920ed0, f2890f0): lead is stored and passed; Calendly still drops it, see R7-1 | **Calendly doesn't fill in the visitor's name and email.** The iframe URL does carry `name=` and `email=` after a form submit (checked in R5 and R6), but on Max's visible test the details step was empty. Two gaps in our code make this worse whatever Calendly's reason: (a) the three guide forms (DSCR "Get My Real Rate", FHA "Get the Free Calculator", REI "Send Me The Case Study") never call `DTBooking.identify`, only the Contact modals and React forms do, so booking after a guide request never has a name or email; (b) the known lead lives only in memory, so a reload or moving to another page loses it | `public/booking-chooser.js` (`knownLead`, `identify`, `calendlyUrlFor`, `config.prefill`); guide-form submit handlers in `public/dscr/index.html` (~1507), `public/fha/index.html` (~1838), `public/realestateinvesting/index.html` (~1343) | 1) Call `DTBooking.identify({name, email})` after a successful submit of each guide form, same as the Contact modals. 2) Keep the known lead in `sessionStorage` (name and email only; per tab; wrapped in try/catch) and read it back when the chooser loads, so it survives a reload and a move to another page. 3) For the inline widget, pass the name and email the documented way only, through `Calendly.initInlineWidget({ prefill: { name, email } })` ([Calendly: pre-fill in an embed](https://calendly.com/help/how-to-pre-fill-invitee-information-in-an-embed)), and log (in a test, not the console) the final iframe `src` to make sure `name` and `email` appear exactly once. Keep the URL parameters on the new-tab fallback link, where there is no widget. 4) Say in the commit what you found about why the URL version didn't fill the form, if you can tell | In a visible Chrome window: submit any form on any page (including a guide form), click Schedule, pick a time: Name and Email are filled. Reload the page, Book a Call → Schedule → pick a time: still filled |
 
 ### Round 7, 28 Sep: what was fixed in code
 
