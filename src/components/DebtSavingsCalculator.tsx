@@ -905,7 +905,15 @@ export default function DebtSavingsCalculator() {
               <BreakdownRow label="Combined CLTV"             value={cltv > 0 ? pct(cltv) : '—'} />
               <BreakdownRow
                 label="Blended Monthly Savings vs. Today"
-                value={heloanSave > 0 ? fmt(heloanSave) + '/mo' : heloanAmt > 0 ? 'No savings at this rate' : '—'}
+                // "No savings at this rate" needs a rate. With no tier or term
+                // chosen there is no rate to have no savings at, and the card
+                // above correctly says so, so this line was contradicting it.
+                value={
+                  !heloanPriced ? '—'
+                    : heloanSave > 0 ? fmt(heloanSave) + '/mo'
+                    : heloanAmt > 0 ? 'No savings at this rate'
+                    : '—'
+                }
                 green bold
               />
             </div>
