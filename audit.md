@@ -94,6 +94,12 @@ say the word and Playwright goes in with the eight-width test as asked.
   224px. Under 360px the container drops to 14px and the card to 20px/16px. **This
   is the one R8 fix I could not reason to a number**, because measuring the rows
   needs a browser; if the cards still overflow at 320px, that is where to look.
+- **R8-4 leaves `/realestateinvesting/` alone, deliberately.** It carries the same
+  inline `width:104px` on the same two header buttons, but it hides
+  `.site-nav-actions` entirely at 900px and shows a hamburger instead, so the
+  fixed width never applies at a phone width. That is why REI measured clean on
+  phones while `/dscr/` and `/fha/`, which have no hamburger, did not. The guard
+  test covers the two pages where the rule can bite.
 - **R8-5 fixes four copies of the dropdown, not three.** `src/index.css` carries
   the same search box, at the same 0.9rem, for the homepage and the calculator.
 - **R8-6 reverses an R6-1 test** rather than adding one. The old test asserted the
