@@ -34,6 +34,8 @@ export default function MortgageCalculatorApp() {
           currentInputs={inputs}
           onClose={closeContact}
           leadSource="mortgage-calculator-contact"
+          title="Want Darren to Review Your Numbers?"
+          subtitle="No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro."
           formId="mortgage-calculator-contact-modal"
           // Only once the calculator holds the visitor's own numbers. With the
           // inputs opening empty this is exactly "was the calculator used".

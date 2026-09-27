@@ -37,6 +37,8 @@ export default function App() {
           currentInputs={inputs}
           onClose={closeContact}
           leadSource="home-contact"
+          title="Talk to Darren"
+          subtitle="No credit pull. No pressure. Four fields and a licensed loan officer gets back to you."
           formId="home-contact-modal"
           nextStep="In the meantime, the savings calculator above shows your full breakdown."
         />}

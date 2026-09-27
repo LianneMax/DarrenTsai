@@ -6,6 +6,17 @@ interface Props {
   onClose: () => void;
   /** One lead_source per page, so the Sheet and Bonzo can tell the pages apart. */
   leadSource: string;
+  /**
+   * The heading, per page.
+   *
+   * It read "Want Darren to Review Your Numbers? ... Just your real numbers" on
+   * every page, including the four pages where the visitor has no numbers and
+   * the form does not ask for any. Same habit as R4-3, one line further up:
+   * claiming something the visitor has not done. Only /mortgage-calculator/
+   * keeps the numbers wording, where the form genuinely carries them.
+   */
+  title: string;
+  subtitle: string;
   formId: string;
   /** Only the mortgage calculator page pre-fills the optional loan numbers. */
   prefillNumbers?: boolean;
@@ -18,6 +29,8 @@ export default function ContactModal({
   currentInputs,
   onClose,
   leadSource,
+  title,
+  subtitle,
   formId,
   prefillNumbers,
   nextStep,
@@ -32,7 +45,7 @@ export default function ContactModal({
     >
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 id="modal-title" className="modal-title">Want Darren to Review Your Numbers?</h2>
+          <h2 id="modal-title" className="modal-title">{title}</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -40,9 +53,7 @@ export default function ContactModal({
           </button>
         </div>
         <div className="modal-body">
-          <p className="modal-sub">
-            No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.
-          </p>
+          <p className="modal-sub">{subtitle}</p>
           <LeadForm
             currentInputs={currentInputs}
             onClose={onClose}

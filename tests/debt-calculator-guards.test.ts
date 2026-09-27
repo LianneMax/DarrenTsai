@@ -279,3 +279,66 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
     expect(CALC).not.toContain('Call or text');
   });
 });
+
+/**
+ * R5-3 to R5-8: what the pages say when they are still waiting.
+ *
+ * Round 5 stopped the pages sending values nobody chose. These are the places
+ * that still *described* those values: a savings line that reports "no savings
+ * at this rate" before a rate exists, a breakdown listing $0 of insurance that
+ * was never entered, a success message naming an email that was not sent, a
+ * heading asking to review numbers the form does not collect.
+ */
+describe('a waiting page does not describe what it is waiting for', () => {
+  const FHA = read('public/fha/index.html');
+  const REI = read('public/realestateinvesting/index.html');
+
+  it('R5-3: shows no HELOAN saving verdict before a tier and term are chosen', () => {
+    expect(CALC).toContain("!heloanPriced ? '—'");
+  });
+
+  it('R5-4: does not promise figures it is withholding', () => {
+    expect(FHA).not.toContain('The figures below use what you entered');
+    expect(FHA).toContain("'FHA needs at least ' + MIN_DOWN_PCT + '% down.'");
+  });
+
+  it('R5-4: shows a dash, not $0, for a blank escrow field', () => {
+    expect(FHA).toContain('function blankOrMoney(el, value)');
+    expect(FHA).toContain("put('fhaTaxOut', blankOrMoney(taxEl, tax))");
+    expect(FHA).toContain("put('fhaInsOut', blankOrMoney(insEl, ins))");
+    expect(FHA).toContain("put('fhaHoaOut', blankOrMoney(hoaEl, hoa))");
+  });
+
+  it('R5-5: names the email that was actually sent', () => {
+    expect(DSCR).toContain('successBody.textContent = dscrReady');
+    expect(DSCR).toContain('Check your email for the DSCR guide.');
+  });
+
+  it('R5-6: carries the visitor and the ad into the new-tab fallback', () => {
+    const CHOOSER = read('public/booking-chooser.js');
+    expect(CHOOSER).toContain("calendlyUrlFor(knownLead, utmFromAttribution())");
+    expect(CHOOSER).toContain("utmSource: 'utm_source'");
+  });
+
+  it('R5-7: asks to review numbers only where the form carries them', () => {
+    for (const [page, src] of [['dscr', DSCR], ['fha', FHA], ['rei', REI]] as const) {
+      expect(src, `${page} still claims numbers in its heading`).not.toContain('Want Darren to Review Your Numbers?');
+      expect(src, `${page} still claims numbers in its subtitle`).not.toContain('Just your real numbers');
+      expect(src).toContain('Talk to Darren');
+    }
+    // The React modal takes it as a prop, and only /mortgage-calculator/ keeps
+    // the numbers wording, because there the form really does carry them.
+    const APP = read('src/App.tsx');
+    const CALC_APP = read('src/MortgageCalculatorApp.tsx');
+    expect(APP).toContain('title="Talk to Darren"');
+    expect(CALC_APP).toContain('title="Want Darren to Review Your Numbers?"');
+  });
+
+  it('R5-8: sends blank, not 0, for a blank loan and rate', () => {
+    for (const [page, src] of [['dscr', DSCR], ['fha', FHA], ['rei', REI]] as const) {
+      expect(src, `${page} still sends a 0 loan`).not.toMatch(/cLoanAmount'\)\.value\.replace\(\/\[\^0-9\.\]\/g, ''\)\) \|\| 0/);
+      expect(src, `${page} still sends a 0 rate`).not.toContain("parseFloat(el('cRate').value) || 0");
+      expect(src).toContain("parseFloat(el('cRate').value) || ''");
+    }
+  });
+});
