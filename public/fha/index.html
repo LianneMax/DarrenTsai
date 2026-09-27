@@ -468,7 +468,19 @@
   .section-title{font-family:'Outfit',sans-serif;font-weight:700;font-size:clamp(1.5rem,3.2vw,2rem);color:var(--navy);margin:0 0 12px;}
   .section-sub{font-size:0.98rem;color:var(--text-muted);line-height:1.7;max-width:520px;margin:0 auto;}
 
-  .reviews-carousel{position:relative;overflow:hidden;width:100vw;left:50%;transform:translateX(-50%);padding:16px 40px 4px;}
+  /* Full width, not 100vw.
+     ---------------------------------------------------------------------
+     100vw counts the scrollbar and the page's own width does not, so a
+     centred 100vw block sits ~8px past each edge: both pages were ~8px wider
+     than the screen at every desktop width, which is enough to nudge sideways
+     on a trackpad. The parent section here is already full width, so width
+     100% is the same picture with nothing hanging off it.
+
+     src/index.css keeps the 100vw break-out for the React pages, where this
+     carousel really does sit inside a padded container. It is invisible there
+     because html and body set overflow-x:hidden, which these pages cannot
+     copy: it breaks the sticky form. */
+  .reviews-carousel{position:relative;overflow:hidden;width:100%;padding:16px 40px 4px;}
   .reviews-track{display:flex;will-change:transform;}
   .review-slide{min-width:calc(100% / 3);padding:0 8px;box-sizing:border-box;}
   @media(max-width:768px){ .review-slide{min-width:100%;} }
