@@ -85,8 +85,19 @@
   .site-nav-name{font-weight:700;font-size:0.95rem;color:var(--text-dark);}
   .site-nav-title{font-size:0.72rem;color:var(--text-muted);}
   .site-nav-actions{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+  /* The two buttons carried an inline width:104px, which put the header's
+     right edge at 362px: "Book a Call" was clipped on a 360px phone, the most
+     common Android width, and the page ran 46px over at 320px. An inline style
+     is also the one width no media query can reach, so the width moved here
+     and the phone rule below can tighten it. */
+  .site-nav-actions .cta{width:104px;}
   @media(max-width:520px){
     .site-nav-title{display:none;}
+  }
+  @media(max-width:400px){
+    .site-nav-inner{padding:0 16px;gap:10px;}
+    .site-nav-actions{gap:8px;}
+    .site-nav-actions .cta{width:auto;padding:6px 9px;font-size:0.78rem;}
   }
 
   /* ---------- Hero: solid teal block, two columns ---------- */
@@ -699,6 +710,13 @@
     .modal-body{padding:12px 20px 24px;}
   }
 
+  /* 320px leaves 280px inside the container, and 28px of card padding each
+     side left the calculator only 224px to lay its rows out in. */
+  @media (max-width:360px){
+    .container-1080{padding:0 14px;}
+    .dscr-card{padding:20px 16px;}
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
@@ -867,8 +885,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </span>
     </a>
     <div class="site-nav-actions">
-      <button type="button" id="openContactBtn" class="cta outline" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
-      <button type="button" id="openCalendlyBtn" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;justify-content:center;">Book a Call</button>
+      <button type="button" id="openContactBtn" class="cta outline" style="padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
+      <button type="button" id="openCalendlyBtn" class="cta solid-teal" style="padding:6px 10px;font-size:0.82rem;border-radius:5px;justify-content:center;">Book a Call</button>
     </div>
   </div>
 </header>
