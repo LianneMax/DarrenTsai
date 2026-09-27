@@ -1094,7 +1094,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="modal-body">
         <div class="success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="success-heading">You're all set.</h3>
-        <p class="success-body">Check your email for your DSCR breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
+        <p class="success-body" id="magnetSuccessBody">Check your email for your DSCR breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.</p>
         <button type="button" id="openSuccessCalendlyBtn" class="cta outline" style="width:100%;justify-content:center;margin-top:20px;">Book a Free Strategy Call</button>
         <button class="cta" id="closeSuccess" style="width:100%;margin-top:10px;">Done</button>
       </div>
@@ -1616,6 +1616,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         });
         window.DT.track('virtual_page_view', { page_path: '/thank-you/dscr', page_title: 'Thank You — DSCR Guide' });
       }
+      // Say which email is actually on its way. An empty calculator gets the
+      // guide alone, correctly (R3-3), and promising a breakdown of numbers that
+      // were never run is the same defect one step further down the funnel.
+      var successBody = $('magnetSuccessBody');
+      if (successBody) {
+        successBody.textContent = dscrReady
+          ? 'Check your email for your DSCR breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.'
+          : 'Check your email for the DSCR guide. Run the calculator above and send the form again if you would like a rate snapshot for your own property, or a loan officer can work it out with you on a quick call.';
+      }
       modalForm.classList.add('hide');
       modalSuccess.classList.add('show');
     } catch (e) {
@@ -1676,7 +1685,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="lf-panel">
     <div class="lf-form" id="contactForm">
       <div class="lf-header">
-        <h2 class="lf-title" id="lfTitle">Want Darren to Review Your Numbers?</h2>
+        <h2 class="lf-title" id="lfTitle">Talk to Darren</h2>
         <button type="button" class="lf-close" id="closeContactModal" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1684,7 +1693,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </button>
       </div>
       <div class="lf-body">
-        <p class="lf-sub">No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro.</p>
+        <p class="lf-sub">No credit pull. No pressure. Four fields and a licensed loan officer gets back to you.</p>
         <p class="lf-note"><strong>* Required</strong>: name, email, phone and state. The rest is optional.</p>
 
         <div class="lf-row-2">
@@ -2074,12 +2083,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       email: email,
       phone: phone,
       state: state,
-      loanAmount: parseFloat(el('cLoanAmount').value.replace(/[^0-9.]/g, '')) || 0,
+      // Blank, not 0. The Sheet hid this because the Apps Script turns 0 into
+      // '', but the rescue email and anything else reading the raw payload saw
+      // a $0 loan at 0% on every four-field submit.
+      loanAmount: parseFloat(el('cLoanAmount').value.replace(/[^0-9.]/g, '')) || '',
       // Blank, not 30. No Contact form on this site asks for a term, and every
       // one of them was writing 30 into the Leads tab as though the visitor had
       // said so.
       termYears: '',
-      annualRate: parseFloat(el('cRate').value) || 0,
+      annualRate: parseFloat(el('cRate').value) || '',
       message: goals,
       target: target,
       timeline: timeline,
