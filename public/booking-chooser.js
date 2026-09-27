@@ -217,11 +217,25 @@
    * check by reading the iframe's src in devtools. Passing both is harmless:
    * they agree, so whichever path Calendly reads wins the same answer.
    */
-  function calendlyUrlFor(lead) {
-    if (!lead) return CALENDLY_URL;
+  function calendlyUrlFor(lead, utm) {
     var parts = [];
-    if (lead.name) parts.push('name=' + encodeURIComponent(lead.name));
-    if (lead.email) parts.push('email=' + encodeURIComponent(lead.email));
+    if (lead && lead.name) parts.push('name=' + encodeURIComponent(lead.name));
+    if (lead && lead.email) parts.push('email=' + encodeURIComponent(lead.email));
+    // The inline widget takes UTMs through initInlineWidget's own `utm` option,
+    // so it does not need them here. A plain link has no such option, and the
+    // new-tab fallback was dropping the ad that produced the booking along with
+    // the visitor's name.
+    if (utm) {
+      var map = {
+        utmSource: 'utm_source', utmMedium: 'utm_medium', utmCampaign: 'utm_campaign',
+        utmContent: 'utm_content', utmTerm: 'utm_term'
+      };
+      for (var key in map) {
+        if (Object.prototype.hasOwnProperty.call(utm, key) && utm[key]) {
+          parts.push(map[key] + '=' + encodeURIComponent(utm[key]));
+        }
+      }
+    }
     if (!parts.length) return CALENDLY_URL;
     return CALENDLY_URL + (CALENDLY_URL.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
   }
@@ -330,7 +344,7 @@
       '<span class="dt-book-ico">' + PHONE_ICON + '</span>' +
       '<span><span class="dt-book-opt-t">Call ' + PHONE_DISPLAY + '</span>' +
       '<span class="dt-book-opt-s">Call Darren directly</span></span></a>' +
-      '<a class="dt-book-opt dt-book-sched" href="' + CALENDLY_URL + '" target="_blank" rel="noopener">' +
+      '<a class="dt-book-opt dt-book-sched" href="' + calendlyUrlFor(knownLead, utmFromAttribution()) + '" target="_blank" rel="noopener">' +
       '<span class="dt-book-ico">' + CAL_ICON + '</span>' +
       '<span><span class="dt-book-opt-t">Open the calendar in a new tab</span>' +
       '<span class="dt-book-opt-s">Free 15 minute call</span></span></a>' +
