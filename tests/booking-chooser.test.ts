@@ -46,8 +46,22 @@ const frame = () => document.querySelector('.dt-book-frame');
 const stall = () => document.querySelector('.dt-book-stall');
 
 /** A message as Calendly's iframe posts it. */
-function postFromCalendly(event: string, origin = 'https://calendly.com') {
-  window.dispatchEvent(new MessageEvent('message', { data: { event }, origin }));
+function postFromCalendly(event: string, origin = 'https://calendly.com', source?: Window) {
+  window.dispatchEvent(new MessageEvent('message', { data: { event }, origin, source }));
+}
+
+/**
+ * The iframe widget.js would have created inside the panel, which the mocked
+ * initInlineWidget does not. Returns its window and a spy on postMessage: that
+ * window is both what a real Calendly message would arrive from and where the
+ * prefill has to be posted back to.
+ */
+function mountCalendarIframe() {
+  const iframe = document.createElement('iframe');
+  frame()!.appendChild(iframe);
+  const win = iframe.contentWindow as Window;
+  const post = vi.spyOn(win, 'postMessage');
+  return { win, post };
 }
 
 beforeAll(() => {
@@ -449,6 +463,103 @@ describe('a visitor who has already given their details', () => {
     schedBtn()!.click();
     const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: unknown };
     expect(config.prefill).toBeUndefined();
+  });
+});
+
+describe('Calendly is handed the prefill at a moment it can take it', () => {
+  /**
+   * R7-1. config.prefill is the documented route, is passed, and does not
+   * arrive: widget.js posts a calendly.prefill message into the frame as the
+   * frame loads, before the booking page has a listener, so it is dropped and
+   * the details step opens empty. Proven by hand on 28 Sep, and the reason three
+   * rounds of checking found nothing wrong with the call itself.
+   *
+   * These tests pin the re-send: right message, right frame, right origin, only
+   * for a lead we actually have, and nothing left running after a close.
+   */
+  const SAM = { name: 'Sam Homeowner', email: 'sam@example.com' };
+  const PREFILL = { event: 'calendly.prefill', payload: SAM };
+
+  /** Open the panel with a calendar in it, as a real page would have. */
+  function openCalendar() {
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    return mountCalendarIframe();
+  }
+
+  it('re-sends the name and email when the booking page comes up', () => {
+    booking.identify(SAM);
+    const { win, post } = openCalendar();
+    postFromCalendly('calendly.event_type_viewed', 'https://calendly.com', win);
+    expect(post).toHaveBeenCalledWith(PREFILL, 'https://calendly.com');
+  });
+
+  it('sends nothing when no form has run', () => {
+    const { win, post } = openCalendar();
+    postFromCalendly('calendly.event_type_viewed', 'https://calendly.com', win);
+    postFromCalendly('calendly.date_and_time_selected', 'https://calendly.com', win);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('sends only the name and email, never anything else we hold', () => {
+    booking.identify(SAM);
+    const { win, post } = openCalendar();
+    postFromCalendly('calendly.event_type_viewed', 'https://calendly.com', win);
+    const [message] = post.mock.calls[0] as [{ payload: Record<string, unknown> }];
+    expect(Object.keys(message.payload).sort()).toEqual(['email', 'name']);
+  });
+
+  it('sends again when a time is picked, because the details form draws after it', () => {
+    vi.useFakeTimers();
+    booking.identify(SAM);
+    const { win, post } = openCalendar();
+    postFromCalendly('calendly.date_and_time_selected', 'https://calendly.com', win);
+    expect(post).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(600);
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(post).toHaveBeenLastCalledWith(PREFILL, 'https://calendly.com');
+  });
+
+  it('never posts to a frame it did not open', () => {
+    // The origin check says a message came from Calendly. It does not say which
+    // frame, and a page can hold more than one: replying to the wrong one would
+    // hand a visitor's name to a frame we never chose.
+    booking.identify(SAM);
+    const { post } = openCalendar();
+    const stranger = document.createElement('iframe');
+    document.body.appendChild(stranger);
+    const strangerPost = vi.spyOn(stranger.contentWindow as Window, 'postMessage');
+    postFromCalendly('calendly.event_type_viewed', 'https://calendly.com', stranger.contentWindow as Window);
+    expect(strangerPost).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('ignores a forged prefill trigger from another origin', () => {
+    booking.identify(SAM);
+    const { win, post } = openCalendar();
+    postFromCalendly('calendly.event_type_viewed', 'https://calendly.com.attacker.example', win);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('leaves no timer running after the panel closes', () => {
+    vi.useFakeTimers();
+    booking.identify(SAM);
+    const { win, post } = openCalendar();
+    postFromCalendly('calendly.date_and_time_selected', 'https://calendly.com', win);
+    expect(post).toHaveBeenCalledTimes(1);
+    booking.close();
+    vi.advanceTimersByTime(5000);
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('still passes config.prefill, which is the documented route', () => {
+    booking.identify(SAM);
+    widgetReady();
+    booking.open({});
+    schedBtn()!.click();
+    const config = initInline.mock.calls[0][0] as InlineConfig & { prefill?: Record<string, string> };
+    expect(config.prefill).toEqual(SAM);
   });
 });
 

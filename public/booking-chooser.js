@@ -115,6 +115,26 @@
    */
   var onCalendlyRender = null;
 
+  /**
+   * The frame holding the calendar that is open now, and the one pending re-send.
+   *
+   * Both exist so that a message can be answered by posting back into *this*
+   * panel's iframe and nothing else: an origin check says a message came from
+   * Calendly, it does not say which frame, and a page can hold more than one.
+   */
+  var activeFrame = null;
+  var prefillTimer = null;
+
+  /**
+   * How long after a time is picked to send the prefill again.
+   *
+   * calendly.date_and_time_selected arrives as the click is handled, and the
+   * details form is drawn just after it, so one send on the event alone can
+   * still land before the fields exist. Sending twice costs nothing: the second
+   * message is ignored if the first one landed.
+   */
+  var PREFILL_REDRAW_MS = 500;
+
   function track(event, params) {
     try {
       if (window.DT && window.DT.track) window.DT.track(event, params);
@@ -241,6 +261,9 @@
   function close() {
     if (!overlay) return;
     onCalendlyRender = null; // nothing left to render into
+    activeFrame = null;
+    window.clearTimeout(prefillTimer);
+    prefillTimer = null;
     var node = overlay;
     overlay = null;
     node.classList.remove('dt-open');
@@ -265,13 +288,17 @@
   /**
    * The URL the inline widget is given. Embed options only, no visitor data.
    *
-   * Name and email used to go on here as well as through `config.prefill`,
-   * which is what R6-2 removed: widget.js serialises `prefill` into the iframe
-   * src itself, so passing both meant the src carried `name` and `email` twice
-   * and nothing documents which one Calendly reads. On 27 Sep the src
-   * demonstrably carried them and the details step was still empty, which makes
-   * the duplicate the best explanation available without a browser to watch it
-   * in. Prefill is the documented route, so prefill is the only route now.
+   * Name and email used to go on here as well as through `config.prefill`, and
+   * R6-2 removed them on the theory that widget.js serialises `prefill` into
+   * this same src, so each field arrived twice. That was wrong, and the 28 Sep
+   * check with a visible browser settled it: the current widget.js puts no
+   * prefill in the src at all, with or without `utm`. It posts the values into
+   * the frame instead, which is why nothing ever appeared and why the URL
+   * version failed too. See the message listener at the bottom of this file.
+   *
+   * The URL is still the wrong place for them, so they stay off it: on this path
+   * Calendly ignores them, and the embed src is the one thing here a visitor can
+   * read out of devtools.
    *
    * hide_event_type_details is decided here rather than in CSS because it is
    * Calendly's own content: between the two thresholds the card stays 720px and
@@ -372,6 +399,7 @@
     var utm = utmFromAttribution();
     if (utm) config.utm = utm;
     if (knownLead) config.prefill = knownLead;
+    activeFrame = frame;
     cal.initInlineWidget(config);
     watchForStall(card, frame);
   }
@@ -521,6 +549,46 @@
    * CallRail owns paid calls, and adding a third signal to bidding is the exact
    * duplication this site's tracking is arranged to avoid.
    */
+  /**
+   * The window of the calendar in the panel that is open right now, or null.
+   *
+   * Read fresh each time rather than kept: widget.js creates the iframe, and it
+   * is gone the moment the panel closes.
+   */
+  function calendarWindow() {
+    if (!activeFrame || !activeFrame.parentNode) return null;
+    var iframe = activeFrame.querySelector('iframe');
+    return iframe ? iframe.contentWindow : null;
+  }
+
+  /**
+   * Hand Calendly the name and email at a moment its page is listening.
+   *
+   * WHY THIS IS NEEDED AT ALL. `config.prefill` is the documented route and is
+   * still passed. It does not arrive: the current widget.js posts a
+   * `calendly.prefill` message into the frame as the frame loads, before the
+   * booking page has a listener up, so it is dropped and the details step opens
+   * empty. Nothing about the call looks wrong, which is why this survived three
+   * rounds of checking, including a URL version Calendly also ignores.
+   *
+   * Proven by hand on 28 Sep: posting exactly this message from the parent page
+   * with the empty details step on screen filled both fields at once.
+   *
+   * Name and email only, which are the two fields the form already asked for.
+   * The phone field cannot be prefilled through the embed at all.
+   */
+  function sendPrefill(target) {
+    if (!knownLead || !target) return;
+    var payload = {};
+    if (knownLead.name) payload.name = knownLead.name;
+    if (knownLead.email) payload.email = knownLead.email;
+    try {
+      // Named origin, never '*': this carries the visitor's name and email, and
+      // a wildcard would hand them to whatever happens to be in the frame.
+      target.postMessage({ event: 'calendly.prefill', payload: payload }, CALENDLY_ORIGIN);
+    } catch (e) { /* a saved retype is a convenience; never break a booking */ }
+  }
+
   window.addEventListener('message', function (e) {
     // Exact match, not a substring: indexOf('calendly.com') also accepts
     // https://calendly.com.attacker.example, a domain anyone can register and
@@ -528,6 +596,31 @@
     if (e.origin !== CALENDLY_ORIGIN) return;
     var d = e.data;
     if (!d || typeof d.event !== 'string') return;
+
+    // Re-send the prefill at the two moments Calendly announces a page that can
+    // take it: the booking page coming up, and a time being picked, which is
+    // when the details form is drawn.
+    //
+    // e.source is checked here and not for the events below it because this is
+    // the branch that posts something back. The origin says the message came
+    // from Calendly; it does not say which frame, and replying into a frame we
+    // did not open would send a visitor's name somewhere we never chose.
+    if (knownLead) {
+      var win = calendarWindow();
+      if (win && e.source === win) {
+        if (d.event === 'calendly.event_type_viewed') sendPrefill(win);
+        if (d.event === 'calendly.date_and_time_selected') {
+          sendPrefill(win);
+          window.clearTimeout(prefillTimer);
+          prefillTimer = window.setTimeout(function () {
+            prefillTimer = null;
+            // Re-read rather than close over `win`: the panel may have been
+            // closed in the half second since, and close() nulls activeFrame.
+            sendPrefill(calendarWindow());
+          }, PREFILL_REDRAW_MS);
+        }
+      }
+    }
 
     // Proof that a calendar is actually on screen, which is what the stall
     // watcher is waiting for. Handled here because this is the one listener

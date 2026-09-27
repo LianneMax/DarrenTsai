@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 17 files / 643 tests, all passing |
+| Tests | Vitest + jsdom, 17 files / 651 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -219,7 +219,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 643 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 651 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.
@@ -254,12 +254,21 @@ or the lead lands on the generic tab with its fields dropped:
   another page of the site. Name and email only, never sent anywhere, only ever
   handed to Calendly's own form. An empty call clears both, so one visitor's name
   cannot sit in the next one's calendar.
-- **Prefill goes through `config.prefill` and nowhere else.** It was also put on
-  the embed URL for a while so the iframe `src` could be read in devtools, but
-  `widget.js` serialises `prefill` into that same `src`, so each field arrived
-  twice and nothing documents which copy wins. On 27 Sep the `src` carried both
-  and Calendly's details step was still empty. The query string is still the only
-  route for the new-tab fallback, which has no widget and so no `prefill`.
+- **`config.prefill` alone does not arrive, and this is the one Calendly
+  behaviour worth knowing before touching the booking panel.** The current
+  `widget.js` puts no prefill in the iframe `src` at all, with or without `utm`.
+  It posts a `calendly.prefill` message into the frame as the frame loads,
+  before the booking page has a listener up, so it is dropped and the details
+  step opens empty. Nothing about the call looks wrong, which is why it survived
+  three rounds of auditing, and why an earlier theory in this file blamed a
+  duplicate query parameter instead. `booking-chooser.js` therefore re-posts that
+  same message itself, from inside the existing origin-checked listener, when
+  Calendly reports `calendly.event_type_viewed` and again on
+  `calendly.date_and_time_selected` (twice, 500ms apart, because the details form
+  draws just after that event). It posts only into the frame the open panel
+  created, checked by `e.source`, and only ever name and email. Phone cannot be
+  prefilled through the embed. The query string is still the only route for the
+  new-tab fallback, which has no widget and so no `prefill`.
 - **The calendar's width is load-bearing.** Calendly picks its layout from the
   width of the element it is handed, not the viewport: 1100px and up is side by
   side, 650 to 1099px is stacked behind an avatar and description block, under
