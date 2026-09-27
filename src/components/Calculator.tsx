@@ -75,8 +75,15 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear + 1, currentYear + 2];
 
+  // Empty when there is no loan, not "0".
+  //
+  // (0).toLocaleString() is the string "0", so the field opened showing a zero
+  // and its `e.g. 330,000` placeholder never appeared. Nothing was sent, since
+  // both the schedule and the modal's prefill need a loan AND a rate, but a
+  // grey 0 in a money field is the same thing the whole round was about. Matches
+  // handleLoanBlur, which already guarded this.
   const [loanDisplay, setLoanDisplay] = useState(
-    inputs.loanAmount.toLocaleString('en-US')
+    inputs.loanAmount ? inputs.loanAmount.toLocaleString('en-US') : ''
   );
 
   // Nothing is shown until there is a loan and a rate to show it for. With

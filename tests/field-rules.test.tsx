@@ -179,3 +179,126 @@ describe('the goals example fits the page it is on', () => {
     expect(src).not.toContain('save for a rental property');
   });
 });
+
+/**
+ * The same rule, checked on the RENDERED page rather than the source text.
+ *
+ * R5-2 is why this exists. The static scan above reads `placeholder=` and
+ * `value=` attributes out of the source, and it cannot see React state: the
+ * mortgage calculator's Loan Amount field held `useState(inputs.loanAmount
+ * .toLocaleString('en-US'))`, and `(0).toLocaleString()` is the string "0", so
+ * the field opened showing a zero and its placeholder never appeared. Nothing
+ * was sent, but a grey 0 in a money field is exactly the thing this whole round
+ * was about, and the scan passed it.
+ *
+ * renderToStaticMarkup gives the first paint, which is the moment that matters:
+ * whatever a visitor sees before they touch anything. No new dependency, and no
+ * effects run, so nothing here depends on fetch or storage.
+ */
+describe('nothing shows a value on first paint', () => {
+  const NUMERIC_INPUT = /<input[^>]*(?:type="number"|inputmode="numeric")[^>]*>/gi;
+
+  function numericInputs(html: string) {
+    return [...html.matchAll(NUMERIC_INPUT)].map((m) => m[0]);
+  }
+
+  /** The `value="..."` React rendered, or '' when it rendered none. */
+  function valueOf(tag: string) {
+    const m = /\bvalue="([^"]*)"/.exec(tag);
+    return m ? m[1] : '';
+  }
+
+  it('the mortgage calculator opens with both money fields empty', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: Calculator } = await import('../src/components/Calculator');
+    const { defaultInputs } = await import('../src/hooks/useMortgageInputs');
+    const { calculateMortgage } = await import('../src/utils/mortgageCalc');
+
+    const html = renderToStaticMarkup(
+      <Calculator
+        inputs={defaultInputs}
+        setInputs={() => {}}
+        summary={calculateMortgage(defaultInputs)}
+        onOpenContact={() => {}}
+      />,
+    );
+
+    const inputs = numericInputs(html);
+    expect(inputs.length).toBeGreaterThan(0);
+    for (const tag of inputs) {
+      expect(valueOf(tag), `rendered with a value: ${tag}`).toBe('');
+    }
+  });
+
+  it('the mortgage calculator shows its placeholders instead', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: Calculator } = await import('../src/components/Calculator');
+    const { defaultInputs } = await import('../src/hooks/useMortgageInputs');
+    const { calculateMortgage } = await import('../src/utils/mortgageCalc');
+
+    const html = renderToStaticMarkup(
+      <Calculator
+        inputs={defaultInputs}
+        setInputs={() => {}}
+        summary={calculateMortgage(defaultInputs)}
+        onOpenContact={() => {}}
+      />,
+    );
+    expect(html).toContain('placeholder="e.g. 330,000"');
+    expect(html).toContain('placeholder="e.g. 6.5"');
+    // And no schedule to go with numbers nobody entered.
+    expect(html).not.toContain('Payoff Date');
+  });
+
+  it('the savings calculator opens with every debt field empty', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: DebtSavingsCalculator } = await import('../src/components/DebtSavingsCalculator');
+
+    const html = renderToStaticMarkup(<DebtSavingsCalculator />);
+    const inputs = numericInputs(html);
+    expect(inputs.length).toBeGreaterThan(0);
+    for (const tag of inputs) {
+      expect(valueOf(tag), `rendered with a value: ${tag}`).toBe('');
+    }
+  });
+
+  it('the contact modal opens with no loan or rate on a page without a calculator', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: LeadForm } = await import('../src/components/LeadForm');
+    const { defaultInputs } = await import('../src/hooks/useMortgageInputs');
+
+    const html = renderToStaticMarkup(
+      <LeadForm
+        currentInputs={{ ...defaultInputs, loanAmount: 330000, annualRate: 6.41 }}
+        onClose={() => {}}
+        leadSource="home-contact"
+        formId="home-contact-modal"
+        nextStep="x"
+      />,
+    );
+    for (const tag of numericInputs(html)) {
+      expect(valueOf(tag), `rendered with a value: ${tag}`).toBe('');
+    }
+  });
+
+  it('the contact modal does fill them when the calculator was used', async () => {
+    // The other half of the rule: prefillNumbers is what /mortgage-calculator/
+    // passes once its inputs hold something, and there the numbers ARE the
+    // visitor's own.
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: LeadForm } = await import('../src/components/LeadForm');
+    const { defaultInputs } = await import('../src/hooks/useMortgageInputs');
+
+    const html = renderToStaticMarkup(
+      <LeadForm
+        currentInputs={{ ...defaultInputs, loanAmount: 400000, annualRate: 6.5 }}
+        onClose={() => {}}
+        leadSource="mortgage-calculator-contact"
+        formId="mortgage-calculator-contact-modal"
+        prefillNumbers
+        nextStep="x"
+      />,
+    );
+    expect(html).toContain('value="400,000"');
+  });
+});
