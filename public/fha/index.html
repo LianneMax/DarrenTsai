@@ -1962,6 +1962,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         });
         window.DT.track('virtual_page_view', { page_path: '/thank-you/fha', page_title: 'Thank You — FHA Calculator' });
       }
+      // R6-2. The success card's next step is a booking, and this form has just
+      // asked for the two fields Calendly's own form asks for. Handing them over
+      // is what stops the retype where a booking gets abandoned. Same call the
+      // Contact modal already made; the guide forms never made it, so anyone who
+      // booked after asking for a guide met an empty calendar form.
+      try {
+        if (window.DTBooking && window.DTBooking.identify) {
+          window.DTBooking.identify({ name: name, email: email });
+        }
+      } catch (e) { /* never let a convenience break a saved lead */ }
       formFields.classList.add('hide');
       leadSuccess.classList.add('show');
     } catch (e) {

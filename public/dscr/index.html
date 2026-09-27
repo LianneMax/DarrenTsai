@@ -1625,6 +1625,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           ? 'Check your email for your DSCR breakdown. A loan officer will also reach out shortly to walk through your actual rate and terms.'
           : 'Check your email for the DSCR guide. Run the calculator above and send the form again if you would like a rate snapshot for your own property, or a loan officer can work it out with you on a quick call.';
       }
+      // R6-2. The success card's next step is a booking, and this form has just
+      // asked for the two fields Calendly's own form asks for. Handing them over
+      // is what stops the retype where a booking gets abandoned. Same call the
+      // Contact modal already made; the guide forms never made it, so anyone who
+      // booked after asking for a guide met an empty calendar form.
+      try {
+        if (window.DTBooking && window.DTBooking.identify) {
+          window.DTBooking.identify({ name: name, email: email });
+        }
+      } catch (e) { /* never let a convenience break a saved lead */ }
       modalForm.classList.add('hide');
       modalSuccess.classList.add('show');
     } catch (e) {
