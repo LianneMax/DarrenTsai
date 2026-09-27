@@ -558,7 +558,11 @@
 
   /* --- Licensed-in strip --- */
   .licensed-strip{background:var(--light-bg);border-bottom:1px solid var(--line);box-shadow:var(--card-shadow);}
-  .licensed-strip-inner{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;gap:20px;flex-wrap:nowrap;}
+  /* Wraps rather than widening the page. Five nowrap items in a nowrap row
+     had nowhere to go between 821px, where the column layout stops applying,
+     and ~900px, where they finally fit: the last one ended at 894px on an
+     850px screen and the page scrolled sideways by 47px. */
+  .licensed-strip-inner{display:flex;align-items:center;justify-content:space-between;padding:22px 40px;gap:14px 20px;flex-wrap:wrap;}
   .licensed-item{display:flex;align-items:center;gap:8px;font-size:0.9rem;color:var(--text-muted);white-space:nowrap;}
   .licensed-divider{width:1px;height:24px;background:var(--line);flex-shrink:0;}
   .licensed-item svg{color:var(--navy);flex-shrink:0;}
