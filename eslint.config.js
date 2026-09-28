@@ -117,6 +117,19 @@ export default tseslint.config(
     },
   },
 
+  // ── The layout check, which is Node with one function that is not ─────────
+  //
+  // scripts/layout-check.mjs runs in Node and drives Playwright, but `measure`
+  // is serialised and evaluated inside the page, so it reads `document` and
+  // `getComputedStyle`. Both sets of globals are allowed here rather than
+  // sprinkling eslint-disable comments through the one function that needs it.
+  {
+    files: ['scripts/layout-check.mjs'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
+
   // ── Static client scripts (no build step) ─────────────────────────────────
   {
     files: ['public/**/*.js'],

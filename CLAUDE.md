@@ -73,7 +73,24 @@ npm run build    # tsc -b && vite build
 npm test         # vitest run (666 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
+npm run test:layout  # real-browser layout check, by hand, before a layout push
 ```
+
+**Run `npm run test:layout` before pushing any change to a page or the CSS.** It
+builds the site, serves it with `vite preview`, and drives Chromium over all five
+pages at 320, 360, 375, 414, 768, 850, 1024, 1280 and 1440px, failing on any
+sideways scroll or any focusable field under 16px at phone widths. Everything
+that is not localhost is blocked, so a run does not depend on Calendly, CallRail
+or Google Fonts being up, at the cost of laying text out in fallback fonts.
+
+It is deliberately outside `npm test` and the Netlify build: it needs a browser
+binary and a build, and a deploy that fails for want of Chromium is a worse
+outcome than the bug it looks for. `npm test` cannot do this job at all, because
+jsdom has no layout engine: `scrollWidth` and `clientWidth` are both 0 at every
+width, which is exactly how the R8 round's six overflows passed a full suite.
+`tests/layout-overflow.test.ts` pins the RULE behind each one, which is what a
+source scan can do; `scripts/layout-check.mjs` is the measurement, which is what
+finds the next one.
 
 `eslint.config.js` is a flat config with one block per runtime, because the repo
 holds six kinds of JavaScript and a single blanket config reports the wrong

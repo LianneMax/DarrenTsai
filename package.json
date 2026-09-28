@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:layout": "vite build && node scripts/layout-check.mjs",
     "test:watch": "vitest",
     "images": "node scripts/build-images.mjs"
   },
