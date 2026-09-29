@@ -1,6 +1,6 @@
 # realdarrentsai.com lead-path audit
 
-Last updated 28 Sep 2026 · Max (with Claude) · re-tested against `origin/main` at `80b21e4`, Apps Script deployment @39 (round R9)
+Last updated 28 Sep 2026 · Max (with Claude) · re-tested against `origin/main` at `80b21e4`, Apps Script deployment @39 (round R9); H3 deployed 29 Sep as @41
 
 The pipes work and most of the first-round fixes are live and verified (27 Sep). Round 5 (`87f7166..d3a246c`) then fixed every remaining code item: the forms that sent or showed values the visitor never chose (R3-1, R3-3, R3-7, R3-9, R3-10, R4-1 to R4-9) and the booking path that could stall or lose data (R3-2, R3-5, R3-8). All of it is **fixed in code and not verified live**, and the Apps Script part is **not yet deployed**. What remains genuinely outside the code: GTM tags (#6, #16, R3-6), the CallRail pool (#8), four YouTube descriptions (#14), and the confirmation-email settings.
 
@@ -26,7 +26,7 @@ Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with
 | --- | --- | --- | --- | --- |
 | H1 | Open | Plan tier unknown. Ad conversion events (Kocah guide step 6b) need Marketing Hub Starter or above | Darren / Kocah | Read Account & Billing (Super Admin). Upgrade decision before the conversion events are created, since HubSpot only counts stage changes after an event exists |
 | H2 | Open | Kocah's deal → lifecycle workflow (guide step 6a) needs workflows, which this account doesn't have | Kocah | Either the pipeline's built-in "sync lifecycle stage" setting (Kocah to confirm it covers Application Submitted → Opportunity and Funded → Customer on this tier) or a Pro upgrade |
-| H3 | Fixed in code (not deployed, not live) | `/api/lead` doesn't send leads to HubSpot | Max (deploy), then Kocah (form) | Built 29 Sep, see "H3: what was built" below. Ships dark: does nothing until `HUBSPOT_PORTAL_ID` and `HUBSPOT_FORM_GUID` are set |
+| H3 | Deployed dark (Apps Script @41, 29 Sep); waiting on HubSpot setup | `/api/lead` doesn't send leads to HubSpot | Kocah (form), then Max (Script Properties) | Built 29 Sep, see "H3: what was built" below. Ships dark: does nothing until `HUBSPOT_PORTAL_ID` and `HUBSPOT_FORM_GUID` are set |
 | H4 | Open | CallRail qualified-call rule and CallRail → HubSpot integration | Kocah (Niko to define "qualified") | Installing the CallRail app in HubSpot is an OAuth grant; Max's role may not allow it |
 
 **Needed in HubSpot before H3 goes live (Kocah, Super Admin):**
@@ -69,7 +69,9 @@ All eight steps of the prompt, plus three things the prompt did not know. 700 te
 
 Also fixed on the way: the daily digest told the reader to "clear the Status cell to retry it", but a blank Status is terminal and is never retried. The digest now says per row what did not happen (guide not sent, or not in HubSpot).
 
-**To deploy (Max)**
+**Deployed 29 Sep.** Apps Script deployment `AKfycbyb...fyVQ` updated in place from @40 to @41 ("H3: HubSpot push (dark), db99142"), same `/exec` URL, which answers `{"status":"ok"}`. Before overwriting, both the editor's code and @40 were checked against the repo's previous commit: identical, so nothing made in the editor was lost. Netlify is serving the new `attribution.js` and form ids. Still to check by hand: step 3 below (one test submit, Debug shows the skip).
+
+**To deploy (done 29 Sep; kept for the next change)**
 
 1. Update the existing Apps Script deployment in place (`AKfycbyb...fyVQ`, currently @39) to a new version; do not create a new deployment. No trigger changes, so no `installTriggers()`.
 2. Netlify deploys the site from `main` on push (lead.mts, attribution.js, the form ids). The two sides can go in either order: Apps Script ignores the new body fields until HubSpot is configured.
