@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 18 files / 666 tests, all passing |
+| Tests | Vitest + jsdom, 19 files / 700 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (666 tests)
+npm test         # vitest run (700 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -236,10 +236,18 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 666 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
-- HubSpot is the largest pending piece: CRM portal access is still blocked, and
-  the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
-  -> Bonzo flow intact until a replacement is tested end to end.
+- All 700 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- **HubSpot is an extra destination, built dark (audit H3, 29 Sep).**
+  `pushToHubSpot` submits every lead to a HubSpot form (Forms API v3, portal
+  247401197) from `processFollowUps`, next to Bonzo, and skips until
+  `HUBSPOT_PORTAL_ID` and `HUBSPOT_FORM_GUID` are set. `lead.mts` adds the
+  `hubspotutk` cookie as `hutk`. Two things to know before touching it: the
+  Forms API refuses a whole submission over one field the form does not
+  declare, so the push resubmits once without the named fields and emails about
+  it; and a follow-up row's Status prefix says which job is still owed
+  (`guide-retry`, `hubspot-retry`, or `retry` for both), so a HubSpot retry can
+  never mail a guide twice. Keep the Netlify -> Apps Script -> Sheets -> Bonzo
+  flow intact until HubSpot is tested end to end.
 - Every "Book a Call" CTA opens a chooser (`public/booking-chooser.js`): call
   now, or schedule. The call half is a real `tel:` anchor, so CallRail swaps the
   number and `phone_click` fires with no extra code, which puts urgent leads on

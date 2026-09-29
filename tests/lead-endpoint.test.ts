@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-import handler, { buildRescueEmail } from '../netlify/functions/lead.mts';
+import handler, { buildRescueEmail, readHutk } from '../netlify/functions/lead.mts';
 
 const UPSTREAM = 'https://script.google.com/macros/s/TEST/exec';
 
@@ -414,5 +414,52 @@ describe('buildRescueEmail', () => {
     const { html } = buildRescueEmail('x', evil, false);
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+});
+
+/**
+ * The HubSpot visitor cookie (audit H3). Apps Script cannot see the visitor's
+ * cookies, so this is the only place hubspotutk can be read, and it is what
+ * joins the HubSpot submission to the pageviews the tracking code recorded.
+ */
+describe('hubspotutk', () => {
+  const HUTK = '0123456789abcdef0123456789abcdef';
+
+  function withCookie(cookie: string) {
+    return new Request('https://realdarrentsai.com/api/lead', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://realdarrentsai.com', cookie },
+      body: JSON.stringify(LEAD),
+    });
+  }
+  const forwarded = () => String(calls.find((c) => c.url === UPSTREAM)!.init.body);
+
+  it('is passed to Apps Script as hutk, alongside the lead', async () => {
+    const res = await handler(withCookie(`_ga=GA1.1.1; hubspotutk=${HUTK}; __hstc=abc`), ctx);
+    expect(res.status).toBe(200);
+    expect(JSON.parse(forwarded())).toEqual({ ...LEAD, hutk: HUTK });
+  });
+
+  it('leaves the body byte for byte as sent when there is no cookie', async () => {
+    await handler(req(LEAD), ctx);
+    expect(forwarded()).toBe(JSON.stringify(LEAD));
+  });
+
+  it('wins over a hutk the body claims', async () => {
+    const res = await handler(new Request('https://realdarrentsai.com/api/lead', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://realdarrentsai.com', cookie: `hubspotutk=${HUTK}` },
+      body: JSON.stringify({ ...LEAD, hutk: 'ffffffffffffffffffffffffffffffff' }),
+    }), ctx);
+    expect(res.status).toBe(200);
+    expect(JSON.parse(forwarded()).hutk).toBe(HUTK);
+  });
+
+  it('is dropped when it is not the 32 hex characters HubSpot issues', () => {
+    expect(readHutk(`hubspotutk=${HUTK}`)).toBe(HUTK);
+    expect(readHutk('hubspotutk=not-a-real-token')).toBeNull();
+    expect(readHutk('xhubspotutk=' + HUTK)).toBeNull();
+    expect(readHutk(null)).toBeNull();
+    expect(readHutk('')).toBeNull();
   });
 });

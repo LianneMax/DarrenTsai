@@ -68,6 +68,17 @@
  * 2. Add property: NETLIFY_FHA_PDF_KEY = <same random string set as FHA_GUIDE_API_KEY
  *    in Netlify's environment variables>
  * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
+ *
+ * HUBSPOT SETUP (every lead is also submitted to a HubSpot form; see pushToHubSpot):
+ * 1. Add property: HUBSPOT_PORTAL_ID = 247401197
+ * 2. Add property: HUBSPOT_FORM_GUID = <the GUID of the API-only form Kocah creates>
+ * 3. Optional: HUBSPOT_SEND_TESTS = true, to send test leads too (they are always
+ *    marked rdt_test_lead = Yes). Anything else, or blank, skips them.
+ * 4. Optional: HUBSPOT_FORMS_HOST, only if HubSpot says this portal needs a
+ *    regional host. Blank means api.hsforms.com.
+ * 5. If either of 1 or 2 is blank, HubSpot is skipped and the Debug tab says so.
+ *    Every rdt_* property must also be a (hidden) FIELD on that form, not only a
+ *    contact property: the Forms API rejects any field the form does not declare.
  */
 
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
@@ -746,6 +757,261 @@ function pushToBonzo(data) {
   }
 }
 
+// ── HubSpot ─────────────────────────────────────────────────────────────────
+//
+// A second destination next to Bonzo, not a replacement: the Sheet stays the
+// record and Bonzo keeps nurturing until HubSpot has been tested end to end.
+// Agreed with Kocah on 29 Sep: keep our forms, submit each lead to a HubSpot
+// form built only as an API target, with the click id attached.
+//
+// Forms API rather than the CRM API because a form submission is what HubSpot
+// attributes: with the visitor's hutk in the context it joins the contact to the
+// pageviews the tracking code recorded, including the gclid landing visit. It
+// also needs no private-app token, only the two ids below, and it dedupes by
+// email, so a returning lead updates one contact instead of creating another.
+
+const HUBSPOT_DEFAULT_HOST = 'api.hsforms.com';
+
+// Click ids, by the type attribution.js reports, to the property each one lands
+// in. An explicit table so an unexpected clickIdType from a tampered body can
+// never name a property of its own choosing.
+const HUBSPOT_CLICK_ID_PROPS = {
+  gclid: 'rdt_gclid', gbraid: 'rdt_gbraid', wbraid: 'rdt_wbraid',
+  msclkid: 'rdt_msclkid', fbclid: 'rdt_fbclid'
+};
+
+// Never dropped by the resubmit below. Without an email HubSpot has nothing to
+// make a contact from, so a submission stripped of it would be a 200 that put
+// nobody in the CRM.
+const HUBSPOT_REQUIRED_FIELDS = ['email'];
+
+/** Path of a URL, without the query or fragment. '' when it is not a URL. */
+function urlPath(uri) {
+  const m = /^https?:\/\/[^/?#]+(\/[^?#]*)?/i.exec(String(uri || ''));
+  return m ? (m[1] || '/') : '';
+}
+
+/**
+ * The HubSpot fields for a lead, as [{objectTypeId, name, value}], built from
+ * what the site already sends. Pure, so it is testable without HTTP.
+ *
+ * Blank is left out, never filled in. HubSpot treats a submitted value as the
+ * truth and overwrites what the contact already had, so sending '' or 0 for a
+ * field this form did not ask would erase a real answer from an earlier one.
+ */
+function hubspotFields(data) {
+  const fields = [];
+  function add(name, value) {
+    if (value === null || value === undefined) return;
+    const v = String(value).trim();
+    if (v === '') return;
+    for (let i = 0; i < fields.length; i++) if (fields[i].name === name) return; // first value wins
+    fields.push({ objectTypeId: '0-1', name: name, value: v });
+  }
+
+  add('email', data.email);
+  add('firstname', data.firstName);
+  add('lastname', data.lastName);
+  add('phone', data.phone);
+  add('state', data.state);
+
+  add('rdt_lead_source', data.source);
+  add('rdt_form_id', data.formId);
+  add('rdt_page_path', urlPath(data.pageUri));
+
+  // The latest click, then the first touch's if it was a different network.
+  // Both, when both exist, because they answer different questions: the latest
+  // is what Ads credits, the first is what found the lead.
+  const lastProp = Object.prototype.hasOwnProperty.call(HUBSPOT_CLICK_ID_PROPS, data.clickIdType)
+    ? HUBSPOT_CLICK_ID_PROPS[data.clickIdType] : null;
+  const firstProp = Object.prototype.hasOwnProperty.call(HUBSPOT_CLICK_ID_PROPS, data.firstClickIdType)
+    ? HUBSPOT_CLICK_ID_PROPS[data.firstClickIdType] : null;
+  if (lastProp) add(lastProp, data.clickId);
+  if (firstProp) add(firstProp, data.firstClickId);
+
+  // HubSpot's own Google click id, so its Ads integration can match the lead
+  // without anyone mapping rdt_gclid. It may be read-only or absent from the
+  // form, in which case the resubmit in pushToHubSpot drops it and the hutk
+  // plus rdt_gclid carry the click instead.
+  const gclid = data.clickIdType === 'gclid' ? data.clickId
+    : (data.firstClickIdType === 'gclid' ? data.firstClickId : '');
+  add('hs_google_click_id', gclid);
+
+  add('rdt_first_utm_source', data.firstUtmSource);
+  add('rdt_first_utm_medium', data.firstUtmMedium);
+  add('rdt_first_utm_campaign', data.firstUtmCampaign);
+  add('rdt_latest_utm_source', data.utm_source);
+  add('rdt_latest_utm_medium', data.utm_medium);
+  add('rdt_latest_utm_campaign', data.utm_campaign);
+
+  // Only with a state to judge by: 'No' for a lead who never said where they
+  // are would read as "out of area", which is a claim nobody made.
+  if (data.state) add('rdt_licensed_state', isLicensedState(data.state) ? 'Yes' : 'No');
+  add('rdt_test_lead', isTestLead(data) ? 'Yes' : 'No');
+
+  return fields;
+}
+
+/** The submission context. hutk only when it has the shape HubSpot issues. */
+function hubspotContext(data) {
+  const context = {};
+  if (/^[a-f0-9]{32}$/i.test(String(data.hutk || ''))) context.hutk = data.hutk;
+  if (data.pageUri) context.pageUri = String(data.pageUri);
+  if (data.pageName) context.pageName = String(data.pageName);
+  return context;
+}
+
+/**
+ * The field names a 400 blames, from HubSpot's error body. The Forms API names
+ * each one as "fields.<name>" in its messages, whatever the error type (not on
+ * the form, read-only, not a valid option). Empty when nothing is named, which
+ * is what makes a 400 about something else a plain rejection.
+ */
+function hubspotRejectedFields(text) {
+  const names = [];
+  let messages = [];
+  try {
+    const body = JSON.parse(String(text || ''));
+    messages = (body && body.errors ? body.errors : []).map(function (e) { return String((e && e.message) || ''); });
+  } catch (e) {
+    messages = [String(text || '')];
+  }
+  messages.forEach(function (m) {
+    const re = /fields\.([A-Za-z0-9_]+)/g;
+    let hit;
+    while ((hit = re.exec(m)) !== null) {
+      if (names.indexOf(hit[1]) === -1) names.push(hit[1]);
+    }
+  });
+  return names;
+}
+
+/**
+ * Says, once every 6 hours at most, that HubSpot is refusing fields.
+ *
+ * The resubmit saves the lead, which is right, but it also makes the loss quiet:
+ * a form missing rdt_gclid would drop the click id from every lead while every
+ * row read 'done'. That is a setup problem with one fix (add the field to the
+ * form), and the first real lead is the moment to hear about it. Not
+ * alertFailure: nothing failed and its subject says LEAD PIPELINE FAILURE, and
+ * its 5-minute throttle would still send one of these per lead on a busy day.
+ */
+const HUBSPOT_DROPPED_ALERT_KEY = 'hubspot_dropped_alert';
+function alertHubSpotDroppedFields(dropped, code) {
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache.get(HUBSPOT_DROPPED_ALERT_KEY)) return;
+    cache.put(HUBSPOT_DROPPED_ALERT_KEY, '1', 21600); // 6h, CacheService's maximum
+    MailApp.sendEmail({
+      to: ALERT_EMAIL,
+      subject: 'HubSpot is dropping lead fields: ' + dropped.join(', '),
+      body: 'HubSpot refused these fields, so leads are being submitted without them:\n\n  ' +
+        dropped.join('\n  ') + '\n\n' +
+        'The resubmit without them returned HTTP ' + code + '. ' +
+        (code >= 200 && code < 300 ? 'The leads themselves ARE reaching HubSpot.' : 'The lead did NOT reach HubSpot either; see the Follow-ups tab.') +
+        '\n\nFix: add each one to the HubSpot API form as a hidden field (the contact property alone is not enough; ' +
+        'the Forms API rejects any field the form does not declare).\n\n' +
+        'The Debug tab has HubSpot\'s exact answer. This email repeats at most every 6 hours.'
+    });
+  } catch (err) {
+    Logger.log('alertHubSpotDroppedFields failed: ' + err.toString());
+  }
+}
+
+/**
+ * Submits the lead to HubSpot. Returns { outcome, detail } in the guide senders'
+ * vocabulary, so the follow-up queue retries and alerts on it the same way:
+ *   skipped  - not configured, a test lead, or no email to make a contact from
+ *   sent     - 2xx. A returning lead is a 2xx too: HubSpot dedupes by email and
+ *              updates the one contact, so unlike Bonzo's 422 there is nothing
+ *              to tell apart
+ *   retry    - 429, 5xx, or the call threw
+ *   rejected - any other 4xx: wrong form GUID, a form that demands a field we
+ *              do not have, a bad value. Retrying cannot fix those
+ *
+ * SKIPS rather than rejects without its Script Properties, like
+ * sendContactConfirmation and for the same reason: this ships before Kocah has
+ * built the form, and an unset property must not turn every lead's follow-up
+ * row red. It turns on the moment both are set, with no deploy.
+ */
+function pushToHubSpot(ss, data) {
+  const props = PropertiesService.getScriptProperties();
+  const portalId = String(props.getProperty('HUBSPOT_PORTAL_ID') || '').trim();
+  const formGuid = String(props.getProperty('HUBSPOT_FORM_GUID') || '').trim();
+  if (!portalId || !formGuid) {
+    logDebug(ss, 'pushToHubSpot: skipped, HUBSPOT_PORTAL_ID/HUBSPOT_FORM_GUID not set', data.email);
+    return { outcome: 'skipped' };
+  }
+  // A test lead is not a contact, for the reason pushToBonzo gives. The override
+  // exists so the whole path can be proved end to end before it matters; those
+  // contacts still carry rdt_test_lead = Yes, so they can be filtered or deleted.
+  if (isTestLead(data) && String(props.getProperty('HUBSPOT_SEND_TESTS') || '').trim().toLowerCase() !== 'true') {
+    logDebug(ss, 'pushToHubSpot: skipped, test lead', data.email);
+    return { outcome: 'skipped' };
+  }
+  if (!String(data.email || '').trim()) {
+    // Phone-only leads are allowed by /api/lead. They are in the Sheet and in
+    // Bonzo; HubSpot identifies contacts by email and would record nobody.
+    logDebug(ss, 'pushToHubSpot: skipped, no email', '');
+    return { outcome: 'skipped' };
+  }
+
+  const host = String(props.getProperty('HUBSPOT_FORMS_HOST') || '').trim() || HUBSPOT_DEFAULT_HOST;
+  const url = 'https://' + host + '/submissions/v3/integration/submit/' +
+    encodeURIComponent(portalId) + '/' + encodeURIComponent(formGuid);
+  const context = hubspotContext(data);
+
+  function submit(fields) {
+    const body = { fields: fields };
+    if (Object.keys(context).length) body.context = context;
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true, // the Sheet row is safe; a HubSpot error must not throw past here
+    });
+    return { code: resp.getResponseCode(), text: String(resp.getContentText() || '').slice(0, 500) };
+  }
+
+  try {
+    let fields = hubspotFields(data);
+    let res = submit(fields);
+    let dropped = [];
+
+    // One resubmit without the fields HubSpot named. Since 2022 the Forms API
+    // refuses the WHOLE submission over a single field the form does not
+    // declare, so one rdt_* property Kocah has not added yet, or HubSpot
+    // refusing hs_google_click_id, would otherwise cost the lead its contact
+    // entirely. The name, email and whatever else the form accepts are worth
+    // far more than the field that caused it. Once only: if the second answer
+    // is still a 400, it is something a resubmit cannot fix.
+    if (res.code === 400) {
+      dropped = hubspotRejectedFields(res.text).filter(function (n) {
+        return HUBSPOT_REQUIRED_FIELDS.indexOf(n) === -1;
+      });
+      if (dropped.length) {
+        fields = fields.filter(function (f) { return dropped.indexOf(f.name) === -1; });
+        logDebug(ss, 'pushToHubSpot: resubmitting without ' + dropped.join(', ') + ' (HubSpot: ' + res.text + ')', data.email);
+        res = submit(fields);
+        // hs_google_click_id is allowed to be refused (it is HubSpot's own and
+        // may be read-only); rdt_gclid and the hutk carry the click without it.
+        // Anything else missing from the form is a setup gap worth hearing about.
+        const worthAlerting = dropped.filter(function (n) { return n !== 'hs_google_click_id'; });
+        if (worthAlerting.length) alertHubSpotDroppedFields(worthAlerting, res.code);
+      }
+    }
+
+    const outcome = classifyGuideResponse(res.code);
+    const said = res.code + (outcome === 'sent' ? '' : ' ' + res.text) +
+      (dropped.length ? ' (dropped: ' + dropped.join(', ') + ')' : '');
+    logDebug(ss, 'pushToHubSpot: ' + said, data.email);
+    return { outcome: outcome, detail: 'pushToHubSpot ' + said };
+  } catch (err) {
+    logDebug(ss, 'pushToHubSpot: threw ' + err.toString(), data.email);
+    return { outcome: 'retry', detail: 'pushToHubSpot threw ' + err.toString() };
+  }
+}
+
 // Writes to a "Debug" sheet tab instead of (or alongside) Logger.log — Apps
 // Script's Cloud Logging for web-app-triggered executions is unreliable
 // (frequently shows "No logs are available" even on completed runs), so this
@@ -1096,18 +1362,67 @@ function guideBackoffMs(attemptsMade) {
  *   { status, alert }  alert=true means email Darren now
  */
 function nextGuideStatus(outcome, attempt) {
-  if (outcome === 'sent' || outcome === 'skipped') return { status: 'done', alert: false };
-  if (outcome === 'rejected') return { status: 'guide-rejected', alert: true };
-  if (attempt >= GUIDE_MAX_ATTEMPTS) return { status: 'guide-failed', alert: true };
-  return { status: 'guide-retry:' + attempt, alert: false };
+  const next = nextFollowUpStatus({ guide: outcome }, attempt);
+  return { status: next.status, alert: next.alert };
 }
 
 /**
- * Attempts already made, read back from a 'guide-retry:N' or 'processing:N'
- * status. 0 for anything else, including a bare legacy 'processing'.
+ * Next queue status when a pass may have run two retryable jobs: the guide
+ * email and the HubSpot submit. `outcomes` holds only the jobs this pass ran,
+ * e.g. { guide: 'sent', hubspot: 'retry' }.
+ *
+ * WHY THE JOB IS IN THE STATUS. A row has one Status cell, and a retry must
+ * redo only what failed: re-running a guide that was already delivered because
+ * HubSpot was briefly down would mail the lead the same PDF twice. So the prefix
+ * says what is still owed, and processFollowUps runs exactly that:
+ *   guide-retry:N    the guide only (all a retry ever meant before HubSpot)
+ *   hubspot-retry:N  HubSpot only; the guide is finished
+ *   retry:N          both
+ * No new column, deliberately: Payload must stay last (it is the long cell a
+ * person scrolls past), and the append-only rule would put a new one after it.
+ *
+ * A job that is finished badly (rejected, or out of attempts) is alerted now and
+ * does not hold the row open for the other. When nothing is owed any more the
+ * row ends 'done', or with the first bad job's terminal status for the digest.
+ * `bad` lists every job that ended badly on this pass, e.g. ['hubspot-rejected'].
+ */
+function nextFollowUpStatus(outcomes, attempt) {
+  const owed = [];
+  const bad = [];
+  ['guide', 'hubspot'].forEach(function (job) {
+    if (!Object.prototype.hasOwnProperty.call(outcomes, job)) return;
+    const o = outcomes[job];
+    if (o === 'sent' || o === 'skipped') return;
+    if (o === 'rejected') bad.push(job + '-rejected');
+    else if (attempt >= GUIDE_MAX_ATTEMPTS) bad.push(job + '-failed');
+    else owed.push(job);
+  });
+  let status;
+  if (owed.length === 2) status = 'retry:' + attempt;
+  else if (owed.length === 1) status = owed[0] + '-retry:' + attempt;
+  else status = bad.length ? bad[0] : 'done';
+  return { status: status, alert: bad.length > 0, bad: bad };
+}
+
+/**
+ * Which jobs a row still owes, read from its Status. Anything that does not
+ * name one owes both: 'pending', a bare 'retry:N', and an orphaned claim whose
+ * status predates the job marker.
+ */
+function followUpJobs(status) {
+  const s = String(status || '');
+  if (/^(?:guide-retry|processing-guide):\d+$/.test(s)) return { guide: true, hubspot: false };
+  if (/^(?:hubspot-retry|processing-hubspot):\d+$/.test(s)) return { guide: false, hubspot: true };
+  return { guide: true, hubspot: true };
+}
+
+/**
+ * Attempts already made, read back from a '[guide-|hubspot-]retry:N' or
+ * 'processing[-guide|-hubspot]:N' status. 0 for anything else, including a bare
+ * legacy 'processing'.
  */
 function guideAttemptsFromStatus(status) {
-  const m = /^(?:guide-retry|processing):(\d+)$/.exec(String(status || ''));
+  const m = /^(?:(?:guide-|hubspot-)?retry|processing(?:-guide|-hubspot)?):(\d+)$/.exec(String(status || ''));
   return m ? parseInt(m[1], 10) : 0;
 }
 
@@ -1128,7 +1443,7 @@ function claimDecision(status, processedAt, now) {
   );
   const age = isNaN(last) ? Infinity : now - last; // no timestamp: treat as old
 
-  if (/^guide-retry:\d+$/.test(s)) {
+  if (/^(?:guide-|hubspot-)?retry:\d+$/.test(s)) {
     const attempts = guideAttemptsFromStatus(s);
     if (attempts >= GUIDE_MAX_ATTEMPTS) return { claim: false, attempts: attempts, reason: 'exhausted' };
     if (age < guideBackoffMs(attempts)) return { claim: false, attempts: attempts, reason: 'backoff' };
@@ -1136,7 +1451,7 @@ function claimDecision(status, processedAt, now) {
   }
 
   // A row stuck mid-flight because the run that claimed it died.
-  if (s === 'processing' || /^processing:\d+$/.test(s)) {
+  if (s === 'processing' || /^processing(?:-guide|-hubspot)?:\d+$/.test(s)) {
     if (age < FOLLOWUP_ORPHAN_MS) return { claim: false, attempts: 0, reason: 'in-flight' };
     return { claim: true, attempts: guideAttemptsFromStatus(s), reason: 'orphan' };
   }
@@ -1201,6 +1516,10 @@ function processFollowUps() {
       if (!decision.claim) continue;
       const priorAttempts = decision.attempts;
       const rowNum = i + 2;
+      // Read before the claim overwrites it, and carried INTO the claim, so a
+      // run that dies mid-row leaves an orphan that still says what was owed.
+      const jobs = followUpJobs(rows[i][FOLLOWUP_COL.status - 1]);
+      const claimTag = jobs.guide && jobs.hubspot ? '' : (jobs.guide ? '-guide' : '-hubspot');
 
       // Claim the row before any HTTP, so a crash mid-item can't re-run it.
       // The attempt count goes into the claim, and the timestamp with it: the
@@ -1208,7 +1527,7 @@ function processFollowUps() {
       // row stuck forever with nothing to measure staleness against.
       withSheetLock(function () {
         sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 2)
-          .setValues([['processing:' + priorAttempts, new Date().toISOString()]]);
+          .setValues([['processing' + claimTag + ':' + priorAttempts, new Date().toISOString()]]);
         SpreadsheetApp.flush();
       });
 
@@ -1219,18 +1538,38 @@ function processFollowUps() {
         // Bonzo runs on the first pass only. A retry re-sends just the guide,
         // so it can never create a duplicate prospect.
         if (priorAttempts === 0) pushToBonzo(data);
-        const guide = sendGuideFor(ss, data);
-        const next = nextGuideStatus(guide.outcome, priorAttempts + 1);
+        // HubSpot and the guide each report an outcome, and each runs only
+        // while it is still owed (see nextFollowUpStatus).
+        const outcomes = {};
+        const results = {};
+        if (jobs.hubspot) { results.hubspot = pushToHubSpot(ss, data); outcomes.hubspot = results.hubspot.outcome; }
+        if (jobs.guide) { results.guide = sendGuideFor(ss, data); outcomes.guide = results.guide.outcome; }
+        const next = nextFollowUpStatus(outcomes, priorAttempts + 1);
+        const unfinished = ['hubspot', 'guide'].filter(function (job) {
+          return results[job] && results[job].outcome !== 'sent' && results[job].outcome !== 'skipped';
+        });
+        const detail = unfinished.map(function (job) { return results[job].detail || ''; }).join(' | ');
         withSheetLock(function () {
           sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3)
-            .setValues([[next.status, new Date().toISOString(), next.status === 'done' ? '' : (guide.detail || '')]]);
+            .setValues([[next.status, new Date().toISOString(), next.status === 'done' ? '' : detail]]);
         });
         if (next.alert) {
-          alertFailure(
-            'guide email NOT delivered to ' + (data.email || '(no email)') + ' [' + next.status + ']. ' +
-            'The lead IS saved in the Sheet and Bonzo; send the guide by hand. Detail: ' + (guide.detail || ''),
-            raw
-          );
+          // One alert per row, naming each job that ended badly: alertFailure is
+          // throttled, so a second call here would usually be swallowed.
+          const lines = [];
+          const endedBadly = function (job) {
+            return next.bad.some(function (s) { return s.indexOf(job + '-') === 0; });
+          };
+          if (endedBadly('guide')) {
+            lines.push('guide email NOT delivered to ' + (data.email || '(no email)') + '. ' +
+              'The lead IS saved in the Sheet and Bonzo; send the guide by hand. Detail: ' + (results.guide.detail || ''));
+          }
+          if (endedBadly('hubspot')) {
+            lines.push('HubSpot did NOT receive ' + (data.email || '(no email)') + '. ' +
+              'The lead IS saved in the Sheet and Bonzo; add it to HubSpot by hand if it matters before this is fixed. Detail: ' +
+              (results.hubspot.detail || ''));
+          }
+          alertFailure(lines.join('\n\n') + ' [' + next.status + ']', raw);
         }
       } catch (err) {
         withSheetLock(function () {
@@ -1252,7 +1591,7 @@ function processFollowUps() {
 // expires, every lead fails, Darren gets one email, and the rest are silent.
 // This runs once a day and reports everything, throttled by nothing.
 
-const GUIDE_DIGEST_STATUSES = ['guide-failed', 'guide-rejected', 'error'];
+const GUIDE_DIGEST_STATUSES = ['guide-failed', 'guide-rejected', 'hubspot-failed', 'hubspot-rejected', 'error'];
 const DIGEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -1280,12 +1619,18 @@ function guideDigestRows(rows, now) {
 }
 
 function formatGuideDigest(items) {
+  // What went missing, per row, now that a row can fail two different ways.
+  function missing(status) {
+    if (status.indexOf('hubspot-') === 0) return 'not in HubSpot';
+    if (status.indexOf('guide-') === 0) return 'guide email not sent';
+    return 'follow-up did not finish';
+  }
   const lines = items.map(function (it) {
     return '- row ' + it.row + '  [' + it.status + ']  ' + (it.email || '(no email)') +
-           (it.source ? '  (' + it.source + ')' : '') + '\n    ' + it.error;
+           (it.source ? '  (' + it.source + ')' : '') + '  ' + missing(it.status) + '\n    ' + it.error;
   });
-  return 'These leads ARE saved in the Sheet. Their guide email is not.\n' +
-         'Send each one by hand, then clear the Status cell to retry it.\n\n' +
+  return 'These leads ARE saved in the Sheet. What did not happen is listed per row.\n' +
+         'Send a missing guide by hand; a lead missing from HubSpot can be added there by hand.\n\n' +
          lines.join('\n') + '\n';
 }
 
@@ -1301,7 +1646,9 @@ function sendGuideDigest() {
   try {
     MailApp.sendEmail({
       to: ALERT_EMAIL,
-      subject: items.length + ' guide email(s) not delivered in the last 24h',
+      subject: items.every(function (it) { return it.status.indexOf('hubspot-') !== 0; })
+        ? items.length + ' guide email(s) not delivered in the last 24h'
+        : items.length + ' lead follow-up(s) did not finish in the last 24h',
       body: formatGuideDigest(items),
     });
   } catch (err) {

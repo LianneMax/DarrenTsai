@@ -629,7 +629,9 @@ describe('a run that dies mid-guide', () => {
   it('claims with the attempt count and a timestamp, not a bare processing', () => {
     const start = SOURCE.indexOf('function processFollowUps');
     const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
-    expect(src).toContain("'processing:' + priorAttempts");
+    // claimTag names the job still owed ('-guide', '-hubspot', or '' for both),
+    // so an orphaned row still knows not to re-send a delivered guide.
+    expect(src).toContain("'processing' + claimTag + ':' + priorAttempts");
     expect(src).not.toMatch(/setValue\('processing'\)/);
     expect(src).toContain('claimDecision(');
   });

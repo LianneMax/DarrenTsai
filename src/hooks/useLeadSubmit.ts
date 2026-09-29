@@ -68,7 +68,9 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
       const res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, ...getAttribution() }),
+        // formId goes in the body as well as the GA4 event below, because
+        // HubSpot's rdt_form_id is filled server-side from what arrives here.
+        body: JSON.stringify({ ...payload, ...getAttribution(), formId }),
       });
 
       if (!res.ok) {

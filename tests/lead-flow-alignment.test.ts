@@ -239,8 +239,11 @@ describe('the Sheet tabs the script relies on', () => {
     for (const address of alertEmail.split(',')) {
       expect(address.trim()).toMatch(/^[^@\s]+@[^@\s]+\.[^@\s]+$/);
     }
-    // Both senders read the same constant rather than hard-coding an address.
-    expect(GAS.match(/to: ALERT_EMAIL/g)?.length).toBe(2);
+    // Every sender reads the same constant rather than hard-coding an address:
+    // the failure alert, the daily digest and the HubSpot dropped-fields notice.
+    const senders = GAS.match(/MailApp\.sendEmail\(/g)?.length ?? 0;
+    expect(senders).toBeGreaterThanOrEqual(2);
+    expect(GAS.match(/to: ALERT_EMAIL/g)?.length).toBe(senders);
   });
 });
 

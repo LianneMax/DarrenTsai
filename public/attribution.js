@@ -160,6 +160,9 @@
       landingPage: last.landingPage || (window.location.pathname + window.location.search),
       referrer: last.referrer || document.referrer || '',
       firstUtmSource: first.utm_source || '',
+      // Sent for HubSpot's rdt_first_utm_medium. The Sheet has no column for
+      // it and ignores it; the first touch already held it, nothing forwarded it.
+      firstUtmMedium: first.utm_medium || '',
       firstUtmCampaign: first.utm_campaign || '',
       firstClickId: first.clickId || '',
       // The network of the FIRST click, not just its id. Without this, a lead
@@ -167,7 +170,15 @@
       // organic YouTube or search visit) cannot be tagged ads:google from the
       // first touch, and gets filed as organic instead.
       firstClickIdType: first.clickIdType || '',
-      firstTouchTs: first.ts ? new Date(first.ts).toISOString() : ''
+      firstTouchTs: first.ts ? new Date(first.ts).toISOString() : '',
+      // The page the form was submitted on, for HubSpot's submission context
+      // (pageUri / pageName). Not landingPage: that is where the last touch
+      // arrived, which is often a different page from the one with the form.
+      // Here rather than in each of the eight submit handlers because every one
+      // of them already merges attr() into its body, so this is the one place
+      // that reaches all of them.
+      pageUri: window.location.href,
+      pageName: document.title || ''
     };
   }
 

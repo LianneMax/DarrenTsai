@@ -1987,7 +1987,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'fha-magnet' })),
       });
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the
@@ -2532,7 +2532,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {})),
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'fha-contact-modal' })),
       });
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the

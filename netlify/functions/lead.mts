@@ -161,6 +161,36 @@ async function domainCannotReceiveMail(domain: string): Promise<boolean> {
   return verdict;
 }
 
+// ── HubSpot visitor cookie ──────────────────────────────────────────────────
+//
+// WHY. HubSpot's tracking code (GTM container version 6) sets `hubspotutk` on
+// every page, and it is what ties a form submission to the browsing history
+// HubSpot has already recorded, including the landing visit that carried the
+// gclid. Apps Script cannot see the visitor's cookies, so the only place it can
+// be read is here, and the forms post same-origin, so the browser sends it.
+//
+// Only the format is checked, so this costs nothing on the synchronous path. A
+// value that is not 32 hex characters is dropped rather than forwarded: HubSpot
+// is known to reject a submission over a malformed hutk, and a hand-edited or
+// truncated cookie must not cost a lead its HubSpot record.
+const HUTK_PATTERN = /^[a-f0-9]{32}$/i;
+
+export function readHutk(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0 || part.slice(0, eq).trim() !== "hubspotutk") continue;
+    let value = part.slice(eq + 1).trim();
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      /* keep it raw; the pattern decides */
+    }
+    return HUTK_PATTERN.test(value) ? value : null;
+  }
+  return null;
+}
+
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
@@ -521,6 +551,13 @@ export default async (req: Request, _context: Context) => {
     });
   }
 
+  // The body goes upstream byte for byte unless there is a HubSpot cookie to
+  // add, so a visitor without one (blocked tracker, first page load before the
+  // script ran) is forwarded exactly as before. The cookie wins over anything
+  // the body claims, because the cookie is the browser's and the body is not.
+  const hutk = readHutk(req.headers.get("cookie"));
+  const forwarded = hutk ? JSON.stringify({ ...payload, hutk }) : raw;
+
   // The DNS check eats into the same budget: Netlify kills the function at 10s
   // and the rescue email still needs its ~300ms at the end.
   const timer = AbortSignal.timeout(
@@ -532,7 +569,7 @@ export default async (req: Request, _context: Context) => {
       // Apps Script reads e.postData.contents regardless of type, and text/plain
       // avoids a preflight on the server hop.
       headers: { "content-type": "text/plain;charset=utf-8" },
-      body: raw,
+      body: forwarded,
       redirect: "follow", // server-side there is no CORS, so the 302 is just followed
       signal: timer,
     });
