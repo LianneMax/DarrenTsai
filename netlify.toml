@@ -38,6 +38,35 @@
   to = "/mortgage-calculator/"
   status = 302
 
+# OLD SITE URLS (audit L2, 30 Sep)
+# Google still indexes these from the site that was here before, and reported
+# them as "duplicate without canonical" while they 404ed. These are 301, unlike
+# everything else in this file, and that is the point: the old pages are gone
+# for good, and a permanent redirect is what tells Google to move the old URL's
+# standing to the new one and drop it from the index. They are not links we
+# will ever want to repoint, which is the only thing the 302s above protect.
+# Netlify matches with or without a trailing slash, so /homeowners/ is covered.
+[[redirects]]
+  from = "/investing"
+  to = "/realestateinvesting/"
+  status = 301
+[[redirects]]
+  from = "/investing/*"
+  to = "/realestateinvesting/"
+  status = 301
+[[redirects]]
+  from = "/homeowners"
+  to = "/"
+  status = 301
+[[redirects]]
+  from = "/agent-career"
+  to = "/"
+  status = 301
+[[redirects]]
+  from = "/post/*"
+  to = "/"
+  status = 301
+
 [[redirects]]
   from = "/yt/heloc"
   to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=description"
@@ -106,6 +135,31 @@
   for = "/attribution.js"
   [headers.values]
     Cache-Control = "public, max-age=3600, must-revalidate"
+
+# The other two shared scripts, on the same terms as attribution.js (audit L4):
+# an hour of free repeat views, then a cheap revalidation. They had Netlify's
+# default of max-age=0, so every page view refetched or revalidated them.
+[[headers]]
+  for = "/booking-chooser.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/email-suggest.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Images are not hashed, so not immutable: a week, after which a replaced file
+# is picked up. The FHA carousel alone is ~420KB a visitor need not refetch.
+[[headers]]
+  for = "/fha-illustrations/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/darren-avatar.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
 
 [[headers]]
   for = "/*"

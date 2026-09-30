@@ -20,6 +20,7 @@ interface Props {
 export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const drawerTab = menuOpen ? undefined : -1;
   const [calcOpen, setCalcOpen] = useState(false);
   const calcDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -153,16 +154,19 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
       {menuOpen && (
         <div className="nav-mobile-overlay" onClick={() => setMenuOpen(false)} aria-hidden="true" />
       )}
+      {/* The closed drawer is aria-hidden, so its links must also leave the tab
+          order (audit L3): otherwise a keyboard user tabs into links a screen
+          reader has been told do not exist, and Lighthouse fails the page. */}
       <div className={`nav-mobile-menu${menuOpen ? ' nav-mobile-menu--open' : ''}`} aria-hidden={!menuOpen}>
-        <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link">Monthly Reset</a>
+        <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link" tabIndex={drawerTab}>Monthly Reset</a>
         <span className="nav-mobile-link nav-mobile-label">Calculator</span>
-        <a href="/#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink">Debt Consolidation</a>
-        <a href="/mortgage-calculator/" className="nav-mobile-link nav-mobile-sublink">Mortgage Calculator</a>
-        <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink">DSCR</a>
-        <a href="/fha/" className="nav-mobile-link nav-mobile-sublink">FHA Calculator</a>
-        <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link">Reviews</a>
-        <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn">Contact</button>
-        <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }}>Book a Call</button>
+        <a href="/#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Debt Consolidation</a>
+        <a href="/mortgage-calculator/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Mortgage Calculator</a>
+        <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>DSCR</a>
+        <a href="/fha/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>FHA Calculator</a>
+        <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link" tabIndex={drawerTab}>Reviews</a>
+        <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn" tabIndex={drawerTab}>Contact</button>
+        <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
       </div>
     </>
   );

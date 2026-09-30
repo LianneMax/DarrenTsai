@@ -41,3 +41,23 @@ for (const { file, size } of OUTPUTS) {
 
 console.log(`\nfavicon: ${before.toLocaleString()} -> ${statSync('public/favicon-32.png').size.toLocaleString()} bytes`);
 console.log(`all four derivatives combined: ${total.toLocaleString()} bytes`);
+
+/**
+ * The FHA hero carousel, as WebP (audit L4, 30 Sep).
+ *
+ * The six illustrations are 840x840 PNGs with alpha at ~240KB each, and the
+ * first one is the /fha/ LCP element: on a throttled phone it was most of the
+ * page's 14.9s Lighthouse LCP. WebP keeps the alpha at a third of the bytes.
+ * The PNGs stay as the sources (drop a new one in and rerun this); the page
+ * only references the .webp files. Every browser the site supports reads WebP.
+ */
+let before6 = 0;
+let after6 = 0;
+for (let n = 1; n <= 6; n++) {
+  const src = `public/fha-illustrations/${n}.png`;
+  const out = `public/fha-illustrations/${n}.webp`;
+  await sharp(readFileSync(src)).webp({ quality: 80, alphaQuality: 90, effort: 6 }).toFile(out);
+  before6 += statSync(src).size;
+  after6 += statSync(out).size;
+}
+console.log(`fha carousel: ${before6.toLocaleString()} -> ${after6.toLocaleString()} bytes`);

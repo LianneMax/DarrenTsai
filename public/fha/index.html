@@ -10,11 +10,16 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- The first carousel slide is the page's LCP element (audit L4). -->
+  <link rel="preload" href="/fha-illustrations/1.webp" as="image" type="image/webp" fetchpriority="high">
+  <!-- attribution.js stays synchronous: it loads GTM and must run before any
+       form can submit. The other two are deferred (audit L4): nothing reads
+       them until a click or a field blur, and as blocking scripts they held
+       first paint back by ~0.5s on a phone. -->
   <script src="/attribution.js"></script>
-  <script src="/booking-chooser.js"></script>
-  <script src="/email-suggest.js"></script>
+  <script src="/booking-chooser.js" defer></script>
+  <script src="/email-suggest.js" defer></script>
 
   <!-- CallRail Dynamic Number Insertion: swaps the business number for the
        visitor's pool number. Loaded here rather than at the end of <body>
@@ -22,18 +27,35 @@
        a call placed in that window is attributed to the wrong pool, or to
        no campaign at all. swap.js is small and non-blocking to parse. -->
   <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Calendly is injected on first click (see loadCalendly below). It used to
      load eagerly here, putting a render-blocking third-party stylesheet in
      front of first paint for a widget nobody sees until they click. -->
 <style>
+  /* Outfit, self-hosted (audit L4, 30 Sep). The Google Fonts stylesheet was
+     the largest render-blocking request on every page (~0.8s in Lighthouse
+     mobile): the browser had to fetch CSS from one origin before it could learn
+     the font lived on another. Google serves one variable file for all five
+     weights, so these two are the same bytes it sent, from our own origin, with
+     the year-long cache /fonts/* already has. The filenames carry Google's
+     version (v15) because that cache is immutable: a new cut needs a new name.
+     The latin file is preloaded in the <head>; latin-ext only downloads if a page
+     ever shows a character from it. */
+  @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+
   :root{
+    /* Contrast tokens, audit L3 (30 Sep). The old teal (#517686) gave white
+       4.9:1 and the muted copy on it 3.6:1; buttons in the old accent (#219ebc)
+       gave white 3.1:1, and the accent-on-teal headline word 1.6:1. Values are
+       the nearest that reach 4.5:1 (3:1 for large text), same hues. */
     --white:       #ffffff;
-    --teal:        #517686;   /* secondary background */
+    --teal:        #466a7a;   /* secondary background */
     --teal-deep:   #274654;   /* dividers, rules on teal */
     --navy-dark:   #1a2f42;
-    --header-text: #c8e2e8;   /* copy on teal backgrounds */
-    --accent:      #219ebc;   /* CTA blue — buttons only */
+    --header-text: #d4e8ee;   /* copy on teal backgrounds */
+    --accent:      #1a7f99;   /* CTA blue — buttons only */
+    --accent-on-teal: #8fd8ea;   /* accent-coloured text and marks on teal */
+    --on-teal-muted: rgba(255,255,255,0.85);   /* footer small print on teal */
     --rose:        #d2566d;   /* legacy — kept for out-of-scope modal only, not used below */
     --rose-glow:   rgba(210, 86, 109, 0.35);
     --accent-glow: rgba(33, 158, 188, 0.25);
@@ -562,12 +584,17 @@
   }
   .carousel-track{display:flex;height:100%;transition:transform .55s cubic-bezier(.4,0,.2,1);}
   .carousel-track .slide{flex:0 0 100%;width:100%;height:100%;object-fit:contain;}
-  .carousel-dots{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+  /* Each dot is a 24px button with the 8px dot drawn inside it (audit L3):
+     8px buttons failed the 24px minimum tap target, and the dots look the same. */
+  .carousel-dots{display:flex;gap:0;justify-content:center;margin-top:4px;}
   .carousel-dots button{
-    width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;
+    position:relative;width:24px;height:24px;border:none;padding:0;cursor:pointer;background:transparent;
+  }
+  .carousel-dots button::before{
+    content:'';position:absolute;left:8px;top:8px;width:8px;height:8px;border-radius:50%;
     background:rgba(200,226,232,.4);transition:background .2s ease,transform .2s ease;
   }
-  .carousel-dots button.on{background:var(--accent);transform:scale(1.25);}
+  .carousel-dots button.on::before{background:var(--accent-on-teal);transform:scale(1.25);}
 
   .hero-divider{height:3px;width:100%;background:var(--teal-deep);}
 
@@ -722,19 +749,19 @@
   .footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;}
   .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .footer-name{font-family:'Outfit',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
-  .footer-title{font-size:0.875rem;color:rgba(255,255,255,0.8);margin:0 0 14px;}
-  .footer-meta{font-size:0.82rem;opacity:0.7;margin:0 0 4px;}
+  .footer-title{font-size:0.875rem;color:var(--on-teal-muted);margin:0 0 14px;}
+  .footer-meta{font-size:0.82rem;color:var(--on-teal-muted);margin:0 0 4px;}
   .footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
   .footer-contact-link{display:flex;align-items:center;gap:8px;font-size:0.92rem;color:rgba(255,255,255,0.85);font-weight:400;text-decoration:none;transition:color .2s ease;}
   .footer-contact-link:hover{color:var(--white);}
   .footer-contact-link svg{color:rgba(255,255,255,0.85);flex-shrink:0;}
   .footer-linkedin{margin-top:4px;}
   .footer-bottom{border-top:1px solid rgba(255,255,255,0.18);padding:20px 0;display:flex;flex-direction:column;gap:12px;}
-  .footer-copy{font-size:0.82rem;opacity:0.7;margin:0;}
-  .footer-disclaimer{font-size:0.75rem;opacity:0.6;line-height:1.6;text-align:left;margin:0;max-width:none;color:var(--white);}
+  .footer-copy{font-size:0.82rem;color:var(--on-teal-muted);margin:0;}
+  .footer-disclaimer{font-size:0.75rem;line-height:1.6;text-align:left;margin:0;max-width:none;color:var(--on-teal-muted);}
   .footer-compliance{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
-  .footer-compliance a{font-size:0.72rem;color:rgba(255,255,255,0.55);text-decoration:none;transition:color .2s ease;}
-  .footer-compliance a:hover{color:rgba(255,255,255,0.9);}
+  .footer-compliance a{font-size:0.72rem;color:var(--on-teal-muted);text-decoration:none;transition:color .2s ease;display:inline-block;padding:5px 0;}
+  .footer-compliance a:hover{color:var(--white);}
   .footer-compliance span{color:rgba(255,255,255,0.3);font-size:0.72rem;}
   @media(max-width:700px){
     .footer-grid{grid-template-columns:1fr;gap:32px;}
@@ -958,6 +985,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </header>
 
+<main>
 <header class="hero">
   <div class="hero-inner container-1080">
     <div class="hero-left">
@@ -976,16 +1004,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
     <div class="hero-right">
-      <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png) -->
+      <!-- CYCLING ILLUSTRATIONS (drop images in public/fha-illustrations/ as 1.png … 6.png, then npm run images makes the .webp the page uses) -->
       <div class="hero-carousel-wrap">
         <div class="hero-carousel" id="heroCarousel">
           <div class="carousel-track" id="carouselTrack">
-            <img class="slide" src="/fha-illustrations/1.png" alt="" onerror="this.remove()" width="840" height="840" decoding="async" fetchpriority="high">
-            <img class="slide" src="/fha-illustrations/2.png" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
-            <img class="slide" src="/fha-illustrations/3.png" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
-            <img class="slide" src="/fha-illustrations/4.png" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
-            <img class="slide" src="/fha-illustrations/5.png" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
-            <img class="slide" src="/fha-illustrations/6.png" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
+            <img class="slide" src="/fha-illustrations/1.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" fetchpriority="high">
+            <img class="slide" src="/fha-illustrations/2.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
+            <img class="slide" src="/fha-illustrations/3.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
+            <img class="slide" src="/fha-illustrations/4.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
+            <img class="slide" src="/fha-illustrations/5.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
+            <img class="slide" src="/fha-illustrations/6.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
           </div>
         </div>
         <div class="carousel-dots" id="carouselDots"></div>
@@ -1296,6 +1324,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <!-- FOOTER (mirrors the main-site Footer component) -->
+</main>
+
 <footer class="site-footer">
   <div class="footer-dots" aria-hidden="true"></div>
   <div class="footer-inner">

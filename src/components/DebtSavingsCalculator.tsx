@@ -1105,7 +1105,7 @@ export default function DebtSavingsCalculator() {
           <strong>Darren Tsai</strong> · Senior Loan Officer · NMLS# 2438102 · DRE# 02103705
           · Licensed with Saxton Mortgage. For licensing information, visit{' '}
           <a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer"
-            style={{ color: 'var(--navy)' }}>
+            style={{ color: 'var(--navy)', textDecoration: 'underline' }}>
             nmlsconsumeraccess.org
           </a>.
         </p>

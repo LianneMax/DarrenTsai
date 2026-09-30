@@ -28,9 +28,13 @@ export default function App() {
   return (
     <>
       <Nav onOpenContact={openContact} />
-      <Hero onOpenContact={openContact} />
-      <DebtSavingsCalculator />
-      <Education />
+      {/* One <main> landmark per page (audit L3): screen-reader users jump to it,
+          and Lighthouse fails a page without one. Nav and Footer stay outside. */}
+      <main>
+        <Hero onOpenContact={openContact} />
+        <DebtSavingsCalculator />
+        <Education />
+      </main>
       <Footer />
 
       {contactOpen && <ContactModal

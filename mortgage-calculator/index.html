@@ -10,17 +10,16 @@
     <link rel="canonical" href="https://realdarrentsai.com/mortgage-calculator/" />
     <title>Mortgage Calculator | Darren Tsai</title>
 
-    <!-- Requested here rather than via an @import in index.css, which the
-         browser could not discover until the stylesheet had downloaded and
-         parsed. Weights trimmed from 7 to the 5 the site actually uses. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" />
+    <!-- Outfit is self-hosted (audit L4); @font-face is at the top of
+         src/index.css. Preloaded so the font request starts with the HTML
+         instead of waiting for the stylesheet to be parsed. -->
+    <link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- Must run before any form handler can submit. ~2KB, no network work. -->
     <script src="/attribution.js"></script>
-    <script src="/booking-chooser.js"></script>
-    <script src="/email-suggest.js"></script>
+    <!-- Deferred (audit L4): only read on a click or a field blur. -->
+    <script src="/booking-chooser.js" defer></script>
+    <script src="/email-suggest.js" defer></script>
 
     <!-- CallRail Dynamic Number Insertion: swaps the business number for the
          visitor's pool number. Loaded here rather than at the end of <body>

@@ -10,7 +10,111 @@ This file is written for people and for Claude Code. Every open item has a file 
 
 **Status key:** Open · Partly fixed · Fixed in code (not re-checked live) · Fixed (verified live 27 Sep).
 
-**Where to start:** "HubSpot, 29 Sep" (directly below), then "GTM, 29 Sep". H3, the HubSpot push, is built (29 Sep) and ships dark: it needs an Apps Script deploy, then Kocah's form, then two Script Properties. GTM and GA4 are now done (#6, #16, R3-6). The confirmation email (#4) and the YouTube descriptions (#14) are now live and verified 29 Sep. Still open, outside the code: CallRail pool (#8), to revisit once ads raise traffic.
+**Where to start:** "Launch fixes, 30 Sep" (directly below: L1 to L4 are the next Claude Code round), then "HubSpot, 29 Sep" and "GTM, 29 Sep". H3, the HubSpot push, is built (29 Sep) and ships dark: it needs an Apps Script deploy, then Kocah's form, then two Script Properties. GTM and GA4 are now done (#6, #16, R3-6). The confirmation email (#4) and the YouTube descriptions (#14) are now live and verified 29 Sep. Still open, outside the code: CallRail pool (#8), to revisit once ads raise traffic.
+
+---
+
+## Decisions, 30 Sep
+
+- **Kocah (Niko, 29 Sep):** keep our forms; HubSpot gets each lead through the Forms API with the GCLID attached (H3). GTM is the only tag setup; never add the raw `AW-18451324434` snippet.
+- **Ownership:** the lead Apps Script and Resend stay on Max's accounts for now (Max, 30 Sep). Keep 2-step verification on both.
+- **calendly_booking:** stays an observation event and is never imported into Google Ads (CLAUDE.md). It is marked as a key event in GA4 (29 Sep) for GA4 reporting only.
+- **GA4, 29 Sep:** internal-traffic filter Active (Max's IP is tagged `tt=internal`), retention 14 months. Google Ads and Search Console links confirmed.
+- **SOP:** the Google Doc "Real Darren Tsai SOP: Tracking, Lead Operations and Onboarding" was rebuilt with one tab per system on 30 Sep. Update it when a procedure changes.
+
+---
+
+## Launch fixes, 30 Sep: ad landing pages (L1 to L6)
+
+From the 29 Sep launch-readiness check (PageSpeed Insights mobile, live site, Google Ads account 645-417-8442). None of these is a lead-path bug. L1 and L2 are the ones Google Ads reviewers and financial-services policy look at; L3 and L4 are quality work; L5 waits on Darren.
+
+**PageSpeed Insights, mobile, 29 Sep** (`/fha/` did not complete: PSI daily quota; retry)
+
+| Page | Perf | A11y | Best Pr. | SEO | FCP | LCP | TBT | CLS | Speed Index |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 86 | 89 | 100 | 100 | 2.6 s | 2.6 s | 110 ms | 0.002 | 6.7 s |
+| `/dscr/` | 88 | 89 | 100 | 100 | 2.6 s | 2.6 s | 230 ms | 0.007 | 3.9 s |
+| `/realestateinvesting/` | 78 | 95 | 100 | 100 | 2.6 s | 2.6 s | 530 ms | 0 | 4.2 s |
+
+| # | Status | What | Where | Fix | Check |
+| --- | --- | --- | --- | --- | --- |
+| L1 | Fixed in code (not re-checked live), 30 Sep. See "L1 to L4: what was done" | `/dscr/` has no footer: no privacy policy link and no NMLS Consumer Access link (the other pages have both). Google Ads financial-services landing pages are expected to show both | `public/dscr/index.html` | Add the same footer the other static pages use (privacy link, NMLS #2438102 with a link to nmlsconsumeraccess.org, DRE, Equal Housing). Copy it, don't invent new licence text | Open `/dscr/` on mobile and desktop: footer present, links work, layout check passes |
+| L2 | Fixed in code (not re-checked live), 30 Sep | Old URLs return 404 and Google still indexes them ("duplicate without canonical"): `/investing`, `/homeowners`, `/agent-career`, and the old `/post/…` URL | `netlify.toml` | 301 `/investing` and `/investing/*` → `/realestateinvesting/`; `/homeowners`, `/agent-career` and `/post/*` → `/`. Put them above any catch-all | `curl -I` each: 301 with the right Location. Then Max requests re-indexing in Search Console |
+| L3 | Fixed in code (not re-checked live), 30 Sep: local Lighthouse accessibility 100 on all five pages | Accessibility (PSI): text contrast too low on `/`, `/dscr/`, `/realestateinvesting/`; no `<main>` landmark on `/` and `/realestateinvesting/`; links that rely on colour alone on `/`; an `aria-hidden="true"` element that contains focusable elements on `/`; headings out of order on `/dscr/` | Site CSS/tokens, `src/` components, `public/*/index.html` | See prompt. Fix the colour tokens, not one-off overrides. Don't change the visual design beyond what contrast requires | Lighthouse accessibility 95+ on each page; the layout check still passes at all 9 widths |
+| L4 | Partly fixed, 30 Sep: our own render-blocking requests and the FHA image weight are fixed; what remains is third-party (see "what was done") | Performance: render-blocking requests (est. 1.8 s on `/dscr/` and `/realestateinvesting/`, 0.4 s on `/`); cache lifetimes too short (~108 KB on repeat visits); legacy JavaScript (~13 KB); total blocking time 530 ms on `/realestateinvesting/` | `public/*/index.html` `<head>`, fonts, `netlify.toml` headers | See prompt. Don't delay or remove GTM, CallRail swap or HubSpot: tracking must still fire on first load | LCP ≤ 2.5 s and TBT ≤ 200 ms on each page in PSI mobile, and GTM, GA4 page_view, CallRail swap and `hubspotutk` still work |
+| L5 | Blocked on Darren + Saxton | No consent line on any form for calls and texts (Kocah's guide step 8; Bonzo texts leads) | All forms | Once Darren and Saxton approve the wording, add it under every submit button | Wording on every form, same text everywhere |
+| L6 | Partly done: local Lighthouse on `/fha/` recorded below (30 Sep). Still wants one PSI mobile run on the live site, since local and PSI numbers are not comparable | `/fha/` PageSpeed score not taken | — | Re-run PSI mobile on `/fha/` | Score recorded here |
+
+### Prompt for Claude Code (L1 to L4)
+
+Work through L1 to L4 in `audit.md` ("Launch fixes, 30 Sep"). These are the Google Ads landing pages, so nothing in the lead path or tracking may change behaviour.
+
+1. **L1, `/dscr/` footer.** Add the footer the other static landing pages already use (privacy policy link, NMLS #2438102 linking to NMLS Consumer Access, CA DRE #02103705, Equal Housing Opportunity). Reuse the existing markup and styles. Don't write new licence or company text; if the pages disagree, keep the homepage footer's wording and tell Max.
+2. **L2, redirects.** In `netlify.toml`, add 301s: `/investing` and `/investing/*` → `/realestateinvesting/`; `/homeowners`, `/agent-career` and `/post/*` → `/`. Make sure they come before any catch-all rule and don't touch the `/yt/*` redirects. Add them to the tests if redirects are tested.
+3. **L3, accessibility.** Run Lighthouse (the repo has Playwright/Chromium; `npx lighthouse` with `--only-categories=accessibility --form-factor=mobile` against a local build or preview is fine) on `/`, `/dscr/`, `/fha/`, `/realestateinvesting/` and `/mortgage-calculator/` to get the exact failing elements. Then:
+   - contrast: fix the colour tokens that fail (usually muted grey text on the dark teal hero and small footer text) so they reach 4.5:1 for body text and 3:1 for large text, keeping the look as close as possible;
+   - wrap each page's primary content in one `<main>`;
+   - links inside paragraphs get an underline (or another non-colour cue);
+   - the `aria-hidden="true"` element on `/` must not contain focusable children: remove `aria-hidden` or add `tabindex="-1"`/`inert` to its focusables, whichever matches its purpose (for example a hidden duplicate nav or closed modal);
+   - `/dscr/` headings in order (no jumping from h1 to h3).
+4. **L4, performance.** Find what blocks render in each `<head>` (usually the Google Fonts stylesheet and page CSS). Preconnect to the font hosts, use `font-display: swap`, and preload or inline the critical CSS if it's small. Give hashed static assets the long immutable cache they should already have (check `netlify.toml` headers cover fonts and images too). Check whether the legacy-JS warning comes from our build target or a third party; only change our build target if it's safe for the browsers we support. For the 530 ms blocking time on `/realestateinvesting/`, profile what runs on load and defer our own non-critical work (for example calculators below the fold). **Do not** delay, lazy-load or remove GTM, the CallRail swap script or HubSpot: GA4 page_view, number swap and the `hubspotutk` cookie must still happen on first load.
+5. Keep all tests, lint, build and `npm run test:layout` passing. Record results per item in `audit.md` (before/after Lighthouse scores per page), commit and push, and tell Max what changed so the live site can be re-checked in PageSpeed on the live site.
+
+L5 (consent line) is not part of this prompt: it waits on wording from Darren and Saxton.
+
+### L1 to L4: what was done (30 Sep, Claude Code)
+
+Checks: `npm test` 717 passed (20 files; 17 new in `tests/launch-fixes.test.ts`), `npm run lint` clean, `npm run build` OK, `npm run test:layout` OK (45 checks). Tracking was checked by driving Chromium over all five pages on first load, before and after: GTM (`gtm.js`), GA4 `page_view` to `/g/collect`, CallRail `swap.js`, HubSpot `hs-scripts` and the `hubspotutk` cookie all fire on every page, exactly as before.
+
+**L1, `/dscr/` footer.** The light-grey disclaimer band is replaced by the same `site-footer` that `/fha/` and `/realestateinvesting/` use (markup and CSS copied, not rewritten): name, NMLS #2438102, CA DRE Broker #02103705, Saxton Mortgage, LLC NMLS #1717191, licensed states, the DRE statement, phone, email, LinkedIn, Equal Housing Lender, and the Privacy Policy / NMLS Consumer Access / Legal / Terms / Accessibility / Site Map links. The DSCR-specific educational disclaimer is kept inside it. **For Max: the pages disagreed.** The old DSCR band ended "Saxton Mortgage, NMLS #2525913"; the homepage, `/fha/` and `/realestateinvesting/` all say **NMLS #1717191** (`COMPANY_NMLS` in `src/config.ts`). Per the prompt the homepage wording won and the #2525913 sentence was dropped. Please confirm #1717191 is Saxton's company NMLS; if it is #2525913, every other page is the one that is wrong.
+
+**L2, redirects.** `netlify.toml`: 301 `/investing` and `/investing/*` → `/realestateinvesting/`; 301 `/homeowners`, `/agent-career` and `/post/*` → `/`. There is no catch-all in the file (it was removed on purpose), the `/yt/*` 302s are untouched, and a test pins all of it. After deploy: `curl -I` `https://realdarrentsai.com/investing`, `/investing/anything`, `/homeowners`, `/agent-career`, `/post/anything`, each a 301 with the right `Location`; then request re-indexing in Search Console.
+
+**L3, accessibility.** Contrast was a token problem: white on the old teal `#517686` was only 4.9:1, so no muted text on it could reach 4.5:1. Same hues, changed in `src/index.css` and each static page's `:root`:
+
+| Token | Was | Now | Why |
+| --- | --- | --- | --- |
+| `--teal` | `#517686` | `#466a7a` | White 4.9 → 5.8:1, which leaves room for a muted tier |
+| `--header-text` (static pages) | `#c8e2e8` | `#d4e8ee` | Muted copy on teal 3.6 → 4.6:1 |
+| `--accent` (static pages) | `#219ebc` | `#1a7f99` | White button text 3.1 → 4.6:1 |
+| `--accent-on-teal` (new) | n/a | `#8fd8ea` | The accent word in the `/dscr/` and `/realestateinvesting/` headlines was 1.6:1 on teal; 3.7:1 now (large text) |
+| `--on-teal-muted` (new) | opacity 0.55 to 0.8 | white at 0.85 | Footer small print 2.9 to 4.0 → 4.75:1 |
+
+Also: the `/dscr/` ratio panel is a slightly darker inset instead of a lighter one (on a lighter panel even white measured 4.2:1), and the active rate in the `/dscr/` rate ladder is white. One `<main>` per page (React via `App.tsx` and `MortgageCalculatorApp.tsx`). The NMLS link in the homepage disclosure is underlined. The closed mobile menu on `/` and `/mortgage-calculator/` stays `aria-hidden` and its links now leave the tab order (`tabIndex=-1` until it opens). `/dscr/` "Get Your Actual Rate & Terms" is an `h2`. Not on the list but failing Lighthouse too: footer compliance links are now 24px tap targets, and the `/fha/` carousel dots are 24px buttons drawn as the same 8px dots.
+
+**What will look different on the live site:** the teal is one step darker everywhere (heroes, footers, rate ladder), accent buttons are a deeper blue, and the headline accent word on `/dscr/` and `/realestateinvesting/` is a light cyan instead of mid blue. The contact modal's success buttons still hard-code the old teal; they pass contrast and were left alone.
+
+**L4, performance.** What blocked render, per Lighthouse: the Google Fonts stylesheet (~0.8 s), `booking-chooser.js` and `email-suggest.js` (~0.3 to 0.6 s together), `attribution.js` (the GTM loader) and CallRail `swap.js`. Done:
+- Outfit is self-hosted: `public/fonts/outfit-v15-latin.woff2` (plus `-latin-ext`), the same variable file Google served for all five weights, `font-display: swap`, preloaded in each `<head>`. No request to `fonts.googleapis.com` or `fonts.gstatic.com` any more.
+- `booking-chooser.js` and `email-suggest.js` are `defer`: nothing uses them before a click or a field blur.
+- The `/fha/` hero carousel is WebP (`npm run images` now writes it from the PNGs): 1.45 MB → 419 KB, and slide 1, the page's LCP element, is preloaded.
+- Cache headers: `booking-chooser.js` and `email-suggest.js` get the same 1 hour as `attribution.js`; `/fha-illustrations/*` and `darren-avatar.png` a week (not hashed, so not immutable).
+
+Deliberately **not** changed: `attribution.js` (loads GTM) and CallRail `swap.js` stay synchronous in the `<head>`, as the prompt requires; they are the render-blocking time that remains. **The legacy-JS warning (13 KB) is HubSpot's `collectedforms.js`, not our build**, so the build target is unchanged. **The short-cache warning (~106 KB) is all HubSpot and CallRail files**, whose cache lifetimes we cannot set. **The `/realestateinvesting/` blocking time is third-party:** with the tracking scripts blocked the page scores 99 with 0 ms TBT, before and after; the long tasks are HubSpot analytics (~1.1 s of script on a throttled phone), GA4's gtag and the Ads gtag that GTM loads. Our own on-load work is under 70 ms. So LCP ≤ 2.5 s is realistic in PSI; TBT ≤ 200 ms on `/realestateinvesting/` probably is not while HubSpot's tracking code and both gtags load on every page view.
+
+**Lighthouse, local, mobile (30 Sep).** Lighthouse 13.5 against `vite preview`, simulated mobile throttling on a slow laptop. Not comparable with PSI: the laptop's CPU makes every script look 2 to 4 times slower, and on localhost CallRail loads over `http:` and HubSpot sets third-party cookies, which is why Best Practices reads 54 to 58 here and 100 in PSI. Compare before with after, not with the PSI table above.
+
+Full run, everything loading (tracking included):
+
+| Page | Perf before → after | A11y before → after | Best Pr. | SEO | FCP before → after | LCP before → after | TBT before → after |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 30 → 29 | 85 → **100** | 54 | 100 | 5.4 → 5.7 s | 7.9 → 11.2 s | 3,000 → 2,610 ms |
+| `/dscr/` | 37 → 33 | 89 → **100** | 54 | 100 | 4.9 → 4.4 s | 10.3 → 9.9 s | 1,350 → 2,620 ms |
+| `/fha/` | 31 → 32 | 92 → **100** | 58 | 100 | 5.9 → 5.4 s | 14.9 → 11.6 s | 1,690 → 1,700 ms |
+| `/realestateinvesting/` | 33 → 32 | 92 → **100** | 58 | 100 | 5.9 → 5.6 s | 10.5 → 10.5 s | 1,630 → 1,990 ms |
+| `/mortgage-calculator/` | 31 → 31 | 87 → **100** | 58 | 100 | 6.0 → 5.6 s | 10.5 → 11.1 s | 2,190 → 2,490 ms |
+
+The performance columns there move by run-to-run noise, because HubSpot and the gtags dominate the main thread on this machine. To see what our own changes did, the same pages with only the tracking scripts blocked (Google Fonts left in for the "before" build, so the font change is measured fairly):
+
+| Page | Perf before → after | FCP before → after | LCP before → after | TBT before → after |
+| --- | --- | --- | --- | --- |
+| `/` | 91 → 94 | 2.5 → 1.8 s | 2.8 → 2.4 s | 80 → 40 ms |
+| `/dscr/` | 94 → 99 | 2.5 → 1.4 s | 2.5 → 1.9 s | 0 → 0 ms |
+| `/fha/` | 73 → 94 | 2.5 → 1.4 s | 6.6 → 3.0 s | 0 → 0 to 90 ms (noise across runs) |
+| `/realestateinvesting/` | 94 → 99 | 2.5 → 1.4 s | 2.5 → 1.9 s | 0 → 0 ms |
+| `/mortgage-calculator/` | 93 → 97 | 2.5 → 1.7 s | 2.7 → 2.3 s | 10 → 50 ms |
+
+**L6, `/fha/` score:** local only, above (accessibility 100, SEO 100). Still take one PSI mobile run on the live `/fha/` after deploy, alongside the re-check of the other three.
 
 ---
 
@@ -26,7 +130,7 @@ Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with
 | --- | --- | --- | --- | --- |
 | H1 | Open | Plan tier unknown. Ad conversion events (Kocah guide step 6b) need Marketing Hub Starter or above | Darren / Kocah | Read Account & Billing (Super Admin). Upgrade decision before the conversion events are created, since HubSpot only counts stage changes after an event exists |
 | H2 | Open | Kocah's deal → lifecycle workflow (guide step 6a) needs workflows, which this account doesn't have | Kocah | Either the pipeline's built-in "sync lifecycle stage" setting (Kocah to confirm it covers Application Submitted → Opportunity and Funded → Customer on this tier) or a Pro upgrade |
-| H3 | Deployed dark (Apps Script @41, 29 Sep); waiting on HubSpot setup | `/api/lead` doesn't send leads to HubSpot | Kocah (form), then Max (Script Properties) | Built 29 Sep, see "H3: what was built" below. Ships dark: does nothing until `HUBSPOT_PORTAL_ID` and `HUBSPOT_FORM_GUID` are set |
+| H3 | Deployed dark (Apps Script @41), verified live 29 Sep (test lead +h3skip: saved, Bonzo skipped as test, `pushToHubSpot: skipped, HUBSPOT_PORTAL_ID/HUBSPOT_FORM_GUID not set`, confirmation email 200, Follow-up done); waiting on HubSpot setup | `/api/lead` doesn't send leads to HubSpot | Kocah (form), then Max (Script Properties) | Built 29 Sep, see "H3: what was built" below. Ships dark: does nothing until `HUBSPOT_PORTAL_ID` and `HUBSPOT_FORM_GUID` are set |
 | H4 | Open | CallRail qualified-call rule and CallRail → HubSpot integration | Kocah (Niko to define "qualified") | Installing the CallRail app in HubSpot is an OAuth grant; Max's role may not allow it |
 
 **Needed in HubSpot before H3 goes live (Kocah, Super Admin):**
@@ -714,8 +818,8 @@ order is safe and no alert fires in the meantime.
 | 4 | P1 | Fixed, verified live 29 Sep (confirmation email: Netlify var was saved as NETLIFY_CONTACT_CONFIRM_KEY; re-added as CONTACT_CONFIRM_API_KEY, test lead +confirm4 got 200 and the email landed in the inbox) | **Contact form: 8 required fields, pre-filled optional numbers, and no confirmation email.** On every page except `/mortgage-calculator/` the optional Loan Amount and Rate carry the mortgage-calculator defaults **$330,000 / 6.41%**; a real May lead is logged at 6.41%. "Send My Info to Darren" sends no email to the visitor | `src/components/LeadForm.tsx` line 77 (prefill), defaults `src/hooks/useMortgageInputs.ts` lines 15–17; same modal copied into `public/dscr/`, `public/fha/`, `public/realestateinvesting/` `index.html` | Cut to name, email, phone, state; leave the optional fields blank outside `/mortgage-calculator/`; send an instant reply with Darren's calendar link | Open Contact on `/`: fields blank. Submit: a confirmation lands in the inbox |
 | 5 | P1 | Fixed (verified 27 Sep) | **Every Contact-modal lead is labelled `MortgageCalculator`**, on any page, so Sheet, Bonzo tags and GA4 can't tell an equity lead from a DSCR lead | `LeadForm.tsx` line 148; `public/fha/index.html` 2133; `public/realestateinvesting/index.html` 2041; `public/dscr/index.html` 1983 | One `lead_source` per page and form (e.g. `home-contact`, `dscr-contact`) | Submit Contact on `/dscr/`: Sheet Source and Bonzo tag say dscr-contact |
 | 6 | P1 | Fixed, verified 29 Sep (GTM v5) | **Bookings never reach GA4.** `calendly_open` and `calendly_booking` fire into the dataLayer (verified with a real booking) but GTM has no tags for them, so GA4 Realtime shows neither | GTM container `GTM-N7Z8Q4QF` | Add GA4 event tags for both (observation only, not imported to Ads) and publish | Book a slot: `calendly_booking` appears in GA4 Realtime |
-| 7 | P1 | Partly fixed: R3-2 | **No fallback if the calendar stalls.** In the Claude app browser Calendly sat on its spinner for 20+ s, twice, with no way out. In Chrome it loaded in 3–5 s | `public/booking-chooser.js` | After ~8 s show "Open the calendar in a new tab" and the Call option | Block `calendly.com` in DevTools, pick Schedule: the fallback appears |
-| 8 | P1 | Open | **CallRail pool is already "swapping too fast"** (live alert) because Tracking sources = All, so every YouTube and organic visitor takes one of 4 numbers | CallRail → Numbers → Website pool | Limit the pool to paid sources, or add numbers before launch | The CallRail alert clears |
+| 7 | P1 | Fixed (R3-2 verified 27 Sep) | **No fallback if the calendar stalls.** In the Claude app browser Calendly sat on its spinner for 20+ s, twice, with no way out. In Chrome it loaded in 3–5 s | `public/booking-chooser.js` | After ~8 s show "Open the calendar in a new tab" and the Call option | Block `calendly.com` in DevTools, pick Schedule: the fallback appears |
+| 8 | P1 | Decided 29 Sep: keep pool 4, sources All, swap target 714-887-5432; the alert came from test bursts and a bot. Revisit when peak hourly visitors pass 16 after ads start | **CallRail pool is already "swapping too fast"** (live alert) because Tracking sources = All, so every YouTube and organic visitor takes one of 4 numbers | CallRail → Numbers → Website pool | Limit the pool to paid sources, or add numbers before launch | The CallRail alert clears |
 | 9 | P1 | Partly fixed | **Returning leads fail.** Bonzo answers 422 "already exists" for a known email and Darren gets a LEAD PIPELINE FAILURE instead of an updated contact. Any viewer who downloads a second guide hits this | `google-apps-script.js` Bonzo push | Upsert by email in whichever CRM stays (HubSpot) | Submit twice with one email: one contact, updated, no alert |
 | 10 | P1 | Partly fixed | **HELOC and equity viewers land on a debt-consolidation page**, and Target Outcome has no equity option | `/yt/heloc`, `/yt/equity` → `/` | Build `/heloc` (Darren's decision); meanwhile add "Access my home equity" to Target Outcome and HELOC wording | — |
 | 11 | P2 | Fixed (verified 27 Sep) | **Double submit.** Button now disables and reads "Sending…", but two clicks in the same tick still sent two requests: two Sheet rows 2 ms apart, two Follow-ups, and a 422 failure alert | `DebtSavingsCalculator.tsx` lines 194, 279, 314 (`sending` is state, read before React re-renders) | Guard with a `useRef` set synchronously before the request | In DevTools: `b.click(); b.click()` sends one `/api/lead` |
@@ -725,10 +829,10 @@ order is safe and no alert fires in the meantime.
 | 15 | P2 | Fixed (verified 27 Sep) | **Sheet can't separate tests from leads:** 4 real leads ever vs 20+ test rows | Lead Sheet | Add a Test flag (or route test emails to a Tests tab) plus Status / Contacted columns until HubSpot is live | Filter hides all tests |
 | 16 | P2 | Fixed, verified 29 Sep (GTM v5, GA4 dimensions) | **GA4 can't tell which form converted:** the `generate_lead` tag sends no parameters, though the dataLayer has them | GTM tag "GA4 – generate_lead" | Add `lead_source`, `form_id`, `page_path` (never `user_data`); register as custom dimensions | Parameters visible in GA4 DebugView |
 | 17 | P2 | Fixed (verified 27 Sep) | **FHA "calculator" is an Excel attachment**; most YouTube viewers are on phones. Success copy promises a "payment breakdown" for numbers the visitor never gave | `/fha/` guide email | Link a web calculator or send a PDF | — |
-| 18 | P2 | Partly fixed: R4-3 | Contact success message says "check out the savings calculator above" on every page | `LeadForm.tsx` line 173 | Match the next step to the page | — |
+| 18 | P2 | Fixed (R4-3 verified R5) | Contact success message says "check out the savings calculator above" on every page | `LeadForm.tsx` line 173 | Match the next step to the page | — |
 | 19 | P2 | Fixed (verified 27 Sep) | Mortgage calculator schedule counts 12 payments in the start year (Sep 2026), so it ends 2055 while the summary says Sep 2056 | `src/components/AmortizationTable.tsx`, `src/hooks/useMortgageInputs.ts` | Count only the months left in the start year | Last table year equals payoff year |
 | 20 | P3 | Fixed (verified 27 Sep) | Booking chooser text runs together: "Call (714) 942-4217Straight through, no waiting", "Schedule a timeFree 15 minute call" | `public/booking-chooser.js` styles | Put the sub-line on its own line | — |
-| 21 | P3 | Partly fixed: R3-5 | At desktop the 520 px panel gets Calendly's narrow layout, so the date grid is below the fold; name and email aren't prefilled for a lead who just submitted | `public/booking-chooser.js` sizing | Widen to ~700 px on desktop; pass name and email when known | — |
+| 21 | P3 | Fixed (R3-5 prefill verified R8; side-by-side layout R6) | At desktop the 520 px panel gets Calendly's narrow layout, so the date grid is below the fold; name and email aren't prefilled for a lead who just submitted | `public/booking-chooser.js` sizing | Widen to ~700 px on desktop; pass name and email when known | — |
 | 22 | P3 | Fixed (verified 27 Sep) | "Straight through, no waiting" promises something one forwarded cell can't always keep | `public/booking-chooser.js` copy | "Call Darren directly" | — |
 | 23 | P3 | Fixed (verified 27 Sep) | REI hero HTML says "$0 Estimated value today" until an animation runs | `public/realestateinvesting/index.html` line 841 | Put `$170,000` in the HTML and animate from there | View source shows $170,000 |
 | 24 | P3 | Fixed (verified 27 Sep) | FHA example uses 0.55% MIP ($177) for 5% down; the page's own text says 0.50% ($161) | `public/fha/index.html` line 962 | Correct to $161 | — |
@@ -895,9 +999,9 @@ Test identities used: `liannemaxbalbastro+<case>@gmail.com`, `lmbalbastro+<case>
 
 - [x] Bonzo: round 1 and round 2 test prospects deleted
 - [x] Calendly: TEST R2 Booking (29 Oct 11:45am PT) cancelled
-- [ ] Sheet: round 1 "Lianne TEST …" rows (Leads, Dscr, Fha, Real Estate Investing) and round 2 "TEST R2 …" rows (Debt Consolidation ×2, Leads, Dscr, Fha, Real Estate Investing), plus matching Follow-ups rows
-- [ ] Work browser: clear site data for realdarrentsai.com so the old `smoke-test` ad click stops tagging tests as `ads:google`
-- [ ] Accept the 24 Sep HubSpot invite, if it's for the CRM portal
+- [x] Sheet: all test rows deleted 30 Sep (Leads, Debt Consolidation, Dscr, FHA, Real Estate Investing, Follow-ups). Only the 4 real leads remain: Leslie Sutton, Kent Devereaux (Leads), Steven Salas (Debt Consolidation), Husain Habib (Real Estate Investing). Debug tab left as is (trimmed daily)
+- [x] Work browser: site data for realdarrentsai.com cleared 30 Sep (localStorage, cookies)
+- [x] HubSpot invite accepted 29 Sep (see "HubSpot, 29 Sep")
 
 Not checked: FHA email inbox placement for lmbalbastro@gmail.com (Resend shows Delivered), the Business Profile (not on this login), a real iPhone/Safari, Lighthouse scores.
 

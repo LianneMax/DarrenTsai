@@ -10,11 +10,14 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- attribution.js stays synchronous: it loads GTM and must run before any
+       form can submit. The other two are deferred (audit L4): nothing reads
+       them until a click or a field blur, and as blocking scripts they held
+       first paint back by ~0.5s on a phone. -->
   <script src="/attribution.js"></script>
-  <script src="/booking-chooser.js"></script>
-  <script src="/email-suggest.js"></script>
+  <script src="/booking-chooser.js" defer></script>
+  <script src="/email-suggest.js" defer></script>
 
   <!-- CallRail Dynamic Number Insertion: swaps the business number for the
        visitor's pool number. Loaded here rather than at the end of <body>
@@ -22,19 +25,36 @@
        a call placed in that window is attributed to the wrong pool, or to
        no campaign at all. swap.js is small and non-blocking to parse. -->
   <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Calendly is injected on first click (see loadCalendly below). It used to
      load eagerly here, putting a render-blocking third-party stylesheet in
      front of first paint for a widget nobody sees until they click. -->
 <style>
+  /* Outfit, self-hosted (audit L4, 30 Sep). The Google Fonts stylesheet was
+     the largest render-blocking request on every page (~0.8s in Lighthouse
+     mobile): the browser had to fetch CSS from one origin before it could learn
+     the font lived on another. Google serves one variable file for all five
+     weights, so these two are the same bytes it sent, from our own origin, with
+     the year-long cache /fonts/* already has. The filenames carry Google's
+     version (v15) because that cache is immutable: a new cut needs a new name.
+     The latin file is preloaded in the <head>; latin-ext only downloads if a page
+     ever shows a character from it. */
+  @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+
   :root{
+    /* Contrast tokens, audit L3 (30 Sep). The old teal (#517686) gave white
+       4.9:1 and the muted copy on it 3.6:1; buttons in the old accent (#219ebc)
+       gave white 3.1:1, and the accent-on-teal headline word 1.6:1. Values are
+       the nearest that reach 4.5:1 (3:1 for large text), same hues. */
     --white:       #ffffff;
-    --teal:        #517686;
+    --teal:        #466a7a;
     --teal-deep:   #274654;
     --navy:        #223d55;
     --navy-dark:   #1a2f42;
-    --header-text: #c8e2e8;
-    --accent:      #219ebc;
+    --header-text: #d4e8ee;
+    --accent:      #1a7f99;
+    --accent-on-teal: #8fd8ea;   /* accent-coloured text and marks on teal */
+    --on-teal-muted: rgba(255,255,255,0.85);   /* footer small print on teal */
     --light-bg:    #f5f7f9;
     --text-dark:   #1a1a2e;
     --text-muted:  #6b7280;
@@ -115,7 +135,7 @@
   .hero-title em{
     font-style:normal;
     font-weight:800;
-    color:var(--accent);
+    color:var(--accent-on-teal);
     display:inline-block;
     transform:skewX(-10deg);
   }
@@ -123,7 +143,9 @@
 
   /* Static "How the ratio works" panel beside the hero copy */
   .dscr-ratio-panel{
-    background:rgba(255,255,255,0.07);
+    /* Darker inset rather than a lighter one (audit L3): on a lightened panel
+       even white bold text measured 4.2:1, so the muted rows could never pass. */
+    background:rgba(26,47,66,0.18);
     border:1px solid rgba(200,226,232,.25);
     border-radius:16px;
     padding:28px;
@@ -389,8 +411,10 @@
     color:var(--white);
   }
   .rung.active .bar{background:rgba(255,255,255,0.15);}
-  .rung.active .bar::after{background:var(--accent);}
-  .rung.active .rate{color:var(--accent);}
+  .rung.active .bar::after{background:var(--accent-on-teal);}
+  /* White, not --accent-on-teal: this is 13.6px text, and the light cyan is
+     only 3.7:1 on teal, enough for the hero headline but not for small copy. */
+  .rung.active .rate{color:var(--white);}
   .rung .tag{
     font-size:0.65rem;
     letter-spacing:.08em;
@@ -507,7 +531,7 @@
     width:18px;height:18px;
     flex-shrink:0;
   }
-  .lock h3{
+  .lock h2{
     font-family:'Outfit', sans-serif;
     font-weight:700;
     font-size:1.25rem;
@@ -669,13 +693,33 @@
     margin-top:8px;
   }
 
-  /* ---------- Footer disclaimer band ---------- */
-  .dscr-footer-band{background:var(--light-bg);border-top:1px solid var(--line);margin-top:56px;}
-  .footer-disclaimer{
-    font-size:0.75rem;
-    line-height:1.6;
-    color:var(--text-muted);
-    padding:26px 0;
+  /* --- Site footer (mirrors the main-site Footer component) ---
+     Added 30 Sep (audit L1). /dscr/ was the one ad landing page with no
+     privacy link and no NMLS Consumer Access link, which Google Ads expects on
+     a financial-services page. Copied from /fha/, not rewritten. */
+  .site-footer{background:var(--teal);color:var(--white);padding:64px 0 52px;margin-top:56px;position:relative;overflow:hidden;}
+  .footer-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+  .footer-inner{max-width:900px;margin:0 auto;padding:0 24px;position:relative;}
+  .footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;}
+  .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .footer-name{font-family:'Outfit',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
+  .footer-title{font-size:0.875rem;color:var(--on-teal-muted);margin:0 0 14px;}
+  .footer-meta{font-size:0.82rem;color:var(--on-teal-muted);margin:0 0 4px;}
+  .footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
+  .footer-contact-link{display:flex;align-items:center;gap:8px;font-size:0.92rem;color:rgba(255,255,255,0.85);font-weight:400;text-decoration:none;transition:color .2s ease;}
+  .footer-contact-link:hover{color:var(--white);}
+  .footer-contact-link svg{color:rgba(255,255,255,0.85);flex-shrink:0;}
+  .footer-linkedin{margin-top:4px;}
+  .footer-bottom{border-top:1px solid rgba(255,255,255,0.18);padding:20px 0;display:flex;flex-direction:column;gap:12px;}
+  .footer-copy{font-size:0.82rem;color:var(--on-teal-muted);margin:0;}
+  .footer-disclaimer{font-size:0.75rem;line-height:1.6;text-align:left;margin:0;max-width:none;color:var(--on-teal-muted);}
+  .footer-compliance{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
+  .footer-compliance a{font-size:0.72rem;color:var(--on-teal-muted);text-decoration:none;transition:color .2s ease;display:inline-block;padding:5px 0;}
+  .footer-compliance a:hover{color:var(--white);}
+  .footer-compliance span{color:rgba(255,255,255,0.3);font-size:0.72rem;}
+  @media(max-width:700px){
+    .footer-grid{grid-template-columns:1fr;gap:32px;}
+    .footer-right{align-items:flex-start;}
   }
 
   /* ---------- Mobile sticky bottom bar ---------- */
@@ -897,6 +941,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </header>
 
+<main>
 <header class="hero">
   <div class="hero-inner container-1080">
     <div class="hero-left">
@@ -1044,7 +1089,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="lock-rule"></div>
       <div class="lock-head">
         <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="#c8e2e8" stroke-width="1.8"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <h3>Get Your Actual Rate &amp; Terms</h3>
+        <h2>Get Your Actual Rate &amp; Terms</h2>
       </div>
       <p>The rate shown above is a general market range for your down payment tier, not a quote. Your real rate depends on factors this calculator can't see:</p>
       <ol class="lock-numbered">
@@ -1061,14 +1106,76 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 </div>
 
-<!-- FOOTER DISCLAIMER -->
-<div class="dscr-footer-band">
-  <div class="wrap" style="padding-top:0;padding-bottom:0;">
-    <div class="footer-disclaimer">
-      This calculator is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and qualification figures shown are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, reserves, and other factors. This is not a guarantee of financing. Darren Tsai, DRE #02103705 | NMLS #2438102. Saxton Mortgage, NMLS #2525913. Equal Housing Opportunity.
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-dots" aria-hidden="true"></div>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-left">
+        <div class="footer-brand">
+          <img src="/darren-avatar.png" width="72" height="72" decoding="async" alt="Darren Tsai" onerror="this.style.display='none'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <span class="footer-name">Darren Tsai</span>
+        </div>
+        <p class="footer-title">Senior Loan Officer &middot; Saxton Mortgage</p>
+        <p class="footer-meta">Darren Tsai | NMLS #2438102 | CA DRE Broker #02103705</p>
+        <p class="footer-meta">Saxton Mortgage, LLC | NMLS #1717191</p>
+        <p class="footer-meta">Licensed in <strong>AZ &middot; CA &middot; FL &middot; HI &middot; OR &middot; PA &middot; TN &middot; TX</strong></p>
+        <p class="footer-meta" style="margin-top:6px;line-height:1.5;">Real Estate Broker, California Department of Real Estate. Loans made or arranged pursuant to California Department of Real Estate License.</p>
+      </div>
+
+      <div class="footer-right">
+        <a href="tel:+17148875432" class="footer-contact-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.07 1.18 2 2 0 012.07 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          (714) 887-5432
+        </a>
+        <a href="mailto:darren@realdarrentsai.com" class="footer-contact-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          darren@realdarrentsai.com
+        </a>
+        <a href="https://www.linkedin.com/in/soldwithtsai/" class="footer-contact-link footer-linkedin" aria-label="Darren Tsai on LinkedIn" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4" cy="4" r="2" stroke="currentColor" stroke-width="2"/></svg>
+          LinkedIn
+        </a>
+        <div class="footer-contact-link">
+          <svg width="16" height="16" viewBox="0 0 60 60" fill="none" aria-label="Equal Housing Lender" role="img">
+            <defs>
+              <mask id="eho-mask">
+                <rect width="60" height="60" fill="white"/>
+                <rect x="17" y="35" width="26" height="5" fill="black"/>
+                <rect x="17" y="44" width="26" height="5" fill="black"/>
+              </mask>
+            </defs>
+            <polygon points="30,5 56,28 4,28" fill="currentColor"/>
+            <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#eho-mask)"/>
+          </svg>
+          Equal Housing Lender
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copy">&copy; 2026 Darren Tsai. All rights reserved.</p>
+      <p class="footer-disclaimer">
+        This calculator is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and qualification figures shown are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, reserves, and other factors. This is not a guarantee of financing. Equal Housing Opportunity.
+      </p>
+      <div class="footer-compliance">
+        <a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/2438102" target="_blank" rel="noopener">Check my license at NMLS Consumer Access</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener">Legal</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/terms-of-use" target="_blank" rel="noopener">Terms of Use</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/accessibility-statement" target="_blank" rel="noopener">Accessibility</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://www.saxtonmortgage.com/site-map" target="_blank" rel="noopener">Site Map</a>
+      </div>
     </div>
   </div>
-</div>
+</footer>
 
 <!-- MOBILE STICKY BAR -->
 <div class="mobile-sticky-bar" id="mobileStickyBar">

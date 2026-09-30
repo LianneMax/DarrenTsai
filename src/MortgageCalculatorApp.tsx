@@ -27,7 +27,9 @@ export default function MortgageCalculatorApp() {
       {/* Offsets the fixed nav, which the hero used to do on the homepage. */}
       <div className="page-top-spacer" />
 
-      <Calculator inputs={inputs} setInputs={setInputs} summary={summary} onOpenContact={openContact} />
+      <main>
+        <Calculator inputs={inputs} setInputs={setInputs} summary={summary} onOpenContact={openContact} />
+      </main>
       <Footer />
 
       {contactOpen && <ContactModal

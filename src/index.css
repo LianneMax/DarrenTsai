@@ -1,19 +1,30 @@
 /* ============================================================
-   1. GOOGLE FONTS
-   ============================================================
-   Loaded via <link> in index.html, not @import. An @import here is only
-   discovered once this stylesheet has downloaded and parsed, which serialises
-   two round trips before a single glyph is requested and was a direct
-   contributor to the Poor FCP number. The <link> starts the request during
-   HTML parse instead, alongside the preconnects.
+   1. FONTS
    ============================================================ */
+/* Outfit, self-hosted (audit L4, 30 Sep). The Google Fonts stylesheet was
+   the largest render-blocking request on every page (~0.8s in Lighthouse
+   mobile): the browser had to fetch CSS from one origin before it could learn
+   the font lived on another. Google serves one variable file for all five
+   weights, so these two are the same bytes it sent, from our own origin, with
+   the year-long cache /fonts/* already has. The filenames carry Google's
+   version (v15) because that cache is immutable: a new cut needs a new name.
+   The latin file is preloaded in the <head>; latin-ext only downloads if a page
+   ever shows a character from it. */
+@font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 
 /* ============================================================
    2. CSS CUSTOM PROPERTIES
    ============================================================ */
 :root {
   --white:       #ffffff;
-  --teal:        #517686;
+  /* Darkened from #517686 on 30 Sep (audit L3). White on the old teal was
+     4.9:1, which left no room for a muted tier: every softened line in the
+     footer (0.6 to 0.8 white) measured 2.85 to 4.0, under the 4.5 body-text
+     minimum. At #466a7a white is 5.8:1 and --on-teal-muted 4.75:1. Same hue,
+     one step darker; the four static landing pages carry the same value. */
+  --teal:        #466a7a;
+  --on-teal-muted: rgba(255, 255, 255, 0.85);
   --navy:        #223d55;
   --rose:        #d2566d;
   --light-bg:    #f5f7f9;
@@ -1513,13 +1524,13 @@ p {
 
 .footer-title {
   font-size: 0.875rem;
-  color: rgba(255,255,255,0.8);
+  color: var(--on-teal-muted);
   margin-bottom: 14px;
 }
 
 .footer-meta {
   font-size: 0.82rem;
-  opacity: 0.7;
+  color: var(--on-teal-muted);
   margin-bottom: 4px;
 }
 
@@ -1564,13 +1575,16 @@ p {
 
 .footer-compliance a {
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.55);
+  color: var(--on-teal-muted);
   text-decoration: none;
+  /* 24px tall tap target (WCAG 2.5.8) without moving the text. */
+  display: inline-block;
+  padding: 5px 0;
   transition: color 0.2s ease;
 }
 
 .footer-compliance a:hover {
-  color: rgba(255,255,255,0.9);
+  color: var(--white);
 }
 
 .footer-compliance span {
@@ -1580,12 +1594,12 @@ p {
 
 .footer-copy {
   font-size: 0.82rem;
-  opacity: 0.7;
+  color: var(--on-teal-muted);
 }
 
 .footer-disclaimer {
   font-size: 0.75rem;
-  opacity: 0.6;
+  color: var(--on-teal-muted);
   text-align: left;
   line-height: 1.6;
 }
