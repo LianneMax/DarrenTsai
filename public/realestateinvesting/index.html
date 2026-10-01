@@ -11,11 +11,15 @@
   <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <!-- attribution.js stays synchronous: it loads GTM and must run before any
-       form can submit. The other two are deferred (audit L4): nothing reads
-       them until a click or a field blur, and as blocking scripts they held
-       first paint back by ~0.5s on a phone. -->
-  <script src="/attribution.js"></script>
+  <!-- attribution.js is async (audit L7, 1 Oct). It loads GTM and records the
+       gclid/UTMs, and nothing reads it until a form submit or a click, all of
+       which check window.DT first. As a blocking script it held first paint
+       back ~0.5s in PSI. async rather than defer: defer would wait for the
+       whole page to parse before starting GTM; async with high priority starts
+       it as soon as the file arrives, which is no later than before.
+       booking-chooser.js and email-suggest.js are deferred (audit L4): nothing
+       reads them until a click or a field blur. -->
+  <script src="/attribution.js" async fetchpriority="high"></script>
   <script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
@@ -85,14 +89,17 @@
   .container-1080{max-width:1080px;margin:0 auto;padding:0 40px;}
 
   /* ---------- Motion ---------- */
-  @keyframes fadeUp{ from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
-  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
-  .anim{opacity:0;animation:fadeUp 0.8s ease forwards;}
+  /* Hero entry moves, never fades (audit L7, 1 Oct): the hero text is the LCP
+     element, and at opacity 0 it does not count as painted, so LCP waited for
+     a fade whose frames queue behind GTM, the gtags and HubSpot on a phone.
+     .reveal below the fold keeps its fade; LCP never waits for that. */
+  @keyframes heroRise{ from{transform:translateY(22px);} to{transform:translateY(0);} }
+  .anim{animation:heroRise 0.8s ease both;}
   .anim-1{animation-delay:.05s;}
   .anim-2{animation-delay:.18s;}
   .anim-3{animation-delay:.32s;}
   .anim-4{animation-delay:.46s;}
-  .anim-5{animation-delay:.6s;animation-name:fadeIn;}
+  .anim-5{animation-delay:.6s;}
 
   .reveal{opacity:0;transform:translateY(32px);transition:opacity .6s ease, transform .6s ease;}
   .reveal.revealed{opacity:1;transform:translateY(0);}

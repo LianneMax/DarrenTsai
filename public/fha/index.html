@@ -13,11 +13,15 @@
 <link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin>
   <!-- The first carousel slide is the page's LCP element (audit L4). -->
   <link rel="preload" href="/fha-illustrations/1.webp" as="image" type="image/webp" fetchpriority="high">
-  <!-- attribution.js stays synchronous: it loads GTM and must run before any
-       form can submit. The other two are deferred (audit L4): nothing reads
-       them until a click or a field blur, and as blocking scripts they held
-       first paint back by ~0.5s on a phone. -->
-  <script src="/attribution.js"></script>
+  <!-- attribution.js is async (audit L7, 1 Oct). It loads GTM and records the
+       gclid/UTMs, and nothing reads it until a form submit or a click, all of
+       which check window.DT first. As a blocking script it held first paint
+       back ~0.5s in PSI. async rather than defer: defer would wait for the
+       whole page to parse before starting GTM; async with high priority starts
+       it as soon as the file arrives, which is no later than before.
+       booking-chooser.js and email-suggest.js are deferred (audit L4): nothing
+       reads them until a click or a field blur. -->
+  <script src="/attribution.js" async fetchpriority="high"></script>
   <script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
@@ -86,8 +90,12 @@
   }
 
   /* ---------- Motion (mirrors realestateinvesting/index.html) ---------- */
-  @keyframes fadeUp{ from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
-  .anim{opacity:0;animation:fadeUp 0.8s ease forwards;}
+  /* Hero entry moves, never fades (audit L7, 1 Oct): the hero text is the LCP
+     element, and at opacity 0 it does not count as painted, so LCP waited for
+     a fade whose frames queue behind GTM, the gtags and HubSpot on a phone.
+     .reveal below the fold keeps its fade; LCP never waits for that. */
+  @keyframes heroRise{ from{transform:translateY(22px);} to{transform:translateY(0);} }
+  .anim{animation:heroRise 0.8s ease both;}
   .anim-1{animation-delay:.05s;}
   .anim-2{animation-delay:.18s;}
   .anim-3{animation-delay:.32s;}
@@ -1008,7 +1016,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="hero-carousel-wrap">
         <div class="hero-carousel" id="heroCarousel">
           <div class="carousel-track" id="carouselTrack">
-            <img class="slide" src="/fha-illustrations/1.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" fetchpriority="high">
+            <img class="slide" src="/fha-illustrations/1.webp" alt="" onerror="this.remove()" width="840" height="840" fetchpriority="high">
             <img class="slide" src="/fha-illustrations/2.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
             <img class="slide" src="/fha-illustrations/3.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">
             <img class="slide" src="/fha-illustrations/4.webp" alt="" onerror="this.remove()" width="840" height="840" decoding="async" loading="lazy">

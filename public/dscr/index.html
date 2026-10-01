@@ -11,11 +11,15 @@
   <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <!-- attribution.js stays synchronous: it loads GTM and must run before any
-       form can submit. The other two are deferred (audit L4): nothing reads
-       them until a click or a field blur, and as blocking scripts they held
-       first paint back by ~0.5s on a phone. -->
-  <script src="/attribution.js"></script>
+  <!-- attribution.js is async (audit L7, 1 Oct). It loads GTM and records the
+       gclid/UTMs, and nothing reads it until a form submit or a click, all of
+       which check window.DT first. As a blocking script it held first paint
+       back ~0.5s in PSI. async rather than defer: defer would wait for the
+       whole page to parse before starting GTM; async with high priority starts
+       it as soon as the file arrives, which is no later than before.
+       booking-chooser.js and email-suggest.js are deferred (audit L4): nothing
+       reads them until a click or a field blur. -->
+  <script src="/attribution.js" async fetchpriority="high"></script>
   <script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 

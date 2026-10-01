@@ -15,8 +15,11 @@
          instead of waiting for the stylesheet to be parsed. -->
     <link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin />
 
-    <!-- Must run before any form handler can submit. ~2KB, no network work. -->
-    <script src="/attribution.js"></script>
+    <!-- Records gclid/UTMs and loads GTM. async with high priority (audit L7):
+         off the render path, and GTM starts as soon as the file arrives. Every
+         reader (form submit, click tracking) checks window.DT at that moment,
+         long after this has run. -->
+    <script src="/attribution.js" async fetchpriority="high"></script>
     <!-- Deferred (audit L4): only read on a click or a field blur. -->
     <script src="/booking-chooser.js" defer></script>
     <script src="/email-suggest.js" defer></script>

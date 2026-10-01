@@ -38,9 +38,9 @@ From the 29 Sep launch-readiness check (PageSpeed Insights mobile, live site, Go
 
 | # | Status | What | Where | Fix | Check |
 | --- | --- | --- | --- | --- | --- |
-| L1 | Fixed in code (not re-checked live), 30 Sep. See "L1 to L4: what was done" | `/dscr/` has no footer: no privacy policy link and no NMLS Consumer Access link (the other pages have both). Google Ads financial-services landing pages are expected to show both | `public/dscr/index.html` | Add the same footer the other static pages use (privacy link, NMLS #2438102 with a link to nmlsconsumeraccess.org, DRE, Equal Housing). Copy it, don't invent new licence text | Open `/dscr/` on mobile and desktop: footer present, links work, layout check passes |
-| L2 | Fixed in code (not re-checked live), 30 Sep | Old URLs return 404 and Google still indexes them ("duplicate without canonical"): `/investing`, `/homeowners`, `/agent-career`, and the old `/post/…` URL | `netlify.toml` | 301 `/investing` and `/investing/*` → `/realestateinvesting/`; `/homeowners`, `/agent-career` and `/post/*` → `/`. Put them above any catch-all | `curl -I` each: 301 with the right Location. Then Max requests re-indexing in Search Console |
-| L3 | Fixed in code (not re-checked live), 30 Sep: local Lighthouse accessibility 100 on all five pages | Accessibility (PSI): text contrast too low on `/`, `/dscr/`, `/realestateinvesting/`; no `<main>` landmark on `/` and `/realestateinvesting/`; links that rely on colour alone on `/`; an `aria-hidden="true"` element that contains focusable elements on `/`; headings out of order on `/dscr/` | Site CSS/tokens, `src/` components, `public/*/index.html` | See prompt. Fix the colour tokens, not one-off overrides. Don't change the visual design beyond what contrast requires | Lighthouse accessibility 95+ on each page; the layout check still passes at all 9 widths |
+| L1 | Verified live, 1 Oct (see "Live re-check of dc97979") | `/dscr/` has no footer: no privacy policy link and no NMLS Consumer Access link (the other pages have both). Google Ads financial-services landing pages are expected to show both | `public/dscr/index.html` | Add the same footer the other static pages use (privacy link, NMLS #2438102 with a link to nmlsconsumeraccess.org, DRE, Equal Housing). Copy it, don't invent new licence text | Open `/dscr/` on mobile and desktop: footer present, links work, layout check passes |
+| L2 | Verified live, 1 Oct; re-indexing requested for `/investing`, `/homeowners`, `/agent-career` | Old URLs return 404 and Google still indexes them ("duplicate without canonical"): `/investing`, `/homeowners`, `/agent-career`, and the old `/post/…` URL | `netlify.toml` | 301 `/investing` and `/investing/*` → `/realestateinvesting/`; `/homeowners`, `/agent-career` and `/post/*` → `/`. Put them above any catch-all | `curl -I` each: 301 with the right Location. Then Max requests re-indexing in Search Console |
+| L3 | Verified live (visual), 1 Oct. Local Lighthouse accessibility 100 on all five pages; PSI a11y still to record | Accessibility (PSI): text contrast too low on `/`, `/dscr/`, `/realestateinvesting/`; no `<main>` landmark on `/` and `/realestateinvesting/`; links that rely on colour alone on `/`; an `aria-hidden="true"` element that contains focusable elements on `/`; headings out of order on `/dscr/` | Site CSS/tokens, `src/` components, `public/*/index.html` | See prompt. Fix the colour tokens, not one-off overrides. Don't change the visual design beyond what contrast requires | Lighthouse accessibility 95+ on each page; the layout check still passes at all 9 widths |
 | L4 | Partly fixed, 30 Sep: our own render-blocking requests and the FHA image weight are fixed; what remains is third-party (see "what was done") | Performance: render-blocking requests (est. 1.8 s on `/dscr/` and `/realestateinvesting/`, 0.4 s on `/`); cache lifetimes too short (~108 KB on repeat visits); legacy JavaScript (~13 KB); total blocking time 530 ms on `/realestateinvesting/` | `public/*/index.html` `<head>`, fonts, `netlify.toml` headers | See prompt. Don't delay or remove GTM, CallRail swap or HubSpot: tracking must still fire on first load | LCP ≤ 2.5 s and TBT ≤ 200 ms on each page in PSI mobile, and GTM, GA4 page_view, CallRail swap and `hubspotutk` still work |
 | L5 | Blocked on Darren + Saxton | No consent line on any form for calls and texts (Kocah's guide step 8; Bonzo texts leads) | All forms | Once Darren and Saxton approve the wording, add it under every submit button | Wording on every form, same text everywhere |
 | L6 | Partly done: local Lighthouse on `/fha/` recorded below (30 Sep). Still wants one PSI mobile run on the live site, since local and PSI numbers are not comparable | `/fha/` PageSpeed score not taken | — | Re-run PSI mobile on `/fha/` | Score recorded here |
@@ -117,6 +117,79 @@ The performance columns there move by run-to-run noise, because HubSpot and the 
 **L6, `/fha/` score:** local only, above (accessibility 100, SEO 100). Still take one PSI mobile run on the live `/fha/` after deploy, alongside the re-check of the other three.
 
 ---
+
+### Live re-check of dc97979 (1 Oct, Max)
+
+Netlify: production is `main@dc97979`, published 30 Sep 12:10.
+
+| Item | Result |
+| --- | --- |
+| L2 redirects | `/investing`, `/investing/x`, `/homeowners`, `/agent-career`, `/post/x` are all server redirects (`fetch` with `redirect: 'manual'` returns `opaqueredirect`), landing on `/realestateinvesting/` and `/` as planned. `netlify.toml` has `status = 301` for each. `/yt/rei` still works (302). Search Console live test of `/investing` fetches the `/realestateinvesting/` page. Indexing requested for `/investing`, `/homeowners`, `/agent-career` |
+| L1 footer | `/dscr/` footer present on mobile (375 px) and desktop, teal `#466a7a`. Links: Privacy Policy, NMLS Consumer Access (#2438102), Legal, Terms, Accessibility, Site Map, phone, email, LinkedIn. NMLS shown: #2438102 (Darren), #1717191 (Saxton). #2525913 no longer on the page. Small nit: on mobile the second link row starts with a stray "·" separator |
+| L3 colours | `/`, `/dscr/`, `/fha/`, `/realestateinvesting/`, `/mortgage-calculator/` look right at desktop width: darker teal, deeper-blue buttons, light-cyan headline word |
+| Tracking | Fresh load of `/realestateinvesting/`: GTM-N7Z8Q4QF and G-627RJ4FDSP loaded, GA4 `page_view` sent for each page (seen in GA4 Realtime), CallRail swapped the number to (714) 984-0932, `hubspotutk` and `_ga` cookies set |
+| L4 / L6 PageSpeed | Run 1 Oct in the PSI web UI (mobile). Accessibility 100 on all four, but performance is worse than 29 Sep. See the table below |
+
+**PageSpeed Insights, mobile, 1 Oct (after dc97979)**
+
+| Page | Perf | A11y | Best Pr. | SEO | FCP | LCP | TBT | CLS | Speed Index | 29 Sep LCP |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` (run 1) | 69 | 100 | 100 | 100 | 1.8 s | 5.9 s | 130 ms | 0 | 7.4 s | 2.6 s |
+| `/` (run 2) | 65 | 100 | 100 | 100 | 1.8 s | 9.4 s | 180 ms | 0 | 6.7 s | |
+| `/dscr/` | 77 | 100 | 100 | 100 | 1.8 s | 4.2 s | 320 ms | 0.007 | 3.5 s | 2.6 s |
+| `/fha/` | 59 | 100 | 100 | 100 | 1.9 s | 7.9 s | 500 ms | 0 | 4.7 s | not run |
+| `/realestateinvesting/` | 80 | 100 | 100 | 100 | 1.7 s | 3.0 s | 430 ms | 0 | 4.9 s | 2.6 s |
+
+Accessibility is fixed (89 to 100). FCP improved (2.6 s to 1.7 to 1.9 s). LCP got worse on every page, and PSI blames "element render delay" (1.7 to 2.2 s), not download time. LCP elements: `/fha/` `<p class="hero-sub anim anim-3">` (starts at opacity 0 and fades in); `/` a small header/footer text element. Still render-blocking on `/fha/`: `/attribution.js` (540 ms) and CallRail `swap.js` (750 ms). Unused JS: three `gtag/js` copies (GA4, Ads via GTM, Ads via HubSpot pixel) plus `gtm.js`, about 313 KiB unused. Not yet known whether the LCP drop comes from dc97979 or from the HubSpot scripts added in GTM v6 on 29 Sep; needs a with/without comparison (L7).
+
+Two things noticed while checking:
+
+- A second, plain `gtag/js?id=AW-18451324434` loads next to the GTM one. It is not in the site HTML; it is injected at runtime, most likely by HubSpot's ads pixel (`hsadspixel`) since Google Ads was connected in HubSpot on 16 Sep. It sends an Ads `page_view` only, no conversions. Decided 1 Oct (Max): keep it for now. It doesn't affect conversions; revisit if Kocah isn't using HubSpot ad audiences or page speed needs the extra script gone.
+- GA4 Realtime counted this check session: the internal-traffic rule ("Remove Developer", Google tag G-627RJ4FDSP) only matched 136.158.59.180, and Max's IP is now 210.19.247.166. Fixed 1 Oct: added `210.19.247.0/24` to the rule; hits from Max now carry `tt=internal`. Max's home IP can change; if Realtime shows her again, add the new IP (whatsmyip) to the same rule.
+
+**NMLS check (1 Oct).** Saxton's legal page (saxtonmortgage.com/legal) lists both numbers: #1717191 is Saxton Mortgage, LLC (multi-state, San Diego HQ); #2525913 is Dream Home Development Corporation, a California-only subsidiary that operates as "Saxton Mortgage" (CA DRE 02205650). Both are real. The site now uses #1717191 everywhere; #2525913 is still in the four Resend emails (`netlify/functions/send-*.mts`), `scripts/build_dscr_pdf.py` and the REI case-study PDF. Darren signs as Saxton Mortgage, LLC NMLS #1717191 and is licensed in 8 states, so #1717191 is the consistent choice. Waiting on a one-line yes from Darren before changing the emails and PDFs (L8).
+
+### L7 and L8: prompt for Claude Code (1 Oct)
+
+```
+Read audit.md "Live re-check of dc97979" first.
+
+L7, LCP regression. PSI mobile LCP got worse after dc97979 (/: 2.6 s to 5.9 to 9.4 s; /fha/: 7.9 s; /dscr/: 4.2 s; /realestateinvesting/: 3.0 s). PSI says "element render delay", not download.
+1. Find the cause before changing anything: run Lighthouse mobile locally on the four pages for dc97979 and its parent (3e93cbc), and for dc97979 with the GTM HubSpot tag blocked (block js-na2.hs-scripts.com). Record all three in audit.md.
+2. Fix what is ours: the hero text that is the LCP element must not start at opacity 0. Keep the fade-in for elements below it, or make the hero text visible from the first paint (e.g. animate transform only). Check /fha/ .hero-sub.anim-3 and the / hero.
+3. /fha/ still has /attribution.js and CallRail swap.js render-blocking. attribution.js can be `defer` as long as it still runs before any form submit and still stores gclid/UTMs on first load. swap.js: load it async only if the number swap still happens on first load; check it.
+4. Don't remove or delay GTM, GA4, CallRail or HubSpot. Tracking must still fire on first load (GTM, GA4 page_view, swap.js, hubspotutk).
+Check: Lighthouse mobile LCP <= 2.5 s on the four pages, accessibility stays 100, npm test, lint, build and the layout check pass.
+
+L8, NMLS: do NOT change yet. Waiting on Darren to confirm #1717191 for the emails and PDFs.
+```
+
+### L7: what was found and done (1 Oct, Claude Code)
+
+**Cause: mostly HubSpot, not dc97979.** Lighthouse 13.5, mobile, run locally against `vite preview`, three runs per page, median LCP. Local numbers sit far above PSI's (the laptop's CPU inflates every script), so read across the rows, not against PSI:
+
+| Page | 3e93cbc (before dc97979) | dc97979 | dc97979, HubSpot blocked | L7 fix | L7 fix, HubSpot blocked |
+| --- | --- | --- | --- | --- | --- |
+| `/` | 10.9 s · TBT 2,770 ms | 10.2 s · 1,800 ms | 6.3 s · 460 ms | 10.1 s · 2,790 ms | 6.4 s · 630 ms |
+| `/dscr/` | 10.7 s · 1,720 ms | 10.4 s · 1,800 ms | 5.6 s · 430 ms | 10.0 s · 2,220 ms | 5.7 s · 440 ms |
+| `/fha/` | 14.9 s · 1,460 ms | 11.4 s · 1,940 ms | 7.5 s · 420 ms | 11.9 s · 2,020 ms | 7.6 s · 420 ms |
+| `/realestateinvesting/` | 10.9 s · 1,640 ms | 10.0 s · 1,670 ms | 6.4 s · 560 ms | 7.0 s · 1,890 ms | 6.3 s · 480 ms |
+
+- dc97979 did not make LCP worse on any page: equal or better than its parent everywhere (`/fha/` 14.9 to 11.4 s from the WebP carousel).
+- Blocking only `js-na2.hs-scripts.com` cuts LCP by 4 to 5 s and TBT by about three quarters on every page. The HubSpot tag (GTM v6, 29 Sep) went live after the 29 Sep PSI run, which is why the 1 Oct PSI numbers look like a regression. HubSpot loads its analytics, banner, ads pixel and collected-forms scripts, and the ads pixel brings the second Ads gtag noted above.
+- Ours: on `/`, `/fha/` and `/realestateinvesting/` the hero text faded in from opacity 0, and an element at opacity 0 is not "painted" for LCP, so LCP waited for a fade whose frames queue behind all of that script. That is PSI's "element render delay" and why its LCP element on `/` was a small nav text.
+
+**Changes.**
+- Hero entrance is movement only: `.hero-anim` (`src/index.css`) and `.anim` (`/fha/`, `/realestateinvesting/`) now use a `heroRise` keyframe that animates `transform` and never `opacity`. The hero text is visible from the first frame and still rises into place; the fade below the fold (`.reveal`) is unchanged. In the observed (unthrottled) traces LCP now equals FCP on every page, and the LCP element is the real hero (`h1.hero-headline` on `/`, `h1.hero-title` on `/realestateinvesting/`, `p.hero-sub` on `/fha/`). `/realestateinvesting/` median LCP 10.0 to 7.0 s with everything loading.
+- `/attribution.js` is `async` with `fetchpriority="high"` on all five pages, so it no longer blocks render. `async`, not `defer`: `defer` would hold GTM until the whole page had parsed; `async` starts it as soon as the file arrives, no later than before. Every reader (form submit, phone/Calendly click tracking) checks `window.DT` at that moment. Checked in Chromium with `?gclid=…&utm_…` on all five pages: gclid and UTMs stored on first load, `DT.attr()` returns them, GTM, GA4 `page_view`, CallRail `swap.js`, HubSpot and `hubspotutk` all fire.
+- `/fha/` slide 1 (the LCP image when the carousel wins) no longer has `decoding="async"`, which Chrome advises against for the LCP image.
+- **CallRail `swap.js` stays synchronous.** Tested: loaded `async`, the number was never swapped on any page within 10 s; synchronous, it swaps in 0.6 to 0.9 s. The prompt's condition was not met.
+
+**What is left, and it is not code.** With HubSpot loading, local LCP stays 7 to 12 s and TBT around 2 s, and LCP ≤ 2.5 s is not reachable here; in PSI the gap should be smaller but HubSpot is the largest item. Options for Max and Kocah, none taken because the prompt forbids delaying HubSpot: fire the GTM HubSpot tag on Window Loaded instead of All Pages (`hubspotutk` would still be set on first load, a second or so later); switch off the parts of HubSpot the site does not use (ads pixel, cookie banner, collected forms) in HubSpot's settings; or accept the score, since HubSpot is a decision about tracking, not a page bug. Re-run PSI mobile on the four pages after deploy to get the real numbers.
+
+**Also seen.** `/mortgage-calculator/` showed the real number during the checks after the four pool numbers had been handed out to test sessions in the same few minutes: the CallRail pool is small (#8), not this change.
+
+`npm test` 725 passed (8 new L7 checks in `tests/launch-fixes.test.ts`), `npm run lint` clean, `npm run build` OK, `npm run test:layout` OK (45 checks).
 
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 

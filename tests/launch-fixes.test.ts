@@ -67,6 +67,35 @@ describe('L2: old site URLs are permanently redirected', () => {
   });
 });
 
+describe('L7: the hero paints at once', () => {
+  // LCP does not count an element at opacity 0 as painted, so a hero that fades
+  // in makes LCP wait for the fade, and the fade's frames wait behind every
+  // tracking script on a phone. PSI put / at 5.9 to 9.4s on 1 Oct for this.
+  it.each([FHA, REI])('%s moves its hero in without fading it', (page) => {
+    const rule = /\n {2}\.anim\{([^}]*)\}/.exec(read(page))?.[1] ?? '';
+    expect(rule).toContain('heroRise');
+    expect(rule).not.toMatch(/opacity/);
+    expect(read(page)).toMatch(/@keyframes heroRise\{[^}]*\{transform:[^}]*\}[^}]*\{transform:[^}]*\} \}/);
+  });
+
+  it('the React hero moves in without fading', () => {
+    const css = read('src/index.css');
+    const rule = /\.hero-anim\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(rule).toContain('heroRise');
+    expect(rule).not.toMatch(/opacity/);
+    const frames = /@keyframes heroRise\s*\{([\s\S]*?)\n {2}\}/.exec(css)?.[1] ?? '';
+    expect(frames).toContain('transform');
+    expect(frames).not.toContain('opacity');
+  });
+
+  it.each([...LANDING, 'index.html', 'mortgage-calculator/index.html'])(
+    '%s loads attribution.js off the render path',
+    (page) => {
+      expect(read(page)).toContain('<script src="/attribution.js" async fetchpriority="high"></script>');
+    },
+  );
+});
+
 describe('L3: landmarks, headings and the closed drawer', () => {
   it.each(LANDING)('%s has exactly one <main>, holding the hero', (page) => {
     const html = read(page);

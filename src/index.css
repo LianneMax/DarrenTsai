@@ -1061,14 +1061,21 @@ p {
   text-underline-offset: 3px;
 }
 
-/* Entry animations */
-.hero-anim          { opacity: 0; animation: fadeUp 0.8s ease forwards; }
+/* Entry animations: movement only, never opacity (audit L7, 1 Oct).
+   These used to fade in from opacity 0. The hero text is the page's LCP
+   element, and an element at opacity 0 has not painted as far as LCP is
+   concerned, so LCP waited for the fade, and the fade's frames wait behind
+   GTM, the gtags and HubSpot on a phone's main thread. PSI measured LCP at
+   5.9 to 9.4s on / with 1.7 to 2.2s of it "element render delay". The text
+   is now visible from the first paint and only rises into place. Content
+   below the fold keeps its fade (.reveal), which LCP never waits for. */
+.hero-anim          { animation: heroRise 0.8s ease both; }
 .hero-anim-1        { animation-delay: 0.1s; }
 .hero-anim-2        { animation-delay: 0.25s; }
 .hero-anim-3        { animation-delay: 0.4s; }
 .hero-anim-4        { animation-delay: 0.55s; }
-.hero-anim-5        { animation-delay: 0.7s; animation-name: fadeIn; }
-.hero-anim-card     { animation-delay: 0.35s; animation-name: fadeUp; }
+.hero-anim-5        { animation-delay: 0.7s; }
+.hero-anim-card     { animation-delay: 0.35s; }
 
 .hero-scroll-indicator {
   position: absolute;
@@ -1622,6 +1629,12 @@ p {
   @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
+  }
+
+  /* Hero entry: transform only, so the text paints at full opacity at once. */
+  @keyframes heroRise {
+    from { transform: translateY(24px); }
+    to   { transform: translateY(0); }
   }
 
   @keyframes scaleIn {
@@ -2215,7 +2228,6 @@ p {
   }
 
   .hero-anim {
-    opacity: 1;
     animation: none;
   }
 
