@@ -38,7 +38,7 @@ LINE = colors.HexColor("#E6EBF0")
 CREAM_TEXT = colors.HexColor("#C8E2E8")
 
 COMPANY_NAME = "Darren Tsai"
-NMLS = "DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #2525913"
+NMLS = "DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #1717191"
 PHONE = "714-887-5432"
 EMAIL = "darren@realdarrentsai.com"
 BOOKING = "https://calendly.com/realdarrentsai/15min"
@@ -327,7 +327,7 @@ TITLE_DISCLAIMER = [
     "This guide is provided for general educational and informational purposes only and does not constitute a loan offer,",
     "pre-qualification, pre-approval, or commitment to lend. Rates, terms, and figures shown are estimates; actual eligibility",
     "and pricing are determined by underwriting. Darren Tsai, DRE #02103705 | NMLS #2438102 | Saxton Mortgage,",
-    "NMLS #2525913. Equal Housing Opportunity.",
+    "NMLS #1717191. Equal Housing Opportunity.",
 ]
 TITLE_SUB = [
     "A quick-reference guide for investors who ran the DSCR",

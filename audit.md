@@ -161,7 +161,7 @@ L7, LCP regression. PSI mobile LCP got worse after dc97979 (/: 2.6 s to 5.9 to 9
 4. Don't remove or delay GTM, GA4, CallRail or HubSpot. Tracking must still fire on first load (GTM, GA4 page_view, swap.js, hubspotutk).
 Check: Lighthouse mobile LCP <= 2.5 s on the four pages, accessibility stays 100, npm test, lint, build and the layout check pass.
 
-L8, NMLS: do NOT change yet. Waiting on Darren to confirm #1717191 for the emails and PDFs.
+L8, NMLS: do NOT change yet. Waiting on Darren to confirm #1717191 for the emails and PDFs. (Confirmed 2 Oct; done, see "L8" below.)
 ```
 
 ### L7: what was found and done (1 Oct, Claude Code)
@@ -190,6 +190,18 @@ L8, NMLS: do NOT change yet. Waiting on Darren to confirm #1717191 for the email
 **Also seen.** `/mortgage-calculator/` showed the real number during the checks after the four pool numbers had been handed out to test sessions in the same few minutes: the CallRail pool is small (#8), not this change.
 
 `npm test` 725 passed (8 new L7 checks in `tests/launch-fixes.test.ts`), `npm run lint` clean, `npm run build` OK, `npm run test:layout` OK (45 checks).
+
+### L8: Saxton NMLS in emails and PDFs (2 Oct, Claude Code)
+
+Darren confirmed 2 Oct (WhatsApp): use Saxton Mortgage, LLC NMLS #1717191 everywhere. "Saxton is our parent company. Dreamhome is only for California." Nothing on the site, in the emails or in the PDFs names #2525913 or Dream Home any more.
+
+- **The four Resend emails** (`netlify/functions/send-contact-confirmation.mts`, `send-dscr-guide.mts`, `send-fha-guide.mts`, `send-rei-guide.mts`). The licence line now reads "Darren Tsai, DRE #02103705 | NMLS #2438102. Saxton Mortgage, LLC | NMLS #1717191 (NMLS Consumer Access)." followed by each email's own disclaimer, unchanged. The "Dream Home Development Corporation is a subsidiary…" sentence is gone: it only existed to reconcile the two numbers. Its NMLS Consumer Access link moved into the licence line. Dream Home's corporate CA DRE #02205650 is dropped with it; Darren's own DRE #02103705 stays, as on the site. The CAN-SPAM address line now says "Saxton Mortgage, LLC, 9191 Towne Centre Drive, Suite 400, San Diego, CA 92122", the same address as before.
+- **DSCR guide PDF.** `scripts/build_dscr_pdf.py` now says #1717191, and `public/magnets/dscr-rate-cashflow-guide.pdf` was rebuilt from it. Before editing, the script rebuilt the published PDF pixel for pixel, so the rebuild only changed the NMLS lines (pages 2 to 6). The number is the same length, so nothing reflowed, and the cover the DSCR sender draws lead data onto is untouched.
+- **REI case-study PDF** (`public/magnets/real-estate-investing-case-study.pdf`). There is no source for it in the repo, so it was edited in place with PyMuPDF. On pages 1 and 12 the old number was removed without painting over the background, and the new text was redrawn in Outfit Regular at the same size, colour and baseline. Before/after renders match apart from the digits.
+- Both senders fetch the PDFs from the live site and cache them only in memory, so the deployed functions pick the new files up straight away.
+- `tests/launch-fixes.test.ts` fails if #2525913 or "Dream Home" comes back into any sender or the DSCR build script. `npm test` 730 passed, lint clean, build OK.
+
+**Check after deploy:** request each guide once (DSCR, FHA, REI) and submit the contact modal once. Each email's footer should read NMLS #1717191 with no Dream Home line. In the attached DSCR and REI PDFs, the footer and closing disclaimer should say #1717191.
 
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 

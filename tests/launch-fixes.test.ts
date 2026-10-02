@@ -67,6 +67,29 @@ describe('L2: old site URLs are permanently redirected', () => {
   });
 });
 
+describe('L8: one company NMLS everywhere', () => {
+  // Darren, 2 Oct: everything uses Saxton Mortgage, LLC NMLS #1717191. #2525913
+  // is Dream Home Development Corporation, the California-only subsidiary, and
+  // the emails and guide PDFs carried it while the site carried #1717191.
+  const SENDERS = ['contact-confirmation', 'dscr-guide', 'fha-guide', 'rei-guide'].map(
+    (n) => `netlify/functions/send-${n}.mts`,
+  );
+
+  it.each(SENDERS)('%s names Saxton Mortgage, LLC NMLS #1717191 only', (file) => {
+    const src = read(file);
+    expect(src).toContain('Saxton Mortgage, LLC | NMLS #1717191');
+    expect(src).toContain('https://www.nmlsconsumeraccess.org/');
+    expect(src).not.toContain('2525913');
+    expect(src).not.toContain('Dream Home');
+  });
+
+  it('the DSCR guide PDF is built with #1717191', () => {
+    const src = read('scripts/build_dscr_pdf.py');
+    expect(src).toContain('NMLS #1717191');
+    expect(src).not.toContain('2525913');
+  });
+});
+
 describe('L7: the hero paints at once', () => {
   // LCP does not count an element at opacity 0 as painted, so a hero that fades
   // in makes LCP wait for the fade, and the fade's frames wait behind every

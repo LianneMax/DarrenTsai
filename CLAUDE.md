@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 20 files / 725 tests, all passing |
+| Tests | Vitest + jsdom, 20 files / 730 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (725 tests)
+npm test         # vitest run (730 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -236,7 +236,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 725 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 730 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **HubSpot is an extra destination, built dark (audit H3, 29 Sep).**
   `pushToHubSpot` submits every lead to a HubSpot form (Forms API v3, portal
   247401197) from `processFollowUps`, next to Bonzo, and skips until
