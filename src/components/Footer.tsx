@@ -81,17 +81,12 @@ export default function Footer() {
           </p>
           <div className="footer-compliance">
             <a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
-            <span aria-hidden="true">·</span>
             <a href={`https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/${NMLS}`} target="_blank" rel="noopener noreferrer">
               Check my license at NMLS Consumer Access
             </a>
-            <span aria-hidden="true">·</span>
             <a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Legal</a>
-            <span aria-hidden="true">·</span>
             <a href="https://www.saxtonmortgage.com/terms-of-use" target="_blank" rel="noopener noreferrer">Terms of Use</a>
-            <span aria-hidden="true">·</span>
             <a href="https://www.saxtonmortgage.com/accessibility-statement" target="_blank" rel="noopener noreferrer">Accessibility</a>
-            <span aria-hidden="true">·</span>
             <a href="https://www.saxtonmortgage.com/site-map" target="_blank" rel="noopener noreferrer">Site Map</a>
           </div>
         </div>

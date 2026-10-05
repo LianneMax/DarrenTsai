@@ -1594,9 +1594,17 @@ p {
   color: var(--white);
 }
 
-.footer-compliance span {
+/* The separator dot belongs to the link before it (audit L9, 5 Oct). As its own
+   flex item it could wrap onto the next line alone, so on a phone a row of
+   links started with a stray dot. Drawn as ::after, it wraps with its link: a
+   row may end on a dot but never start with one. The second content value
+   hides it from screen readers, as aria-hidden did. */
+.footer-compliance a:not(:last-child)::after {
+  content: '\00B7';
+  content: '\00B7' / '';
+  display: inline-block;
+  margin-left: 12px;
   color: rgba(255,255,255,0.3);
-  font-size: 0.72rem;
 }
 
 .footer-copy {

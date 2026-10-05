@@ -67,6 +67,22 @@ describe('L2: old site URLs are permanently redirected', () => {
   });
 });
 
+describe('L9: a footer link row never starts with a separator', () => {
+  // As separate flex items the dots could wrap onto a new line alone, so on a
+  // phone the second row of links opened with "·". Each dot is now its link's
+  // ::after and wraps with it. Measured in a browser on 5 Oct, before: a row
+  // started with a dot at 320 to 414px on all five pages; after: none.
+  it.each([...LANDING, 'src/components/Footer.tsx'])('%s has no stand-alone separators', (file) => {
+    const src = read(file);
+    const footer = src.slice(src.indexOf('footer-compliance'));
+    expect(footer.slice(0, footer.indexOf('</div>'))).not.toMatch(/<span[^>]*>\s*(·|&middot;)\s*<\/span>/);
+  });
+
+  it.each([...LANDING, 'src/index.css'])('%s draws the dot after each link but the last', (file) => {
+    expect(read(file)).toMatch(/\.footer-compliance a:not\(:last-child\)::after\s*\{[^}]*content:\s*'\\00B7' \/ ''/);
+  });
+});
+
 describe('L8: one company NMLS everywhere', () => {
   // Darren, 2 Oct: everything uses Saxton Mortgage, LLC NMLS #1717191. #2525913
   // is Dream Home Development Corporation, the California-only subsidiary, and

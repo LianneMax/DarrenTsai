@@ -770,7 +770,12 @@
   .footer-compliance{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
   .footer-compliance a{font-size:0.72rem;color:var(--on-teal-muted);text-decoration:none;transition:color .2s ease;display:inline-block;padding:5px 0;}
   .footer-compliance a:hover{color:var(--white);}
-  .footer-compliance span{color:rgba(255,255,255,0.3);font-size:0.72rem;}
+  /* The separator dot belongs to the link before it (audit L9, 5 Oct). As its
+     own flex item it could wrap onto the next line alone, so on a phone a
+     row of links started with a stray dot. Drawn as ::after, it wraps with
+     its link: a row may end on a dot but never start with one. The second
+     content value hides it from screen readers, as aria-hidden did. */
+  .footer-compliance a:not(:last-child)::after{content:'\00B7';content:'\00B7' / '';display:inline-block;margin-left:12px;color:rgba(255,255,255,0.3);}
   @media(max-width:700px){
     .footer-grid{grid-template-columns:1fr;gap:32px;}
     .footer-right{align-items:flex-start;}
@@ -1387,15 +1392,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </p>
       <div class="footer-compliance">
         <a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
-        <span aria-hidden="true">&middot;</span>
         <a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/2438102" target="_blank" rel="noopener">Check my license at NMLS Consumer Access</a>
-        <span aria-hidden="true">&middot;</span>
         <a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener">Legal</a>
-        <span aria-hidden="true">&middot;</span>
         <a href="https://www.saxtonmortgage.com/terms-of-use" target="_blank" rel="noopener">Terms of Use</a>
-        <span aria-hidden="true">&middot;</span>
         <a href="https://www.saxtonmortgage.com/accessibility-statement" target="_blank" rel="noopener">Accessibility</a>
-        <span aria-hidden="true">&middot;</span>
         <a href="https://www.saxtonmortgage.com/site-map" target="_blank" rel="noopener">Site Map</a>
       </div>
     </div>

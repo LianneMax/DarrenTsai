@@ -250,6 +250,35 @@ Accessibility, best practices and SEO are 100 on all four. The homepage improved
 
 Cleaned 5 Oct: the four TEST L8 rows and their four Follow-ups rows are deleted (each checked by timestamp first). The Sheet now holds six real leads: Steven Salas (Debt Consolidation), Leslie Sutton and Kent Devereaux (Leads), Husain Habib (Real Estate Investing), Schenique and Beth Gonzal (Fha, both from yt-buyer links: description and pinned-comment). The four test emails are still in Max's Gmail.
 
+### L9: stray "·" at the start of a footer link row (5 Oct, Claude Code)
+
+Measured in Chromium at the nine layout-check widths. On a phone, a row of footer links started with "·" on **all five pages**, not just `/dscr/`: 375px on `/dscr/` and `/fha/`, and 320, 360 and 414px on `/`, `/mortgage-calculator/` and `/realestateinvesting/`. The cause: each dot was its own flex item, so it could wrap to the next line alone. The dots are now each link's `::after` (every link but the last) in the three static pages and in `src/index.css`, and the `<span>` separators are gone from their markup and from `Footer.tsx`. A dot now wraps with the link before it, so a row can end on a dot but never start with one. Spacing and colour are unchanged, and `content: '·' / ''` keeps the dots silent for screen readers, as `aria-hidden` did. Re-measured: no row starts with a dot at any width on any page. `npm test` 738 passed (8 new L9 checks), lint clean, layout check OK (45).
+
+**Also 5 Oct:** a `.gitattributes` (`* text=auto`, binaries listed) stops seven untouched files (`eslint.config.js`, `public/404.html`, `public/sitemap.xml`, `src/mortgage-main.tsx`, `src/utils/emailSuggest.ts`, `tsconfig.json`, `vite.config.ts`) from showing as modified in Git clients that don't apply `core.autocrlf`. They differed only in CRLF vs LF. The repo already stores every text file as LF, so no file content changed. With the attribute in place, every tracked file matches the index under `core.autocrlf=false`.
+
+### Homepage LCP: putting the hero in the HTML (note, 5 Oct, Claude Code; not built)
+
+**Why `/` lags the landing pages** (5.1 s after GTM v7, against 1.7 to 3.6 s). The three landing pages are plain HTML, so their hero paints as soon as the HTML and CSS arrive. On `/` the HTML holds an empty `<div id="root">`. Nothing but the background paints until the browser has downloaded and run the app's JavaScript (`main` 41 KB plus the shared chunk 381 KB, about 118 KB compressed), and on a throttled phone that waits behind GTM and the gtags too. L7 removed the fade, so the delay left is React itself.
+
+**Option A: pre-render only the nav and hero (recommended if GTM v7 isn't enough).** At build time, a small Vite plugin renders `<Nav>` and `<Hero>` to static HTML with `react-dom/server` and writes it into `index.html`'s `#root`. `main.tsx` stays as it is: `createRoot` replaces that HTML with the same markup once the app loads. The same components produce both, so the two can't drift.
+- *Effort:* about half a day, including a test that the built `index.html` contains the hero headline, and a PSI before/after.
+- *Expected gain:* the hero paints with the first frame, like the landing pages. LCP should land near FCP (about 2 s in PSI). A replaced element of the same size does not create a new LCP entry. Unverified until measured.
+- *Risk: low.* Hero and Nav render from props and `config.ts` only: no state read at render, no browser APIs, and no phone number for CallRail to swap and React to overwrite. The lead path isn't touched: the forms, `attribution.js`, GTM and `/api/lead` are all outside it.
+- *What to watch:*
+  - For the second or two before the app loads, the hero's "Book a call" and contact buttons do nothing on click. Its `#savings` links still work, because they are plain anchors.
+  - The space below the hero stays empty until the app loads, as it does today.
+  - The nav must render in its top-of-page state, which it already does.
+
+**Option B: pre-render the whole homepage and hydrate (`hydrateRoot`).** Bigger win: all the content is in the HTML for first paint and for SEO. *Risk: medium to high, on the lead path.*
+- It needs a server build of the app, a build-time render step and a switch to hydration.
+- Any difference between server and client render (the debt calculator is 1,182 lines of state, the reviews carousel, the rates fetch) makes React throw away that part and redraw it, with a visible flash.
+- A visitor who types into the calculator or lead form before hydration finishes could lose what they typed.
+- Not worth it for a single page that sells one CTA, unless SEO for `/` becomes a goal.
+
+**Option C: nothing more.** If repeated PSI runs after GTM v7 settle near 2.5 s, stop here.
+
+**Suggested order:** take three PSI runs of `/` on GTM v7, since one run is noisy. If LCP stays above 2.5 s, build Option A and measure again. Option B only if there is a separate reason for it.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).
