@@ -44,6 +44,45 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7Z8Q4QF"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+
+    <!-- Early-click queue (audit, "Homepage LCP", Option A). The nav and hero
+         below are pre-rendered into #root at build time, so they are on screen
+         a second or more before React has loaded, and their buttons do nothing
+         until it has. A "Book a Call" tap in that window would be lost. This
+         catches a click on any element marked data-early, keeps the last one,
+         and App.tsx replays it on the real element once React has mounted, so
+         it runs the same handler (and fires the same tracking) as a click a
+         moment later would. Plain anchors with real URLs are not marked and
+         behave natively. Inline and before #root so it is listening before
+         the first button is drawn; no network request, nothing to block on. -->
+    <script>
+      (function () {
+        var queued = null;
+        // Only ever the static pre-rendered nodes. React's own elements carry
+        // a __reactFiber$ key and are left alone, so even if take() were never
+        // called, no click on the live app could be swallowed.
+        function isReact(el) {
+          return Object.keys(el).some(function (k) { return k.indexOf('__reactFiber$') === 0; });
+        }
+        function onClick(e) {
+          var el = e.target && e.target.closest ? e.target.closest('[data-early]') : null;
+          if (!el || isReact(el)) return;
+          e.preventDefault();
+          queued = el.getAttribute('data-early');
+          document.documentElement.style.cursor = 'progress';
+        }
+        document.addEventListener('click', onClick, true);
+        window.__dtEarlyClick = {
+          take: function () {
+            document.removeEventListener('click', onClick, true);
+            document.documentElement.style.cursor = '';
+            var key = queued;
+            queued = null;
+            return key;
+          }
+        };
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

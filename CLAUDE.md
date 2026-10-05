@@ -53,14 +53,14 @@ with an unrouted source fails there.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 18 + TypeScript, Vite 6, plain CSS (`src/index.css`, ~2200 lines, CSS custom properties on `:root`) |
-| Routing | None. Two HTML entries (`index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else |
+| Routing | None. Two HTML entries (`index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The homepage's nav and hero are pre-rendered into `index.html` at build (`src/prerender.tsx`, plugin in `vite.config.ts`) and React replaces them on load; early clicks on them are queued and replayed (`data-early`, inline script in `index.html`, `App.tsx`) |
 | Landing pages | Hand-written static HTML in `public/dscr/`, `public/fha/`, `public/realestateinvesting/`. No build step, ~2000 lines each, inline `<script>` |
 | Server | Netlify Functions (`.mts`, `Netlify.env.get`), routes declared via `export const config.path` |
 | Storage of record | Google Sheet `1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI`, driven by `google-apps-script.js` |
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 20 files / 738 tests, all passing |
+| Tests | Vitest + jsdom, 21 files / 748 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (738 tests)
+npm test         # vitest run (748 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -236,7 +236,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 738 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 748 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **HubSpot is an extra destination, built dark (audit H3, 29 Sep).**
   `pushToHubSpot` submits every lead to a HubSpot form (Forms API v3, portal
   247401197) from `processFollowUps`, next to Bonzo, and skips until

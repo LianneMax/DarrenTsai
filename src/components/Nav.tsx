@@ -18,7 +18,11 @@ interface Props {
 }
 
 export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
-  const [scrolled, setScrolled] = useState(false);
+  // Read the scroll position at mount: on the homepage the nav is pre-rendered,
+  // so a visitor may have scrolled before React loads, and the transparent
+  // style would otherwise sit over content until the next scroll event. False
+  // when rendered at build time (no window), which is the top-of-page style.
+  const [scrolled, setScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 60);
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerTab = menuOpen ? undefined : -1;
   const [calcOpen, setCalcOpen] = useState(false);
@@ -109,11 +113,12 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
 
           {/* Desktop links */}
           <div className="nav-links">
-            <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-link">Monthly Reset</a>
+            <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-link" data-early="nav-savings">Monthly Reset</a>
             <div className={`nav-dropdown${calcOpen ? ' nav-dropdown--open' : ''}`} ref={calcDropdownRef}>
               <button
                 type="button"
                 onClick={() => setCalcOpen(o => !o)}
+                data-early="nav-calc"
                 aria-expanded={calcOpen}
                 className="nav-link nav-dropdown-trigger"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
@@ -130,9 +135,9 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
                 <a href="/fha/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">FHA Calculator</a>
               </div>
             </div>
-            <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-link">Reviews</a>
-            <button onClick={handleContactClick} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
-            <button onClick={openCalendly} className="btn btn-rose btn-sm">Book a Call</button>
+            <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-link" data-early="nav-reviews">Reviews</a>
+            <button onClick={handleContactClick} className="nav-link" data-early="nav-contact" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
+            <button onClick={openCalendly} className="btn btn-rose btn-sm" data-early="nav-book">Book a Call</button>
           </div>
 
           {/* Hamburger button — mobile only */}
@@ -141,6 +146,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(o => !o)}
+            data-early="nav-menu"
           >
             <span className={`nav-hamburger-bar${menuOpen ? ' open' : ''}`} />
             <span className={`nav-hamburger-bar${menuOpen ? ' open' : ''}`} />

@@ -293,6 +293,42 @@ Measured in Chromium at the nine layout-check widths. On a phone, a row of foote
 
 Median LCP 5.0 s, so `/` stays well above 2.5 s after GTM v7. Option A (pre-render nav and hero) is justified; timing is Max's call, since ads point to the three landing pages, not `/`.
 
+### Homepage Option A: nav and hero pre-rendered (5 Oct, Claude Code)
+
+**What it does.** `npm run build` now writes the homepage's nav and hero into `index.html`'s `#root`, so they paint with the HTML instead of after React has loaded.
+- The markup comes from `src/prerender.tsx`, which renders the real `Nav` and `Hero` components, so it cannot drift from the app.
+- A small plugin in `vite.config.ts` does the writing. It applies to the build and the homepage only; `/mortgage-calculator/` is unchanged.
+- `main.tsx` is unchanged: `createRoot` swaps in identical DOM when the app loads. This is a replacement, not hydration, so the calculator and lead form never render at build time.
+- The plugin fails open. If rendering ever throws, the build warns loudly and ships the page as before.
+- `tests/home-prerender.test.tsx` checks the shell is exactly the start of the app's own markup, so nothing moves when React swaps in. Measured in Chromium, layout shift across the swap was 0.
+
+**Early clicks are not lost.** Every button in the pre-rendered nav and hero carries a `data-early` key: Book a Call, Contact, Calculator, the mobile menu, Monthly Reset, Reviews, and the hero's three buttons.
+- An inline script in `index.html`, placed before `#root` so it is listening before the first button is drawn, queues a click on one of them.
+- `App.tsx` replays the queued click on the live element once React mounts, so it runs the real handler. "Book a Call" opens the booking chooser and is tracked exactly as a normal click.
+- The script ignores any element React has rendered (they carry a `__reactFiber$` key). So even if the app never mounted, no click on the live app could be swallowed.
+- Anchors with real URLs (logo, `/dscr/`, `/fha/`, `/mortgage-calculator/`) are not marked and work natively.
+- Checked in Chromium with React's bundle held back 3 s: the hero was visible; an early Book a Call opened the chooser after mount with the same dataLayer events as a normal click; the early mobile-menu, contact and "See How Much You Could Save" taps replayed. One nav, one `<main>`, one `h1` after the swap, and no console errors.
+
+**Also changed.**
+- The homepage hero's entrance animation is gone. It would have played twice: once on the HTML, then again on the elements React swaps in.
+- The nav reads the scroll position when it mounts, so a visitor who scrolled before React loaded does not get the transparent nav over content.
+
+**Not touched:** the calculator, the lead form, `attribution.js`, GTM, CallRail, HubSpot. A tracking check on `/`, `/mortgage-calculator/` and `/dscr/` shows GTM, GA4 `page_view`, CallRail `swap.js`, HubSpot, `hubspotutk`, and gclid/UTMs stored on first load. The client bundle is unchanged (no server renderer in it); `index.html` grows from 3 KB to 10.7 KB (4 KB gzipped).
+
+**Lighthouse, local, mobile, `/`, five runs each, before vs after:**
+
+| Setup | Before: median LCP (runs) | After: median LCP (runs) | Observed hero paint, before → after |
+| --- | --- | --- | --- |
+| Everything loading | 8.0 s (3.9 to 8.1) | 9.4 s (8.7 to 11.7) | 1.2 to 2.7 s → 2.6 s |
+| CallRail blocked, everything else loading | 7.6 s (4.8 to 8.1) | **4.8 s (4.7 to 4.9)** | 0.6 to 1.7 s → 0.55 to 0.67 s |
+
+How to read it:
+- With everything loading, local runs can't show the change. CallRail's `swap.js` is the one script still blocking render in the `<head>`. Locally it costs an extra http→https redirect, so first paint waited for it (about 2.6 s observed) in both builds. While paint waited, React and the tracking scripts ran first, and Lighthouse's simulation charges their time to LCP.
+- With only CallRail blocked, the pre-render takes away the slow case where the hero waited for React. Before, three of five runs were at 7.6 to 8.1 s; after, all five are 4.7 to 4.9 s, and the hero paints with the first frame at about 0.6 s.
+- On the live site `swap.js` loads over https with no redirect, so PSI should sit closer to the second row. Accessibility 100 and CLS 0 in every run.
+
+**Check after deploy:** three PSI mobile runs of `/` (Max's 5 Oct median was 5.0 s), and on a phone, tap "Book a Call" the moment the page appears: the chooser should open once the page is ready. `npm test` 748 passed (21 files), lint clean, build OK, layout check OK (45).
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).

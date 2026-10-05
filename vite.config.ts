@@ -1,8 +1,63 @@
-import { defineConfig } from 'vite'
+import { defineConfig, createServer, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const EMPTY_ROOT = '<div id="root"></div>'
+
+/**
+ * Writes the homepage's nav and hero into index.html at build time, so they
+ * paint with the first frame instead of after the app's JavaScript has run
+ * (audit, "Homepage LCP", Option A). The markup comes from src/prerender.tsx,
+ * which renders the real Nav and Hero components.
+ *
+ * Build only, and the homepage only: /mortgage-calculator/ opens on the
+ * calculator, which is not pre-rendered. A throwaway Vite server in SSR mode
+ * loads the components with the same TSX transform the app uses; it is created
+ * without this config file, so it cannot recurse into this plugin.
+ *
+ * Fails open. If rendering throws, the page ships exactly as before (empty
+ * #root, hero drawn by React) and the build says so loudly. A slower homepage
+ * is a far smaller problem than a deploy that cannot go out. Tests render the
+ * same function, so a break shows up in `npm test` before it reaches a build.
+ */
+function prerenderHomeShell(): Plugin {
+  let root = process.cwd()
+  return {
+    name: 'prerender-home-shell',
+    apply: 'build',
+    configResolved(config) {
+      root = config.root
+    },
+    async transformIndexHtml(html, ctx) {
+      if (ctx.path !== '/index.html') return html
+      if (!html.includes(EMPTY_ROOT)) {
+        console.warn(`prerender-home-shell: ${EMPTY_ROOT} not found in index.html; homepage not pre-rendered`)
+        return html
+      }
+      const server = await createServer({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        appType: 'custom',
+        server: { middlewareMode: true, hmr: false, ws: false },
+        optimizeDeps: { noDiscovery: true, include: [] },
+      })
+      try {
+        const mod = await server.ssrLoadModule('/src/prerender.tsx')
+        const shell: string = mod.renderHomeShell()
+        if (!shell.includes('<h1')) throw new Error('rendered shell has no <h1>')
+        return html.replace(EMPTY_ROOT, `<div id="root">${shell}</div>`)
+      } catch (err) {
+        console.warn(`prerender-home-shell: FAILED, homepage ships without its pre-rendered hero: ${String(err)}`)
+        return html
+      } finally {
+        await server.close()
+      }
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), prerenderHomeShell()],
   server: {
     proxy: {
       // The /fred-api proxy that used to be here is gone. It made FRED work in

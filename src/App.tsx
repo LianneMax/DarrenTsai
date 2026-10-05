@@ -25,6 +25,18 @@ export default function App() {
   const openContact  = () => setContactOpen(true);
   const closeContact = () => setContactOpen(false);
 
+  // Replay a click made on the pre-rendered nav or hero before React loaded
+  // (queued by the inline script in index.html). Clicking the matching live
+  // element runs its real handler, so "Book a Call" opens the chooser and is
+  // tracked exactly as a normal click. take() empties the queue, so StrictMode's
+  // second effect run in development replays nothing.
+  useEffect(() => {
+    const early = (window as { __dtEarlyClick?: { take: () => string | null } }).__dtEarlyClick;
+    const key = early?.take();
+    if (!key) return;
+    document.querySelector<HTMLElement>(`[data-early="${CSS.escape(key)}"]`)?.click();
+  }, []);
+
   return (
     <>
       <Nav onOpenContact={openContact} />

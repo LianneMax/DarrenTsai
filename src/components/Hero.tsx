@@ -22,20 +22,20 @@ export default function Hero({ onOpenContact }: Props) {
         {/* ── Left column ── */}
         <div className="hero-copy">
 
-          <h1 className="hero-headline hero-anim hero-anim-2">
+          <h1 className="hero-headline">
             Most mortgages cost you money.
             Yours should build{' '}
             <em className="hero-headline-accent">wealth</em>.
           </h1>
 
-          <p className="hero-sub hero-anim hero-anim-3">
+          <p className="hero-sub">
             I help homeowners and investors make sure their current mortgage
             structure still makes sense. No pushy sales tactics,
             just straight talk about your options and the data to back it up.
           </p>
 
-          <div className="hero-ctas hero-anim hero-anim-4">
-            <a href="#reviews" onClick={scrollToReviews} className="hero-text-link">
+          <div className="hero-ctas">
+            <a href="#reviews" onClick={scrollToReviews} className="hero-text-link" data-early="hero-reviews">
               See what clients are saying
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -43,9 +43,9 @@ export default function Hero({ onOpenContact }: Props) {
             </a>
           </div>
 
-          <div className="hero-divider hero-anim hero-anim-5" />
+          <div className="hero-divider" />
 
-          <div className="hero-credentials hero-anim hero-anim-5">
+          <div className="hero-credentials">
             <span>NMLS# {NMLS}</span>
             <span className="hero-cred-dot" aria-hidden="true" />
             <span>CA DRE Broker License #{DRE}</span>
@@ -61,7 +61,7 @@ export default function Hero({ onOpenContact }: Props) {
 
         {/* ── Right column — Stats card ── */}
         <div>
-          <div className="hero-card hero-anim hero-anim-card">
+          <div className="hero-card">
             <p className="hero-card-eyebrow">Estimated tool-calculated savings</p>
 
             <div className="hero-stat">
@@ -76,7 +76,7 @@ export default function Hero({ onOpenContact }: Props) {
 
             <div className="hero-stat-divider" />
 
-            <button onClick={scrollToSavings} className="btn btn-rose btn-full hero-card-btn">
+            <button onClick={scrollToSavings} className="btn btn-rose btn-full hero-card-btn" data-early="hero-savings">
               See How Much You Could Save
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -91,6 +91,7 @@ export default function Hero({ onOpenContact }: Props) {
             <button
               onClick={(e) => { e.preventDefault(); onOpenContact(); }}
               className="btn btn-outline btn-full"
+              data-early="hero-contact"
               style={{ marginTop: 10, padding: '11px 14px', fontSize: '0.9rem', borderRadius: 10 }}
             >
               Request a Private Debt Analysis
