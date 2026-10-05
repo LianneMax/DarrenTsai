@@ -279,6 +279,20 @@ Measured in Chromium at the nine layout-check widths. On a phone, a row of foote
 
 **Suggested order:** take three PSI runs of `/` on GTM v7, since one run is noisy. If LCP stays above 2.5 s, build Option A and measure again. Option B only if there is a separate reason for it.
 
+### Live re-check of 3f15c33 (L9) and homepage PageSpeed, 5 Oct (Max)
+
+- **L9 footer dots:** live on all five pages. The dots are now drawn on the links themselves (`a::after`), with no standalone dot elements and no `::before` dots, so a row cannot start with one. Checked at 320 px on `/`, `/mortgage-calculator/`, `/fha/`, `/realestateinvesting/` and at 375 px on `/dscr/`; looked at `/realestateinvesting/` at 320 px by eye.
+- **Tracking** (fresh load of `/realestateinvesting/`): GTM-N7Z8Q4QF and G-627RJ4FDSP loaded, HubSpot loader present, `hubspotutk` and `_ga` set, CallRail swapped the number, `window.DT` available.
+- **Homepage PageSpeed, mobile, three runs:**
+
+| Run | Perf | FCP | LCP | TBT | CLS |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 56 | 4.0 s | 5.1 s | 420 ms | 0 |
+| 2 | 72 | 1.9 s | 2.9 s | 570 ms | 0.035 |
+| 3 | 63 | 3.9 s | 5.0 s | 220 ms | 0 |
+
+Median LCP 5.0 s, so `/` stays well above 2.5 s after GTM v7. Option A (pre-render nav and hero) is justified; timing is Max's call, since ads point to the three landing pages, not `/`.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).
