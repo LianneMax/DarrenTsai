@@ -1,0 +1,15 @@
+# Line endings (5 Oct). The repo stores every text file with LF. On Windows
+# the working copy is CRLF, and a Git client that does not apply
+# core.autocrlf (some editors' built-in Git) then shows untouched files as
+# modified. text=auto makes every client normalise the same way, whatever its
+# own settings, so only real edits show up.
+* text=auto
+
+# Never touch these, whatever their contents look like.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.webp  binary
+*.ttf   binary
+*.woff2 binary
+*.xlsx  binary
