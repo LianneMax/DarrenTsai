@@ -203,6 +203,53 @@ Darren confirmed 2 Oct (WhatsApp): use Saxton Mortgage, LLC NMLS #1717191 everyw
 
 **Check after deploy:** request each guide once (DSCR, FHA, REI) and submit the contact modal once. Each email's footer should read NMLS #1717191 with no Dream Home line. In the attached DSCR and REI PDFs, the footer and closing disclaimer should say #1717191.
 
+### Live re-check of 7557412 (L7) and 11e17c2 (L8), 3 Oct (Max)
+
+Both are live: every page serves `attribution.js` async, and `/fha/` and `/realestateinvesting/` use the new `heroRise` animation.
+
+**PageSpeed Insights, mobile, 3 Oct**
+
+| Page | Perf | A11y | FCP | LCP | TBT | CLS | Speed Index | LCP 1 Oct |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 43 | 100 | 2.0 s | 6.0 s | 1,520 ms | 0 | 8.2 s | 5.9 to 9.4 s |
+| `/dscr/` | 80 | 100 | 1.7 s | 1.7 s | 710 ms | 0.007 | 3.5 s | 4.2 s |
+| `/fha/` | 70 | 100 | 1.8 s | 1.8 s | 1,300 ms | 0 | 4.8 s | 7.9 s |
+| `/realestateinvesting/` | 87 | 100 | 1.8 s | 1.8 s | 400 ms | 0.004 | 4.0 s | 3.0 s |
+
+L7 worked on the three static pages: LCP is now 1.7 to 1.8 s, under the 2.5 s target. What holds the score down now is blocking time (TBT 400 to 1,520 ms, target 200 ms), which is the third-party scripts (HubSpot, GTM, gtag copies). `/` is still slow on LCP (6.0 s) because the hero is rendered by React after the scripts load. Single PSI runs; TBT varies a lot run to run. Next lever: fire the HubSpot tag on Window Loaded in GTM, and have Kocah switch off the unused HubSpot parts (ads pixel, collected forms, banner).
+
+**L8 emails and PDFs**
+
+Four test leads submitted (built-in browser, `?tt=internal`); each fired `generate_lead` and `virtual_page_view`, and each email arrived within about two minutes.
+
+| Lead | Form | Email footer |
+| --- | --- | --- |
+| TEST L8 Dscr, +l8dscr, (714) 555-0181 | `/dscr/` magnet | Saxton Mortgage, LLC NMLS #1717191, no Dream Home line |
+| TEST L8 Fha, +l8fha, (714) 555-0182 | `/fha/` magnet | same |
+| TEST L8 Rei, +l8rei, (714) 555-0183 | `/realestateinvesting/` magnet | same |
+| TEST L8 Contact, +l8contact, (714) 555-0184 | contact modal on `/realestateinvesting/` | same |
+
+PDFs in `public/magnets/` (the deployed files): the DSCR guide and the REI case study show #1717191 and #2438102 only. The FHA spreadsheet has no NMLS text. #2525913 now appears only in audit.md and the guard test.
+
+Test data to clean: the four TEST L8 rows in the Sheet (Dscr, FHA, Real Estate Investing, Leads tabs), their Follow-ups rows, and the four emails in Max's Gmail.
+
+### GTM version 7: HubSpot tag on Window Loaded (5 Oct, Max)
+
+Published 5 Oct 20:57 as "HubSpot on Window Loaded". The Custom HTML tag "HubSpot – tracking code" now fires on a new trigger "Window Loaded" (All Window Loaded Events) instead of All Pages. Nothing else changed. Checked live on `/fha/`: the HubSpot loader and analytics script still load, `hubspotutk` is set, and CallRail still swaps the number.
+
+**PageSpeed Insights, mobile, 5 Oct (after GTM v7), one run per page**
+
+| Page | Perf | LCP | TBT | 3 Oct perf / LCP / TBT |
+| --- | --- | --- | --- | --- |
+| `/` | 69 | 5.1 s | 220 ms | 43 / 6.0 s / 1,520 ms |
+| `/dscr/` | 80 | 3.6 s | 350 ms | 80 / 1.7 s / 710 ms |
+| `/fha/` | 68 | 2.7 s | 1,240 ms | 70 / 1.8 s / 1,300 ms |
+| `/realestateinvesting/` | 81 | 1.7 s | 620 ms | 87 / 1.8 s / 400 ms |
+
+Accessibility, best practices and SEO are 100 on all four. The homepage improved clearly. The three landing pages are within run-to-run noise: the HubSpot scripts still run during the measurement window, only later. The remaining lever is fewer scripts: Kocah switching off the HubSpot ads pixel, collected forms and banner if unused.
+
+Cleaned 5 Oct: the four TEST L8 rows and their four Follow-ups rows are deleted (each checked by timestamp first). The Sheet now holds six real leads: Steven Salas (Debt Consolidation), Leslie Sutton and Kent Devereaux (Leads), Husain Habib (Real Estate Investing), Schenique and Beth Gonzal (Fha, both from yt-buyer links: description and pinned-comment). The four test emails are still in Max's Gmail.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).
