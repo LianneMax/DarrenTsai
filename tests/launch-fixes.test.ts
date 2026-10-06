@@ -67,6 +67,31 @@ describe('L2: old site URLs are permanently redirected', () => {
   });
 });
 
+describe('L10: nothing of ours or CallRail\'s holds the first paint', () => {
+  // swap.js in the <head> held first paint ~3 s on a visitor's first page (PSI:
+  // 920 ms render-blocking) and still left the real number in place ~0.5 s
+  // after paint. At the end of <body> the page paints at once and the swap lands
+  // 0.9 to 1.2 s after navigation. It must stay synchronous: async never swapped.
+  const TAG = '<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>';
+  it.each([...LANDING, 'index.html', 'mortgage-calculator/index.html'])(
+    '%s loads swap.js once, synchronously, at the end of <body>',
+    (page) => {
+      const html = read(page);
+      expect(html.split(TAG).length - 1).toBe(1);
+      const at = html.indexOf(TAG);
+      expect(at).toBeGreaterThan(html.indexOf('<body>'));
+      // Nothing but whitespace after it, before </body>.
+      expect(html.slice(at + TAG.length).trim()).toMatch(/^<\/body>/);
+    },
+  );
+
+  it('the homepage build inlines its stylesheet and pre-renders the hero', () => {
+    const config = read('vite.config.ts');
+    expect(config).toMatch(/plugins: \[react\(\), prerenderHomeShell\(\), inlineHomeCss\(\)\]/);
+    expect(config).toContain("order: 'post'");
+  });
+});
+
 describe('L9: a footer link row never starts with a separator', () => {
   // As separate flex items the dots could wrap onto a new line alone, so on a
   // phone the second row of links opened with "·". Each dot is now its link's

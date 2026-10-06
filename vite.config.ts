@@ -56,8 +56,57 @@ function prerenderHomeShell(): Plugin {
   }
 }
 
+/**
+ * Inlines the homepage's stylesheet into index.html (audit L10, 7 Oct).
+ *
+ * PSI listed /assets/Footer-*.css as render-blocking on / (7 KB gzipped,
+ * ~360 ms): with the nav and hero pre-rendered, the first paint still waited
+ * for a second request to fetch the CSS they need. Loading it without blocking
+ * instead would paint the hero unstyled and then jump, so it goes inside the
+ * HTML. The file is still emitted, because /mortgage-calculator/ links it
+ * normally. The cost is that / no longer caches its CSS between visits; at
+ * ~7 KB gzipped against a whole round trip on a phone, that is the better
+ * trade for the page people land on.
+ *
+ * Runs after Vite has written the <link> tags (order: 'post'), on the
+ * homepage only. Fails open like the pre-render: if the link or the asset is
+ * not where expected, the page keeps its normal <link> and the build warns.
+ */
+function inlineHomeCss(): Plugin {
+  return {
+    name: 'inline-home-css',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (ctx.path !== '/index.html' || !ctx.bundle) return html
+        const links = [...html.matchAll(/<link rel="stylesheet" crossorigin href="\/(assets\/[^"]+\.css)">/g)]
+        if (links.length === 0) {
+          console.warn('inline-home-css: no stylesheet <link> found in index.html; CSS left linked')
+          return html
+        }
+        for (const [tag, fileName] of links) {
+          const asset = ctx.bundle[fileName]
+          if (!asset || asset.type !== 'asset') {
+            console.warn(`inline-home-css: ${fileName} not in the bundle; left linked`)
+            continue
+          }
+          const css = typeof asset.source === 'string' ? asset.source : new TextDecoder().decode(asset.source)
+          // A literal "</style" inside the CSS would end the element early.
+          if (/<\/style/i.test(css)) {
+            console.warn(`inline-home-css: ${fileName} contains "</style"; left linked`)
+            continue
+          }
+          html = html.replace(tag, () => `<style>${css}</style>`)
+        }
+        return html
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), prerenderHomeShell()],
+  plugins: [react(), prerenderHomeShell(), inlineHomeCss()],
   server: {
     proxy: {
       // The /fred-api proxy that used to be here is gone. It made FRED work in

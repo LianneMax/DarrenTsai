@@ -346,6 +346,43 @@ Median LCP 5.0 s, the same as before Option A (5.0 s on 5 Oct). The pre-render a
 
 **CallRail to HubSpot integration (7 Oct):** CallRail shows it as "Pending" with Hub ID 247401197 filled in and no approve button on the CallRail side. CallRail had 0 calls in the week of 29 Sep to 5 Oct, so no call has been sent to HubSpot yet.
 
+### L10: CallRail swap.js and the homepage CSS off the render path (7 Oct, Claude Code)
+
+**Changes.**
+- **`swap.js` moved to the end of `<body>`** on all five pages (`index.html`, `mortgage-calculator/index.html`, `public/dscr/`, `public/fha/`, `public/realestateinvesting/`), which is where CallRail's install guide puts it. Same tag, still synchronous; it isn't `async` because async never swapped the number (L7).
+- **The homepage stylesheet is inlined into `index.html`** at build: `inlineHomeCss` in `vite.config.ts`, homepage only, fails open. Loading it without blocking would have painted the pre-rendered hero unstyled and then made it jump. `/mortgage-calculator/` still links the CSS file. `index.html` is now 43 KB, 11.3 KB gzipped; the cost is that `/` no longer caches its CSS between visits.
+
+**Did the number still swap?** Probed in Chromium at phone width (375px), each run as one new CallRail visitor walking all five pages:
+
+| | First page of visit | First paint | Swap complete | Real number still in place after paint |
+| --- | --- | --- | --- | --- |
+| Before (`<head>`) | `/dscr/` | 3.35 s | 3.84 s | 0.49 s |
+| After (end of `<body>`) | `/dscr/` | 0.16 s | 1.16 s | 1.0 s |
+| After | `/fha/` | 0.17 s | 0.97 s | 0.8 s |
+| After | `/` | 0.12 s | 0.89 s | 0.36 s (footer link appears with React) |
+
+- Every page swapped in every run.
+- On a visitor's **later** pages the number was swapped before or at first paint in both versions (0 ms).
+- The "head" version never managed a swap before paint on a first visit either. `swap.js` still fetches the pool number in a second request, so the real number stayed ~0.5 s after a page that had been blank for 3.3 s.
+- These four runs used all four pool numbers, so no more first-visit samples were taken.
+
+**Is the real number ever visible?** No. At first paint no phone digits are on screen on any page, at 375px or 1280px. The footer numbers are below the fold, and the fixed "Call" button on the landing pages shows the word "Call", not the number. The remaining exposure: on a visitor's first page, a tap on that "Call" button within ~1 s of the page appearing dials the real number. Before, the screen was blank for those seconds instead.
+
+**Tracking**, on all five pages in each probe run: GTM, GA4 `page_view`, HubSpot loader, `hubspotutk`, and the gclid stored on first load. All yes.
+
+**Lighthouse, local, mobile, everything loading:**
+
+| Page | Before: LCP (runs) | After: LCP (runs) | Observed first paint, before → after |
+| --- | --- | --- | --- |
+| `/` (5 runs) | median 8.5 s (8.4 to 11.9) | median **5.3 s** (5.1 to 8.9) | 2.56 s → 0.67 s (medians) |
+| `/dscr/` (3 runs) | 4.9, 8.3, 8.9 s | 3.0, 4.9, 8.7 s | 0.9 to 2.4 s → 0.42 to 1.57 s |
+
+Accessibility 100 and CLS 0 throughout. Lighthouse still names `swap.js` as render-blocking in 2 of 3 `/dscr/` runs, because it counts a synchronous script in the body as parser-blocking even when the page has already painted. If PSI keeps flagging it, the next step to test is `defer`. Like the end of `<body>`, it runs only after the page has been parsed, but it never blocks the parser. That needs its own swap check first, with a fresh CallRail pool, before shipping. Local numbers sit well above PSI's; PSI on the live site is the real check.
+
+`npm test` 754 passed (21 files; 6 new L10 checks), lint clean, build OK, layout check OK (45).
+
+**Check after deploy:** three PSI mobile runs of `/` and one each of the landing pages. Then on a phone, open a landing page in a fresh private window and watch the "Call" button's number (long-press to see the link) switch to a pool number within about a second.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).

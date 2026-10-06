@@ -23,12 +23,6 @@
   <script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
-  <!-- CallRail Dynamic Number Insertion: swaps the business number for the
-       visitor's pool number. Loaded here rather than at the end of <body>
-       because the static number is visible and dialable from first paint;
-       a call placed in that window is attributed to the wrong pool, or to
-       no campaign at all. swap.js is small and non-blocking to parse. -->
-  <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
 <!-- Calendly is injected on first click (see loadCalendly below). It used to
      load eagerly here, putting a render-blocking third-party stylesheet in
      front of first paint for a widget nobody sees until they click. -->
@@ -2228,5 +2222,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   });
 })();
 </script>
+<!-- CallRail Dynamic Number Insertion, at the end of <body> (audit L10,
+     7 Oct), which is where CallRail's install guide puts it. It used to sit
+     in the <head> so the number would be swapped before first paint, but
+     measured it did not do that: on a visitor's first page swap.js still
+     fetches the pool number in a second request, so the real number showed
+     for ~0.5s after paint anyway, while first paint waited ~3s for
+     CallRail (PSI: 920 ms render-blocking). Here it no longer holds the
+     page back. It stays synchronous: loaded async, it never swapped the
+     number at all (L7). Swap timing per page is recorded in audit.md, L10. -->
+<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
 </body>
 </html>
