@@ -329,6 +329,23 @@ How to read it:
 
 **Check after deploy:** three PSI mobile runs of `/` (Max's 5 Oct median was 5.0 s), and on a phone, tap "Book a Call" the moment the page appears: the chooser should open once the page is ready. `npm test` 748 passed (21 files), lint clean, build OK, layout check OK (45).
 
+### Live re-check of 0740080 (Option A, homepage pre-render), 7 Oct (Max)
+
+- **Shipped:** the raw HTML of `/` contains the hero text ("Most mortgages cost you"), so the pre-render step ran. One `h1` and one `nav` after React loads (no duplicates).
+- **Tracking** (fresh load of `/`): GTM-N7Z8Q4QF and G-627RJ4FDSP loaded, HubSpot loader present, `hubspotutk` set, CallRail swapped the number.
+- **Early tap test:** not done here; needs a real phone.
+- **PageSpeed `/`, mobile, three runs:**
+
+| Run | Perf | FCP | LCP | TBT | CLS |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 62 | 4.0 s | 5.0 s | 270 ms | 0 |
+| 2 | 69 | 1.8 s | 5.2 s | 240 ms | 0.037 |
+| 3 | 68 | 3.6 s | 4.6 s | 160 ms | 0 |
+
+Median LCP 5.0 s, the same as before Option A (5.0 s on 5 Oct). The pre-render alone did not move it. PSI's render-blocking list for `/`: CallRail `swap.js` (13 KiB, 920 ms) and `/assets/Footer-*.css` (7 KiB, 360 ms). This matches Claude Code's local result that the gain only shows with CallRail out of the way: the hero is in the HTML but the first paint still waits for `swap.js` in the `<head>`. Next step (L10): move `swap.js` out of the render path without making it async (async broke the swap), e.g. to the end of `<body>`, which is where CallRail's own install guide puts it, and inline or defer the Footer CSS.
+
+**CallRail to HubSpot integration (7 Oct):** CallRail shows it as "Pending" with Hub ID 247401197 filled in and no approve button on the CallRail side. CallRail had 0 calls in the week of 29 Sep to 5 Oct, so no call has been sent to HubSpot yet.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).
