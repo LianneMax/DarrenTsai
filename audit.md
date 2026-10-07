@@ -401,6 +401,50 @@ Accessibility 100 and CLS 0 throughout. Lighthouse still names `swap.js` as rend
 The three ad landing pages are now at or near 1 s LCP and score 90 to 97. The homepage's first paint is fixed (FCP 4.0 s to about 1.0 s) but its LCP is still 4.3 to 5.2 s (median 4.5 s), and it now has a small layout shift (0.037, was 0). So the largest element on `/` is still something that appears late, after React loads; which element was not captured. Open item (L11, not urgent, `/` is not an ad page): find the LCP element and the 0.037 shift on `/`.
 - **CallRail pool:** only four pool numbers; Claude Code's local tests exhausted them. Raise pool size with Kocah before ads launch (item #8 reopened).
 
+### L11: what holds `/` back, and a proposed fix (7 Oct, Claude Code; investigation only, nothing built)
+
+**The LCP element is the hero headline, and in a real browser it paints at first paint.** Every LCP candidate and layout shift the browser reports on `/` was recorded at PSI's phone settings (412px, Moto G Power, 4× CPU, slow 4G), plus unthrottled. In all 9 runs there was exactly **one** LCP candidate: `h1.hero-headline`, at first paint.
+- Locally that was 0.66 to 0.76 s throttled and 0.12 to 0.14 s unthrottled.
+- On the live site it was 0.78 to 1.34 s (two loads, with analytics and ad hits blocked so the checks were not counted).
+- React taking over later, at 0.5 to 4.5 s, never produced a new candidate.
+
+So nothing "appears late". PSI's 4.3 to 5.2 s is its *simulated* LCP. Lighthouse estimates it by charging LCP for the requests the page started before the observed LCP, and on `/` that includes React's ~118 KB bundle, which the landing pages don't have. A local Lighthouse run of the current build reproduces PSI's figure: 5.0, 5.1 and 5.2 s, with the observed LCP at 0.68 to 0.90 s.
+
+**The 0.037 layout shift is the web font arriving after first paint.**
+- Lighthouse on the live homepage named the cause directly: CLS 0.1059, "Web font loaded", `outfit-v15-latin.woff2`.
+- Holding the font back 1 s locally reproduces exactly 0.1059 at 412px, and 0.147 at 1280px.
+- The mechanism: since L10 the page paints before Outfit has arrived, so the hero shows in the fallback font (Arial). When Outfit swaps in, the large three-line headline re-flows and everything under it moves. In the same runs the observed LCP lands 0.1 to 0.3 s after first paint, because the headline is repainted.
+- Before L10 the blocking CSS and CallRail usually held the first paint until the font was there, which is why CLS was 0.
+- How much shift PSI sees depends on how late the font lands in its run (0.037 in Max's three, 0.106 in one of mine).
+
+**Proposed fix 1: a fallback font sized like Outfit (fixes the CLS).** Add an "Outfit Fallback" face built on Arial with metric overrides, computed with fontTools from the repo's Outfit TTFs and Windows' Arial using English letter frequencies:
+- Regular: `size-adjust: 99.34%; ascent-override: 100.66%; descent-override: 26.17%; line-gap-override: 0%` on `local('Arial')`.
+- Bold (600 to 800): `size-adjust: 94.90%; ascent-override: 105.37%; descent-override: 27.40%; line-gap-override: 0%` on `local('Arial Bold')`.
+- Use it in the stack: `'Outfit', 'Outfit Fallback', sans-serif`.
+
+Tested by injecting it into a build with the font held back 1 s: **CLS 0.1059 → 0.0009 at 412px and 0.147 → 0.016 at 1280px**, still one LCP entry. It is CSS only, and it only matters for the fraction of a second before Outfit arrives; after that the page is exactly as now. Apply it on all five pages: the landing pages' 0.004 to 0.007 CLS is very likely the same swap at a smaller scale.
+- *Risk: low.* No script, tracking or lead-path change.
+- *Limit:* phones without Arial (most Android) fall through to their own sans-serif unadjusted, as today. Lighthouse and PSI run Chrome on Linux, where Arial resolves to the metric-identical Liberation Sans, so the measurement is fixed and desktop and iOS visitors are too.
+- *Effort:* about an hour, plus a test that pins the stack.
+
+**Proposed fix 2: request React's bundle just after the first paint, on `/` only (targets PSI's simulated LCP).** At build time, replace the homepage's `<script type="module">` and `<link rel="modulepreload">` with a few-line loader. The loader adds the same script one frame after the first paint, so the pre-rendered hero paints with nothing else competing.
+
+Tested on a scratch copy of the build, together with fix 1 (local Lighthouse, mobile, everything loading, 3 runs each):
+
+| Variant | LCP | Observed LCP vs first paint |
+| --- | --- | --- |
+| Current build | 5.0, 5.1, 5.2 s | 0.09 to 0.26 s later |
+| Fix 1 only | 5.4, 6.1, 8.5 s (noisy) | 0.02 to 0.19 s later |
+| Fix 1 + fix 2 | **3.0, 4.4, 4.7 s** | **equal, every run** |
+
+TBT is unchanged at 2.6 to 4.4 s locally, which is the tracking scripts.
+- *Gain:* PSI's LCP for `/` should drop by roughly a second, and the homepage then has the same load profile as the landing pages, which PSI scores at ~1 s. Not proven until measured live; local runs are noisy.
+- *Cost:* React, and the calculator and footer it draws below the hero, start one frame later, typically tens of milliseconds. The early-click queue already covers taps on the hero before React is ready.
+- *Risk: low to medium.* It changes how the homepage app boots: the bundle is added by a script instead of a tag, which needs tests and the same tracking and lead-form checks as before. `/mortgage-calculator/` and the landing pages are untouched.
+- *Effort:* half a day with tests.
+
+**Recommendation.** Do fix 1 now, on all five pages: it removes the CLS for certain and is low risk. Fix 2 is optional. Real visitors already see the homepage hero at about 1 s; fix 2 only improves PSI's simulated number for `/`, and the ads don't point there. If it is wanted, do it after fix 1 is measured live, so each change is measured on its own.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).
