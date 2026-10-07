@@ -383,6 +383,24 @@ Accessibility 100 and CLS 0 throughout. Lighthouse still names `swap.js` as rend
 
 **Check after deploy:** three PSI mobile runs of `/` and one each of the landing pages. Then on a phone, open a landing page in a fresh private window and watch the "Call" button's number (long-press to see the link) switch to a pool number within about a second.
 
+### Live re-check of 79faacc (L10: CallRail at end of body, homepage CSS inlined), 7 Oct (Max)
+
+- **Shipped:** on all five pages `swap.js` is now after `</head>`; `/` has its CSS inline.
+- **Tracking** (fresh load of `/dscr/`): GTM-N7Z8Q4QF and G-627RJ4FDSP loaded, HubSpot loader present, `hubspotutk` set, `window.DT` available, CallRail swapped the number to (714) 475-1497. Max's phone test (private window, long-press Call) also showed a swapped number.
+- **PageSpeed Insights, mobile, 7 Oct:**
+
+| Page | Perf | A11y | FCP | LCP | TBT | CLS | LCP before |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/dscr/` | 97 | 100 | 0.9 s | 0.9 s | 190 ms | 0.007 | 3.6 s (5 Oct) |
+| `/fha/` | 94 | 100 | 1.1 s | 1.1 s | 240 ms | 0.007 | 2.7 s (5 Oct) |
+| `/realestateinvesting/` | 90 | 100 | 1.0 s | 1.0 s | 390 ms | 0.004 | 1.7 s (5 Oct) |
+| `/` run 1 | 71 | 100 | 1.0 s | 5.2 s | 250 ms | 0.037 | 5.0 s median |
+| `/` run 2 | 53 | 100 | 1.0 s | 4.5 s | 1,180 ms | 0.037 | |
+| `/` run 3 | 70 | 100 | 0.8 s | 4.3 s | 390 ms | 0.037 | |
+
+The three ad landing pages are now at or near 1 s LCP and score 90 to 97. The homepage's first paint is fixed (FCP 4.0 s to about 1.0 s) but its LCP is still 4.3 to 5.2 s (median 4.5 s), and it now has a small layout shift (0.037, was 0). So the largest element on `/` is still something that appears late, after React loads; which element was not captured. Open item (L11, not urgent, `/` is not an ad page): find the LCP element and the 0.037 shift on `/`.
+- **CallRail pool:** only four pool numbers; Claude Code's local tests exhausted them. Raise pool size with Kocah before ads launch (item #8 reopened).
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).
