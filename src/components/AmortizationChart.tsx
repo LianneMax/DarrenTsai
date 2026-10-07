@@ -100,13 +100,13 @@ export default function AmortizationChart({ yearlyData }: Props) {
           <CartesianGrid vertical={false} stroke="#e5e7eb" strokeDasharray="4 4" />
           <XAxis
             dataKey="year"
-            tick={{ fontSize: 12, fill: 'var(--text-muted)', fontFamily: 'Outfit' }}
+            tick={{ fontSize: 12, fill: 'var(--text-muted)', fontFamily: "'Outfit', 'Outfit Fallback', sans-serif" }}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
             tickFormatter={formatYAxis}
-            tick={{ fontSize: 12, fill: 'var(--text-muted)', fontFamily: 'Outfit' }}
+            tick={{ fontSize: 12, fill: 'var(--text-muted)', fontFamily: "'Outfit', 'Outfit Fallback', sans-serif" }}
             tickLine={false}
             axisLine={false}
             width={60}

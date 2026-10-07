@@ -445,6 +445,50 @@ TBT is unchanged at 2.6 to 4.4 s locally, which is the tracking scripts.
 
 **Recommendation.** Do fix 1 now, on all five pages: it removes the CLS for certain and is low risk. Fix 2 is optional. Real visitors already see the homepage hero at about 1 s; fix 2 only improves PSI's simulated number for `/`, and the ads don't point there. If it is wanted, do it after fix 1 is measured live, so each change is measured on its own.
 
+**Decision (Max, 8 Oct): fix 1 built, fix 2 on hold.** Fix 2 is not built. Real visitors already see the hero at about 1 s, so it would only move PSI's simulated number. And whether ads will point to `/` is still an open question with Kocah: the homepage has the debt consolidation calculator, so it may become an ad page. Revisit fix 2 when that is answered, and after fix 1 has been measured live.
+
+### L11 fix 1 built: a fallback font sized like Outfit (8 Oct, Claude Code; committed, not yet pushed or live)
+
+**What changed.** Two `@font-face` rules named `Outfit Fallback` (Arial, with the metric overrides proposed above; regular covers weights 100 to 500, bold 600 to 900) in each of the four places the five pages get their CSS: `src/index.css` (`/` and `/mortgage-calculator/`), and the inline `<style>` of `/dscr/`, `/fha/` and `/realestateinvesting/`. Every font stack is now `'Outfit', 'Outfit Fallback', sans-serif` (108 declarations), plus the two chart axis labels in `AmortizationChart.tsx`, which named Outfit with no fallback at all. CSS only: no script, tracking or lead-path change, and nothing is downloaded (`local()` only). `tests/font-fallback.test.ts` (17 tests) fails on a stack that leaves the fallback out, or on changed metrics.
+
+**Measured, same machine, before and after.** Local build served by `vite preview`, third-party scripts blocked.
+
+CLS with the Outfit file held back 1 s (the L11 method; this is the case the fix is for):
+
+| Page | 412px before | 412px after | 1280px before | 1280px after |
+| --- | --- | --- | --- | --- |
+| `/` | 0.1059 | **0.0009** | 0.1649 | **0.0180** |
+| `/mortgage-calculator/` | 0 | 0 | 0.0003 | 0 |
+| `/dscr/` | 0.0554 | **0.0003** | 0.0010 | 0.0002 |
+| `/fha/` | 0.0082 | 0 | 0.0021 | 0.0021 |
+| `/realestateinvesting/` | 0.0041 | 0 | 0.0022 | 0.0072 |
+
+Still one LCP entry on every page that had one. `/realestateinvesting/` at 1280px moved the wrong way, 0.0022 to 0.0072; both are far below the 0.1 "good" line and too small to see. `/dscr/` at phone width was the surprise: 0.055 before, which L11 had only guessed at.
+
+Lighthouse 13 CLS (phone and desktop presets, real network throttling, one run each): 0 on all five pages in both, before and after, except `/fha/` desktop at 0.0016 both times and `/` phone at 0.0008 after. Locally the font arrives before the first paint, so Lighthouse on localhost never showed the shift in the first place; this confirms the fix adds none, and the held-back table above is the evidence that it removes one. The real before and after is PSI on the live site, where the homepage read 0.037 to 0.106.
+
+Also run: `npm test` (771 pass), `npm run lint` (clean), `npm run build`, `npm run test:layout` (45 of 45).
+
+**To check live after the push (Max):** PSI on `/` and `/dscr/`, phone: CLS should read about 0 (was 0.037 on `/` in the 7 Oct runs). On a slow connection the headline should no longer jump when the font arrives; the letter shapes still change, which is expected.
+
+**Limit, unchanged from the proposal:** phones without Arial (most Android) skip the fallback and behave as before.
+
+### H3 switched on: leads now go to HubSpot (7 Oct, Max)
+
+Niko sent the form ID on 7 Oct. Script Properties added on the Apps Script project "Darren Tsai | Lead Database": `HUBSPOT_PORTAL_ID` = `247401197`, `HUBSPOT_FORM_GUID` = `ee8340cf-71cb-4d76-a0af-a9fa5150461d`, `HUBSPOT_SEND_TESTS` = `true` for the test, then set to `false`. `HUBSPOT_FORMS_HOST` not set (default host worked). The 11 existing properties were not changed.
+
+Test lead: `TEST H3 Live`, `+h3live`, (714) 555-0185, contact modal on `/realestateinvesting/` after landing with `?gclid=TESTH3GCLID&utm_source=google&utm_medium=cpc&utm_campaign=h3test`. Debug tab, 7 Oct 11:15 UTC: `pushToBonzo: test lead, not enrolled`, `pushToHubSpot: 200`, `sendContactConfirmation ... 200`. So HubSpot accepted the submission on the first attempt, although the form was built in the newer form editor (the public embed endpoint refuses to describe it).
+
+Not yet checked: the contact inside HubSpot (Max's HubSpot session had expired), i.e. that `rdt_gclid`, source, form id, page path and `rdt_test_lead` are filled, and whether a "HubSpot is dropping lead fields" email arrived. From now on every real lead with an email is submitted to HubSpot. Test leads are skipped again.
+
+Test data: the `TEST H3 Live` row in Leads and its Follow-ups row were deleted on 8 Oct (checked by timestamp). Still to clean: the test contact in HubSpot (Niko, after he confirms the `rdt_` fields are filled; Max's HubSpot role cannot open contacts or the form) and the confirmation email in Max's Gmail.
+
+### Decisions from the meeting with Darren, 8 Oct
+
+- **Qualified call:** a first call with a real prospect runs about 90 seconds or more. Use 90 seconds as the cutoff (to pass to Kocah).
+- **HubSpot access:** Darren is giving Max another HubSpot seat so she can manage forms, contacts and connections.
+- **CallRail to HubSpot:** CallRail emailed "Action Required: HubSpot is not set up for Darren Tsai. The HubSpot integration setup is incomplete. We cannot send or receive data until setup has been completed." So "Pending" means the authorisation was never finished, not that it is waiting for a first call (the 7 Oct reading was wrong). The CallRail page shows Hub ID 247401197, inbound calls, outbound calls and text messages ticked, "Create a new contact when no contact is found" selected. Someone signed in to both CallRail and HubSpot with permission to connect apps has to finish it.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).

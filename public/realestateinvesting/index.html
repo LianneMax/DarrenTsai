@@ -39,6 +39,23 @@
   @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
   @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;font-display:swap;src:url(/fonts/outfit-v15-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 
+  /* Outfit Fallback (audit L11, 8 Oct). Arial, resized to occupy the space Outfit
+     will. Since L10 the page paints before Outfit has arrived, so the hero drew
+     in plain Arial and re-flowed when the font swapped in: CLS 0.106 on the
+     homepage at phone width with the font held back 1s, and 0.055 on /dscr/.
+     With these overrides the fallback text takes the same lines and the same
+     height, so the swap changes the letterforms and moves nothing (0.001).
+     The numbers were computed with fontTools from public/fonts/Outfit-*.ttf and
+     Windows' Arial, weighted by English letter frequency; they are measurements,
+     not taste, so do not round or tune them by eye. Two faces because Arial Bold
+     is wider against Outfit's bold than Arial is against its regular. local()
+     only: nothing is downloaded, and a device with no Arial (most Android)
+     skips this face and falls through to sans-serif exactly as before.
+     It must sit between 'Outfit' and sans-serif in every stack;
+     tests/font-fallback.test.ts fails on a stack that leaves it out. */
+  @font-face{font-family:'Outfit Fallback';font-style:normal;font-weight:100 500;src:local('Arial');size-adjust:99.34%;ascent-override:100.66%;descent-override:26.17%;line-gap-override:0%;}
+  @font-face{font-family:'Outfit Fallback';font-style:normal;font-weight:600 900;src:local('Arial Bold'),local('Arial-BoldMT');size-adjust:94.90%;ascent-override:105.37%;descent-override:27.40%;line-gap-override:0%;}
+
   :root{
     /* Contrast tokens, audit L3 (30 Sep). The old teal (#517686) gave white
        4.9:1 and the muted copy on it 3.6:1; buttons in the old accent (#219ebc)
@@ -73,7 +90,7 @@
   body{
     background:var(--white);
     color:var(--navy);
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
   }
@@ -109,12 +126,12 @@
   @media (max-width:900px){ .hero-inner{grid-template-columns:1fr;} }
 
   .hero-eyebrow{
-    display:block;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;
+    display:block;font-family:'Outfit','Outfit Fallback',sans-serif;font-size:11px;font-weight:600;
     letter-spacing:.06em;color:var(--header-text);margin:0 0 16px;
   }
   .hero-left{color:var(--white);}
   .hero-title{
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-weight:700;
     font-size:3.1rem;
     line-height:1.08;
@@ -147,7 +164,7 @@
     box-shadow:0 14px 40px rgba(0,0,0,.18);
   }
   .hero-stat-num{
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-weight:800;
     font-size:2.5rem;
     line-height:1;
@@ -176,7 +193,7 @@
   }
   .lead-form:hover{box-shadow:var(--card-shadow-hover);}
   .lead-form h3{
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-weight:700;
     font-size:1.3rem;
     margin:0 0 6px;
@@ -215,7 +232,7 @@
   .cselect-trigger{
     width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;
     border:none;background:transparent;cursor:pointer;text-align:left;
-    padding:11px 14px;font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;color:var(--text-muted);
+    padding:11px 14px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:1rem;font-weight:400;color:var(--text-muted);
   }
   .cselect-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
   .cselect-value.has-value{color:var(--navy);}
@@ -236,7 +253,7 @@
        under 16px, and the visitor has to pinch back out in the middle of the
        form. Every other field on the site is already 16px. */
     width:100%;border:none;outline:none;background:var(--light-bg);border-radius:6px;
-    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:16px;color:var(--navy);
+    padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:16px;color:var(--navy);
   }
   .cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
   .cselect-option{
@@ -253,7 +270,7 @@
     border:none;
     background:transparent;
     padding:11px 14px;
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-size:1rem;
     color:var(--navy);
     outline:none;
@@ -263,7 +280,7 @@
     background:var(--accent);
     color:var(--white);
     border:none;
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-weight:700;
     font-size:0.95rem;
     line-height:1.2;
@@ -310,7 +327,7 @@
     border:none;
     background:transparent;
     padding:11px 40px 11px 14px;
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-size:1rem;
     color:var(--navy);
     outline:none;
@@ -327,7 +344,7 @@
     border:none;
     background:transparent;
     padding:11px 14px;
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-size:1rem;
     color:var(--navy);
     outline:none;
@@ -355,7 +372,7 @@
     position:relative;
   }
   .modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:28px 32px 0;margin-bottom:6px;}
-  .modal-header h3{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0;line-height:1.3;}
+  .modal-header h3{font-family:'Outfit','Outfit Fallback',sans-serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:0;line-height:1.3;}
   .modal-close-x{
     background:var(--light-bg);border:none;border-radius:50%;
     width:36px;height:36px;display:flex;align-items:center;justify-content:center;
@@ -377,7 +394,7 @@
   /* ---------- Section shell ---------- */
   section{padding:72px 0;}
   .section-label{
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-size:11px;
     font-weight:600;
     letter-spacing:.06em;
@@ -385,7 +402,7 @@
     margin:0 0 14px;
   }
   h2{
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
     font-weight:700;
     font-size:2.2rem;
     line-height:1.2;
@@ -408,8 +425,8 @@
   @media (max-width:900px){ .chapter-cells{grid-template-columns:1fr;} }
   .chapter-cell{background:var(--white);padding:24px;}
   .chapter-cell.span-2{grid-column:1 / -1;}
-  .chapter-num{font-family:'Outfit', sans-serif;font-weight:700;font-size:0.8rem;color:var(--accent);margin:0 0 10px;}
-  .chapter-title{font-family:'Outfit', sans-serif;font-weight:700;font-size:1.05rem;color:var(--navy);margin:0 0 6px;}
+  .chapter-num{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:0.8rem;color:var(--accent);margin:0 0 10px;}
+  .chapter-title{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:1.05rem;color:var(--navy);margin:0 0 6px;}
   .chapter-desc{font-size:0.92rem;line-height:1.5;color:var(--text-muted);margin:0;}
 
   /* ---------- Download + form band ---------- */
@@ -421,7 +438,7 @@
     background:var(--white);border-radius:12px;border:1px solid var(--line);
   }
   .download-copy-card{padding:36px 34px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
-  .download-copy-card h3{font-family:'Outfit', sans-serif;font-weight:700;font-size:2rem;color:var(--navy);margin:0 0 12px;}
+  .download-copy-card h3{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:2rem;color:var(--navy);margin:0 0 12px;}
   .download-copy-card p{font-size:1rem;line-height:1.6;color:var(--text-muted);margin:0;}
   .download-spec-card{
     flex:1;display:flex;flex-direction:column;justify-content:center;
@@ -435,7 +452,7 @@
   .spec-row .spec-label{font-size:0.88rem;font-weight:600;color:var(--text-muted);white-space:nowrap;}
   .spec-row .spec-value{font-size:1.05rem;font-weight:700;color:var(--teal);}
   .download-form-card{padding:36px 34px;box-shadow:0 14px 36px rgba(34,61,85,.13);}
-  .download-form-card h3{font-family:'Outfit', sans-serif;font-weight:700;font-size:0.95rem;color:var(--navy);margin:0 0 6px;}
+  .download-form-card h3{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:0.95rem;color:var(--navy);margin:0 0 6px;}
   .download-form-card .form-sub{font-size:0.92rem;color:var(--text-muted);line-height:1.5;margin:0 0 20px;}
   .download-form-card .field{margin-bottom:16px;}
   .field-label-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
@@ -449,20 +466,20 @@
   @media (max-width:900px){ .playbook-grid{grid-template-columns:1fr;} }
   .playbook-rule{width:96px;height:3px;background:var(--teal-deep);margin:0 0 20px;}
   .playbook-copy .section-label{color:var(--header-text);}
-  .playbook-copy h3{font-family:'Outfit', sans-serif;font-weight:700;font-size:1.95rem;line-height:1.25;color:var(--white);margin:0 0 14px;}
+  .playbook-copy h3{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:1.95rem;line-height:1.25;color:var(--white);margin:0 0 14px;}
   .playbook-copy p{font-size:1rem;line-height:1.6;color:var(--teal-body);margin:0 0 24px;}
   .playbook-rows{display:flex;flex-direction:column;}
   .playbook-row{display:grid;grid-template-columns:40px 1fr;padding:20px 0;border-bottom:1px solid rgba(255,255,255,.2);}
   .playbook-row:last-child{border-bottom:none;}
-  .playbook-row .num{font-family:'Outfit', sans-serif;font-weight:700;font-size:0.85rem;color:var(--header-text);}
-  .playbook-row .title{font-family:'Outfit', sans-serif;font-weight:700;font-size:1.05rem;color:var(--white);margin:0 0 4px;}
+  .playbook-row .num{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:0.85rem;color:var(--header-text);}
+  .playbook-row .title{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:700;font-size:1.05rem;color:var(--white);margin:0 0 4px;}
   .playbook-row .desc{font-size:0.92rem;line-height:1.5;color:var(--teal-body);margin:0;}
 
   /* --- Client reviews carousel --- */
   .reviews-section{margin-top:40px;}
   .section-header{text-align:center;margin-bottom:36px;}
   .section-eyebrow{display:block;font-size:0.78rem;font-weight:600;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px;}
-  .section-title{font-family:'Outfit',sans-serif;font-weight:700;font-size:clamp(1.5rem,3.2vw,2rem);color:var(--navy);margin:0 0 12px;}
+  .section-title{font-family:'Outfit','Outfit Fallback',sans-serif;font-weight:700;font-size:clamp(1.5rem,3.2vw,2rem);color:var(--navy);margin:0 0 12px;}
   .section-sub{font-size:0.98rem;color:var(--text-muted);line-height:1.7;max-width:520px;margin:0 auto;}
 
   /* Full width, not 100vw.
@@ -493,7 +510,7 @@
   .review-star{color:#f59e0b;font-size:16px;}
   .review-quote-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:0;}
   .review-quote{font-size:0.85rem;font-weight:400;color:var(--navy);line-height:1.6;margin:0;overflow:hidden;}
-  .review-see-more{background:none;border:none;padding:4px 0 0;font-size:0.8rem;font-weight:600;color:var(--teal);cursor:pointer;text-align:left;font-family:'Outfit',sans-serif;flex-shrink:0;}
+  .review-see-more{background:none;border:none;padding:4px 0 0;font-size:0.8rem;font-weight:600;color:var(--teal);cursor:pointer;text-align:left;font-family:'Outfit','Outfit Fallback',sans-serif;flex-shrink:0;}
   .review-see-more:hover{text-decoration:underline;}
   .review-author{display:flex;align-items:center;gap:14px;flex-shrink:0;}
   .review-avatar{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--white);flex-shrink:0;}
@@ -532,7 +549,7 @@
   .footer-inner{max-width:900px;margin:0 auto;padding:0 24px;position:relative;}
   .footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;}
   .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .footer-name{font-family:'Outfit',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
+  .footer-name{font-family:'Outfit','Outfit Fallback',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
   .footer-title{font-size:0.875rem;color:var(--on-teal-muted);margin:0 0 14px;}
   .footer-meta{font-size:0.82rem;color:var(--on-teal-muted);margin:0 0 4px;}
   .footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
@@ -695,7 +712,7 @@
     -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
     display:none;align-items:center;justify-content:center;
     z-index:900;padding:24px 16px;
-    font-family:'Outfit', sans-serif;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;
   }
   .lf-overlay.open{display:flex;}
   .lf-panel{
@@ -704,7 +721,7 @@
     position:relative;
   }
   .lf-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:28px 32px 0;margin-bottom:6px;}
-  .lf-title{font-family:'Outfit', sans-serif;font-size:1.4rem;font-weight:700;color:#223d55;margin:0;line-height:1.3;}
+  .lf-title{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:1.4rem;font-weight:700;color:#223d55;margin:0;line-height:1.3;}
   .lf-close{
     background:#f5f7f9;border:none;border-radius:50%;width:36px;height:36px;
     display:flex;align-items:center;justify-content:center;cursor:pointer;
@@ -719,11 +736,11 @@
   .lf-group{margin-bottom:20px;}
   .lf-row-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px;}
   .lf-row-2 .lf-group{margin-bottom:0;}
-  .lf-label{display:block;font-family:'Outfit', sans-serif;font-size:0.875rem;font-weight:500;color:#223d55;margin-bottom:8px;}
+  .lf-label{display:block;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:0.875rem;font-weight:500;color:#223d55;margin-bottom:8px;}
   .lf-optional{font-weight:400;color:#6b7280;font-size:0.8rem;}
   .lf-input{
     width:100%;padding:11px 16px;border:1.5px solid #d1d5db;border-radius:8px;
-    font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:1rem;font-weight:400;
     color:#1a1a2e;background:#ffffff;outline:none;appearance:none;
     transition:border-color .2s ease,box-shadow .2s ease;
   }
@@ -744,7 +761,7 @@
     display:inline-flex;align-items:center;justify-content:center;gap:8px;
     width:100%;padding:15px;margin-top:8px;border:none;border-radius:8px;
     background:#d2566d;color:#ffffff;
-    font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
     transition:transform .2s ease,box-shadow .2s ease;
   }
   .lf-submit:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(210,86,109,0.35);}
@@ -759,19 +776,19 @@
     display:flex;align-items:center;justify-content:center;
     margin:0 auto 20px;font-size:30px;line-height:1;
   }
-  .lf-success-heading{font-family:'Outfit', sans-serif;font-size:1.5rem;font-weight:700;color:#223d55;margin:0 0 12px;}
+  .lf-success-heading{font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:1.5rem;font-weight:700;color:#223d55;margin:0 0 12px;}
   .lf-success-body{font-size:0.95rem;color:#6b7280;line-height:1.7;margin:0;}
   .lf-success-cta{
     margin-top:24px;width:100%;display:inline-flex;align-items:center;justify-content:center;
     padding:12px 28px;border:2px solid #517686;border-radius:8px;background:transparent;color:#517686;
-    font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
     transition:transform .2s ease,box-shadow .2s ease;
   }
   .lf-success-cta:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(81,118,134,0.25);}
   .lf-success-close{
     margin-top:10px;width:100%;display:inline-flex;align-items:center;justify-content:center;
     padding:12px 28px;border:none;border-radius:8px;background:#517686;color:#ffffff;
-    font-family:'Outfit', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;font-weight:600;font-size:1rem;cursor:pointer;
     transition:transform .2s ease,box-shadow .2s ease;
   }
   .lf-success-close:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(81,118,134,0.4);}
@@ -784,7 +801,7 @@
   .lf-cselect-trigger{
     width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;
     padding:11px 16px;border:1.5px solid #d1d5db;border-radius:8px;
-    font-family:'Outfit', sans-serif;font-size:1rem;font-weight:400;color:#6b7280;
+    font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:1rem;font-weight:400;color:#6b7280;
     background:#ffffff;cursor:pointer;text-align:left;
     transition:border-color .2s ease,box-shadow .2s ease;
   }
@@ -798,7 +815,7 @@
     position:fixed;z-index:1200;background:#ffffff;
     border:1.5px solid #d1d5db;border-radius:8px;
     box-shadow:0 16px 40px rgba(0,0,0,0.16);
-    overflow:hidden;display:none;font-family:'Outfit', sans-serif;
+    overflow:hidden;display:none;font-family:'Outfit', 'Outfit Fallback', sans-serif;
   }
   .lf-cselect-panel.open{display:block;}
   .lf-cselect-search{border-bottom:1px solid #e5e7eb;padding:6px;}
@@ -807,7 +824,7 @@
        under 16px, and the visitor has to pinch back out in the middle of the
        form. Every other field on the site is already 16px. */
     width:100%;border:none;outline:none;background:#f5f7f9;border-radius:6px;
-    padding:8px 10px;font-family:'Outfit', sans-serif;font-size:16px;color:#1a1a2e;
+    padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:16px;color:#1a1a2e;
   }
   .lf-cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
   .lf-cselect-option{

@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 21 files / 754 tests, all passing |
+| Tests | Vitest + jsdom, 22 files / 771 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (754 tests)
+npm test         # vitest run (771 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -201,6 +201,16 @@ property when adding a funnel.
 
 **No em-dashes in landing page copy or designs.**
 
+**Every font stack is `'Outfit', 'Outfit Fallback', sans-serif`.** Pages paint
+before Outfit arrives (since L10), and in plain Arial the hero headline took
+different lines, so it re-flowed on the swap: CLS 0.106 on the homepage at phone
+width with the font held back a second. `Outfit Fallback` is Arial with metric
+overrides measured from the Outfit files, declared in `src/index.css` and in each
+static page's `<style>`. A stack that leaves it out brings the shift back for
+that element only, and looks fine once the font is in.
+`tests/font-fallback.test.ts` scans for it; the overrides are measurements, so
+do not tune them by eye (audit L11).
+
 ## Adding a landing page
 
 More are planned. Each one repeats the same pattern, and all of it has to line up
@@ -236,7 +246,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 754 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 771 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **HubSpot is an extra destination, built dark (audit H3, 29 Sep).**
   `pushToHubSpot` submits every lead to a HubSpot form (Forms API v3, portal
   247401197) from `processFollowUps`, next to Bonzo, and skips until
