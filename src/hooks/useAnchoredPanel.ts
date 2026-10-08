@@ -7,11 +7,11 @@
  * field, which every lead form requires. Measured on 8 Oct on step 4 of the
  * debt calculator, at 375x812, 320x568 and 375x667:
  *
- *  - With the field low on the screen the panel was placed below the fold, the
- *    search box inside it was focused, the browser scrolled to show the focused
- *    box, and that scroll closed the panel. The dropdown would not open at all.
- *  - With the field mid-screen it opened, and closed again the moment the
- *    on-screen keyboard resized the window, or a thumb moved the page 40px.
+ *  - With the field low on the screen (just above the sticky bar) the panel
+ *    opened 211px off the bottom with not one option visible, and the scroll
+ *    needed to bring it into view closed it.
+ *  - Wherever the field was, the panel closed the moment the on-screen keyboard
+ *    resized the window, or a thumb moved the page 40px.
  *
  * So the panel now follows its trigger instead of giving up: it is re-measured
  * on every scroll and resize, opens upwards when there is more room above, and
