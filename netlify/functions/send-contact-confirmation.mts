@@ -32,12 +32,147 @@
 import type { Config } from "@netlify/functions";
 import { escapeHtml, guideSender } from "./guide-shared.mts";
 
-const CALENDLY =
-  "https://calendly.com/realdarrentsai/15min" +
-  "?utm_source=email&utm_medium=confirmation&utm_campaign=contact-modal";
+const CALENDLY_BASE =
+  "https://calendly.com/realdarrentsai/15min?utm_source=email&utm_medium=confirmation&utm_campaign=";
+
+// ── Contexts ────────────────────────────────────────────────────────────────
+//
+// One template, several sets of words. The revamp (brief section 11.1) asks for
+// a confirmation that fits the funnel the request came from, on the design this
+// email already has, and explicitly not a second email system.
+//
+// NOT WIRED UP (8 Oct 2026). Nothing sends a `context`: the Apps Script posts
+// firstName, lastName, email and message, so every email this function sends
+// today is the 'contact' one, byte for byte what it was before this table
+// existed (tests/confirmation-email.test.ts holds that). The other four are
+// here so they can be rendered and read: `npm run emails` writes each to
+// docs/revamp/emails/. Turning one on means the Apps Script sending its name,
+// which is a separate, deliberate change, because this email is live and
+// anything it gains starts reaching borrowers on deploy.
+//
+// What every context must hold to (brief 11.1, and Max's 8 Oct decisions):
+// the request was RECEIVED, never reviewed or approved; no response time; no
+// figure, rate or payment repeated from a calculator; no attachment claimed.
+type Lead = Record<string, string | undefined>;
+
+type Copy = {
+  /** utm_campaign on the calendar link, so a booking can be told apart by funnel. */
+  campaign: string;
+  subject: string;
+  /** The hidden line an inbox shows beside the subject. */
+  preheader: string;
+  headline: string;
+  /** First paragraph. May name what the visitor chose; must return safe HTML. */
+  intro: (lead: Lead) => string;
+  /** Further paragraphs, after the "What you told me" box when there is one. */
+  body: string[];
+  /** The line above the button. */
+  closing: string;
+};
+
+/** A dropdown answer as a phrase, from a fixed table so nothing posted is echoed. */
+function phrase(table: Record<string, string>, value: string | undefined): string {
+  const key = (value || "").trim();
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : "";
+}
+
+const EQUITY_GOALS: Record<string, string> = {
+  "Pay Off Debt": "paying off debt",
+  "Renovation / ADU": "a renovation or ADU",
+  "Investment": "an investment",
+  "Major Expense": "a major expense",
+};
+const ADU_PURPOSES: Record<string, string> = {
+  "ADU for family": "an ADU for family",
+  "Rental ADU": "a rental ADU",
+  "Renovation": "a renovation",
+};
+
+/** First person, because the email is signed by Darren. The site says "Darren will be in touch." */
+const NEXT_STEP =
+  "I will be in touch. If you would like to pick a time yourself, choose any 15 minutes that suits you. No credit pull, no obligation.";
+
+const CONTEXTS: Record<string, Copy> = {
+  // The live email. Do not edit without meaning to change what is being sent.
+  contact: {
+    campaign: "contact-modal",
+    subject: "Got your details, here is my calendar",
+    preheader: "Your details reached me. If you would rather not wait, my calendar is open below.",
+    headline: "Got your details",
+    intro: () =>
+      "Your details reached me and I will look at your numbers myself. This email is so you know it arrived rather than wondering.",
+    body: [],
+    closing:
+      "If you would rather not wait for me to reach you, pick any 15 minutes that suits you. No credit pull, no obligation.",
+  },
+  debt: {
+    campaign: "debt-consolidation",
+    subject: "Got your debt comparison request, here is my calendar",
+    preheader: "Your request has been received. The comparison you ran is a starting point.",
+    headline: "Your request has been received",
+    intro: () =>
+      "Thanks for running the comparison and sending it over. Your numbers came through with your request, so you will not need to enter them again.",
+    body: [
+      "What you saw is an estimate. It shows how the monthly payment could change, which is not the same as what each option costs in total. Lower monthly payments do not necessarily mean lower total borrowing costs.",
+      "On a call we can go through the actual rates, the fees, how long each option takes to pay off, and what it means to give up the rate on your current mortgage.",
+    ],
+    closing: NEXT_STEP,
+  },
+  "home-equity": {
+    campaign: "home-equity",
+    subject: "Got your home equity request, here is my calendar",
+    preheader: "Your request has been received. Here is what happens next.",
+    headline: "Your request has been received",
+    intro: (lead) => {
+      const goal = phrase(EQUITY_GOALS, lead.goal);
+      return "Thanks for sending your home equity request." + (goal ? ` You told me this is for ${goal}.` : "");
+    },
+    body: [
+      "The equity figure you saw is an estimate: your home's value less what you owe on it. It is not an amount you have been approved to borrow. Lenders also look at credit, income, the property and how much of the value has to stay in the home.",
+      "On a call we can look at which ways of using your equity could fit, what you may be eligible for, and the actual terms from lenders.",
+    ],
+    closing: NEXT_STEP,
+  },
+  adu: {
+    campaign: "adu",
+    subject: "Got your project funding request, here is my calendar",
+    preheader: "Your request has been received. Funding and the project itself are two separate checks.",
+    headline: "Your request has been received",
+    intro: (lead) => {
+      const purpose = phrase(ADU_PURPOSES, lead.projectPurpose);
+      return "Thanks for sending the details of your project." + (purpose ? ` You told me it is ${purpose}.` : "");
+    },
+    body: [
+      "There are two separate questions here. The first is funding: what you could borrow, how, and on what terms. That is the part I can help with. The second is the project: zoning, permits, site conditions, cost and timing. Your local planning department and your builder answer that one, and funding does not confirm that the project can be built.",
+      "On a call we can go through your budget, how much of it you want to finance, and which funding paths are worth looking at.",
+    ],
+    closing: NEXT_STEP,
+  },
+  "mortgage-review": {
+    campaign: "mortgage-calculator-review",
+    subject: "Got your mortgage review request, here is my calendar",
+    preheader: "Your request has been received. Your calculator numbers came with it.",
+    headline: "Your request has been received",
+    intro: () => "Thanks for sending your numbers from the mortgage calculator. They came through with your request.",
+    body: [
+      "The calculator shows principal and interest on the figures you entered. It does not include taxes, insurance or other costs, and the rate you typed is not a quote.",
+      "On a call we can look at the payment you are aiming for and what financing would actually be available to you.",
+    ],
+    closing: NEXT_STEP,
+  },
+};
+
+/** The copy for a lead. An unknown or absent context is the live contact email. */
+export function copyFor(lead: Lead): Copy {
+  const key = (lead.context || "").trim();
+  return Object.prototype.hasOwnProperty.call(CONTEXTS, key) ? CONTEXTS[key] : CONTEXTS.contact;
+}
+
+/** Every context's name, for the preview script and the tests. */
+export const CONTEXT_NAMES = Object.keys(CONTEXTS);
 
 /** What the visitor asked about, when they told us. Never echoed as HTML. */
-function goalLine(lead: { message?: string }) {
+function goalLine(lead: Lead) {
   const message = (lead.message || "").trim();
   if (!message) return "";
   const FONT = "Arial,Helvetica,sans-serif";
@@ -56,9 +191,17 @@ function goalLine(lead: { message?: string }) {
   </tr>`;
 }
 
-function buildEmailHtml(lead: { firstName?: string; message?: string }) {
+export function buildEmailHtml(lead: Lead) {
   const firstName = escapeHtml(lead.firstName || "there");
   const FONT = "Arial,Helvetica,sans-serif";
+  const copy = copyFor(lead);
+  const calendly = CALENDLY_BASE + copy.campaign;
+  const paragraph = (text: string) => `
+  <tr>
+    <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
+      ${text}
+    </td>
+  </tr>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -67,7 +210,7 @@ function buildEmailHtml(lead: { firstName?: string; message?: string }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
-<title>Got your details, here is my calendar</title>
+<title>${copy.subject}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
   @media only screen and (max-width:620px){
@@ -78,7 +221,7 @@ function buildEmailHtml(lead: { firstName?: string; message?: string }) {
 </style>
 </head>
 <body style="margin:0;padding:0;background-color:#f5f7f9;">
-<span style="display:none;font-size:1px;color:#f5f7f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Your details reached me. If you would rather not wait, my calendar is open below.</span>
+<span style="display:none;font-size:1px;color:#f5f7f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${copy.preheader}</span>
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5f7f9;">
 <tr><td align="center" style="padding:32px 12px;">
@@ -98,7 +241,7 @@ function buildEmailHtml(lead: { firstName?: string; message?: string }) {
 
   <tr>
     <td class="pad" style="padding:36px 40px 8px 40px;font-family:${FONT};">
-      <div class="h1" style="font-size:28px;line-height:34px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.02em;color:#223d55;">Got your details</div>
+      <div class="h1" style="font-size:28px;line-height:34px;mso-line-height-rule:exactly;font-weight:700;letter-spacing:-0.02em;color:#223d55;">${copy.headline}</div>
     </td>
   </tr>
 
@@ -109,14 +252,14 @@ function buildEmailHtml(lead: { firstName?: string; message?: string }) {
   </tr>
   <tr>
     <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
-      Your details reached me and I will look at your numbers myself. This email is so you know it arrived rather than wondering.
+      ${copy.intro(lead)}
     </td>
   </tr>
-${goalLine(lead)}
+${goalLine(lead)}${copy.body.map(paragraph).join("")}
 
   <tr>
     <td class="pad" style="padding:24px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
-      If you would rather not wait for me to reach you, pick any 15 minutes that suits you. No credit pull, no obligation.
+      ${copy.closing}
     </td>
   </tr>
 
@@ -125,7 +268,7 @@ ${goalLine(lead)}
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#219ebc" style="border-radius:8px;">
-            <a href="${CALENDLY}" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Pick a time</a>
+            <a href="${calendly}" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Pick a time</a>
           </td>
         </tr>
       </table>
@@ -165,7 +308,7 @@ ${goalLine(lead)}
 export default guideSender({
   name: "send-contact-confirmation",
   apiKeyEnv: "CONTACT_CONFIRM_API_KEY",
-  subject: "Got your details, here is my calendar",
+  subject: (lead) => copyFor(lead).subject,
   buildEmailHtml,
   // Nothing to attach. The calendar link is the payload.
   buildAttachments: async () => [],
