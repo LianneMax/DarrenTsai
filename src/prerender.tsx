@@ -25,19 +25,21 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import Nav from './components/Nav';
 import Hero from './components/Hero';
-import { DebtCalculatorHeader } from './components/DebtSavingsCalculator';
+import { DebtPageHero } from './components/DebtPageViews';
 
 const noop = () => {};
 
 /**
  * The same thing for /debt-consolidation/ (revamp phase 0, 8 Oct): the nav and
- * the calculator's heading, which is that page's <h1> and its LCP element.
+ * the top of the page, whose <h1> is the page's LCP element.
  *
- * It stops at the heading on purpose. The calculator under it is the lead path,
- * and pre-rendering inputs that do nothing until React arrives is the mismatch
- * the homepage shell was kept clear of. The wrapper mirrors DebtConsolidationApp
- * and DebtSavingsCalculator down to the heading, so React draws the same DOM in
- * the same place and the steps appear beneath it without moving it.
+ * Since phase 2 (9 Oct) that top is DebtPageHero, the hero, licensed strip
+ * included, that DebtPageViews.tsx draws above the calculator. It stops there on
+ * purpose. The steps under it are the lead path, and pre-rendering inputs that
+ * do nothing until React arrives is the mismatch the homepage shell was kept
+ * clear of. The wrapper mirrors DebtConsolidationApp and DebtPage down to the
+ * hero, so React draws the same DOM in the same place and the steps appear
+ * beneath it without moving it.
  */
 export function renderDebtShell(): string {
   return renderToStaticMarkup(
@@ -45,10 +47,8 @@ export function renderDebtShell(): string {
       <Nav onOpenContact={noop} alwaysSolid />
       <div className="page-top-spacer" />
       <main>
-        <section id="savings" className="section section-light">
-          <div className="container">
-            <DebtCalculatorHeader standalone />
-          </div>
+        <section className="dcp">
+          <DebtPageHero />
         </section>
       </main>
     </>,

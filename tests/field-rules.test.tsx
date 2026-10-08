@@ -26,6 +26,7 @@ const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
 const PAGES: Array<[string, string]> = [
   ['homepage calculator', 'src/components/DebtSavingsCalculator.tsx'],
+  ['/debt-consolidation/ page', 'src/components/DebtPageViews.tsx'],
   ['mortgage calculator', 'src/components/Calculator.tsx'],
   ['contact modal', 'src/components/LeadForm.tsx'],
   ['/dscr/', 'public/dscr/index.html'],

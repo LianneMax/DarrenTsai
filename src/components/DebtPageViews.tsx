@@ -457,8 +457,13 @@ export function StepCompare({ v }: { v: DebtPageView }) {
     ? `Rate: ${v.mr.toFixed(2)}% to about ${v.rate30.toFixed(2)}%.`
     : `New rate: about ${v.rate30.toFixed(2)}%.`;
   // The home equity loan is capped at 85% combined loan-to-value, so it may not
-  // reach the whole of the debt. Said on its card, because the copy above
-  // otherwise claims every option clears the same amount.
+  // reach the whole of the debt, or any of it. Said on its card, because the
+  // copy above otherwise claims every option clears the same amount.
+  //
+  // `heloanNoRoom` is its own case. With the mortgage already at 85% of the
+  // value or more, heloanAmt is 0, so no tier or term can price it, and the card
+  // used to keep asking for a credit range the visitor had already picked.
+  const heloanNoRoom = v.hasHome && v.heloanAmt <= 0;
   const heloanShort = v.heloanAmt > 0 && v.heloanAmt < v.totBal;
 
   return (
@@ -468,7 +473,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       <div className="dcp-note">
         <h3>Compare monthly relief and repayment tradeoffs.</h3>
         <p>
-          {heloanShort
+          {heloanShort || heloanNoRoom
             ? <>The refinance options pay off all {formatCurrency(v.totBal)} of your debts. </>
             : <>Each option pays off the same {formatCurrency(v.totBal)} of debts. </>}
           Compare the combined mortgage P&amp;I and debt payments. Taxes, insurance, HOA and closing
@@ -516,11 +521,13 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <OptionCard id="heloan" title="Est. Fixed HELOAN" v={v}
           payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
           scope="Combined mortgage + HELOAN" save={v.heloanSave}
-          unavailable={
+          unavailable={heloanNoRoom
+            ? <>At these numbers there is no room under the 85% combined loan-to-value limit,
+                so a home equity loan cannot be priced. Darren can look at what else may work.</>
             // A HELOAN rate is a credit-score question and the tiers span five
             // points. A price before the visitor has said is a quote for a
             // different person.
-            <>Pick your credit range and a term below to price this option.</>
+            : <>Pick your credit range and a term below to price this option.</>
           }>
           Mortgage: kept{v.mr > 0 ? ` at ${v.mr.toFixed(2)}%` : ''}
           {v.mt > 0 ? ` with ${years(v.mt)} remaining` : ''}. New loan: {v.tierRate.toFixed(2)}% over{' '}
@@ -697,24 +704,30 @@ function chosenLine(v: DebtPageView): { label: string; detail: string } {
 
 /**
  * Shown only after the server has confirmed the save. It says the request was
- * sent, not that anyone has reviewed it, and promises no time.
+ * received, not that anyone has reviewed it, and promises no time.
+ *
+ * The option row is the visitor's own choice shown back to them. It is not in
+ * the lead (the payload is unchanged by the redesign), so it sits under "Your
+ * summary" and the copy above it claims only the numbers were sent, which they
+ * were: every option's payment and saving is in the payload.
  */
 export function DebtRecap({ v }: { v: DebtPageView }) {
   const option = chosenLine(v);
   return (
     <div className="dcp-panel dcp-recap">
       <div className="success-check" role="img" aria-label="Success">✓</div>
-      <h2 className="dcp-h2 dcp-h2-lg">Your next step starts here.</h2>
+      <h2 className="dcp-h2 dcp-h2-lg">Your request has been received.</h2>
       <p className="dcp-lead">
-        Your numbers were sent with your request, so you will not need to start over. Darren will
-        be in touch.
+        Your numbers were sent with it, so you will not need to start over. Darren will be in
+        touch.
       </p>
 
       <div className="dcp-recap-rows">
+        <span className="dcp-eyebrow dcp-eyebrow-dark">Your summary</span>
         <Row label="Total debt" value={formatCurrency(v.totBal)} />
         <Row label="Today's payment" value={`${formatCurrency(v.todayTotal)}/mo`} />
         <div className="dcp-row">
-          <span>Option to discuss</span>
+          <span>Option you want to discuss</span>
           <span><strong>{option.label}</strong><small>{option.detail}</small></span>
         </div>
       </div>

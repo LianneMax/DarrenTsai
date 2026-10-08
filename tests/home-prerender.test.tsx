@@ -56,14 +56,14 @@ describe('the pre-rendered homepage shell', () => {
 
 /**
  * /debt-consolidation/ (revamp phase 0, 8 Oct). The same pre-render, for the
- * page the debt ads land on. Its shell stops at the calculator's heading: the
- * steps under it are the lead path and are drawn by React alone.
+ * page the debt ads land on. Its shell stops at the page's hero (DebtPageHero,
+ * phase 2): the steps under it are the lead path and are drawn by React alone.
  */
 describe('the pre-rendered /debt-consolidation/ shell', () => {
-  /** Closes the heading's three wrappers, which the app goes on to fill. */
-  const TAIL = '</div></section></main>';
+  /** Closes the hero's two wrappers, which the app goes on to fill. */
+  const TAIL = '</section></main>';
 
-  it('holds the nav and the calculator heading as the page <h1>', async () => {
+  it('holds the nav and the hero, whose heading is the page <h1>', async () => {
     const { renderDebtShell } = await import('../src/prerender');
     const shell = renderDebtShell();
     expect(shell.startsWith('<nav')).toBe(true);
