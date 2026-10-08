@@ -28,7 +28,7 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf8');
 
 /** Everything that puts words in front of a visitor. */
 function visitorFacing(): string[] {
-  const out = ['index.html', 'mortgage-calculator/index.html', 'debt-consolidation/index.html'];
+  const out = ['index.html', 'mortgage-calculator/index.html', 'debt-consolidation/index.html', 'home-equity/index.html'];
   const walk = (dir: string, match: RegExp) => {
     for (const entry of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
       const rel = `${dir}/${entry.name}`;

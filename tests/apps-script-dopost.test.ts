@@ -273,8 +273,9 @@ describe('each funnel writes to its own tab, under its own headers', () => {
   });
 
   /**
-   * heloc-hei was retired: HELOC and home-equity intent is the homepage
-   * debt-consolidation funnel now, and /yt/heloc and /yt/equity point there.
+   * heloc-hei was retired: HELOC and home-equity intent has its own page and
+   * source now ('home-equity', revamp phase 3), and /yt/heloc and /yt/equity
+   * point there.
    * Nothing sends the old source, but a stale link, a bookmarked form or a
    * replayed payload still could, and it must degrade to a saved lead rather
    * than a crash or a resurrected tab.

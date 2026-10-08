@@ -23,9 +23,12 @@
 # keep landing on the previous page with no way to fix it. The whole point of a
 # short link is that the destination can change later.
 #
-# HELOC and home equity both point at the homepage on purpose: the
-# debt-consolidation funnel there is the offer for that intent, and there is no
-# separate /heloc page. If one ships, these two are the only lines to change.
+# HELOC and home equity both point at /home-equity/ (revamp phase 3). Until that
+# page existed they pointed at the homepage, whose debt-consolidation funnel was
+# the nearest offer. The query string is kept, so the YouTube attribution is the
+# same either way. Deploy the Apps Script version with the 'home-equity' route
+# first: before it, that page's leads are still saved, but on the generic Leads
+# tab without their equity columns.
 #
 # Redirects are evaluated top to bottom, and these must stay above any catch-all
 # if one is ever reintroduced.
@@ -69,20 +72,20 @@
 
 [[redirects]]
   from = "/yt/heloc"
-  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=description"
+  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=description"
   status = 302
 [[redirects]]
   from = "/yt/heloc-c"
-  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=pinned-comment"
+  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=pinned-comment"
   status = 302
 
 [[redirects]]
   from = "/yt/equity"
-  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=description"
+  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=description"
   status = 302
 [[redirects]]
   from = "/yt/equity-c"
-  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=pinned-comment"
+  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=pinned-comment"
   status = 302
 
 [[redirects]]

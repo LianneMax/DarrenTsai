@@ -341,9 +341,9 @@ describe('the DSCR scenario note', () => {
 /**
  * What a contact lead said they want.
  *
- * 'access-equity' matters most: /yt/heloc and /yt/equity both land on the
- * homepage, which has no HELOC page of its own, so this tag is the only place
- * that intent is legible until one exists. Before 26 Sep 2026 the Target
+ * 'access-equity' matters most: until /home-equity/ existed (revamp phase 3),
+ * /yt/heloc and /yt/equity landed on the homepage and this tag was the only
+ * place that intent was legible. Before 26 Sep 2026 the Target
  * Outcome dropdown had no equity option at all, so a viewer who had just
  * watched a HELOC video had nothing to pick that matched what they came for.
  */

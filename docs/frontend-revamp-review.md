@@ -11,8 +11,8 @@ Ads launch on the pages that exist now. The revamp ships later in phases. Any ad
 ## Phases
 0. Before launch (small): add /debt-consolidation/ serving the same debt calculator as /. Give Kocah /debt-consolidation/ as the debt ads URL so the later homepage change never touches a live ad URL. Canonical on each page to itself. Add to sitemap. **Built 8 Oct.**
 1. Backend plumbing for new sources: home-equity and adu in SOURCE_SCHEMAS, new Sheet tabs, Follow-ups routes, CONTACT_SOURCES, HubSpot field mapping (L12 loan fields), licensed/test handling, contextual confirmation emails (extend send-contact-confirmation, no parallel system). Debt keeps its existing source value. Sheet column order follows docs/lead-sheet-schema.md (one planned migration).
-2. Debt Consolidation refinements on /debt-consolidation/ (labels, optional mortgage fields, result hierarchy, remove Best Time to Call and How did you hear about us). Formulas from the repo only.
-3. /home-equity/ (3 steps). Then repoint /yt/heloc and /yt/equity and any HELOC/equity ads to it, query strings preserved.
+2. Debt Consolidation refinements on /debt-consolidation/ (labels, optional mortgage fields, result hierarchy, remove Best Time to Call and How did you hear about us). Formulas from the repo only. **Built 9 Oct on `claude/wizardly-ramanujan-1dww99`, not live.**
+3. /home-equity/ (3 steps). Then repoint /yt/heloc and /yt/equity and any HELOC/equity ads to it, query strings preserved. **Built 9 Oct on the same branch, not live**, with the home-equity part of phase 1 (its schema, tab, Bonzo tags, contact source); the /yt/ links are repointed in netlify.toml. Ads move with Kocah.
 4. Homepage becomes the goal hub. Same release: replace every /#savings link with /debt-consolidation/. Checked in the repo on 8 Oct: those are the four links in Nav.tsx, Hero.tsx's scroll button, and the `nav-savings` / `hero-savings` early-click keys; the three static landing pages do not link to /#savings.
 5. /adu/.
 6. Navigation polish for DSCR/FHA/REI/Mortgage Calculator; no rebuilds.

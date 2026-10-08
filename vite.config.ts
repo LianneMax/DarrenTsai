@@ -17,6 +17,7 @@ const EMPTY_ROOT = '<div id="root"></div>'
 const PRERENDERED: Record<string, string> = {
   '/index.html': 'renderHomeShell',
   '/debt-consolidation/index.html': 'renderDebtShell',
+  '/home-equity/index.html': 'renderEquityShell',
 }
 
 /**
@@ -155,6 +156,7 @@ export default defineConfig({
         main: 'index.html',
         mortgageCalculator: 'mortgage-calculator/index.html',
         debtConsolidation: 'debt-consolidation/index.html',
+        homeEquity: 'home-equity/index.html',
       },
     },
     // recharts (~537KB) used to be forced into a named `charts` chunk here.

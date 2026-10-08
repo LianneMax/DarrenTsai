@@ -58,17 +58,15 @@ const filled = view({
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
 
 describe('the hero', () => {
-  it('is the only <h1>, carries no phone number, and queues an early tap', () => {
-    const hero = html(<DebtPageHero onAskHeloc={noop} />);
+  it('is the only <h1>, carries no phone number and needs no JavaScript', () => {
+    const hero = html(<DebtPageHero />);
     expect(hero.match(/<h1\b/g)).toHaveLength(1);
-    expect(hero).not.toMatch(/tel:/);
+    expect(hero).not.toMatch(/tel:|<button\b/);
     expect(hero).toContain('href="#savings"');
-    // Pre-rendered: a button that needs React must be replayable.
-    for (const b of hero.match(/<button\b[^>]*>/g) ?? []) expect(b).toContain('data-early=');
   });
 
-  it('gives a HELOC visitor somewhere to go, since this page prices the fixed options', () => {
-    expect(html(<DebtPageHero onAskHeloc={noop} />)).toContain('Ask Darren about a HELOC');
+  it('sends a HELOC visitor to /home-equity/, since this page prices the fixed options', () => {
+    expect(html(<DebtPageHero />)).toContain('href="/home-equity/"');
   });
 });
 

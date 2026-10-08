@@ -128,13 +128,20 @@ const CONTACT_SOURCES = {
   'mortgage-calculator-contact': 'mortgage-calculator',
   'dscr-contact':                'dscr',
   'fha-contact':                 'fha',
-  'rei-contact':                 'real-estate-investing'
+  'rei-contact':                 'real-estate-investing',
+  // /home-equity/, added with the page (revamp phase 3).
+  'home-equity-contact':         'home-equity'
 };
 
+// /home-equity/ has no campaign of its own yet, so its fallback is null and it
+// enrolls into the default BONZO_CAMPAIGN_ID, exactly as before its route
+// existed. Setting BONZO_HOME_EQUITY_CAMPAIGN_ID moves it to a dedicated
+// campaign without a deploy.
 const FUNNEL_CAMPAIGNS = {
   'dscr':                  { prop: 'BONZO_DSCR_CAMPAIGN_ID', fallback: DSCR_CAMPAIGN_ID },
   'fha':                   { prop: 'BONZO_FHA_CAMPAIGN_ID',  fallback: FHA_CAMPAIGN_ID },
-  'real-estate-investing': { prop: 'BONZO_REI_CAMPAIGN_ID',  fallback: REI_CAMPAIGN_ID }
+  'real-estate-investing': { prop: 'BONZO_REI_CAMPAIGN_ID',  fallback: REI_CAMPAIGN_ID },
+  'home-equity':           { prop: 'BONZO_HOME_EQUITY_CAMPAIGN_ID', fallback: null }
 };
 
 // Ad attribution, captured by public/attribution.js and sent with every form.
@@ -262,16 +269,20 @@ function commonLeadRow(d) {
 }
 function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 
-// The 'heloc-hei' route was removed here. Nothing on the site sent it: HELOC and
-// home-equity interest is handled by the debt-consolidation funnel on the
-// homepage, which the /yt/heloc and /yt/equity short links already point to, and
-// which tags its leads 'HELOC/cash-out interest' in Bonzo. A schema with no
-// sender is a tab that can only ever be created by accident.
+// The 'heloc-hei' route was removed here. Nothing on the site sent it, and a
+// schema with no sender is a tab that can only ever be created by accident. The
+// existing "HELOC vs HEI" tab is untouched: nothing here deletes a tab, so
+// whatever it already holds stays readable.
 //
-// The existing "HELOC vs HEI" tab is untouched: nothing here deletes a tab, so
-// whatever it already holds stays readable. If a dedicated HELOC page ships
-// later, add its schema back alongside its form rather than reviving this one
-// speculatively.
+// HELOC and home-equity interest now has a page of its own, /home-equity/
+// (revamp phase 3), with the 'home-equity' schema below. It is a new source and
+// a new tab, deliberately not a revival of 'heloc-hei', whose tab holds rows
+// under different columns.
+
+/** A number the visitor may have skipped: blank when absent, and 0 kept as 0. */
+function optionalCell(v) {
+  return v === undefined || v === null || v === '' ? '' : v;
+}
 const SOURCE_SCHEMAS = {
   'dscr': {
     tab: 'DSCR',
@@ -315,6 +326,29 @@ const SOURCE_SCHEMAS = {
     tab: 'Real Estate Investing',
     headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
     row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d), triageRow(d)); }
+  },
+  // /home-equity/ (revamp phase 3). Funnel columns are the ones
+  // docs/lead-sheet-schema.md lists for this tab, laid out in today's order
+  // (contact, source, funnel, Licensed?, attribution, triage) so it reads like
+  // its neighbours until the planned migration rebuilds every tab by name.
+  // Mortgage Balance can honestly be 0 (a paid-off home), so the optional
+  // numbers go through optionalCell rather than `|| ''`.
+  'home-equity': {
+    tab: 'Home Equity',
+    headers: COMMON_LEAD.concat(
+      ['Source', 'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
+        'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference', 'Licensed?'],
+      ATTR_HEADERS, TRIAGE_HEADERS
+    ),
+    row: function (d) {
+      return commonLeadRow(d).concat([
+        d.source,
+        optionalCell(d.homeValue), optionalCell(d.mortgageBalance),
+        optionalCell(d.estimatedEquity), optionalCell(d.currentLtv),
+        d.goal || '', optionalCell(d.amountExploring), optionalCell(d.illustrativeCltv),
+        d.preference || '', licensedCell(d)
+      ], attrRow(d), triageRow(d));
+    }
   }
 };
 
@@ -611,7 +645,7 @@ function pushToBonzo(data) {
     ? FUNNEL_CAMPAIGNS[data.source]
     : null;
   const campaignId = funnelCampaign
-    ? (props.getProperty(funnelCampaign.prop) || funnelCampaign.fallback)
+    ? (props.getProperty(funnelCampaign.prop) || funnelCampaign.fallback || props.getProperty('BONZO_CAMPAIGN_ID'))
     : props.getProperty('BONZO_CAMPAIGN_ID');
   const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
 
@@ -624,10 +658,9 @@ function pushToBonzo(data) {
     // from the posted body and '__proto__' would otherwise find an inherited
     // property.
     tags.push('contact', CONTACT_SOURCES[data.source]);
-    // What they said they want, as a filter. 'access-equity' in particular:
-    // /yt/heloc and /yt/equity both land on the homepage, which has no HELOC
-    // page of its own, so this tag is the only place that intent is legible
-    // until one exists.
+    // What they said they want, as a filter. 'access-equity' in particular
+    // was the only place home-equity intent was legible before /home-equity/
+    // existed, and it still marks it on every other page's modal.
     if (data.target) tags.push('target:' + bonzoTag(data.target));
     if (data.timeline) tags.push('timeline:' + bonzoTag(data.timeline));
   }
@@ -652,6 +685,13 @@ function pushToBonzo(data) {
     if (data.creditScore) tags.push('credit:' + data.creditScore);
   }
   else if (data.source === 'real-estate-investing') tags.push('real-estate-investing', 'case-study', 'priority:p5');
+  else if (data.source === 'home-equity') {
+    // 'HELOC/cash-out interest' is the tag the debt funnel has always given
+    // this intent, so one filter in Bonzo still finds both.
+    tags.push('home-equity', 'HELOC/cash-out interest');
+    if (data.goal) tags.push('goal:' + bonzoTag(data.goal));
+    if (data.preference) tags.push('preference:' + bonzoTag(data.preference));
+  }
   else tags.push('mortgage-calculator');
 
   // Every landing lead gets a licensed-state / unlicensed-state tag so Darren

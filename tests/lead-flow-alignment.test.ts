@@ -108,6 +108,7 @@ describe('every lead the site sends has somewhere to land', () => {
     'dscr-contact',
     'fha-contact',
     'home-contact',
+    'home-equity-contact',
     'mortgage-calculator-contact',
     'rei-contact',
   ];
@@ -137,9 +138,9 @@ describe('every lead the site sends has somewhere to land', () => {
    * list when a funnel is genuinely retired or revived.
    */
   it('lists the routes no form on the site currently sends', () => {
-    // 'heloc-hei' was removed from this list and from the Apps Script: HELOC and
-    // home-equity interest is captured by the debt-consolidation form on the
-    // homepage, which is where /yt/heloc and /yt/equity already point.
+    // 'heloc-hei' was removed from this list and from the Apps Script. HELOC and
+    // home-equity interest has its own page and source now, 'home-equity'
+    // (revamp phase 3), which is where /yt/heloc and /yt/equity point.
     const unused = [...ROUTES.keys()].filter((s) => !SITE_SOURCES.has(s)).sort();
     expect(unused).toEqual(['QualifyForm', 'newsletter', 'self-employed']);
   });
@@ -149,7 +150,7 @@ describe('every lead the site sends has somewhere to land', () => {
    * re-add by reflex when someone greps for "heloc" and finds the short links,
    * and a tab nothing writes to looks identical to one that is merely quiet.
    */
-  it('has no heloc-hei route, since the homepage funnel owns that intent', () => {
+  it('has no heloc-hei route, since /home-equity/ owns that intent under a new source', () => {
     expect(ROUTES.has('heloc-hei')).toBe(false);
     // Comments are stripped first: the removal is deliberately *explained* in
     // the source, and asserting on the raw text would fail on its own rationale.

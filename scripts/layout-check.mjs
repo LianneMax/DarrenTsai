@@ -35,7 +35,7 @@ import { spawn } from 'node:child_process';
 
 const PORT = 4173;
 const BASE = `http://localhost:${PORT}`;
-const PAGES = ['/', '/debt-consolidation/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/'];
+const PAGES = ['/', '/debt-consolidation/', '/home-equity/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/'];
 
 /**
  * 320 to 414 are phones, 320 and 360 being where R8-4 was found (360px is the

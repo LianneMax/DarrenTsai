@@ -26,6 +26,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import Nav from './components/Nav';
 import Hero from './components/Hero';
 import { DebtPageHero } from './components/DebtPageViews';
+import { EquityPageHero } from './components/HomeEquityViews';
 
 const noop = () => {};
 
@@ -48,7 +49,25 @@ export function renderDebtShell(): string {
       <div className="page-top-spacer" />
       <main>
         <section className="dcp">
-          <DebtPageHero onAskHeloc={noop} />
+          <DebtPageHero />
+        </section>
+      </main>
+    </>,
+  );
+}
+
+/**
+ * /home-equity/ (revamp phase 3), the same way: nav and hero, which holds the
+ * <h1>. The wrapper mirrors HomeEquityApp and EquityPage down to the hero.
+ */
+export function renderEquityShell(): string {
+  return renderToStaticMarkup(
+    <>
+      <Nav onOpenContact={noop} alwaysSolid />
+      <div className="page-top-spacer" />
+      <main>
+        <section className="dcp">
+          <EquityPageHero />
         </section>
       </main>
     </>,

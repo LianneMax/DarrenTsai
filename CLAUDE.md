@@ -34,12 +34,13 @@ Visitor (paid click / YouTube link / organic)
   -> GA4 generate_lead / phone_click via GTM; CallRail owns paid calls
 ```
 
-Eight submit paths feed `/api/lead`: two React forms, three static landing-page
-magnet forms, and three copies of the contact modal.
+Every submit path feeds `/api/lead`: three React forms (the debt calculator,
+the home-equity estimate and the mortgage calculator's lead form), three static
+landing-page magnet forms, and the contact modal on every page.
 
 **Every copy of the contact modal posts its own `source`**, one per page:
-`home-contact`, `debt-consolidation-contact`, `mortgage-calculator-contact`,
-`dscr-contact`, `fha-contact`, `rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
+`home-contact`, `debt-consolidation-contact`, `home-equity-contact`,
+`mortgage-calculator-contact`, `dscr-contact`, `fha-contact`, `rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
 Sheet's Source column, the Bonzo tags and the GA4 event said the same thing
 wherever the lead came from. They have no funnel-specific columns, so they still
 fall through `doPost` to the generic Leads tab; what they must each have is a
@@ -53,14 +54,14 @@ with an unrouted source fails there.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 18 + TypeScript, Vite 6, plain CSS (`src/index.css`, ~2200 lines, CSS custom properties on `:root`) |
-| Routing | None. Three HTML entries (`index.html`, `debt-consolidation/index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The first screen of `/` (nav and hero) and of `/debt-consolidation/` (nav and the page hero, `DebtPageHero`) is pre-rendered into its HTML at build and its CSS inlined (`src/prerender.tsx`, `PRERENDERED` in `vite.config.ts`); React replaces it on load, and early clicks on it are queued and replayed (`data-early`, the inline script in each entry, `App.tsx` and `DebtConsolidationApp.tsx`) |
+| Routing | None. Four HTML entries (`index.html`, `debt-consolidation/index.html`, `home-equity/index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The first screen of `/` (nav and hero) and of `/debt-consolidation/` and `/home-equity/` (nav and the page hero) is pre-rendered into its HTML at build and its CSS inlined (`src/prerender.tsx`, `PRERENDERED` in `vite.config.ts`); React replaces it on load, and early clicks on it are queued and replayed (`data-early`, the inline script in each entry, `App.tsx` and `DebtConsolidationApp.tsx`) |
 | Landing pages | Hand-written static HTML in `public/dscr/`, `public/fha/`, `public/realestateinvesting/`. No build step, ~2000 lines each, inline `<script>` |
 | Server | Netlify Functions (`.mts`, `Netlify.env.get`), routes declared via `export const config.path` |
 | Storage of record | Google Sheet `1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI`, driven by `google-apps-script.js` |
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 25 files / 945 tests, all passing |
+| Tests | Vitest + jsdom, 26 files / 983 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,14 +71,14 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (945 tests)
+npm test         # vitest run (983 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
 ```
 
 **Run `npm run test:layout` before pushing any change to a page or the CSS.** It
-builds the site, serves it with `vite preview`, and drives Chromium over all six
+builds the site, serves it with `vite preview`, and drives Chromium over all seven
 pages at 320, 360, 375, 414, 768, 850, 1024, 1280 and 1440px, failing on any
 sideways scroll or any focusable field under 16px at phone widths. Everything
 that is not localhost is blocked, so a run does not depend on Calendly, CallRail
@@ -130,12 +131,13 @@ constrain code:
   (`effectiveTouch()`), or a paid lead gets tagged with two origins at once.
 - **`attr:none` is tagged deliberately** so a break in tracking looks different
   from a quiet week.
-- **HELOC and home equity have no page of their own.** That intent is served by
-  the debt-consolidation funnel on the homepage, which tags its leads
-  `HELOC/cash-out interest` in Bonzo, and `/yt/heloc` and `/yt/equity` point
-  there. The old `heloc-hei` Apps Script route was removed because no form sent
-  it. If a dedicated page ships, add its schema alongside its form rather than
-  reviving the dead route.
+- **HELOC and home equity have their own page, `/home-equity/` (revamp phase
+  3, 9 Oct; not live).** Source `home-equity`, its own "Home Equity" tab, Bonzo
+  tags `home-equity` and `HELOC/cash-out interest` (the debt funnel's tag, so
+  one filter finds both) plus `goal:` and `preference:`. `/yt/heloc` and
+  `/yt/equity` point there. It is a new source, not a revival of the old
+  `heloc-hei` route, which stays removed. Until the page existed that intent was
+  served by the homepage's debt-consolidation funnel.
 - The `/yt/*` redirects in `netlify.toml` are `302` on purpose: a `301` is cached
   permanently, so the destination could never be changed afterwards. One link per
   bucket plus a `-c` variant, so a description click and a pinned-comment click
@@ -249,7 +251,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 945 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 983 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves the homepage's calculator, the same component with `standalone`, so
   the lead is identical: source `DebtConsolidation`, form id
@@ -273,6 +275,18 @@ or the lead lands on the generic tab with its fields dropped:
   savings bar is homepage only: it named the larger saving "your result", which
   picks a winner on a page built to have no "best option".
   `tests/debt-page-views.test.tsx` renders each step from props.
+- **`/home-equity/` (revamp phase 3, 9 Oct; not live).** Three steps (your home,
+  your options, talk to Darren) and a recap, from design preview v4.
+  `HomeEquityCalculator` holds state, gates and the lead; `HomeEquityViews`
+  draws it; `src/utils/homeEquity.ts` builds the payload. It quotes no payment,
+  rate or borrowing amount: equity, LTV and an illustrative CLTV, with a note
+  past the 85% CLTV lenders commonly use. A mortgage balance of 0 is a real
+  answer here (a paid-off home) and is stored as 0; a skipped amount or
+  preference is blank. **Ship order:** deploy the Apps Script version with the
+  `home-equity` route first, then the site (until then its leads land on the
+  generic Leads tab, saved but without their equity columns). It enrolls in
+  `BONZO_CAMPAIGN_ID`; set `BONZO_HOME_EQUITY_CAMPAIGN_ID` to give it its own
+  campaign without a deploy. HELOC/equity ads move to it with Kocah.
 - **No APR figure and no response time, anywhere (Max, 8 Oct).** "Est. APR" was
   the rate plus a flat 0.20 that no lender had quoted; every place now reads
   "See cost assumptions" with a note that APR depends on fees and lender terms.

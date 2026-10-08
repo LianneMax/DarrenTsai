@@ -20,13 +20,14 @@
  */
 import { AsYouType } from 'libphonenumber-js';
 import type { ReactNode } from 'react';
-import { LICENSED_STATES, NMLS, DRE, PHONE, isLicensedState } from '../config';
+import { LICENSED_STATES, PHONE, isLicensedState } from '../config';
 import { formatCurrency, formatRate } from '../utils/formatters';
 import { savingsText, savingsRowText } from '../utils/savingsText';
 import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip } from './PageParts';
 
 export interface DebtRow {
   id: number;
@@ -101,18 +102,6 @@ export interface DebtPageView {
 
 const STEPS = ['Your Debts', 'Your Home', 'Comparison', 'Talk to Darren'];
 
-const Arrow = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const Check = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -124,15 +113,13 @@ const Check = () => (
  * number for CallRail to swap. The main button is a real anchor to the
  * calculator for the same reason: it works before React has loaded.
  *
- * The one real button is the HELOC way out. /yt/heloc and /yt/equity land here,
- * and someone who wants a revolving line of credit is not served by a tool that
- * prices the two fixed alternatives. Until /home-equity/ exists (revamp phase
- * 3, which should take this link over) the useful next step is Darren himself,
- * so it opens the same call-or-schedule chooser as every "Book a Call". It
- * carries `data-early`, so a tap before React loads is queued and replayed
- * (debt-consolidation/index.html, DebtConsolidationApp.tsx) rather than lost.
+ * The HELOC line ends in a plain link to /home-equity/ (revamp phase 3).
+ * Someone who wants a revolving line of credit is not served by a tool that
+ * prices the two fixed alternatives, and before that page existed the HELOC
+ * short links landed on the homepage's copy of this calculator. A real
+ * anchor, like the main button, so it works before React.
  */
-export function DebtPageHero({ onAskHeloc }: { onAskHeloc: () => void }) {
+export function DebtPageHero() {
   return (
     <>
       <div className="dcp-hero">
@@ -167,20 +154,13 @@ export function DebtPageHero({ onAskHeloc }: { onAskHeloc: () => void }) {
             <p>
               Looking at a HELOC? This compares the two fixed alternatives, not a revolving
               line of credit.{' '}
-              <button type="button" className="dcp-hero-link" data-early="hero-heloc" onClick={onAskHeloc}>
-                Ask Darren about a HELOC →
-              </button>
+              <a href="/home-equity/" className="dcp-hero-link">See the home equity options →</a>
             </p>
           </div>
         </div>
       </div>
 
-      <div className="dcp-licensed">
-        <span>Licensed in {LICENSED_STATES.join(' · ')}</span>
-        <span>NMLS #{NMLS}</span>
-        <span>CA DRE #{DRE}</span>
-        <span>Equal Housing Opportunity</span>
-      </div>
+      <LicensedStrip />
     </>
   );
 }
@@ -196,35 +176,11 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: 'tea
   );
 }
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className={`dcp-row${strong ? ' dcp-row-strong' : ''}`}>
-      <span>{label}</span>
-      <span>{value}</span>
-    </div>
-  );
-}
-
 function Verdict({ save }: { save: number }) {
   const saves = Math.round(save) > 0;
   // Green only for a saving. An increase is information, not an error, so it
   // is neutral rather than red.
   return <span className={`dcp-verdict${saves ? ' dcp-verdict-save' : ''}`}>{savingsText(save)}</span>;
-}
-
-function StepNav({ back, next, onBack, onNext, disabled }: {
-  back?: string; next: ReactNode; onBack?: () => void; onNext: () => void; disabled?: boolean;
-}) {
-  return (
-    <div className="dcp-actions">
-      {back
-        ? <button type="button" className="btn dcp-back" onClick={onBack}>{back}</button>
-        : <span />}
-      <button type="button" className="btn btn-teal dcp-next" onClick={onNext} disabled={disabled}>
-        {next}
-      </button>
-    </div>
-  );
 }
 
 const years = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`;
@@ -312,42 +268,6 @@ export function StepDebts({ v }: { v: DebtPageView }) {
 }
 
 // ─── Step 2: home ─────────────────────────────────────────────────────────────
-
-/**
- * The equity picture, shown only once there is a value and a balance to draw.
- *
- * The bar is the same two numbers the old chips showed, not a new calculation.
- * A balance above the value is said in words: a bar cannot draw negative equity,
- * and clamping it to zero would hide the one thing that visitor needs to know.
- */
-function EquitySnapshot({ hv, mb }: { hv: number; mb: number }) {
-  const equity = hv - mb;
-  const ltv = (mb / hv) * 100;
-  const mortgageShare = Math.min(Math.max(ltv, 0), 100);
-  return (
-    <div className="dcp-snapshot">
-      <div className="dcp-snapshot-head">
-        <span className="dcp-eyebrow dcp-eyebrow-dark">Estimated Home Equity</span>
-        <span className="dcp-ltv">Current LTV <strong>{ltv.toFixed(1)}%</strong></span>
-      </div>
-      <div className="dcp-snapshot-number">
-        {equity >= 0 ? formatCurrency(equity) : 'None at these numbers'}
-      </div>
-      <div className="dcp-bar" role="img" aria-label={`Mortgage is ${mortgageShare.toFixed(1)} percent of the home value`}>
-        <span style={{ width: `${mortgageShare}%` }} />
-      </div>
-      <div className="dcp-bar-labels">
-        <span>Mortgage balance<strong>{formatCurrency(mb)}</strong></span>
-        <span>Estimated equity<strong>{equity >= 0 ? formatCurrency(equity) : 'None'}</strong></span>
-      </div>
-      <p className="dcp-caption">
-        {equity >= 0
-          ? 'Based on the values entered. This is not an appraisal or available credit.'
-          : 'The mortgage balance entered is higher than the home value, so there is no equity to borrow against at these numbers.'}
-      </p>
-    </div>
-  );
-}
 
 export function StepHome({ v }: { v: DebtPageView }) {
   return (
@@ -758,7 +678,7 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
 export default function DebtPage({ v, overlays }: { v: DebtPageView; overlays: ReactNode }) {
   return (
     <section className="dcp">
-      <DebtPageHero onAskHeloc={v.openCalendly} />
+      <DebtPageHero />
 
       <div id="savings" className="dcp-flow">
         <ul className="dcp-trust">

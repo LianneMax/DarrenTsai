@@ -2266,8 +2266,9 @@ p {
 button.email-hint { text-decoration: underline; cursor: pointer; }
 
 /* ============================================================
-   /debt-consolidation/ PAGE (revamp phase 2, 9 Oct)
-   Drawn by DebtPageViews.tsx. Layout, spacing and colours follow Max's design
+   /debt-consolidation/ PAGE (revamp phase 2, 9 Oct), and /home-equity/
+   (phase 3), which shares these classes.
+   Drawn by DebtPageViews.tsx and HomeEquityViews.tsx. Layout, spacing and colours follow Max's design
    preview v4 (darren-frontend-preview-v4.html, Debt Consolidation page). The
    homepage keeps its own calculator layout (the dsc- classes) until phase 4.
    No font-family here: everything inherits body's stack, which carries
@@ -2473,6 +2474,23 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 .dcp-disclosure { max-width: 920px; margin: 22px auto 0; }
 .dcp-disclosure > p { margin-top: 0 !important; border-top: 0 !important; padding-top: 0 !important; }
 
+/* /home-equity/: the hero guide's title, choice chips, the two product cards. */
+.dcp-how-title { font-size: 20px !important; font-weight: 600; color: #fff !important; margin: 0 0 8px !important; line-height: 1.3 !important; }
+.dcp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.dcp-chip {
+  padding: 10px 13px; border-radius: 7px; cursor: pointer; font: inherit; font-size: 13px;
+  background: #fff; border: 1px solid var(--dcp-line); color: var(--dcp-ink);
+}
+.dcp-chip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+.dcp-actions-note { margin-top: 0; }
+.dcp-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 20px 0; }
+.dcp-product { padding: 22px; border: 1px solid var(--dcp-line); border-radius: 12px; background: #fff; min-width: 0; }
+.dcp-product h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+.dcp-product > p, .dcp-product details p { font-size: 13px; line-height: 1.6; color: var(--dcp-muted); }
+.dcp-product ul { padding-left: 18px; margin: 14px 0; font-size: 13px; line-height: 1.9; }
+.dcp-product summary { cursor: pointer; font-size: 13px; font-weight: 500; color: var(--teal); }
+.dcp-product details p { margin-top: 8px; }
+
 @media (max-width: 850px) {
   .dcp-debt { grid-template-columns: repeat(2, minmax(0, 1fr)) 22px; }
   .dcp-debt > .dcp-remove { grid-column: 3; grid-row: 1 / 3; }
@@ -2486,7 +2504,7 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
   .dcp-panel { padding: 22px 16px; }
   .dcp-steps { gap: 2px; }
   .dcp-step { padding: 9px 7px; font-size: 11px; gap: 5px; }
-  .dcp-grid-2, .dcp-grid-3, .dcp-options { grid-template-columns: 1fr; }
+  .dcp-grid-2, .dcp-grid-3, .dcp-options, .dcp-products { grid-template-columns: 1fr; }
   .dcp-debt { gap: 10px; padding: 13px; }
   .dcp-stats { grid-template-columns: 1fr; }
   .dcp-stat { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
