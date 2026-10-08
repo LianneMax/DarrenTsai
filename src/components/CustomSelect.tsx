@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { hasFinePointer, useAnchoredPanel } from '../hooks/useAnchoredPanel';
 
 export interface SelectOption {
   value: string;
@@ -23,7 +24,6 @@ interface Props {
 export default function CustomSelect({ id, value, options, onChange, hasError, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -35,14 +35,14 @@ export default function CustomSelect({ id, value, options, onChange, hasError, p
     ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
     : options;
 
+  // Stable, because useAnchoredPanel's listeners are re-bound when it changes.
+  const closePanel = useCallback(() => setOpen(false), []);
+  const { place, measure } = useAnchoredPanel(open, triggerRef, panelRef, closePanel);
+
   function openPanel() {
-    const r = triggerRef.current?.getBoundingClientRect();
-    if (r) setRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    measure();
     setQuery('');
     setOpen(true);
-  }
-  function closePanel() {
-    setOpen(false);
   }
   function choose(v: string) {
     onChange(v);
@@ -52,7 +52,8 @@ export default function CustomSelect({ id, value, options, onChange, hasError, p
 
   useEffect(() => {
     if (!open) return;
-    if (searchable) searchRef.current?.focus();
+    // Mouse and trackpad only, and without scrolling to it: see useAnchoredPanel.
+    if (searchable && hasFinePointer()) searchRef.current?.focus({ preventScroll: true });
 
     function onDocClick(e: MouseEvent) {
       const t = e.target as Node;
@@ -62,22 +63,17 @@ export default function CustomSelect({ id, value, options, onChange, hasError, p
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') { closePanel(); triggerRef.current?.focus(); }
     }
-    function onScroll(e: Event) {
-      if (panelRef.current?.contains(e.target as Node)) return;
-      closePanel();
-    }
 
+    // Scroll and resize are not here any more: they used to close the panel,
+    // which on a phone meant the keyboard or a thumb closed it. useAnchoredPanel
+    // moves the panel with its trigger instead.
     document.addEventListener('mousedown', onDocClick, true);
     document.addEventListener('keydown', onKey, true);
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', closePanel);
     return () => {
       document.removeEventListener('mousedown', onDocClick, true);
       document.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', closePanel);
     };
-  }, [open, searchable]);
+  }, [open, searchable, closePanel]);
 
   return (
     <div className={`cselect${open ? ' open' : ''}`}>
@@ -96,12 +92,12 @@ export default function CustomSelect({ id, value, options, onChange, hasError, p
         </svg>
       </button>
 
-      {open && rect && createPortal(
+      {open && place && createPortal(
         <div
           ref={panelRef}
           className="cselect-panel open"
           role="listbox"
-          style={{ top: rect.top, left: rect.left, width: rect.width }}
+          style={{ top: place.top, bottom: place.bottom, left: place.left, width: place.width, maxHeight: place.maxHeight }}
         >
           {searchable && (
             <div className="cselect-search">

@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 22 files / 790 tests, all passing |
+| Tests | Vitest + jsdom, 23 files / 805 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (790 tests)
+npm test         # vitest run (805 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -249,7 +249,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 790 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 805 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves the homepage's calculator, the same component with `standalone`, so
   the lead is identical: source `DebtConsolidation`, form id
@@ -262,6 +262,15 @@ or the lead lands on the generic tab with its fields dropped:
   replaces the append-only rule, are in `docs/frontend-revamp-review.md` and
   `docs/lead-sheet-schema.md`; neither is built yet, so append-only still
   holds.
+- **Dropdown panels follow their trigger (8 Oct).** `StateSelect` and `CustomSelect`
+  used to place their panel once, always below, and close it on any scroll or
+  resize. On a phone the keyboard resizes the window and a thumb scrolls the
+  page, so the State field, required on every lead form, kept closing, and hung
+  off the bottom of the screen when the field was low. `useAnchoredPanel`
+  re-measures instead, opens upwards when that side has more room, caps the
+  height, and focuses the search box for a mouse only. The three static landing
+  pages carry their own copy of the dropdown (`enhanceSelect`), which still
+  closes on scroll and focuses its search box; not yet measured on a phone.
 - **HubSpot is an extra destination, built dark (audit H3, 29 Sep).**
   `pushToHubSpot` submits every lead to a HubSpot form (Forms API v3, portal
   247401197) from `processFollowUps`, next to Bonzo, and skips until

@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 22 files / 790 tests, all passing |
+| Tests | Vitest + jsdom, 23 files / 805 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (790 tests)
+npm test         # vitest run (805 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -222,7 +222,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 790 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 805 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.

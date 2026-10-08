@@ -440,8 +440,14 @@ p {
   border-radius: 8px;
   box-shadow: 0 16px 40px rgba(0,0,0,0.16);
   overflow: hidden;
+  /* A column, so the option list is what gives way when the panel is handed
+     less height than it wants (max-height comes from useAnchoredPanel: the
+     room between the trigger and the edge of the screen). The search box
+     keeps its size; the list scrolls. */
+  display: flex;
+  flex-direction: column;
 }
-.cselect-search { border-bottom: 1px solid #e5e7eb; padding: 6px; }
+.cselect-search { border-bottom: 1px solid #e5e7eb; padding: 6px; flex-shrink: 0; }
 /* 16px, not 0.9rem: iOS Safari zooms the page whenever a focused field is under
    16px, and the visitor has to pinch back out in the middle of the form. The
    same search box on the three landing pages had the same problem. */
@@ -456,7 +462,7 @@ p {
   font-size: 16px;
   color: var(--text-dark);
 }
-.cselect-options { max-height: 220px; overflow-y: auto; padding: 4px; }
+.cselect-options { max-height: 220px; min-height: 0; overflow-y: auto; padding: 4px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .cselect-option {
   display: flex;
   align-items: center;

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { hasFinePointer, useAnchoredPanel } from '../hooks/useAnchoredPanel';
 
 // US states — full name shown, 2-letter abbreviation stored/sent.
 // Same list used by the static /fha, /dscr, /realestateinvesting pages.
@@ -30,7 +31,6 @@ interface Props {
 export default function StateSelect({ id, value, onChange, hasError, placeholder = 'Select your state…' }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -39,14 +39,14 @@ export default function StateSelect({ id, value, onChange, hasError, placeholder
   const label = selected ? selected[1] : placeholder;
   const filtered = US_STATES.filter(([, name]) => name.toLowerCase().includes(query.trim().toLowerCase()));
 
+  // Stable, because useAnchoredPanel's listeners are re-bound when it changes.
+  const closePanel = useCallback(() => setOpen(false), []);
+  const { place, measure } = useAnchoredPanel(open, triggerRef, panelRef, closePanel);
+
   function openPanel() {
-    const r = triggerRef.current?.getBoundingClientRect();
-    if (r) setRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    measure();
     setQuery('');
     setOpen(true);
-  }
-  function closePanel() {
-    setOpen(false);
   }
   function choose(abbr: string) {
     onChange(abbr);
@@ -56,7 +56,8 @@ export default function StateSelect({ id, value, onChange, hasError, placeholder
 
   useEffect(() => {
     if (!open) return;
-    searchRef.current?.focus();
+    // Mouse and trackpad only, and without scrolling to it: see useAnchoredPanel.
+    if (hasFinePointer()) searchRef.current?.focus({ preventScroll: true });
 
     function onDocClick(e: MouseEvent) {
       const t = e.target as Node;
@@ -66,22 +67,17 @@ export default function StateSelect({ id, value, onChange, hasError, placeholder
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') { closePanel(); triggerRef.current?.focus(); }
     }
-    function onScroll(e: Event) {
-      if (panelRef.current?.contains(e.target as Node)) return;
-      closePanel();
-    }
 
+    // Scroll and resize are not here any more: they used to close the panel,
+    // which on a phone meant the keyboard or a thumb closed it. useAnchoredPanel
+    // moves the panel with its trigger instead.
     document.addEventListener('mousedown', onDocClick, true);
     document.addEventListener('keydown', onKey, true);
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', closePanel);
     return () => {
       document.removeEventListener('mousedown', onDocClick, true);
       document.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', closePanel);
     };
-  }, [open]);
+  }, [open, closePanel]);
 
   return (
     <div className={`cselect${open ? ' open' : ''}`}>
@@ -100,12 +96,12 @@ export default function StateSelect({ id, value, onChange, hasError, placeholder
         </svg>
       </button>
 
-      {open && rect && createPortal(
+      {open && place && createPortal(
         <div
           ref={panelRef}
           className="cselect-panel open"
           role="listbox"
-          style={{ top: rect.top, left: rect.left, width: rect.width }}
+          style={{ top: place.top, bottom: place.bottom, left: place.left, width: place.width, maxHeight: place.maxHeight }}
         >
           <div className="cselect-search">
             <input
