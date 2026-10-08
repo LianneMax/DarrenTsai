@@ -18,7 +18,7 @@ This file is written for people and for Claude Code. Every open item has a file 
 
 - **Kocah (Niko, 29 Sep):** keep our forms; HubSpot gets each lead through the Forms API with the GCLID attached (H3). GTM is the only tag setup; never add the raw `AW-18451324434` snippet.
 - **Ownership:** the lead Apps Script and Resend stay on Max's accounts for now (Max, 30 Sep). Keep 2-step verification on both.
-- **calendly_booking:** stays an observation event and is never imported into Google Ads (CLAUDE.md). It is marked as a key event in GA4 (29 Sep) for GA4 reporting only.
+- **calendly_booking:** Kocah imports it into Google Ads (decided 8 Oct, probably as Primary during launch, HubSpot as their source of truth); the site side is unchanged. Until then it was an observation event that was never imported. It is marked as a key event in GA4 (29 Sep).
 - **GA4, 29 Sep:** internal-traffic filter Active (Max's IP is tagged `tt=internal`), retention 14 months. Google Ads and Search Console links confirmed.
 - **SOP:** the Google Doc "Real Darren Tsai SOP: Tracking, Lead Operations and Onboarding" was rebuilt with one tab per system on 30 Sep. Update it when a procedure changes.
 

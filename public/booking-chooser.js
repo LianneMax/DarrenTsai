@@ -543,10 +543,13 @@
    * The origin check is the security boundary, not a nicety: without it any
    * page or embed could post a forged booking and inflate the count.
    *
-   * calendly_booking is an observation event. It is deliberately NOT imported
-   * into Google Ads: generate_lead is the single website form conversion and
-   * CallRail owns paid calls, and adding a third signal to bidding is the exact
-   * duplication this site's tracking is arranged to avoid.
+   * Kocah imports calendly_booking into Google Ads (decided 8 Oct 2026,
+   * probably as Primary during launch, with HubSpot as their source of truth).
+   * Until then it was an observation event kept out of Ads on purpose, because
+   * generate_lead is the website form conversion and CallRail owns paid calls,
+   * so a form lead who then books is now counted twice there. That is accepted
+   * on their side. The site side is unchanged: one event per booking, behind
+   * the origin check, with page_path only.
    */
   /**
    * The window of the calendar in the panel that is open right now, or null.
