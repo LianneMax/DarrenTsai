@@ -1102,7 +1102,9 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
             <div className="success-check" role="img" aria-label="Success">✓</div>
             <h3 className="success-heading">You're all set!</h3>
             <p className="success-body">
-              Thanks! Darren will reach out within 1 business day to review your personalized savings estimate.
+              {/* No deadline (8 Oct): nobody had agreed to "within 1 business day" and
+                  nothing measures it. Nor "review": that has not happened yet. */}
+              Thanks! Your numbers were sent with your request. Darren will be in touch.
             </p>
             <button
               type="button"

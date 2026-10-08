@@ -1858,7 +1858,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="lf-body">
         <div class="lf-success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="lf-success-heading" id="contactSuccessHeading">You're all set!</h3>
-        <p class="lf-success-body" id="contactSuccessBody">Darren will reach out within 1 business day.</p>
+        <p class="lf-success-body" id="contactSuccessBody">Darren will be in touch.</p>
         <button type="button" class="lf-success-cta" id="contactSuccessCalendly">Book a Free Strategy Call</button>
         <button type="button" class="lf-success-close" id="closeContactSuccess">Close</button>
       </div>
@@ -2204,8 +2204,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var bodyEl = el('contactSuccessBody');
       if (bodyEl) {
         bodyEl.textContent = (el('cLoanAmount').value.trim() || el('cRate').value.trim())
-          ? 'Darren will review your numbers and be in touch shortly.'
-          : 'Darren will reach out within 1 business day.';
+          ? 'Your numbers were sent with your request. Darren will be in touch.'
+          : 'Darren will be in touch.';
       }
       // The success state's next button is "Book a Free Strategy Call". Hand the
       // chooser the two fields Calendly would otherwise ask for again, which is

@@ -152,13 +152,14 @@ describe('success copy matches what was actually sent', () => {
     // R4-3. Every Contact form said "Darren will review your numbers",
     // including the minimal submit, which gives none.
     const LEAD_FORM = read('src/components/LeadForm.tsx');
-    expect(LEAD_FORM).toContain("'Darren will reach out within 1 business day.'");
+    expect(LEAD_FORM).toContain("'Darren will be in touch.'");
+    expect(LEAD_FORM).toContain('Your numbers were sent with your request. Darren will be in touch.');
     expect(LEAD_FORM).toContain('form.loanAmount.trim() || form.annualRate.trim()');
 
     for (const page of ['public/dscr/index.html', 'public/fha/index.html', 'public/realestateinvesting/index.html']) {
       const src = read(page);
       expect(src, `${page} still hard-codes the claim`).not.toContain(
-        '<p class="lf-success-body">Darren will review your numbers and be in touch shortly.</p>',
+        '<p class="lf-success-body">Your numbers were sent with your request. Darren will be in touch.</p>',
       );
       expect(src, `${page} does not vary its copy`).toContain("cLoanAmount').value.trim()");
     }

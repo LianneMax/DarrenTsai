@@ -214,8 +214,8 @@ export default function LeadForm({
             none, which is the same promise the page could not keep elsewhere. */}
         <p className="success-body">
           {form.loanAmount.trim() || form.annualRate.trim()
-            ? `Darren will review your numbers and be in touch shortly. ${nextStep}`
-            : 'Darren will reach out within 1 business day.'}
+            ? `Your numbers were sent with your request. Darren will be in touch. ${nextStep}`
+            : 'Darren will be in touch.'}
         </p>
         <button
           onClick={openCalendly}

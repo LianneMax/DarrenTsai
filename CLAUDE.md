@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 23 files / 805 tests, all passing |
+| Tests | Vitest + jsdom, 24 files / 903 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (805 tests)
+npm test         # vitest run (903 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -249,7 +249,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 805 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 903 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves the homepage's calculator, the same component with `standalone`, so
   the lead is identical: source `DebtConsolidation`, form id
@@ -262,6 +262,12 @@ or the lead lands on the generic tab with its fields dropped:
   replaces the append-only rule, are in `docs/frontend-revamp-review.md` and
   `docs/lead-sheet-schema.md`; neither is built yet, so append-only still
   holds.
+- **No APR figure and no response time, anywhere (Max, 8 Oct).** "Est. APR" was
+  the rate plus a flat 0.20 that no lender had quoted; every place now reads
+  "See cost assumptions" with a note that APR depends on fees and lender terms.
+  Success cards said "within 1 business day" and "shortly"; they say "Darren
+  will be in touch." and nothing more. `tests/copy-rules.test.ts` scans every
+  page and email for both, so neither comes back with a copied template.
 - **Dropdown panels follow their trigger (8 Oct).** `StateSelect` and `CustomSelect`
   used to place their panel once, always below, and close it on any scroll or
   resize. On a phone the keyboard resizes the window and a thumb scrolls the

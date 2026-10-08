@@ -86,3 +86,33 @@ describe('no APR is quoted that nobody calculated', () => {
     expect(read('mortgage-calculator/index.html')).not.toMatch(/\bAPR\b/);
   });
 });
+
+describe('no response time is promised', () => {
+  const PROMISES = [
+    /within \d+ (business )?(day|hour|minute)s?/i,
+    /\bbusiness day/i,
+    /\bshortly\b/i,
+    /\bsame[- ]day\b/i,
+    /\bwithin 24\b/i,
+    /\bright away\b/i,
+    // Not "as soon as possible": that is an option in the visitor's own timeline
+    // dropdown, their answer rather than our promise.
+  ];
+
+  it.each(FILES)('%s sets no deadline for Darren', (file) => {
+    const src = code(read(file));
+    for (const promise of PROMISES) expect(src, String(promise)).not.toMatch(promise);
+  });
+
+  it('every success state that speaks for Darren uses the one sentence', () => {
+    const calc = read('src/components/DebtSavingsCalculator.tsx');
+    const form = read('src/components/LeadForm.tsx');
+    expect(calc).toContain('Darren will be in touch.');
+    expect(form).toContain('Darren will be in touch.');
+    for (const page of ['dscr', 'fha', 'realestateinvesting']) {
+      const html = read(`public/${page}/index.html`);
+      expect(html, page).toContain('Darren will be in touch.');
+      expect(html, page).not.toContain('reach out');
+    }
+  });
+});
