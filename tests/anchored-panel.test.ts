@@ -117,3 +117,44 @@ describe('the hook and the stylesheet', () => {
     expect(css).toMatch(/\.cselect-search \{[^}]*flex-shrink: 0;/);
   });
 });
+
+/**
+ * The three static landing pages carry their own copy of the dropdown, twice
+ * each: enhanceSelect for the guide form and a second one for the contact
+ * modal. Measured the same way on 8 Oct, 36 cases: a 40px scroll closed the
+ * panel in 35 of them, and a field low on the screen or inside a modal opened
+ * its list up to 249px off the bottom. They have no build step and cannot
+ * import the hook, so the same rule is written out in each, and scanned here.
+ */
+describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ dropdowns', (page) => {
+  const html = read(`public/${page}/index.html`);
+
+  it('both copies follow the field instead of closing on scroll', () => {
+    expect(html).not.toContain('function onScroll');
+    expect(html.match(/function follow\(e\) \{/g)).toHaveLength(2);
+    expect(html).toContain('if (!positionPanel()) close();');
+    expect(html).toContain('if (!position()) close();');
+    expect(html.match(/window\.addEventListener\('scroll', follow, true\);/g)).toHaveLength(2);
+    expect(html.match(/window\.removeEventListener\('scroll', follow, true\);/g)).toHaveLength(2);
+    expect(html.match(/window\.visualViewport\.addEventListener\('resize', follow\);/g)).toHaveLength(2);
+  });
+
+  it('both open upwards when that side has more room, within the room they have', () => {
+    expect(html.match(/if \(below >= 260 \|\| below >= above\) \{/g)).toHaveLength(2);
+    expect(html.match(/panel\.style\.bottom = \(window\.innerHeight - r\.top \+ 6\) \+ 'px';/g)).toHaveLength(2);
+    expect(html.match(/panel\.style\.maxHeight = Math\.max\(above, 140\) \+ 'px';/g)).toHaveLength(2);
+  });
+
+  it('neither raises the keyboard on a touch screen', () => {
+    expect(html.match(/if \(finePointer\(\)\) setTimeout\(/g)).toHaveLength(2);
+    expect(html.match(/searchEl\.focus\(\{ preventScroll: true \}\)/g)).toHaveLength(2);
+    expect(html).not.toMatch(/searchEl\.focus\(\)/);
+  });
+
+  it('lets the list, not the search box, give way in a short panel', () => {
+    expect(html).toMatch(/\.cselect-panel\{[^}]*display:flex;flex-direction:column;/);
+    expect(html).toContain('.lf-cselect-panel.open{display:flex;flex-direction:column;}');
+    expect(html).toMatch(/\.cselect-options\{[^}]*min-height:0;/);
+    expect(html).toMatch(/\.lf-cselect-options\{[^}]*min-height:0;/);
+  });
+});

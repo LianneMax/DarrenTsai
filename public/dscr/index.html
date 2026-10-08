@@ -318,9 +318,13 @@
     opacity:0;visibility:hidden;transform:translateY(-6px);
     transition:opacity .15s ease, transform .15s ease, visibility .15s;
     overflow:hidden;
+    /* A column, so the option list is what gives way when the panel is handed
+       less height than it wants (max-height is set by positionPanel: the room
+       between the field and the edge of the screen). */
+    display:flex;flex-direction:column;
   }
   .cselect-panel.open{opacity:1;visibility:visible;transform:translateY(0);}
-  .cselect-search{border-bottom:1px solid var(--line);padding:6px;}
+  .cselect-search{border-bottom:1px solid var(--line);padding:6px;flex-shrink:0;}
   .cselect-search input{
     /* 16px, not 0.9rem: iOS Safari zooms the page whenever a focused field is
        under 16px, and the visitor has to pinch back out in the middle of the
@@ -328,7 +332,7 @@
     width:100%;border:none;outline:none;background:var(--light-bg);border-radius:6px;
     padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:16px;color:var(--text-dark);
   }
-  .cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
+  .cselect-options{max-height:220px;min-height:0;overflow-y:auto;padding:4px;overscroll-behavior:contain;}
   .cselect-option{
     display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
     font-size:0.92rem;color:var(--text-dark);cursor:pointer;
@@ -908,8 +912,8 @@
     box-shadow:0 16px 40px rgba(0,0,0,0.16);
     overflow:hidden;display:none;font-family:'Outfit', 'Outfit Fallback', sans-serif;
   }
-  .lf-cselect-panel.open{display:block;}
-  .lf-cselect-search{border-bottom:1px solid #e5e7eb;padding:6px;}
+  .lf-cselect-panel.open{display:flex;flex-direction:column;}
+  .lf-cselect-search{border-bottom:1px solid #e5e7eb;padding:6px;flex-shrink:0;}
   .lf-cselect-search input{
     /* 16px, not 0.9rem: iOS Safari zooms the page whenever a focused field is
        under 16px, and the visitor has to pinch back out in the middle of the
@@ -917,7 +921,7 @@
     width:100%;border:none;outline:none;background:#f5f7f9;border-radius:6px;
     padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:16px;color:#1a1a2e;
   }
-  .lf-cselect-options{max-height:220px;overflow-y:auto;padding:4px;}
+  .lf-cselect-options{max-height:220px;min-height:0;overflow-y:auto;padding:4px;overscroll-behavior:contain;}
   .lf-cselect-option{
     display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
     font-size:0.92rem;color:#1a1a2e;cursor:pointer;
@@ -1529,16 +1533,56 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (!shown) optionsEl.innerHTML = '<div class="cselect-empty">No matches</div>';
     }
 
+    // WHERE THE PANEL GOES, AND KEEPING IT THERE (8 Oct). It used to be placed
+    // once, always below the field, and closed on any scroll. Measured with
+    // touch at 375x812, 320x568 and 375x667: a thumb moving the page 40px closed
+    // it in 35 of 36 cases across these three pages, and with the field low on
+    // the screen, or inside a modal, the list opened up to 249px off the bottom
+    // with no option in view. State is required on every form here.
+    //
+    // So the panel follows its field: re-measured on scroll and resize, opened
+    // upwards when there is more room above, never taller than the room it
+    // has. It closes only when the field has left the screen and nobody is
+    // typing in it. The same rule as src/hooks/useAnchoredPanel.ts, which the
+    // React pages use; this page has no build step, so it is written out here.
     function positionPanel() {
       const r = trigger.getBoundingClientRect();
+      // What the visitor can see, which is less than the window while a
+      // keyboard is up. `bottom` is still measured from the window itself,
+      // because that is what a fixed element is anchored to.
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       panel.style.left = r.left + 'px';
-      panel.style.top = (r.bottom + 6) + 'px';
       panel.style.width = r.width + 'px';
+      if (r.bottom <= 0 || r.top >= vh) {
+        if (!panel.contains(document.activeElement)) return false;
+        panel.style.top = '8px';
+        panel.style.bottom = 'auto';
+        panel.style.maxHeight = Math.max(vh - 16, 140) + 'px';
+        return true;
+      }
+      const below = vh - r.bottom - 14;
+      const above = r.top - 14;
+      if (below >= 260 || below >= above) {
+        panel.style.top = (r.bottom + 6) + 'px';
+        panel.style.bottom = 'auto';
+        panel.style.maxHeight = Math.max(below, 140) + 'px';
+      } else {
+        panel.style.top = 'auto';
+        panel.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+        panel.style.maxHeight = Math.max(above, 140) + 'px';
+      }
+      return true;
     }
+    // A mouse or trackpad. On a touch screen, focusing the search box would
+    // raise the keyboard over a list the visitor has not looked at yet.
+    function finePointer() { return !!window.matchMedia && window.matchMedia('(pointer: fine)').matches; }
 
     function onDocClick(e) { if (!shell.contains(e.target) && !panel.contains(e.target)) close(); }
     function onKeydown(e) { if (e.key === 'Escape') { close(); trigger.focus(); } }
-    function onScroll(e) { if (panel.contains(e.target)) return; close(); }
+    function follow(e) {
+      if (e && e.target && e.target.nodeType && panel.contains(e.target)) return; // the list scrolling inside the panel
+      if (!positionPanel()) close();
+    }
 
     function open() {
       if (shell.classList.contains('open')) return;
@@ -1548,11 +1592,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       panel.classList.add('open');
       shell.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
-      if (searchEl) { searchEl.value = ''; setTimeout(() => searchEl.focus(), 0); }
+      if (searchEl) { searchEl.value = ''; if (finePointer()) setTimeout(() => searchEl.focus({ preventScroll: true }), 0); }
       document.addEventListener('click', onDocClick, true);
       document.addEventListener('keydown', onKeydown, true);
-      window.addEventListener('scroll', onScroll, true);
-      window.addEventListener('resize', positionPanel);
+      window.addEventListener('scroll', follow, true);
+      window.addEventListener('resize', follow);
+      // iOS reports the keyboard here and nowhere else: the window is not resized.
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', follow);
+        window.visualViewport.addEventListener('scroll', follow);
+      }
     }
     function close() {
       panel.classList.remove('open');
@@ -1560,8 +1609,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       trigger.setAttribute('aria-expanded', 'false');
       document.removeEventListener('click', onDocClick, true);
       document.removeEventListener('keydown', onKeydown, true);
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', positionPanel);
+      window.removeEventListener('scroll', follow, true);
+      window.removeEventListener('resize', follow);
+      // iOS reports the keyboard here and nowhere else: the window is not resized.
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', follow);
+        window.visualViewport.removeEventListener('scroll', follow);
+      }
     }
 
     trigger.addEventListener('click', () => { shell.classList.contains('open') ? close() : open(); });
@@ -2101,15 +2155,44 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       });
       if (!shown) optionsEl.innerHTML = '<div class="lf-cselect-empty">No matches</div>';
     }
+    // Follows its field instead of closing on scroll: see enhanceSelect above.
     function position() {
       var r = trigger.getBoundingClientRect();
+      // What the visitor can see, which is less than the window while a
+      // keyboard is up. `bottom` is still measured from the window itself,
+      // because that is what a fixed element is anchored to.
+      var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       panel.style.left = r.left + 'px';
-      panel.style.top = (r.bottom + 6) + 'px';
       panel.style.width = r.width + 'px';
+      if (r.bottom <= 0 || r.top >= vh) {
+        if (!panel.contains(document.activeElement)) return false;
+        panel.style.top = '8px';
+        panel.style.bottom = 'auto';
+        panel.style.maxHeight = Math.max(vh - 16, 140) + 'px';
+        return true;
+      }
+      var below = vh - r.bottom - 14;
+      var above = r.top - 14;
+      if (below >= 260 || below >= above) {
+        panel.style.top = (r.bottom + 6) + 'px';
+        panel.style.bottom = 'auto';
+        panel.style.maxHeight = Math.max(below, 140) + 'px';
+      } else {
+        panel.style.top = 'auto';
+        panel.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+        panel.style.maxHeight = Math.max(above, 140) + 'px';
+      }
+      return true;
     }
+    // A mouse or trackpad. On a touch screen, focusing the search box would
+    // raise the keyboard over a list the visitor has not looked at yet.
+    function finePointer() { return !!window.matchMedia && window.matchMedia('(pointer: fine)').matches; }
     function onDocClick(e) { if (!wrap.contains(e.target) && !panel.contains(e.target)) close(); }
     function onKey(e) { if (e.key === 'Escape') { close(); trigger.focus(); } }
-    function onScroll(e) { if (panel.contains(e.target)) return; close(); }
+    function follow(e) {
+      if (e && e.target && e.target.nodeType && panel.contains(e.target)) return; // the list scrolling inside the panel
+      if (!position()) close();
+    }
     function open() {
       if (wrap.classList.contains('open')) return;
       Array.prototype.forEach.call(document.querySelectorAll('.lf-cselect-panel.open'), function (p) { p.classList.remove('open'); });
@@ -2118,11 +2201,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       panel.classList.add('open');
       wrap.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
-      if (searchEl) { searchEl.value = ''; setTimeout(function () { searchEl.focus(); }, 0); }
+      if (searchEl) { searchEl.value = ''; if (finePointer()) setTimeout(function () { searchEl.focus({ preventScroll: true }); }, 0); }
       document.addEventListener('click', onDocClick, true);
       document.addEventListener('keydown', onKey, true);
-      window.addEventListener('scroll', onScroll, true);
-      window.addEventListener('resize', position);
+      window.addEventListener('scroll', follow, true);
+      window.addEventListener('resize', follow);
+      // iOS reports the keyboard here and nowhere else: the window is not resized.
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', follow);
+        window.visualViewport.addEventListener('scroll', follow);
+      }
     }
     function close() {
       panel.classList.remove('open');
@@ -2130,8 +2218,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       trigger.setAttribute('aria-expanded', 'false');
       document.removeEventListener('click', onDocClick, true);
       document.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', position);
+      window.removeEventListener('scroll', follow, true);
+      window.removeEventListener('resize', follow);
+      // iOS reports the keyboard here and nowhere else: the window is not resized.
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', follow);
+        window.visualViewport.removeEventListener('scroll', follow);
+      }
     }
     trigger.addEventListener('click', function () { wrap.classList.contains('open') ? close() : open(); });
     if (searchEl) {
