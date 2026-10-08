@@ -487,7 +487,8 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
   //
   // Built once so the page and the homepage cannot drift on the three things
   // that must read the same wherever the calculator is: where the rates came
-  // from, the full disclosure, and the sticky bar and error dialog.
+  // from, the full disclosure, and the error dialog. The sticky savings bar
+  // lives here too but is drawn on the homepage only (see below).
 
   const rateBadge = (
     <div style={{
@@ -527,8 +528,12 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
 
   const overlays = (
     <>
-      {/* Sticky savings bar */}
-      {bestSave > 0 && (
+      {/* Sticky savings bar, homepage only. On /debt-consolidation/ it was
+          dropped (Lianne, 9 Oct): it shows the larger of the options' savings
+          as "your result", which picks a winner on a page that deliberately
+          has no "best option" badge and lets the visitor choose what to
+          discuss. That page books from the recap and the nav instead. */}
+      {!standalone && bestSave > 0 && (
         <div
           role="button"
           tabIndex={0}

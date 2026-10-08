@@ -11,6 +11,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import DebtPage, {
   DebtPageHero, StepDebts, StepHome, StepCompare, StepContact, DebtRecap, type DebtPageView,
 } from '../src/components/DebtPageViews';
@@ -148,6 +150,17 @@ describe('the page', () => {
 
   it('keeps id="savings" on the calculator, which the hero button and goStep scroll to', () => {
     expect(html(<DebtPage v={view()} overlays={null} />)).toContain('id="savings"');
+  });
+});
+
+describe('the sticky savings bar', () => {
+  it('is drawn on the homepage only', () => {
+    // It announces the larger saving as "your result", which picks a winner on
+    // a page that has no "best option" badge. Dropped there on 9 Oct. A source
+    // scan, because the bar only appears once a saving exists, which takes the
+    // calculator's state and so a browser.
+    const calc = readFileSync(resolve(__dirname, '../src/components/DebtSavingsCalculator.tsx'), 'utf8');
+    expect(calc).toContain('{!standalone && bestSave > 0 && (');
   });
 });
 

@@ -60,7 +60,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 25 files / 943 tests, all passing |
+| Tests | Vitest + jsdom, 25 files / 944 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,7 +70,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (943 tests)
+npm test         # vitest run (944 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -249,7 +249,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 943 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 944 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves the homepage's calculator, the same component with `standalone`, so
   the lead is identical: source `DebtConsolidation`, form id
@@ -269,7 +269,9 @@ or the lead lands on the generic tab with its fields dropped:
   the homepage uses, so the two layouts cannot disagree and the payload is
   unchanged. The option a visitor picks to discuss (`chosen`) is shown on the
   recap only; it is not in the lead until the Sheet migration gives it a column.
-  Styles are the `dcp-` block at the end of `src/index.css`.
+  Styles are the `dcp-` block at the end of `src/index.css`. The rose sticky
+  savings bar is homepage only: it named the larger saving "your result", which
+  picks a winner on a page built to have no "best option".
   `tests/debt-page-views.test.tsx` renders each step from props.
 - **No APR figure and no response time, anywhere (Max, 8 Oct).** "Est. APR" was
   the rate plus a flat 0.20 that no lender had quoted; every place now reads
