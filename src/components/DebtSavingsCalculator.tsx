@@ -8,14 +8,21 @@ import { openCalendly as openCalendlyPopup } from '../utils/calendly';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
 import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
-import DebtPage, { type DebtPageView } from './DebtPageViews';
-import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
 
 const emailSchema = z.string().email();
 
 // Fallback rates — overridden by live FRED data on mount
 const _RATE_30YR = 6.41;
 const _RATE_15YR = 6.01;
+
+const DEBT_TYPES = [
+  'Credit Card',
+  'Auto Loan',
+  'Personal Loan',
+  'Medical',
+  'Student Loan',
+  'Other',
+];
 
 interface Debt {
   id: number;
@@ -91,14 +98,26 @@ function BreakdownRow({
 // ─── Section header ──────────────────────────────────────────────────────────
 
 /**
- * The homepage's heading block for the calculator: an <h2> under the hero that
- * reveals on scroll. /debt-consolidation/ has its own top of page, DebtPageHero
- * in DebtPageViews.tsx, which is that page's <h1> and is pre-rendered.
+ * The calculator's heading block, on its own so /debt-consolidation/ can
+ * pre-render it (src/prerender.tsx) from the same markup the app draws.
+ *
+ * `standalone` is that page: the block is the first thing on screen there, so
+ * the title is the page's <h1> and nothing fades in. A hero at opacity 0 is not
+ * counted as painted, which is what held the homepage LCP back (audit L7), and
+ * a `reveal` class in pre-rendered HTML would hide the heading until React ran.
+ * On the homepage it sits under the hero, so it stays an <h2> that reveals on
+ * scroll, exactly as before.
  */
-function DebtCalculatorHeader({ headerRef }: { headerRef?: React.Ref<HTMLDivElement> }) {
-  const Title = 'h2';
+export function DebtCalculatorHeader({
+  standalone = false,
+  headerRef,
+}: {
+  standalone?: boolean;
+  headerRef?: React.Ref<HTMLDivElement>;
+}) {
+  const Title = standalone ? 'h1' : 'h2';
   return (
-    <div ref={headerRef} className="section-header reveal">
+    <div ref={headerRef} className={standalone ? 'section-header' : 'section-header reveal'}>
       <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Monthly Reset</span>
       <Title className="section-title" style={{ color: 'var(--teal)' }}>Boost Your Monthly Cashflow</Title>
       {/* Names the products by the words a viewer arrives with. /yt/heloc and
@@ -180,19 +199,15 @@ function formatRateDate(iso: string): string {
 /**
  * `standalone` is /debt-consolidation/, where the calculator is the whole page
  * rather than a section under the homepage hero. Nothing about the tool or the
- * lead it sends differs: same formulas, same gates, same source and form id, so
- * the Sheet tab and the GA4 conversion are the same and `page_path` is what
- * tells the two apart.
- *
- * What differs is the layout. Since phase 2 of the revamp (9 Oct) the page has
- * its own, drawn by DebtPageViews.tsx from the values computed here; the
- * homepage keeps the layout below until phase 4 retires it. Everything above
- * the two `return`s is shared, which is the point: two layouts over one set of
- * numbers cannot disagree about a payment.
+ * lead it sends differs: same source, same form id, so the Sheet tab and the
+ * GA4 conversion are the same and `page_path` is what tells the two apart. Only
+ * the entry differs: the heading is the <h1> and the first screen does not
+ * fade in (see DebtCalculatorHeader).
  */
 export default function DebtSavingsCalculator({ standalone = false }: { standalone?: boolean } = {}) {
-  // Used by the homepage layout only. Always created, because hooks cannot be
-  // conditional; useScrollReveal does nothing for a ref with no element.
+  // The refs are always created, because hooks cannot be conditional, and are
+  // simply not attached on the standalone page: useScrollReveal does nothing
+  // for a ref with no element.
   const headerRef  = useScrollReveal<HTMLDivElement>();
   const stepsRef   = useScrollReveal<HTMLDivElement>(80);
   const contentRef = useScrollReveal<HTMLDivElement>(160);
@@ -251,12 +266,6 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
   // different number. Strings because "not chosen" has no numeric value.
   const [heloanTier, setHeloanTier] = useState('');
   const [heloanTerm, setHeloanTerm] = useState('');
-
-  // Which option the visitor wants to talk about, on /debt-consolidation/ only.
-  // It is shown back to them on the confirmation and is NOT in the lead: the
-  // payload below is deliberately unchanged by the redesign, so the page works
-  // against the Sheet as it is today and as it will be after the migration.
-  const [chosen, setChosen] = useState<DebtOption>('');
 
   // Lead form
   const [fname,     setFname]     = useState('');
@@ -483,152 +492,17 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
     { n: 4, label: 'Talk to Darren' },
   ];
 
-  // ── Shown by both layouts ───────────────────────────────────────────────────
-  //
-  // Built once so the page and the homepage cannot drift on the three things
-  // that must read the same wherever the calculator is: where the rates came
-  // from, the full disclosure, and the sticky bar and error dialog.
-
-  const rateBadge = (
-    <div style={{
-      background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6,
-      padding: '8px 14px', fontSize: 12, color: '#0369a1', marginBottom: 18,
-    }}>
-      30YR fixed: <strong>{rate30.toFixed(2)}%</strong> · 15YR: <strong>{rate15.toFixed(2)}%</strong>{' '}
-      &nbsp;·&nbsp;{ratesLive
-        ? <>Freddie Mac PMMS via <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1' }}>FRED®</a> · weekly average, as of {formatRateDate(rateDate)}</>
-        : 'Static example range, not current market rates'
-      }
-    </div>
-  );
-
-  const disclosure = (
-    <p style={{
-      fontSize: 11, color: 'var(--text-muted)', marginTop: 24, lineHeight: 1.6,
-      borderTop: '1px solid #e2e5ed', paddingTop: 14,
-    }}>
-      <strong>Important Disclosures:</strong> This tool provides estimates for educational
-      purposes only. Actual rates, terms, and monthly payments depend on creditworthiness,
-      property appraisal, loan-to-value ratio, and lender approval. Not a commitment to
-      lend. HELOAN parameters are based on current wholesale lender guidelines and are
-      subject to change. Rates shown are Freddie Mac's Primary Mortgage Market Survey
-      (PMMS) weekly national average, retrieved via FRED®, and are not a quote or a
-      guarantee.
-      All loans subject to underwriting approval. Equal Housing Opportunity.
-      <br /><br />
-      <strong>Darren Tsai</strong> · Senior Loan Officer · NMLS# 2438102 · DRE# 02103705
-      · Licensed with Saxton Mortgage. For licensing information, visit{' '}
-      <a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer"
-        style={{ color: 'var(--navy)', textDecoration: 'underline' }}>
-        nmlsconsumeraccess.org
-      </a>.
-    </p>
-  );
-
-  const overlays = (
-    <>
-      {/* Sticky savings bar */}
-      {bestSave > 0 && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={openCalendly}
-          onKeyDown={(e) => e.key === 'Enter' && openCalendly()}
-          style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: 'var(--rose)', color: '#fff',
-            textAlign: 'center',
-            padding: '12px 16px',
-            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-            fontSize: 13, fontWeight: 600, zIndex: 97,
-            boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-            cursor: 'pointer',
-          }}
-        >
-          {bestSave > 0
-            ? `Your result: about ${fmt(bestSave)}/month freed up, talk to Darren today →`
-            : `Most clients save ${SAVINGS_RANGE}/month, talk to Darren today →`}
-        </div>
-      )}
-
-      {errorMsg && (
-        <div
-          className="modal-overlay"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="dsc-error-title"
-          onClick={() => setErrorMsg(null)}
-        >
-          <div className="modal-panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: 'var(--rose)', flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                <h2 id="dsc-error-title" className="modal-title" style={{ fontSize: '1.15rem' }}>
-                  Something's missing
-                </h2>
-              </div>
-              <button
-                className="modal-close"
-                onClick={() => setErrorMsg(null)}
-                aria-label="Close"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
-              <button
-                className="btn btn-rose btn-full"
-                onClick={() => setErrorMsg(null)}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-
-  // ── Render: /debt-consolidation/ ────────────────────────────────────────────
-
-  if (standalone) {
-    const view: DebtPageView = {
-      step, goStep,
-      debts, addDebt, removeDebt, updateDebt,
-      totPmt, totBal, wtRate, hasDebt,
-      homeValue, setHomeValue, mtgBalance, setMtgBalance, mtgPayment, setMtgPayment,
-      mtgRate, setMtgRate, mtgTerm, setMtgTerm,
-      hv, mb, mp, mr, mt, hasHome,
-      rate30, todayTotal, newLoan, refiPmt, refiSave,
-      sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
-      heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
-      tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, heloanTotal, heloanSave, cltv,
-      chosen, setChosen,
-      fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
-      emailHint, setEmailHint, usState, setUsState,
-      sending, submitted, submitLead, openCalendly,
-      rateBadge, disclosure,
-    };
-    return <DebtPage v={view} overlays={overlays} />;
-  }
-
-  // ── Render: the homepage section ────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <section id="savings" className="section section-light">
       <div className="container">
 
         {/* Section header */}
-        <DebtCalculatorHeader headerRef={headerRef} />
+        <DebtCalculatorHeader standalone={standalone} headerRef={standalone ? undefined : headerRef} />
 
         {/* Step indicator — pill tabs */}
-        <div ref={stepsRef} className="reveal dsc-steps">
+        <div ref={standalone ? undefined : stepsRef} className={standalone ? 'dsc-steps' : 'reveal dsc-steps'}>
           {STEPS.map(({ n, label }) => {
             const isDone   = step > n;
             const isActive = step === n;
@@ -665,7 +539,7 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
         </div>
 
         {/* ── Step content ────────────────────────────────────────────────── */}
-        <div ref={contentRef} className="reveal">
+        <div ref={standalone ? undefined : contentRef} className={standalone ? undefined : 'reveal'}>
 
         {/* ── STEP 1: Your Debts ─────────────────────────────────────────── */}
         {step === 1 && (
@@ -878,7 +752,17 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
               Your Side-by-Side Comparison
             </h3>
 
-            {rateBadge}
+            {/* Rate info badge */}
+            <div style={{
+              background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6,
+              padding: '8px 14px', fontSize: 12, color: '#0369a1', marginBottom: 18,
+            }}>
+              30YR fixed: <strong>{rate30.toFixed(2)}%</strong> · 15YR: <strong>{rate15.toFixed(2)}%</strong>{' '}
+              &nbsp;·&nbsp;{ratesLive
+                ? <>Freddie Mac PMMS via <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1' }}>FRED®</a> · weekly average, as of {formatRateDate(rateDate)}</>
+                : 'Static example range, not current market rates'
+              }
+            </div>
 
             {/* Compare cards */}
             <div className="dsc-compare-grid" style={{ marginBottom: 18 }}>
@@ -990,7 +874,12 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                 <CustomSelect
                   id="heloan-tier"
                   value={heloanTier}
-                  options={HELOAN_TIERS}
+                  options={[
+                    { value: '13.99', label: '580–619 (est. 13.99%)' },
+                    { value: '11.99', label: '620–659 (est. 11.99%)' },
+                    { value: '10.49', label: '660–679 (est. 10.49%)' },
+                    { value: '8.99',  label: '680+ (est. 8.99%)' },
+                  ]}
                   onChange={setHeloanTier}
                   placeholder="Select credit tier…"
                 />
@@ -1000,7 +889,12 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                 <CustomSelect
                   id="heloan-term"
                   value={heloanTerm}
-                  options={HELOAN_TERMS}
+                  options={[
+                    { value: '5',  label: '5 Years' },
+                    { value: '10', label: '10 Years' },
+                    { value: '15', label: '15 Years' },
+                    { value: '30', label: '30 Years' },
+                  ]}
                   onChange={setHeloanTerm}
                   placeholder="Select term…"
                 />
@@ -1233,11 +1127,95 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
 
         </div>{/* end step content */}
 
-        {disclosure}
+        {/* Disclaimer */}
+        <p style={{
+          fontSize: 11, color: 'var(--text-muted)', marginTop: 24, lineHeight: 1.6,
+          borderTop: '1px solid #e2e5ed', paddingTop: 14,
+        }}>
+          <strong>Important Disclosures:</strong> This tool provides estimates for educational
+          purposes only. Actual rates, terms, and monthly payments depend on creditworthiness,
+          property appraisal, loan-to-value ratio, and lender approval. Not a commitment to
+          lend. HELOAN parameters are based on current wholesale lender guidelines and are
+          subject to change. Rates shown are Freddie Mac's Primary Mortgage Market Survey
+          (PMMS) weekly national average, retrieved via FRED®, and are not a quote or a
+          guarantee.
+          All loans subject to underwriting approval. Equal Housing Opportunity.
+          <br /><br />
+          <strong>Darren Tsai</strong> · Senior Loan Officer · NMLS# 2438102 · DRE# 02103705
+          · Licensed with Saxton Mortgage. For licensing information, visit{' '}
+          <a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer"
+            style={{ color: 'var(--navy)', textDecoration: 'underline' }}>
+            nmlsconsumeraccess.org
+          </a>.
+        </p>
 
       </div>
 
-      {overlays}
+      {/* Sticky savings bar */}
+      {bestSave > 0 && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openCalendly}
+          onKeyDown={(e) => e.key === 'Enter' && openCalendly()}
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            background: 'var(--rose)', color: '#fff',
+            textAlign: 'center',
+            padding: '12px 16px',
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+            fontSize: 13, fontWeight: 600, zIndex: 97,
+            boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+            cursor: 'pointer',
+          }}
+        >
+          {bestSave > 0
+            ? `Your result: about ${fmt(bestSave)}/month freed up, talk to Darren today →`
+            : `Most clients save ${SAVINGS_RANGE}/month, talk to Darren today →`}
+        </div>
+      )}
+
+      {errorMsg && (
+        <div
+          className="modal-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="dsc-error-title"
+          onClick={() => setErrorMsg(null)}
+        >
+          <div className="modal-panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: 'var(--rose)', flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <h2 id="dsc-error-title" className="modal-title" style={{ fontSize: '1.15rem' }}>
+                  Something's missing
+                </h2>
+              </div>
+              <button
+                className="modal-close"
+                onClick={() => setErrorMsg(null)}
+                aria-label="Close"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
+              <button
+                className="btn btn-rose btn-full"
+                onClick={() => setErrorMsg(null)}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
