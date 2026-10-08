@@ -782,9 +782,6 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Cash-Out Refi</div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiPmt)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New 30YR fixed</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                  Est. APR: {(rate30 + 0.20).toFixed(2)}%
-                </div>
                 {refiSave > 0 && (
                   <div style={{
                     display: 'inline-block', marginTop: 8,
@@ -822,9 +819,6 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Refi, Same Payoff Date</div>
                   <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiSameTermPmt)}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New {sameTermYears}YR fixed</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                    Est. APR: {(rate30 + 0.20).toFixed(2)}%
-                  </div>
                   {refiSameTermSave > 0 && (
                     <div style={{
                       display: 'inline-block', marginTop: 8,
@@ -850,9 +844,6 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                   <>
                     <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(heloanTotal)}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Keep mortgage + HELOAN</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                      Est. APR: {(tierRate + 0.20).toFixed(2)}%
-                    </div>
                   </>
                 ) : (
                   // A HELOAN rate is a credit-score question, and the spread
@@ -917,7 +908,11 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
               </div>
               <BreakdownRow label="New Loan Amount"       value={newLoan > 0 ? fmt(newLoan)    : '—'} />
               <BreakdownRow label="Rate (30YR fixed)"     value={pct(rate30)} />
-              <BreakdownRow label="Estimated APR"         value={pct(rate30 + 0.20)} />
+              {/* No APR figure (8 Oct). This row used to read rate + 0.20, a flat
+                  guess at fees that no lender had quoted, printed to two decimals
+                  beside a real benchmark rate. An APR is a disclosure with a
+                  legal meaning; one invented from a constant is worse than none. */}
+              <BreakdownRow label="APR"                   value="See cost assumptions" />
               <BreakdownRow label="Monthly P&I Payment"   value={refiPmt > 0 ? fmt(refiPmt)    : '—'} />
               <BreakdownRow
                 label="Monthly Savings vs. Today"
@@ -936,7 +931,7 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                 label="HELOAN Rate / Term"
                 value={heloanPriced && heloanAmt > 0 ? `${pct(tierRate)} / ${tierYears} yr` : '—'}
               />
-              <BreakdownRow label="Estimated APR"             value={heloanPriced ? pct(tierRate + 0.20) : '—'} />
+              <BreakdownRow label="APR"                       value="See cost assumptions" />
               <BreakdownRow label="HELOAN Monthly Payment"    value={heloanPmt > 0 ? fmt(heloanPmt)   : '—'} />
               <BreakdownRow label="Existing Mortgage Payment" value={mp > 0 ? fmt(mp) : '—'} />
               <BreakdownRow label="Combined CLTV"             value={cltv > 0 ? pct(cltv) : '—'} />
@@ -954,6 +949,11 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
                 green bold
               />
             </div>
+
+            <p id="dsc-cost-assumptions" style={{ fontSize: 12, color: 'var(--text-muted)', margin: '-10px 0 22px', lineHeight: 1.5 }}>
+              <strong>Cost assumptions:</strong> these estimates show principal and interest only. APR is
+              not shown: it depends on fees and lender terms, and needs a personal quote.
+            </p>
 
             <button className="btn btn-rose btn-full" onClick={() => goStep(4)}>
               I Want to See My Actual Numbers

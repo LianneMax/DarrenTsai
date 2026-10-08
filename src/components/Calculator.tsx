@@ -253,11 +253,15 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 color="var(--rose)"
                 size="2.4rem"
               />
+              {/* No APR figure (8 Oct). This card used to show the entered rate
+                  plus a flat 0.20, an assumed fee spread nobody had quoted, at the
+                  same size as the payment. The card stays, so the grid keeps its
+                  shape, and points at the note under the schedule instead. */}
               <StatCard
-                label="Estimated APR"
-                value={`${(inputs.annualRate + 0.20).toFixed(2)}%`}
-                color="var(--rose)"
-                size="2.4rem"
+                label="Est. APR"
+                value="See cost assumptions"
+                color="var(--navy)"
+                size="1.15rem"
                 isString
               />
               <StatCard
@@ -327,10 +331,10 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
           fontSize: 11, color: 'var(--text-muted)', marginTop: 24, lineHeight: 1.6,
           borderTop: '1px solid #e2e5ed', paddingTop: 14,
         }}>
-          <em>Estimated APR based on the interest rate entered plus an assumed 0.20% spread for
-          prepaid finance charges (origination, processing, and underwriting fees). This is an
-          estimate for educational purposes only. Actual APR will be based on final loan amount
-          and actual closing costs.</em>
+          <em id="cost-assumptions"><strong>Cost assumptions:</strong> the payment shown is principal and
+          interest only, on the amount, rate and term you entered. It excludes taxes, insurance and
+          fees. APR is not shown: it depends on fees and lender terms, and needs a personal quote.
+          This is an estimate for educational purposes only.</em>
           <br />
           CA DRE Broker License #02103705 · This is not a commitment to lend. All loans are
           subject to credit approval.
