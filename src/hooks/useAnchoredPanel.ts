@@ -54,7 +54,15 @@ type Box = { top: number; bottom: number; left: number; width: number };
  * `inUse` says the visitor is working inside the panel: then it takes whatever
  * of the screen is left rather than vanishing under their thumbs.
  */
-export function placePanel(trigger: Box, viewportHeight: number, inUse = false): PanelPlace | null {
+export function placePanel(
+  trigger: Box,
+  viewportHeight: number,
+  inUse = false,
+  // The window's own height, which a fixed element's `bottom` is measured from.
+  // It differs from what is visible only while an iOS keyboard is up: there the
+  // window keeps its height and the visible part shrinks.
+  windowHeight = viewportHeight,
+): PanelPlace | null {
   if (trigger.bottom <= 0 || trigger.top >= viewportHeight) {
     if (!inUse) return null;
     return { left: trigger.left, width: trigger.width, top: EDGE, maxHeight: Math.max(viewportHeight - 2 * EDGE, MINIMUM) };
@@ -69,7 +77,7 @@ export function placePanel(trigger: Box, viewportHeight: number, inUse = false):
   if (below >= COMFORTABLE || below >= above) {
     return { ...base, top: trigger.bottom + GAP, maxHeight: Math.max(below, MINIMUM) };
   }
-  return { ...base, bottom: viewportHeight - trigger.top + GAP, maxHeight: Math.max(above, MINIMUM) };
+  return { ...base, bottom: windowHeight - trigger.top + GAP, maxHeight: Math.max(above, MINIMUM) };
 }
 
 /** The height the visitor can actually see: less than innerHeight while a keyboard is up. */
@@ -95,7 +103,7 @@ export function useAnchoredPanel(
     const el = triggerRef.current;
     if (!el) return null;
     const inUse = !!panelRef.current && panelRef.current.contains(document.activeElement);
-    const next = placePanel(el.getBoundingClientRect(), visibleHeight(), inUse);
+    const next = placePanel(el.getBoundingClientRect(), visibleHeight(), inUse, window.innerHeight);
     setPlace(next);
     return next;
   }, [triggerRef, panelRef]);

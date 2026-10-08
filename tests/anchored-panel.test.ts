@@ -64,6 +64,16 @@ describe('where the panel goes', () => {
     expect(place.maxHeight).toBe(186);
   });
 
+  it('anchors an upward panel to the window, not to the part a keyboard leaves visible', () => {
+    // iOS keeps the window 667 tall and shows 400 of it. A fixed element's
+    // `bottom` is measured from the window, so the offset must be too, or the
+    // panel lands 267px too low, behind the keyboard. The room it may fill is
+    // still what can be seen.
+    const place = placePanel(trigger(330), 400, false, 667)!;
+    expect(place.bottom).toBe(667 - 330 + 6);
+    expect(place.maxHeight).toBe(330 - 6 - 8);
+  });
+
   it('gives up when the trigger has left the screen', () => {
     expect(placePanel(trigger(-80), 667)).toBeNull();
     expect(placePanel(trigger(700), 667)).toBeNull();
