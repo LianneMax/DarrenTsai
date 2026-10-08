@@ -77,7 +77,7 @@ describe('stays quiet when unsure — a wrong guess must not stop a real address
 });
 
 describe('wiring', () => {
-  const pages = ['../index.html', '../public/dscr/index.html', '../public/fha/index.html', '../public/realestateinvesting/index.html'];
+  const pages = ['../index.html', '../debt-consolidation/index.html', '../public/dscr/index.html', '../public/fha/index.html', '../public/realestateinvesting/index.html'];
 
   it.each(pages)('%s loads the shared checker', (page) => {
     expect(readFileSync(resolve(__dirname, page), 'utf8')).toContain('/email-suggest.js');

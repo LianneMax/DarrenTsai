@@ -310,7 +310,7 @@ describe('the contact confirmation', () => {
     expect(String(guideCalls(c)[0].options.payload)).toContain('Want to clear two credit cards');
   });
 
-  it.each(['dscr-contact', 'fha-contact', 'rei-contact', 'mortgage-calculator-contact'])(
+  it.each(['dscr-contact', 'fha-contact', 'rei-contact', 'mortgage-calculator-contact', 'debt-consolidation-contact'])(
     'covers the copy of the modal on every page (%s)',
     (source) => {
       const c = configured();

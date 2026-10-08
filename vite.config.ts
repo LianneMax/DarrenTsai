@@ -4,13 +4,29 @@ import react from '@vitejs/plugin-react'
 const EMPTY_ROOT = '<div id="root"></div>'
 
 /**
+ * The pages whose first screen is written into their HTML at build time, and
+ * the function in src/prerender.tsx that renders each one. Both plugins below
+ * work from this list, so a page is either pre-rendered with its CSS inlined
+ * or neither: inlining alone would save a request nobody is waiting on, and
+ * pre-rendering alone would paint the shell unstyled.
+ *
+ * /debt-consolidation/ joined the homepage on 8 Oct (revamp phase 0). It is an
+ * ad destination from its first day, so it gets what the homepage needed
+ * three audit rounds to reach.
+ */
+const PRERENDERED: Record<string, string> = {
+  '/index.html': 'renderHomeShell',
+  '/debt-consolidation/index.html': 'renderDebtShell',
+}
+
+/**
  * Writes the homepage's nav and hero into index.html at build time, so they
  * paint with the first frame instead of after the app's JavaScript has run
  * (audit, "Homepage LCP", Option A). The markup comes from src/prerender.tsx,
  * which renders the real Nav and Hero components.
  *
- * Build only, and the homepage only: /mortgage-calculator/ opens on the
- * calculator, which is not pre-rendered. A throwaway Vite server in SSR mode
+ * Build only, and only the pages in PRERENDERED: /mortgage-calculator/ opens on
+ * the calculator, which is not pre-rendered. A throwaway Vite server in SSR mode
  * loads the components with the same TSX transform the app uses; it is created
  * without this config file, so it cannot recurse into this plugin.
  *
@@ -28,9 +44,10 @@ function prerenderHomeShell(): Plugin {
       root = config.root
     },
     async transformIndexHtml(html, ctx) {
-      if (ctx.path !== '/index.html') return html
+      const render = PRERENDERED[ctx.path]
+      if (!render) return html
       if (!html.includes(EMPTY_ROOT)) {
-        console.warn(`prerender-home-shell: ${EMPTY_ROOT} not found in index.html; homepage not pre-rendered`)
+        console.warn(`prerender-home-shell: ${EMPTY_ROOT} not found in ${ctx.path}; page not pre-rendered`)
         return html
       }
       const server = await createServer({
@@ -43,11 +60,11 @@ function prerenderHomeShell(): Plugin {
       })
       try {
         const mod = await server.ssrLoadModule('/src/prerender.tsx')
-        const shell: string = mod.renderHomeShell()
+        const shell: string = mod[render]()
         if (!shell.includes('<h1')) throw new Error('rendered shell has no <h1>')
         return html.replace(EMPTY_ROOT, `<div id="root">${shell}</div>`)
       } catch (err) {
-        console.warn(`prerender-home-shell: FAILED, homepage ships without its pre-rendered hero: ${String(err)}`)
+        console.warn(`prerender-home-shell: FAILED, ${ctx.path} ships without its pre-rendered shell: ${String(err)}`)
         return html
       } finally {
         await server.close()
@@ -69,7 +86,8 @@ function prerenderHomeShell(): Plugin {
  * trade for the page people land on.
  *
  * Runs after Vite has written the <link> tags (order: 'post'), on the
- * homepage only. Fails open like the pre-render: if the link or the asset is
+ * pre-rendered pages only (PRERENDERED above). Fails open like the
+ * pre-render: if the link or the asset is
  * not where expected, the page keeps its normal <link> and the build warns.
  */
 function inlineHomeCss(): Plugin {
@@ -79,10 +97,10 @@ function inlineHomeCss(): Plugin {
     transformIndexHtml: {
       order: 'post',
       handler(html, ctx) {
-        if (ctx.path !== '/index.html' || !ctx.bundle) return html
+        if (!PRERENDERED[ctx.path] || !ctx.bundle) return html
         const links = [...html.matchAll(/<link rel="stylesheet" crossorigin href="\/(assets\/[^"]+\.css)">/g)]
         if (links.length === 0) {
-          console.warn('inline-home-css: no stylesheet <link> found in index.html; CSS left linked')
+          console.warn(`inline-home-css: no stylesheet <link> found in ${ctx.path}; CSS left linked`)
           return html
         }
         for (const [tag, fileName] of links) {
@@ -124,16 +142,19 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 600,
-    // Two real pages, no client router: the homepage sells one CTA (debt
-    // consolidation) and the amortization calculator has its own URL at
-    // /mortgage-calculator/. Each gets its own HTML entry, so an unknown path
-    // still 404s instead of being rewritten to the homepage.
+    // Three real pages, no client router: the homepage sells one CTA (debt
+    // consolidation), the amortization calculator has its own URL at
+    // /mortgage-calculator/, and /debt-consolidation/ serves the homepage's
+    // calculator on a URL that will outlive the homepage revamp. Each gets its
+    // own HTML entry, so an unknown path still 404s instead of being rewritten
+    // to the homepage.
     rollupOptions: {
       input: {
         // Relative to the Vite root; @types/node is not installed, so no
         // path.resolve/__dirname here.
         main: 'index.html',
         mortgageCalculator: 'mortgage-calculator/index.html',
+        debtConsolidation: 'debt-consolidation/index.html',
       },
     },
     // recharts (~537KB) used to be forced into a named `charts` chunk here.

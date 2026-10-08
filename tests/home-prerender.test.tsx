@@ -54,6 +54,96 @@ describe('the pre-rendered homepage shell', () => {
   });
 });
 
+/**
+ * /debt-consolidation/ (revamp phase 0, 8 Oct). The same pre-render, for the
+ * page the debt ads land on. Its shell stops at the calculator's heading: the
+ * steps under it are the lead path and are drawn by React alone.
+ */
+describe('the pre-rendered /debt-consolidation/ shell', () => {
+  /** Closes the heading's three wrappers, which the app goes on to fill. */
+  const TAIL = '</div></section></main>';
+
+  it('holds the nav and the calculator heading as the page <h1>', async () => {
+    const { renderDebtShell } = await import('../src/prerender');
+    const shell = renderDebtShell();
+    expect(shell.startsWith('<nav')).toBe(true);
+    expect(shell).toMatch(/<h1[^>]*>Boost Your Monthly Cashflow<\/h1>/);
+    expect(shell.match(/<h1\b/g)).toHaveLength(1);
+  });
+
+  it('is exactly the start of what the app renders, so nothing moves when React swaps in', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { renderDebtShell } = await import('../src/prerender');
+    const { default: DebtConsolidationApp } = await import('../src/DebtConsolidationApp');
+    const app = renderToStaticMarkup(<DebtConsolidationApp />);
+    const shell = renderDebtShell();
+    expect(shell.endsWith(TAIL)).toBe(true);
+    expect(app.startsWith(shell.slice(0, -TAIL.length))).toBe(true);
+  });
+
+  it('fades nothing in: no element starts at opacity 0', async () => {
+    // `.reveal` is opacity 0 until an IntersectionObserver adds `revealed`. In
+    // pre-rendered HTML there is no observer yet, so a reveal class here would
+    // hide the heading until React ran, and LCP does not count a hidden element.
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { renderDebtShell } = await import('../src/prerender');
+    const { default: DebtConsolidationApp } = await import('../src/DebtConsolidationApp');
+    expect(renderDebtShell()).not.toMatch(/class="[^"]*\breveal\b/);
+    // The steps and the first card are on the first screen too.
+    expect(renderToStaticMarkup(<DebtConsolidationApp />)).not.toMatch(/class="[^"]*\breveal\b/);
+  });
+
+  it('leaves the homepage copy as it was: an <h2> that reveals on scroll', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: DebtSavingsCalculator } = await import('../src/components/DebtSavingsCalculator');
+    const html = renderToStaticMarkup(<DebtSavingsCalculator />);
+    expect(html).toMatch(/<h2[^>]*>Boost Your Monthly Cashflow<\/h2>/);
+    expect(html).toContain('class="section-header reveal"');
+    expect(html).not.toMatch(/<h1\b/);
+  });
+
+  it('marks every button that needs JavaScript, and carries no phone number', async () => {
+    const { renderDebtShell } = await import('../src/prerender');
+    const shell = renderDebtShell();
+    const buttons = shell.match(/<button\b[^>]*>/g) ?? [];
+    const visible = buttons.filter((b) => !/tabindex="-1"/.test(b));
+    expect(visible.length).toBeGreaterThan(0);
+    for (const b of visible) expect(b).toContain('data-early=');
+    expect(shell).not.toMatch(/tel:/);
+  });
+
+  it('has the empty #root the build fills, and the same early-click script as the homepage', () => {
+    const page = read('debt-consolidation/index.html');
+    expect(page).toContain('<div id="root"></div>');
+    const script = (html: string) =>
+      /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(html)?.[1];
+    expect(script(page)).toBeDefined();
+    // Two copies, because a static HTML entry cannot import. Held identical so
+    // a fix to one is a fix to both; the behaviour is tested below, once.
+    expect(script(page)).toBe(script(read('index.html')));
+  });
+
+  it('replays the queued click, as the homepage does', () => {
+    const app = read('src/DebtConsolidationApp.tsx');
+    expect(app).toMatch(/querySelector<HTMLElement>\(`\[data-early="\$\{CSS\.escape\(key\)\}"\]`\)\?\.click\(\)/);
+  });
+
+  it('sends the same lead as the homepage calculator, from a contact modal of its own', () => {
+    const app = read('src/DebtConsolidationApp.tsx');
+    // The calculator's source and form id live in the shared component, so the
+    // page cannot fork them. The modal is the one thing that is this page's own.
+    expect(app).toContain('<DebtSavingsCalculator standalone />');
+    expect(app).toContain('leadSource="debt-consolidation-contact"');
+    expect(app).toContain('formId="debt-consolidation-contact-modal"');
+  });
+
+  it('is canonical to itself and listed in the sitemap', () => {
+    expect(read('debt-consolidation/index.html'))
+      .toContain('<link rel="canonical" href="https://realdarrentsai.com/debt-consolidation/" />');
+    expect(read('public/sitemap.xml')).toContain('<loc>https://realdarrentsai.com/debt-consolidation/</loc>');
+  });
+});
+
 describe('the early-click queue in index.html', () => {
   type Early = { take: () => string | null };
   const script = /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(read('index.html'))?.[1];

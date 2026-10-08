@@ -115,6 +115,23 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 | Bonzo tags | `debt-consolidation`, `HELOC/cash-out interest`, `licensed-state`, `state:CA` |
 | Email | **None.** This funnel has no guide |
 
+**Run this case twice: once on the homepage, once on `/debt-consolidation/`.**
+The second page is the same calculator on the URL the debt ads use (since
+8 Oct). Everything in the table above is the same for both, on purpose. What
+differs:
+
+| Check on `/debt-consolidation/` | Expect |
+| --- | --- |
+| First paint | Nav and the "Boost Your Monthly Cashflow" heading are there at once, styled, before the steps appear under them. Nothing fades in |
+| View source | The heading is in the HTML as an `<h1>`, and the CSS is a `<style>` block, not a stylesheet `<link>` |
+| Phone number in the footer | Swapped by CallRail on a paid click, as on every other page |
+| GA4 `generate_lead` | `lead_source` `DebtConsolidation`, `form_id` `debt-savings-calculator`, **`page_path` `/debt-consolidation/`**. That last one is the only way to tell the two pages apart |
+| Nav "Contact", then submit the modal | Leads tab, `Source` **`debt-consolidation-contact`**; Bonzo tags `contact`, `debt-consolidation` |
+
+If the modal row says `Source` `debt-consolidation-contact` but Bonzo tags it
+`mortgage-calculator`, the Apps Script deployment is older than the page:
+update the existing deployment in place.
+
 Check the savings figure on step 4 and on the mobile sticky bar: both should now
 echo **your own computed number**, not a `$900 - $1,500` range. The range only
 appears when nothing could be computed.

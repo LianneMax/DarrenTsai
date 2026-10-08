@@ -25,8 +25,35 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import Nav from './components/Nav';
 import Hero from './components/Hero';
+import { DebtCalculatorHeader } from './components/DebtSavingsCalculator';
 
 const noop = () => {};
+
+/**
+ * The same thing for /debt-consolidation/ (revamp phase 0, 8 Oct): the nav and
+ * the calculator's heading, which is that page's <h1> and its LCP element.
+ *
+ * It stops at the heading on purpose. The calculator under it is the lead path,
+ * and pre-rendering inputs that do nothing until React arrives is the mismatch
+ * the homepage shell was kept clear of. The wrapper mirrors DebtConsolidationApp
+ * and DebtSavingsCalculator down to the heading, so React draws the same DOM in
+ * the same place and the steps appear beneath it without moving it.
+ */
+export function renderDebtShell(): string {
+  return renderToStaticMarkup(
+    <>
+      <Nav onOpenContact={noop} alwaysSolid />
+      <div className="page-top-spacer" />
+      <main>
+        <section id="savings" className="section section-light">
+          <div className="container">
+            <DebtCalculatorHeader standalone />
+          </div>
+        </section>
+      </main>
+    </>,
+  );
+}
 
 export function renderHomeShell(): string {
   return renderToStaticMarkup(

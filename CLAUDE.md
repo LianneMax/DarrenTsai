@@ -38,8 +38,8 @@ Eight submit paths feed `/api/lead`: two React forms, three static landing-page
 magnet forms, and three copies of the contact modal.
 
 **Every copy of the contact modal posts its own `source`**, one per page:
-`home-contact`, `mortgage-calculator-contact`, `dscr-contact`, `fha-contact`,
-`rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
+`home-contact`, `debt-consolidation-contact`, `mortgage-calculator-contact`,
+`dscr-contact`, `fha-contact`, `rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
 Sheet's Source column, the Bonzo tags and the GA4 event said the same thing
 wherever the lead came from. They have no funnel-specific columns, so they still
 fall through `doPost` to the generic Leads tab; what they must each have is a
@@ -53,14 +53,14 @@ with an unrouted source fails there.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 18 + TypeScript, Vite 6, plain CSS (`src/index.css`, ~2200 lines, CSS custom properties on `:root`) |
-| Routing | None. Two HTML entries (`index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The homepage's nav and hero are pre-rendered into `index.html` at build (`src/prerender.tsx`, plugin in `vite.config.ts`) and React replaces them on load; early clicks on them are queued and replayed (`data-early`, inline script in `index.html`, `App.tsx`) |
+| Routing | None. Three HTML entries (`index.html`, `debt-consolidation/index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The first screen of `/` (nav and hero) and of `/debt-consolidation/` (nav and calculator heading) is pre-rendered into its HTML at build and its CSS inlined (`src/prerender.tsx`, `PRERENDERED` in `vite.config.ts`); React replaces it on load, and early clicks on it are queued and replayed (`data-early`, the inline script in each entry, `App.tsx` and `DebtConsolidationApp.tsx`) |
 | Landing pages | Hand-written static HTML in `public/dscr/`, `public/fha/`, `public/realestateinvesting/`. No build step, ~2000 lines each, inline `<script>` |
 | Server | Netlify Functions (`.mts`, `Netlify.env.get`), routes declared via `export const config.path` |
 | Storage of record | Google Sheet `1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI`, driven by `google-apps-script.js` |
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 22 files / 771 tests, all passing |
+| Tests | Vitest + jsdom, 22 files / 790 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -70,14 +70,14 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (771 tests)
+npm test         # vitest run (790 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
 ```
 
 **Run `npm run test:layout` before pushing any change to a page or the CSS.** It
-builds the site, serves it with `vite preview`, and drives Chromium over all five
+builds the site, serves it with `vite preview`, and drives Chromium over all six
 pages at 320, 360, 375, 414, 768, 850, 1024, 1280 and 1440px, failing on any
 sideways scroll or any focusable field under 16px at phone widths. Everything
 that is not localhost is blocked, so a run does not depend on Calendly, CallRail
@@ -249,7 +249,19 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 771 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 790 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
+  serves the homepage's calculator, the same component with `standalone`, so
+  the lead is identical: source `DebtConsolidation`, form id
+  `debt-savings-calculator`, same Sheet tab, same GA4 conversion, and
+  `page_path` tells the two pages apart. It exists ahead of the revamp because
+  the revamp moves the calculator off the homepage and an ad's final URL cannot
+  follow it. Until that phase the homepage keeps its copy, the nav's
+  `/#savings` links stay as they are, and each page is canonical to itself.
+  The plan for the remaining phases, and the Sheet schema migration that
+  replaces the append-only rule, are in `docs/frontend-revamp-review.md` and
+  `docs/lead-sheet-schema.md`; neither is built yet, so append-only still
+  holds.
 - **HubSpot is an extra destination, built dark (audit H3, 29 Sep).**
   `pushToHubSpot` submits every lead to a HubSpot form (Forms API v3, portal
   247401197) from `processFollowUps`, next to Bonzo, and skips until

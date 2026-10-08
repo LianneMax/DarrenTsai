@@ -207,6 +207,7 @@ describe('tags say what kind of lead this is', () => {
     // Bonzo tagged identically and Darren could not tell which page the lead
     // had been reading when they asked him to call.
     ['home-contact', ['contact', 'home']],
+    ['debt-consolidation-contact', ['contact', 'debt-consolidation']],
     ['mortgage-calculator-contact', ['contact', 'mortgage-calculator']],
     ['dscr-contact', ['contact', 'dscr']],
     ['fha-contact', ['contact', 'fha']],
@@ -218,7 +219,8 @@ describe('tags say what kind of lead this is', () => {
 
   it.each([
     'dscr', 'fha', 'real-estate-investing', 'DebtConsolidation', 'MortgageCalculator',
-    'home-contact', 'mortgage-calculator-contact', 'dscr-contact', 'fha-contact', 'rei-contact',
+    'home-contact', 'debt-consolidation-contact', 'mortgage-calculator-contact', 'dscr-contact',
+    'fha-contact', 'rei-contact',
   ])(
     '%s says whether the state is one Darren is licensed in',
     (source) => {

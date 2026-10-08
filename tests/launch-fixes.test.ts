@@ -16,6 +16,8 @@ const DSCR = 'public/dscr/index.html';
 const FHA = 'public/fha/index.html';
 const REI = 'public/realestateinvesting/index.html';
 const LANDING = [DSCR, FHA, REI];
+/** The pages Vite builds from an HTML entry of their own. */
+const BUILT = ['index.html', 'debt-consolidation/index.html', 'mortgage-calculator/index.html'];
 
 /** Every [[redirects]] block in netlify.toml, in file order. */
 function redirects() {
@@ -73,7 +75,7 @@ describe('L10: nothing of ours or CallRail\'s holds the first paint', () => {
   // after paint. At the end of <body> the page paints at once and the swap lands
   // 0.9 to 1.2 s after navigation. It must stay synchronous: async never swapped.
   const TAG = '<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>';
-  it.each([...LANDING, 'index.html', 'mortgage-calculator/index.html'])(
+  it.each([...LANDING, ...BUILT])(
     '%s loads swap.js once, synchronously, at the end of <body>',
     (page) => {
       const html = read(page);
@@ -89,6 +91,17 @@ describe('L10: nothing of ours or CallRail\'s holds the first paint', () => {
     const config = read('vite.config.ts');
     expect(config).toMatch(/plugins: \[react\(\), prerenderHomeShell\(\), inlineHomeCss\(\)\]/);
     expect(config).toContain("order: 'post'");
+  });
+
+  it('/debt-consolidation/ gets the same two build steps, from one list', () => {
+    // It is an ad destination, so it must not ship with the empty #root and the
+    // render-blocking stylesheet the homepage took until L10 to lose. One list
+    // drives both plugins, so a page cannot get one step without the other.
+    const config = read('vite.config.ts');
+    expect(config).toContain("'/debt-consolidation/index.html': 'renderDebtShell'");
+    expect(config).toContain('const render = PRERENDERED[ctx.path]');
+    expect(config).toContain('if (!PRERENDERED[ctx.path] || !ctx.bundle) return html');
+    expect(config).toContain("debtConsolidation: 'debt-consolidation/index.html'");
   });
 });
 
@@ -149,7 +162,7 @@ describe('L7: the hero paints at once', () => {
     expect(read('src/index.css')).not.toMatch(/\.hero-anim\b/);
   });
 
-  it.each([...LANDING, 'index.html', 'mortgage-calculator/index.html'])(
+  it.each([...LANDING, ...BUILT])(
     '%s loads attribution.js off the render path',
     (page) => {
       expect(read(page)).toContain('<script src="/attribution.js" async fetchpriority="high"></script>');
@@ -165,7 +178,7 @@ describe('L3: landmarks, headings and the closed drawer', () => {
     expect(html.indexOf('</main>')).toBeLessThan(html.indexOf('<footer class="site-footer">'));
   });
 
-  it.each(['src/App.tsx', 'src/MortgageCalculatorApp.tsx'])('%s wraps its content in <main>', (file) => {
+  it.each(['src/App.tsx', 'src/DebtConsolidationApp.tsx', 'src/MortgageCalculatorApp.tsx'])('%s wraps its content in <main>', (file) => {
     expect(read(file)).toMatch(/<main>[\s\S]*<\/main>\s*<Footer \/>/);
   });
 

@@ -95,6 +95,68 @@ function BreakdownRow({
   );
 }
 
+// ─── Section header ──────────────────────────────────────────────────────────
+
+/**
+ * The calculator's heading block, on its own so /debt-consolidation/ can
+ * pre-render it (src/prerender.tsx) from the same markup the app draws.
+ *
+ * `standalone` is that page: the block is the first thing on screen there, so
+ * the title is the page's <h1> and nothing fades in. A hero at opacity 0 is not
+ * counted as painted, which is what held the homepage LCP back (audit L7), and
+ * a `reveal` class in pre-rendered HTML would hide the heading until React ran.
+ * On the homepage it sits under the hero, so it stays an <h2> that reveals on
+ * scroll, exactly as before.
+ */
+export function DebtCalculatorHeader({
+  standalone = false,
+  headerRef,
+}: {
+  standalone?: boolean;
+  headerRef?: React.Ref<HTMLDivElement>;
+}) {
+  const Title = standalone ? 'h1' : 'h2';
+  return (
+    <div ref={headerRef} className={standalone ? 'section-header' : 'section-header reveal'}>
+      <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Monthly Reset</span>
+      <Title className="section-title" style={{ color: 'var(--teal)' }}>Boost Your Monthly Cashflow</Title>
+      {/* Names the products by the words a viewer arrives with. /yt/heloc and
+          /yt/equity both land here, because HELOC and home-equity intent is
+          served by this funnel and has no page of its own yet, and someone
+          who has just watched a HELOC video needs to recognise that within a
+          second of landing. */}
+      <p className="section-sub">
+        You have a low mortgage rate but "expensive" credit card and other debt.
+        This tool compares your options for tapping your home's equity, a HELOAN or
+        a cash-out refinance, to clear those high-interest bills and keep more cash
+        every month.
+      </p>
+      {/* Said plainly rather than implied. A HELOC is a revolving line and
+          this tool prices the two fixed alternatives, so claiming to be a
+          HELOC calculator would be wrong; leaving the word out entirely sent
+          every HELOC viewer looking for a page that does not exist. */}
+      <p className="section-sub" style={{ marginTop: 10 }}>
+        Looking at a HELOC? This compares the two fixed alternatives Darren places most
+        often, so you can see what each one costs before you decide.
+      </p>
+      <ul style={{
+        listStyle: 'none', padding: 0, margin: '16px auto 0',
+        display: 'inline-flex', flexDirection: 'column', gap: 6,
+        textAlign: 'left', color: 'var(--navy)', fontSize: '0.95rem',
+      }}>
+        {['Takes under 3 minutes.', 'Zero impact on your credit score.', 'No cost to see your numbers.'].map(item => (
+          <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--teal)' }}>
+              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const FRED_FALLBACK_30 = _RATE_30YR;
@@ -134,7 +196,18 @@ function formatRateDate(iso: string): string {
   return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
-export default function DebtSavingsCalculator() {
+/**
+ * `standalone` is /debt-consolidation/, where the calculator is the whole page
+ * rather than a section under the homepage hero. Nothing about the tool or the
+ * lead it sends differs: same source, same form id, so the Sheet tab and the
+ * GA4 conversion are the same and `page_path` is what tells the two apart. Only
+ * the entry differs: the heading is the <h1> and the first screen does not
+ * fade in (see DebtCalculatorHeader).
+ */
+export default function DebtSavingsCalculator({ standalone = false }: { standalone?: boolean } = {}) {
+  // The refs are always created, because hooks cannot be conditional, and are
+  // simply not attached on the standalone page: useScrollReveal does nothing
+  // for a ref with no element.
   const headerRef  = useScrollReveal<HTMLDivElement>();
   const stepsRef   = useScrollReveal<HTMLDivElement>(80);
   const contentRef = useScrollReveal<HTMLDivElement>(160);
@@ -426,46 +499,10 @@ export default function DebtSavingsCalculator() {
       <div className="container">
 
         {/* Section header */}
-        <div ref={headerRef} className="section-header reveal">
-          <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Monthly Reset</span>
-          <h2 className="section-title" style={{ color: 'var(--teal)' }}>Boost Your Monthly Cashflow</h2>
-          {/* Names the products by the words a viewer arrives with. /yt/heloc and
-              /yt/equity both land here, because HELOC and home-equity intent is
-              served by this funnel and has no page of its own yet, and someone
-              who has just watched a HELOC video needs to recognise that within a
-              second of landing. */}
-          <p className="section-sub">
-            You have a low mortgage rate but "expensive" credit card and other debt.
-            This tool compares your options for tapping your home's equity, a HELOAN or
-            a cash-out refinance, to clear those high-interest bills and keep more cash
-            every month.
-          </p>
-          {/* Said plainly rather than implied. A HELOC is a revolving line and
-              this tool prices the two fixed alternatives, so claiming to be a
-              HELOC calculator would be wrong; leaving the word out entirely sent
-              every HELOC viewer looking for a page that does not exist. */}
-          <p className="section-sub" style={{ marginTop: 10 }}>
-            Looking at a HELOC? This compares the two fixed alternatives Darren places most
-            often, so you can see what each one costs before you decide.
-          </p>
-          <ul style={{
-            listStyle: 'none', padding: 0, margin: '16px auto 0',
-            display: 'inline-flex', flexDirection: 'column', gap: 6,
-            textAlign: 'left', color: 'var(--navy)', fontSize: '0.95rem',
-          }}>
-            {['Takes under 3 minutes.', 'Zero impact on your credit score.', 'No cost to see your numbers.'].map(item => (
-              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--teal)' }}>
-                  <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <DebtCalculatorHeader standalone={standalone} headerRef={standalone ? undefined : headerRef} />
 
         {/* Step indicator — pill tabs */}
-        <div ref={stepsRef} className="reveal dsc-steps">
+        <div ref={standalone ? undefined : stepsRef} className={standalone ? 'dsc-steps' : 'reveal dsc-steps'}>
           {STEPS.map(({ n, label }) => {
             const isDone   = step > n;
             const isActive = step === n;
@@ -502,7 +539,7 @@ export default function DebtSavingsCalculator() {
         </div>
 
         {/* ── Step content ────────────────────────────────────────────────── */}
-        <div ref={contentRef} className="reveal">
+        <div ref={standalone ? undefined : contentRef} className={standalone ? undefined : 'reveal'}>
 
         {/* ── STEP 1: Your Debts ─────────────────────────────────────────── */}
         {step === 1 && (
