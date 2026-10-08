@@ -58,12 +58,17 @@ const filled = view({
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
 
 describe('the hero', () => {
-  it('is the only <h1>, carries no phone number and needs no JavaScript', () => {
-    const hero = html(<DebtPageHero />);
+  it('is the only <h1>, carries no phone number, and queues an early tap', () => {
+    const hero = html(<DebtPageHero onAskHeloc={noop} />);
     expect(hero.match(/<h1\b/g)).toHaveLength(1);
     expect(hero).not.toMatch(/tel:/);
-    expect(hero).not.toMatch(/<button\b/);
     expect(hero).toContain('href="#savings"');
+    // Pre-rendered: a button that needs React must be replayable.
+    for (const b of hero.match(/<button\b[^>]*>/g) ?? []) expect(b).toContain('data-early=');
+  });
+
+  it('gives a HELOC visitor somewhere to go, since this page prices the fixed options', () => {
+    expect(html(<DebtPageHero onAskHeloc={noop} />)).toContain('Ask Darren about a HELOC');
   });
 });
 
@@ -103,8 +108,8 @@ describe('the comparison says what each option does to the payment', () => {
     expect(page).not.toContain('Each option pays off the same');
   });
 
-  it('shows no "best option" badge', () => {
-    expect(html(<StepCompare v={filled} />)).not.toMatch(/best option<\/(span|div)/i);
+  it('names no best option, and does not discuss the absence of one', () => {
+    expect(html(<StepCompare v={filled} />)).not.toMatch(/best option/i);
   });
 });
 

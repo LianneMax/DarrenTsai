@@ -48,7 +48,7 @@ export function renderDebtShell(): string {
       <div className="page-top-spacer" />
       <main>
         <section className="dcp">
-          <DebtPageHero />
+          <DebtPageHero onAskHeloc={noop} />
         </section>
       </main>
     </>,

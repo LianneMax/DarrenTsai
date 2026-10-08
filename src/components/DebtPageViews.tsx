@@ -121,10 +121,18 @@ const Check = () => (
  * Static on purpose. It is pre-rendered into the HTML at build time
  * (src/prerender.tsx), so it paints with the first frame and is the page's LCP
  * element; nothing in it may wait for JavaScript, fade in, or carry a phone
- * number for CallRail to swap. The button is a real anchor to the calculator
- * for the same reason: it works before React has loaded.
+ * number for CallRail to swap. The main button is a real anchor to the
+ * calculator for the same reason: it works before React has loaded.
+ *
+ * The one real button is the HELOC way out. /yt/heloc and /yt/equity land here,
+ * and someone who wants a revolving line of credit is not served by a tool that
+ * prices the two fixed alternatives. Until /home-equity/ exists (revamp phase
+ * 3, which should take this link over) the useful next step is Darren himself,
+ * so it opens the same call-or-schedule chooser as every "Book a Call". It
+ * carries `data-early`, so a tap before React loads is queued and replayed
+ * (debt-consolidation/index.html, DebtConsolidationApp.tsx) rather than lost.
  */
-export function DebtPageHero() {
+export function DebtPageHero({ onAskHeloc }: { onAskHeloc: () => void }) {
   return (
     <>
       <div className="dcp-hero">
@@ -158,7 +166,10 @@ export function DebtPageHero() {
                 funnel and need to know that within a second. */}
             <p>
               Looking at a HELOC? This compares the two fixed alternatives, not a revolving
-              line of credit.
+              line of credit.{' '}
+              <button type="button" className="dcp-hero-link" data-early="hero-heloc" onClick={onAskHeloc}>
+                Ask Darren about a HELOC →
+              </button>
             </p>
           </div>
         </div>
@@ -547,13 +558,6 @@ export function StepCompare({ v }: { v: DebtPageView }) {
           changes the rate on your entire mortgage. A HELOAN preserves it but adds a separate
           secured loan. Debt previously unsecured becomes secured by your home.
         </p>
-        <details>
-          <summary>Why is there no "best option" badge?</summary>
-          <p>
-            Monthly relief alone cannot identify the best choice. Darren needs the actual rates,
-            fees, credit profile and repayment goals to compare total costs fairly.
-          </p>
-        </details>
       </div>
 
       <h3 className="dcp-h3">Adjust Your Home Equity Loan Estimate</h3>
@@ -754,7 +758,7 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
 export default function DebtPage({ v, overlays }: { v: DebtPageView; overlays: ReactNode }) {
   return (
     <section className="dcp">
-      <DebtPageHero />
+      <DebtPageHero onAskHeloc={v.openCalendly} />
 
       <div id="savings" className="dcp-flow">
         <ul className="dcp-trust">
