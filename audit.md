@@ -489,6 +489,33 @@ Test data: the `TEST H3 Live` row in Leads and its Follow-ups row were deleted o
 - **HubSpot access:** Darren is giving Max another HubSpot seat so she can manage forms, contacts and connections.
 - **CallRail to HubSpot:** CallRail emailed "Action Required: HubSpot is not set up for Darren Tsai. The HubSpot integration setup is incomplete. We cannot send or receive data until setup has been completed." So "Pending" means the authorisation was never finished, not that it is waiting for a first call (the 7 Oct reading was wrong). The CallRail page shows Hub ID 247401197, inbound calls, outbound calls and text messages ticked, "Create a new contact when no contact is found" selected. Someone signed in to both CallRail and HubSpot with permission to connect apps has to finish it.
 
+### Live re-check of 213c51e (L11 fix 1, Outfit Fallback font), 8 Oct (Max)
+
+Live: the homepage `h1` uses `Outfit, "Outfit Fallback", sans-serif` and Outfit loads. GTM-N7Z8Q4QF and G-627RJ4FDSP loaded, `hubspotutk` set, CallRail swapped the number to (714) 475-1497.
+
+**PageSpeed Insights, mobile, 8 Oct**
+
+| Page | Perf | A11y | FCP | LCP | TBT | CLS | CLS before |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 87 | 100 | 0.9 s | 0.9 s | 300 ms | 0.002 | 0.037 (7 Oct) |
+| `/dscr/` | 93 | 100 | 1.0 s | 1.0 s | 310 ms | 0.005 | 0.007 |
+| `/fha/` run 1 | 69 | 100 | 1.3 s | 2.2 s | 2,270 ms | 0 | 0.007 |
+| `/fha/` run 2 | 91 | 100 | 1.2 s | 1.2 s | 330 ms | 0.036 | |
+| `/realestateinvesting/` | 91 | 100 | 1.0 s | 1.7 s | 340 ms | 0 | 0.004 |
+| `/mortgage-calculator/` | 87 | 100 | 1.9 s | 2.0 s | 370 ms | 0 | not run before |
+
+The homepage shift is gone (0.037 to 0.002), and in this run its LCP also read 0.9 s (4.3 to 5.2 s on 7 Oct), score 87 (was 53 to 71). One run only, so the homepage LCP should be confirmed with two more runs before treating fix 2 as unnecessary. All five pages are under the 0.1 CLS line and under 2.5 s LCP in this run. `/fha/` varies between runs (TBT 2,270 ms once, CLS 0.036 once, both still within "good" for CLS); nothing to act on yet.
+
+### Kocah's reply, 8 Oct (Niko)
+
+- **HubSpot test contact:** Niko confirmed the hidden fields populate (screenshot: `rdt_lead_source` = rei-contact, `rdt_gclid` = TESTH3GCLID, `rdt_first_utm_source` = google, `rdt_first_utm_medium` = cpc). Empty: Loan Amount, Loan Type, Property Use. Our push does not send those yet (`hubspotFields()` sends email, name, phone, state and `rdt_*` only). Needs Niko's internal property names and allowed values first, then a Claude Code change (L12). Not yet confirmed that the test contact was deleted.
+- **Qualified call:** 90 seconds confirmed.
+- **CallRail to HubSpot:** Active (screenshot of CallRail integrations: Google Ads, GA4 and HubSpot all Active). Niko rebuilt the connection; CallRail had shown Pending while HubSpot showed completed. Settings kept (inbound, outbound, texts; new contact for every caller).
+- **calendly_booking:** Kocah will most likely switch it to Primary early in launch for extra bidding signals; they treat HubSpot as the source of truth, so the Google Ads double count is accepted on their side. This overrides the CLAUDE.md "never import calendly_booking" rule for the Ads account Kocah runs; the site side does not change.
+- **HubSpot scripts:** Niko says this is on our side. The three switches (Google Ads pixel, non-HubSpot form capture, cookie banner) are HubSpot settings, not GTM or site code, so Max can do them once her new HubSpot seat is active.
+- **CallRail pool:** Niko suggests starting with 1 number. Open question: with one shared number CallRail cannot tie a call to the visitor's ad click, so calls lose keyword/gclid attribution. To raise with Niko.
+- **Launch:** Kocah expects to go live end of this week or early next, after their checks and the build in the Ads account.
+
 ## HubSpot, 29 Sep: access, tracking code, and the lead push (H1 to H4)
 
 Agreed with Kocah (Niko, 29 Sep): keep our forms, send each lead to HubSpot with the GCLID attached; GTM is the only tag setup (no raw `AW-18451324434` snippet).

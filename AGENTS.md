@@ -97,7 +97,10 @@ constrain code:
 - **Conversion ownership is split and must not be duplicated.** GA4
   `generate_lead` is the only website form conversion for Google Ads. CallRail
   owns paid phone calls (website pool, >60s filter). GA4 `phone_click` stays an
-  observation event, never imported as a conversion.
+  observation event, never imported as a conversion. One exception, decided by
+  Kocah on 8 Oct 2026 and theirs to make: `calendly_booking` is imported into
+  Ads as well, so a form lead who then books counts twice there (see the
+  booking notes under Known state).
 - **No PII into GA4.** The `generate_lead` dataLayer payload carries nested
   `user_data` for internal use. Do not map names, emails, phones or messages into
   GA4 event parameters.
@@ -235,8 +238,14 @@ or the lead lands on the generic tab with its fields dropped:
   the only answer. Rendered inline the iframe is ours, so every booking is
   visible. The listener checks `e.origin` against calendly.com, which is the
   security boundary and not a nicety: without it any page could post a forged
-  booking. `calendly_booking` is an observation event and must **never** be
-  imported into Ads, for the same reason as `phone_click`.
+  booking. `calendly_booking` was an observation event that must never be
+  imported into Ads, for the same reason as `phone_click`, until 8 Oct 2026.
+  Kocah runs the Google Ads account and has decided to import it, probably as
+  Primary during launch for the extra bidding signal, with HubSpot as their
+  source of truth, so a visitor who submits a form and then books is counted
+  twice in Ads and that is accepted on their side. It is their call, not a
+  tracking bug to fix here. The site side does not change: the event fires
+  once per booking, behind the origin check, with `page_path` only.
 - Tests count as passing only with the whole suite: `tests/booking-chooser.test.ts`
   loads the source once per file rather than per test, because the message
   listener is registered at evaluation and re-evaluating stacks listeners.
