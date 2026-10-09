@@ -257,9 +257,40 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
 
   it('sends blank rather than zero for anything not given', () => {
     expect(CALC).toContain("mortgageRate: mr > 0 ? mr : '', mortgageTerm: mt > 0 ? mt : ''");
-    expect(CALC).toContain("monthlySavings: bestSave > 0 ? Math.round(bestSave) : ''");
     expect(CALC).toContain("heloanMonthlyPayment: heloanPmt > 0 ? Math.round(heloanPmt) : ''");
-    expect(CALC).toContain("heloanMonthlySavings: heloanSave > 0 ? Math.round(heloanSave) : ''");
+    expect(CALC).toContain("refiSameTermPayment: refiSameTermPmt > 0 ? Math.round(refiSameTermPmt) : ''");
+    expect(CALC).toContain("weightedAvgRate: wtRate > 0 ? Math.round(wtRate * 100) / 100 : ''");
+    expect(CALC).toContain("rateSourceDate: ratesLive ? rateDate : ''");
+  });
+
+  it('sends savings signed, so a payment that goes up is not a blank (R1)', () => {
+    // Each was sent only when positive, which made "this costs more" look the
+    // same in the Sheet as "this was never priced". An unpriced HELOAN is still
+    // blank; a priced one is a number either way.
+    expect(CALC).toContain('monthlySavings: Math.round(bestSigned),');
+    expect(CALC).toContain('const bestSigned = heloanPmt > 0 ? Math.max(refiSave, heloanSave) : refiSave;');
+    expect(CALC).toContain('refiMonthlySavings: Math.round(refiSave),');
+    expect(CALC).toContain("heloanMonthlySavings: heloanPmt > 0 ? Math.round(heloanSave) : ''");
+    expect(CALC).toContain("refiSameTermSavings: refiSameTermPmt > 0 ? Math.round(refiSameTermSave) : ''");
+    expect(CALC).not.toMatch(/Savings: \w+Save > 0 \?/);
+  });
+
+  it('sends the equity under the name the equity and ADU pages use', () => {
+    // One header, one field, on every tab. R1 first sent estimatedHomeEquity
+    // here, which the Debt Consolidation schema would have left blank.
+    expect(CALC).toContain("estimatedEquity: hv > 0 && balanceGiven ? Math.round(hv - mb) : ''");
+    expect(CALC).not.toContain('estimatedHomeEquity');
+  });
+
+  it('no longer sends when to call or how they found Darren (R1)', () => {
+    // Gone, not merely blank: a field left in the payload keeps a column alive.
+    for (const gone of ['bestTime', 'leadSrc', 'bestTimeToCall', 'leadSource:']) {
+      expect(CALC, gone).not.toContain(gone);
+    }
+    // The rescue email no longer labels them either.
+    const LEAD_FN = read('netlify/functions/lead.mts');
+    expect(LEAD_FN).not.toContain('bestTimeToCall');
+    expect(LEAD_FN).not.toContain('"leadSource"');
   });
 
   it('sends what the HELOAN figures were priced at', () => {

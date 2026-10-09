@@ -89,7 +89,7 @@ describe('each funnel writes to its own tab, under its own headers', () => {
       'Last Name': 'Investor',
       Email: 'jane@example.com',
       State: 'CA',
-      Magnet: 'DSCR Rate & Cash Flow Guide',
+      'Magnet/Goal': 'DSCR Rate & Cash Flow Guide',
       Source: 'dscr',
       DSCR: '1.17',
       'Down Payment': '25%',
@@ -123,7 +123,6 @@ describe('each funnel writes to its own tab, under its own headers', () => {
       source: 'DebtConsolidation',
       firstName: 'Cy', lastName: 'Homeowner', email: 'cy@example.com',
       phone: '5552223333', state: 'CA',
-      bestTimeToCall: 'Morning (8am–12pm)', leadSource: 'YouTube',
       homeValue: 900000, mortgageBalance: 400000, mortgagePayment: 2600,
       totalDebtBalance: 26500, totalDebtPayment: 670, monthlySavings: 540,
       refiMonthlyPayment: 2730, refiMonthlySavings: 540,
@@ -132,8 +131,6 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     });
     const row = h.rowOf('Debt Consolidation');
     expect(row).toMatchObject({
-      'Best Time to Call': 'Morning (8am–12pm)',
-      'Lead Source': 'YouTube',
       'Home Value': 900000,
       'Total Debt Payment': 670,
       'HELOAN Monthly Savings': 334,
@@ -142,6 +139,106 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     // The calculator can legitimately send 0, and 0 must not become ''.
     post(h, { source: 'DebtConsolidation', email: 'z@example.com', homeValue: 0, monthlySavings: 0 });
     expect(h.rowOf('Debt Consolidation', 2)['Home Value']).toBe(0);
+    expect(h.rowOf('Debt Consolidation', 2)['Monthly Savings']).toBe(0);
+  });
+
+  it('Debt Consolidation ignores the two fields the form no longer has', () => {
+    // Best Time to Call and Lead Source came off the form on 8 Oct. An old tab
+    // still open in someone's browser, or a replayed payload, can still send
+    // them, and must not bring the columns back.
+    post(h, {
+      source: 'DebtConsolidation', email: 'old-tab@example.com',
+      bestTimeToCall: 'Morning (8am–12pm)', leadSource: 'YouTube',
+    });
+    const headers = h.tabs.get('Debt Consolidation')!.rows[0] as string[];
+    expect(headers).not.toContain('Best Time to Call');
+    expect(headers).not.toContain('Lead Source');
+    expect(Object.values(h.rowOf('Debt Consolidation'))).not.toContain('YouTube');
+  });
+
+  it('Debt Consolidation stores a payment that goes UP as a negative saving', () => {
+    // The site used to send a saving only when it was positive, so an option
+    // that raised the payment looked exactly like one that was never priced.
+    post(h, {
+      source: 'DebtConsolidation', email: 'up@example.com',
+      monthlySavings: -140, refiMonthlySavings: -140, heloanMonthlySavings: -310,
+      refiSameTermPayment: 3100, refiSameTermSavings: -260,
+    });
+    expect(h.rowOf('Debt Consolidation')).toMatchObject({
+      'Monthly Savings': -140,
+      'Refi Monthly Savings': -140,
+      'HELOAN Monthly Savings': -310,
+      'Same-Payoff Refi Payment': 3100,
+      'Same-Payoff Refi Savings': -260,
+    });
+  });
+
+  it('Debt Consolidation records the position the options were compared against', () => {
+    post(h, {
+      source: 'DebtConsolidation', email: 'pos@example.com',
+      estimatedEquity: 300000, currentLtv: 53.85, currentMonthlyPayment: 2870,
+      weightedAvgRate: 21.4, rateSourceDate: '2026-10-01',
+      debts: [
+        { id: 1, type: 'Credit Card', bal: 8500, pmt: 250, rate: 24.99 },
+        { id: 2, type: 'Auto Loan', bal: 18000, pmt: 420, rate: 0 },
+        { id: 3, type: '', bal: 0, pmt: 0, rate: 0 },
+      ],
+    });
+    expect(h.rowOf('Debt Consolidation')).toMatchObject({
+      'Estimated Home Equity': 300000,
+      'Current LTV': 53.85,
+      'Current Monthly Payment': 2870,
+      'Weighted Avg Rate': 21.4,
+      'Rate Source Date': '2026-10-01',
+      // One readable cell; the row the visitor never filled in is left out.
+      Debts: 'Credit Card $8,500 at 24.99% ($250/mo); Auto Loan $18,000 ($420/mo)',
+    });
+  });
+
+  it('keeps a formula out of the Debts cell, whatever the posted type says', () => {
+    post(h, { source: 'DebtConsolidation', email: 'x@example.com', debts: [{ type: '=HYPERLINK("x")', bal: 100, pmt: 5 }] });
+    expect(String(h.rowOf('Debt Consolidation').Debts)).toBe('HYPERLINKx $100 ($5/mo)');
+  });
+
+  it('DSCR: stores the scenario the visitor built, which used to reach only the Bonzo note', () => {
+    post(h, {
+      source: 'dscr', email: 'scenario@example.com', dscr: '1.14',
+      purchasePrice: 320000, monthlyRent: 2600, annualTax: 3800, annualInsurance: 1400,
+      monthlyHoa: 0, monthlyPI: 1678, monthlyPitia: 2111,
+    });
+    expect(h.rowOf('DSCR')).toMatchObject({
+      'Purchase Price': 320000, 'Monthly Rent': 2600, 'Annual Tax': 3800, 'Annual Insurance': 1400,
+      // No HOA is an answer here, not a blank.
+      'Monthly HOA': 0, 'Monthly P&I': 1678, 'Monthly PITIA': 2111, DSCR: '1.14',
+    });
+  });
+
+  it('gives every row an id, the form it came from and the page it was sent from', () => {
+    post(h, {
+      source: 'fha', email: 'ids@example.com', formId: 'fha-magnet',
+      pageUri: 'https://realdarrentsai.com/fha/?gclid=ABC#form', firstUtmMedium: 'cpc',
+    });
+    expect(h.rowOf('FHA')).toMatchObject({
+      'Submission ID': 'uuid-1',
+      'Form ID': 'fha-magnet',
+      // The path only: the query string carries the click id, which has its own column.
+      Page: '/fha/',
+      'First Touch Medium': 'cpc',
+    });
+    // The queue row carries the same id, so the two can be matched.
+    expect(JSON.parse(String(h.rowOf('Follow-ups').Payload)).submissionId).toBe('uuid-1');
+  });
+
+  it('keeps the id a replayed payload already has', () => {
+    post(h, { source: 'fha', email: 'replay@example.com', submissionId: 'kept-from-first-time' });
+    expect(h.rowOf('FHA')['Submission ID']).toBe('kept-from-first-time');
+  });
+
+  it('does not treat an inherited property name as a funnel', () => {
+    // SOURCE_SCHEMAS['constructor'] is Object, which is truthy and has no tab.
+    const res = post(h, { source: 'constructor', email: 'proto@example.com' });
+    expect(res.success).toBe(true);
+    expect(h.rowOf('Leads')).toMatchObject({ Source: 'constructor', Email: 'proto@example.com' });
   });
 
   /**
@@ -149,12 +246,9 @@ describe('each funnel writes to its own tab, under its own headers', () => {
    * away for a long time, so Darren called without knowing the two numbers that
    * decide whether a consolidation is worth doing at all.
    *
-   * Asserted by header name, never by index: these two are the only columns in
-   * the file inserted mid-array rather than appended, and the tab had to be
-   * migrated by hand to match. If the header row and the row builder ever drift
-   * apart again, this is what says so.
+   * They sit with the rest of the mortgage, straight after its payment.
    */
-  it('Debt Consolidation keeps the current rate and term, between payment and debts', () => {
+  it('Debt Consolidation keeps the current rate and term, beside the mortgage payment', () => {
     post(h, {
       source: 'DebtConsolidation', email: 'rate@example.com', state: 'CA',
       mortgagePayment: 2600, mortgageRate: 3.5, mortgageTerm: 27,
@@ -171,7 +265,6 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     const headers = h.tabs.get('Debt Consolidation')!.rows[0] as string[];
     expect(headers.indexOf('Mortgage Rate')).toBe(headers.indexOf('Mortgage Payment') + 1);
     expect(headers.indexOf('Mortgage Term')).toBe(headers.indexOf('Mortgage Rate') + 1);
-    expect(headers.indexOf('Total Debt Balance')).toBe(headers.indexOf('Mortgage Term') + 1);
   });
 
   it('files a Debt Consolidation lead that skipped the optional rate and term', () => {
@@ -213,19 +306,19 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     expect(row['Monthly Savings']).toBe('');
   });
 
-  it('Debt Consolidation records licensed state, after the attribution columns', () => {
+  it('Debt Consolidation records licensed state, beside State like every other tab', () => {
     post(h, { source: 'DebtConsolidation', email: 'ca@example.com', state: 'CA', ...ATTR });
     post(h, { source: 'DebtConsolidation', email: 'ny@example.com', state: 'NY', ...ATTR });
     expect(h.rowOf('Debt Consolidation', 1)['Licensed?']).toBe('Yes');
     expect(h.rowOf('Debt Consolidation', 2)['Licensed?']).toBe('No');
 
-    // Immediately after the attribution block, so no historical cell to its
-    // left changed meaning. Not "last": the triage columns were appended after
-    // it later, by the same append-only rule that put it here.
+    // It sat after the attribution block on this one tab, where the old
+    // append-only rule had left it. The standard order puts it next to the
+    // state it is a verdict on.
     const headers = h.tabs.get('Debt Consolidation')!.rows[0] as string[];
     const licensed = headers.indexOf('Licensed?');
     expect(licensed).toBeGreaterThan(-1);
-    expect(headers[licensed - 1]).toBe('First Touch At');
+    expect(headers[licensed - 1]).toBe('State');
   });
 
   it('extends an older Debt Consolidation tab without disturbing its rows', () => {

@@ -93,6 +93,19 @@ describe('each funnel is enrolled in its own Bonzo campaign', () => {
     expect(prospect!.url).toContain(`/prospects/campaign/${campaignId}`);
   });
 
+  it.each([
+    ['home-equity', 'BONZO_HOME_EQUITY_CAMPAIGN_ID'],
+    ['adu', 'BONZO_ADU_CAMPAIGN_ID'],
+  ])('%s uses the default campaign until it has one of its own', (source, prop) => {
+    // Routed on 8 Oct ahead of their pages, with no Bonzo campaign built yet.
+    // The table could only say "this id, or bare /prospects" before, so a
+    // funnel added without a hardcoded id enrolled its leads in nothing.
+    const unset = push({ source, email: 'a@example.com', state: 'CA' });
+    expect(unset.prospect!.url).toContain('/prospects/campaign/999');
+    const set = push({ source, email: 'a@example.com', state: 'CA' }, { ...BASE_PROPS, [prop]: '555111' });
+    expect(set.prospect!.url).toContain('/prospects/campaign/555111');
+  });
+
   it('sends everything else to the default campaign from Script Properties', () => {
     for (const source of ['DebtConsolidation', 'MortgageCalculator', 'QualifyForm']) {
       const { prospect } = push({ source, email: 'a@example.com', state: 'CA' });
@@ -212,6 +225,12 @@ describe('tags say what kind of lead this is', () => {
     ['dscr-contact', ['contact', 'dscr']],
     ['fha-contact', ['contact', 'fha']],
     ['rei-contact', ['contact', 'real-estate-investing']],
+    // Both carry the tag the debt funnel has always used for equity intent,
+    // so one Bonzo filter finds every equity lead whichever page sent it.
+    ['home-equity', ['home-equity', 'HELOC/cash-out interest']],
+    ['adu', ['adu', 'HELOC/cash-out interest']],
+    ['home-equity-contact', ['contact', 'home-equity']],
+    ['adu-contact', ['contact', 'adu']],
   ])('%s is tagged for its funnel', (source, expected) => {
     const { prospect } = push({ source, email: 'a@example.com', state: 'CA' });
     for (const tag of expected) expect(prospect!.tags, source).toContain(tag);
@@ -220,7 +239,7 @@ describe('tags say what kind of lead this is', () => {
   it.each([
     'dscr', 'fha', 'real-estate-investing', 'DebtConsolidation', 'MortgageCalculator',
     'home-contact', 'debt-consolidation-contact', 'mortgage-calculator-contact', 'dscr-contact',
-    'fha-contact', 'rei-contact',
+    'fha-contact', 'rei-contact', 'home-equity', 'adu', 'home-equity-contact', 'adu-contact',
   ])(
     '%s says whether the state is one Darren is licensed in',
     (source) => {
@@ -400,5 +419,26 @@ describe('test leads stay out of Bonzo', () => {
     h.processFollowUps();
     const debug = h.tabs.get('Debug');
     expect(JSON.stringify(debug ? debug.rows : [])).toContain('test lead, not enrolled');
+  });
+});
+
+describe('the two funnels routed ahead of their pages', () => {
+  it('tags a home equity lead with what the money is for', () => {
+    const { prospect } = push({ source: 'home-equity', email: 'a@example.com', state: 'CA', goal: 'Renovation / ADU' });
+    expect(prospect!.tags).toContain('goal:renovation-adu');
+    expect(prospect!.tags).not.toContain('mortgage-calculator');
+  });
+
+  it('tags an ADU lead with the project purpose', () => {
+    const { prospect } = push({ source: 'adu', email: 'a@example.com', state: 'CA', projectPurpose: 'Rental ADU' });
+    expect(prospect!.tags).toContain('purpose:rental-adu');
+    expect(prospect!.tags).not.toContain('mortgage-calculator');
+  });
+
+  it('adds no goal or purpose tag when the form did not send one', () => {
+    for (const source of ['home-equity', 'adu']) {
+      const { prospect } = push({ source, email: 'a@example.com', state: 'CA' });
+      expect(prospect!.tags.some((t) => t.startsWith('goal:') || t.startsWith('purpose:')), source).toBe(false);
+    }
   });
 });

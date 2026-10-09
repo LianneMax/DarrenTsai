@@ -150,20 +150,28 @@ const FUNNEL_CAMPAIGNS = {
 };
 
 // Ad attribution, captured by public/attribution.js and sent with every form.
-// ALWAYS appended to the END of a header array and the END of the matching row,
-// never inserted mid-array: existing tabs already hold rows under the current
-// column order, and inserting would shift every historical row's meaning with
-// no way to tell old rows from new. ensureHeaders() relies on this too.
+//
+// One contiguous block, in this order, on every lead tab. This list used to be
+// append-only, because rows were written by POSITION and inserting a name here
+// shifted the meaning of every historical cell to its right. Since the 8 Oct
+// schema release rows are written by HEADER NAME (appendByHeader), so a name can
+// sit where it belongs, as 'First Touch Medium' now does. What has not changed
+// is that a live tab's columns only ever MOVE through migrateLeadTabs(): editing
+// this list re-orders nothing on the sheet, it only says where the next
+// migration will put things.
 const ATTR_HEADERS = [
   'UTM Source', 'UTM Medium', 'UTM Campaign', 'UTM Term', 'UTM Content',
   'Click ID', 'Click ID Type', 'Landing Page', 'Referrer',
-  'First Touch Source', 'First Touch Campaign',
-  // First-touch click id, appended later. The last touch is not enough on its
-  // own: someone who clicks an ad, leaves, and returns weeks later through
-  // organic YouTube or search has a last touch with no click id at all, so
-  // without these the gclid is lost and the lead can never be matched back to
-  // the ad that found them. First touch is kept for 90 days, matching Google's
-  // gclid lookback, specifically for this case.
+  // 'First Touch Medium' was sent by attribution.js from the start and stored
+  // nowhere, so "first touch was paid search" could not be told from "first
+  // touch was a YouTube link" on any row without a click id.
+  'First Touch Source', 'First Touch Medium', 'First Touch Campaign',
+  // First-touch click id. The last touch is not enough on its own: someone who
+  // clicks an ad, leaves, and returns weeks later through organic YouTube or
+  // search has a last touch with no click id at all, so without these the gclid
+  // is lost and the lead can never be matched back to the ad that found them.
+  // First touch is kept for 90 days, matching Google's gclid lookback,
+  // specifically for this case.
   'First Click ID', 'First Click ID Type', 'First Touch At'
 ];
 function attrRow(d) {
@@ -171,7 +179,7 @@ function attrRow(d) {
     d.utm_source || '', d.utm_medium || '', d.utm_campaign || '',
     d.utm_term || '', d.utm_content || '',
     d.clickId || '', d.clickIdType || '', d.landingPage || '', d.referrer || '',
-    d.firstUtmSource || '', d.firstUtmCampaign || '',
+    d.firstUtmSource || '', d.firstUtmMedium || '', d.firstUtmCampaign || '',
     d.firstClickId || '', d.firstClickIdType || '', d.firstTouchTs || ''
   ];
 }
@@ -190,7 +198,7 @@ function effectiveClickIdType(d) {
 }
 
 /**
- * Triage columns, appended to every lead-bearing tab.
+ * Triage columns, the last three on every lead-bearing tab.
  *
  * WHY. The Sheet holds four real leads and more than twenty test rows, with
  * nothing to tell them apart, so the one question anyone actually asks it —
@@ -201,10 +209,7 @@ function effectiveClickIdType(d) {
  * Status and Contacted are deliberately left blank for a person to fill in.
  * This is a stopgap until HubSpot: a CRM owns lead state properly, and the
  * point here is only to stop the record being unreadable in the meantime.
- *
- * Appended, never inserted. ensureHeaders() writes past the sheet's current
- * last column, so these appear on their own the next time each tab is written
- * to, with no manual migration and no historical row disturbed.
+ * migrateLeadTabs() carries whatever a person typed into them across by name.
  */
 const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
 
@@ -244,36 +249,90 @@ function triageRow(d) {
   return [isTestLead(d) ? 'TEST' : '', '', ''];
 }
 
-const LEAD_HEADERS = [
-  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
-  'Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals',
-  'Target Outcome', 'Timeline', 'Source', 'Licensed?'
-].concat(ATTR_HEADERS, TRIAGE_HEADERS);
-
-// Newsletter is a different shape: email only, no name or phone, and no
-// attribution columns. Nothing on the site sends source 'newsletter' any more,
-// so this exists to keep the historical tab readable.
-const NEWSLETTER_HEADERS = [
-  'Timestamp', 'Email', 'Source'
-];
-
-const QUALIFY_HEADERS = [
-  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
-  'Loan Type', 'Timeline', 'Price Range', 'Credit Range',
-  'Employment', 'Notes', 'Source'
-].concat(ATTR_HEADERS, TRIAGE_HEADERS);
-
-// Each landing funnel gets its OWN sheet tab with columns matching its actual
-// inputs/outputs — no shared blank columns. `row(d)` returns cells in header order.
-const COMMON_LEAD = ['Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State'];
-function commonLeadRow(d) {
-  return [
-    d.timestamp || new Date().toISOString(),
-    d.firstName || '', d.lastName || '', d.email || '', d.phone || '', d.state || ''
-  ];
-}
 function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 
+/** A header list and the row that goes with it, as { header: value }. */
+function byHeader(headers, row) {
+  const out = {};
+  for (let i = 0; i < headers.length; i++) out[headers[i]] = row[i];
+  return out;
+}
+
+/**
+ * A value for a cell: blank when the form did not send it. Not `|| ''`, which
+ * also blanks a 0, and on the calculator tabs a 0 is an answer (a paid-off
+ * mortgage, a saving of nothing) while a blank is a question nobody was asked.
+ */
+function cell(v) {
+  return (v === undefined || v === null) ? '' : v;
+}
+
+// ── Lead tab schema ─────────────────────────────────────────────────────────
+//
+// THE STANDARD ORDER (docs/lead-sheet-schema.md, 8 Oct 2026). Every lead tab is
+//
+//   LEAD_PREFIX | the funnel's own details | ATTR_HEADERS | TRIAGE_HEADERS
+//
+// so who the lead is reads the same on every tab, the numbers they gave sit
+// together in the middle, and where they came from is one block at the end.
+// Before this each tab was the order its columns happened to be added in:
+// 'Licensed?' after the attribution block on one tab and before it on the rest,
+// the FHA estimator's inputs after 'Contacted', HELOAN's credit tier eighteen
+// columns away from the HELOAN payment it priced.
+//
+// 'Submission ID' is minted in doPost, not by the form, and rides in the
+// Follow-ups payload too, so a queue row and its lead row can be matched without
+// comparing timestamps. 'Form ID' tells apart two forms on one page; 'Page' is
+// the path the form was submitted from, which is not 'Landing Page' (where the
+// last touch arrived).
+const LEAD_PREFIX = [
+  'Timestamp', 'Submission ID', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
+  'Licensed?', 'Source', 'Magnet/Goal', 'Form ID', 'Page'
+];
+
+/**
+ * Headers a live tab may still carry under their old name. appendByHeader
+ * writes under the old name while that is what the sheet has, so a lead that
+ * arrives between this deployment and the migration still lands in one column,
+ * and migrateLeadTabs() renames it. Keyed by the schema's name.
+ */
+const HEADER_ALIASES = {
+  'Magnet/Goal': ['Magnet']
+};
+
+/**
+ * Columns the schema no longer has, per tab. migrateLeadTabs() does not copy
+ * them; they stay readable in the "(old ...)" tab it leaves behind.
+ *
+ * Best Time to Call and Lead Source ("How did you find me?") came off the debt
+ * form on 8 Oct: tracked attribution answers the second, and both were being
+ * skipped or left on their opening option often enough to mean little.
+ */
+const DROPPED_HEADERS = {
+  'Debt Consolidation': ['Best Time to Call', 'Lead Source']
+};
+
+/** One line per debt the visitor entered, for a single cell Darren can read. */
+function debtsSummary(debts) {
+  if (!Array.isArray(debts)) return '';
+  const money = function (n) { return '$' + Math.round(n).toLocaleString('en-US'); };
+  return debts.map(function (x) {
+    const bal = Number(x && x.bal) || 0;
+    const pmt = Number(x && x.pmt) || 0;
+    const rate = Number(x && x.rate) || 0;
+    if (!bal && !pmt) return ''; // a row the visitor never filled in
+    // Letters and spaces only: the type comes from a dropdown, but the body is
+    // whatever was posted, and this cell must never begin with something Sheets
+    // would read as a formula.
+    const type = String((x && x.type) || '').replace(/[^A-Za-z ]/g, '').trim() || 'Debt';
+    return type + ' ' + money(bal) + (rate ? ' at ' + rate + '%' : '') + ' (' + money(pmt) + '/mo)';
+  }).filter(function (line) { return !!line; }).join('; ');
+}
+
+// Each funnel's own columns, and the value for each. `detailValues` returns
+// { header: value }; anything it leaves out is written blank. finishLeadSchema()
+// below adds `headers`, `values(d)` and `row(d)` to every entry.
+//
 // The 'heloc-hei' route was removed here. Nothing on the site sent it, and a
 // schema with no sender is a tab that can only ever be created by accident. The
 // existing "HELOC vs HEI" tab is untouched: nothing here deletes a tab, so
@@ -308,166 +367,394 @@ function safeCell(v) {
 function appendSafeRow(sheet, row) {
   sheet.appendRow(row.map(safeCell));
 }
-
-/** A number the visitor may have skipped: blank when absent, and 0 kept as 0. */
-function optionalCell(v) {
-  return v === undefined || v === null || v === '' ? '' : v;
-}
 const SOURCE_SCHEMAS = {
   'dscr': {
     tab: 'DSCR',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'DSCR', 'Down Payment', 'Loan Amount', 'Rate', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
-    row: function (d) {
-      return commonLeadRow(d).concat([
-        d.magnet || '', d.source, d.dscr || '', d.downPayment || '', d.loanAmount || '', d.rate || '', licensedCell(d)
-      ], attrRow(d), triageRow(d));
+    // 'Down Payment' is the percent the slider sat at ("25%"), as it always
+    // was on this tab; the dollar figure is Purchase Price less Loan Amount.
+    // Rent, tax, insurance, HOA, P&I and PITIA were sent since the calculator
+    // shipped and reached only the Bonzo note, never the Sheet.
+    details: [
+      'Purchase Price', 'Down Payment', 'Loan Amount', 'Rate', 'Monthly Rent',
+      'Annual Tax', 'Annual Insurance', 'Monthly HOA', 'Monthly P&I', 'Monthly PITIA', 'DSCR'
+    ],
+    detailValues: function (d) {
+      return {
+        'Purchase Price': d.purchasePrice, 'Down Payment': d.downPayment,
+        'Loan Amount': d.loanAmount, 'Rate': d.rate, 'Monthly Rent': d.monthlyRent,
+        'Annual Tax': d.annualTax, 'Annual Insurance': d.annualInsurance,
+        'Monthly HOA': d.monthlyHoa, 'Monthly P&I': d.monthlyPI,
+        'Monthly PITIA': d.monthlyPitia, 'DSCR': d.dscr
+      };
     }
   },
   'self-employed': {
     tab: 'Self-Employed',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d), triageRow(d)); }
+    details: [],
+    detailValues: function (_d) { return {}; }
   },
   'fha': {
     tab: 'FHA',
-    // The estimator's inputs are appended AFTER the triage columns, which is
-    // where the append-only rule puts anything added later. The page has had a
-    // payment estimator since 125c445 and sent Darren none of it, so an FHA
-    // lead arrived as a name and a credit range with no idea what they were
-    // looking at. Each cell is blank unless the visitor filled that field.
-    headers: COMMON_LEAD.concat(
-      ['Magnet', 'Source', 'Credit Score', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS,
-      ['Purchase Price', 'Down Payment %', 'Rate', 'Annual Tax', 'Annual Insurance', 'Monthly HOA', 'Est. Monthly Payment']
-    ),
-    row: function (d) {
-      return commonLeadRow(d).concat(
-        [d.magnet || '', d.source, d.creditScore || '', licensedCell(d)],
-        attrRow(d),
-        triageRow(d),
-        [
-          d.fhaPrice || '', d.fhaDownPct || '', d.fhaRate || '',
-          d.fhaTax || '', d.fhaInsurance || '', d.fhaHoa || '',
-          d.fhaMonthlyPayment || ''
-        ]
-      );
+    // Each estimator cell is blank unless the visitor filled that field: the
+    // guide form sits below the estimator and can be submitted without it.
+    details: [
+      'Credit Score', 'Purchase Price', 'Down Payment %', 'Rate',
+      'Annual Tax', 'Annual Insurance', 'Monthly HOA', 'Est. Monthly Payment'
+    ],
+    detailValues: function (d) {
+      return {
+        'Credit Score': d.creditScore, 'Purchase Price': d.fhaPrice,
+        'Down Payment %': d.fhaDownPct, 'Rate': d.fhaRate, 'Annual Tax': d.fhaTax,
+        'Annual Insurance': d.fhaInsurance, 'Monthly HOA': d.fhaHoa,
+        'Est. Monthly Payment': d.fhaMonthlyPayment
+      };
     }
   },
   'real-estate-investing': {
     tab: 'Real Estate Investing',
-    headers: COMMON_LEAD.concat(['Magnet', 'Source', 'Licensed?'], ATTR_HEADERS, TRIAGE_HEADERS),
-    row: function (d) { return commonLeadRow(d).concat([d.magnet || '', d.source, licensedCell(d)], attrRow(d), triageRow(d)); }
+    details: [],
+    detailValues: function (_d) { return {}; }
   },
-  // /home-equity/ (revamp phase 3). Funnel columns are the ones
-  // docs/lead-sheet-schema.md lists for this tab, laid out in today's order
-  // (contact, source, funnel, Licensed?, attribution, triage) so it reads like
-  // its neighbours until the planned migration rebuilds every tab by name.
-  // Mortgage Balance can honestly be 0 (a paid-off home), so the optional
-  // numbers go through optionalCell rather than `|| ''`.
-  'home-equity': {
-    tab: 'Home Equity',
-    headers: COMMON_LEAD.concat(
-      ['Source', 'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
-        'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference', 'Licensed?'],
-      ATTR_HEADERS, TRIAGE_HEADERS
-    ),
-    row: function (d) {
-      return commonLeadRow(d).concat([
-        d.source,
-        optionalCell(d.homeValue), optionalCell(d.mortgageBalance),
-        optionalCell(d.estimatedEquity), optionalCell(d.currentLtv),
-        d.goal || '', optionalCell(d.amountExploring), optionalCell(d.illustrativeCltv),
-        d.preference || '', licensedCell(d)
-      ], attrRow(d), triageRow(d));
+  'DebtConsolidation': {
+    tab: 'Debt Consolidation',
+    // What they owe, then the home, then today's position, then each option
+    // with what it was priced at beside it.
+    //
+    // The savings columns are SIGNED. The site used to send a saving only when
+    // it was positive, so an option that raised the payment looked exactly like
+    // one that was never priced. A negative number here means the payment goes
+    // up by that much; the site shows it to the visitor in those words and never
+    // as a negative saving.
+    //
+    // 'Mortgage Rate' and 'Mortgage Term' are optional on the form and stay
+    // blank when skipped, never 0: a 0% rate on a 0-year term reads as an
+    // answer. 'Rate Source Date' is the PMMS week the refi figures used, and is
+    // blank when the rates call failed and the static fallback priced them.
+    details: [
+      'Debts', 'Total Debt Balance', 'Total Debt Payment', 'Weighted Avg Rate',
+      'Home Value', 'Mortgage Balance', 'Mortgage Payment', 'Mortgage Rate', 'Mortgage Term',
+      'Estimated Home Equity', 'Current LTV', 'Current Monthly Payment', 'Monthly Savings',
+      'Refi Monthly Payment', 'Refi Monthly Savings',
+      'Same-Payoff Refi Payment', 'Same-Payoff Refi Savings',
+      'HELOAN Credit Tier', 'HELOAN Term', 'HELOAN Monthly Payment', 'HELOAN Monthly Savings',
+      'Rate Source Date'
+    ],
+    detailValues: function (d) {
+      return {
+        'Debts': debtsSummary(d.debts),
+        'Total Debt Balance': d.totalDebtBalance, 'Total Debt Payment': d.totalDebtPayment,
+        'Weighted Avg Rate': d.weightedAvgRate,
+        'Home Value': d.homeValue, 'Mortgage Balance': d.mortgageBalance,
+        'Mortgage Payment': d.mortgagePayment,
+        'Mortgage Rate': d.mortgageRate || '', 'Mortgage Term': d.mortgageTerm || '',
+        'Estimated Home Equity': d.estimatedEquity, 'Current LTV': d.currentLtv,
+        'Current Monthly Payment': d.currentMonthlyPayment,
+        'Monthly Savings': d.monthlySavings,
+        'Refi Monthly Payment': d.refiMonthlyPayment, 'Refi Monthly Savings': d.refiMonthlySavings,
+        'Same-Payoff Refi Payment': d.refiSameTermPayment,
+        'Same-Payoff Refi Savings': d.refiSameTermSavings,
+        // What the HELOAN figures were priced at. Without them a saving quoted
+        // at the 680+ tier is indistinguishable from one quoted at 580.
+        'HELOAN Credit Tier': d.heloanCreditTier, 'HELOAN Term': d.heloanTermYears,
+        'HELOAN Monthly Payment': d.heloanMonthlyPayment,
+        'HELOAN Monthly Savings': d.heloanMonthlySavings,
+        'Rate Source Date': d.rateSourceDate
+      };
     }
   },
-  // /adu/ (revamp phase 5). Funnel columns from docs/lead-sheet-schema.md's ADU
-  // row, laid out in today's order like 'home-equity' above. Mortgage Balance
-  // can be 0, so the numbers go through optionalCell.
+  // /home-equity/ (revamp phase 3) and /adu/ (phase 5). A balance of 0 is a
+  // paid-off home and cell() keeps it as 0.
+  'home-equity': {
+    tab: 'Home Equity',
+    details: [
+      'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
+      'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference'
+    ],
+    detailValues: function (d) {
+      return {
+        'Home Value': d.homeValue, 'Mortgage Balance': d.mortgageBalance,
+        'Estimated Home Equity': d.estimatedEquity, 'Current LTV': d.currentLtv,
+        'Goal': d.goal, 'Amount Exploring': d.amountExploring,
+        'Illustrative CLTV': d.illustrativeCltv, 'Preference': d.preference
+      };
+    }
+  },
   'adu': {
     tab: 'ADU',
-    headers: COMMON_LEAD.concat(
-      ['Source', 'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
-        'Project Cost', 'Amount to Finance', 'Illustrative CLTV', 'Project Purpose', 'Licensed?'],
-      ATTR_HEADERS, TRIAGE_HEADERS
-    ),
-    row: function (d) {
-      return commonLeadRow(d).concat([
-        d.source,
-        optionalCell(d.homeValue), optionalCell(d.mortgageBalance),
-        optionalCell(d.estimatedEquity), optionalCell(d.currentLtv),
-        optionalCell(d.projectCost), optionalCell(d.amountToFinance), optionalCell(d.illustrativeCltv),
-        d.projectPurpose || '', licensedCell(d)
-      ], attrRow(d), triageRow(d));
+    details: [
+      'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
+      'Project Cost', 'Amount to Finance', 'Illustrative CLTV', 'Project Purpose'
+    ],
+    detailValues: function (d) {
+      return {
+        'Home Value': d.homeValue, 'Mortgage Balance': d.mortgageBalance,
+        'Estimated Home Equity': d.estimatedEquity, 'Current LTV': d.currentLtv,
+        'Project Cost': d.projectCost, 'Amount to Finance': d.amountToFinance,
+        'Illustrative CLTV': d.illustrativeCltv, 'Project Purpose': d.projectPurpose
+      };
     }
   }
 };
 
+// Everything without a schema of its own: the contact modal on every page (see
+// CONTACT_SOURCES), the generic calculator form, and any source this file has
+// never heard of, which must still land somewhere rather than be lost.
+//
+// `|| ''` here, not cell(): no contact form asks for a term and the loan and
+// rate are optional, so a 0 on this tab was never an answer.
+const LEADS_SCHEMA = {
+  tab: 'Leads',
+  defaultSource: 'SimpleMortgageCalculator',
+  details: ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'],
+  detailValues: function (d) {
+    return {
+      'Loan Amount': d.loanAmount || '', 'Term (Years)': d.termYears || '',
+      'Rate (%)': d.annualRate || '', 'Goals': d.message || '',
+      'Target Outcome': d.target || '', 'Timeline': d.timeline || ''
+    };
+  }
+};
+
+/**
+ * Completes a schema: its full header list in the standard order, `values(d)`
+ * as { header: value } for appendByHeader, and `row(d)` as the same values in
+ * header order.
+ */
+function finishLeadSchema(schema) {
+  schema.headers = LEAD_PREFIX.concat(schema.details, ATTR_HEADERS, TRIAGE_HEADERS);
+  schema.values = function (d) {
+    const v = byHeader(LEAD_PREFIX, [
+      d.timestamp || new Date().toISOString(),
+      d.submissionId || '',
+      d.firstName || '', d.lastName || '', d.email || '', d.phone || '', d.state || '',
+      licensedCell(d),
+      d.source || schema.defaultSource || '',
+      d.magnet || '',
+      d.formId || '',
+      urlPath(d.pageUri)
+    ]);
+    const own = schema.detailValues(d);
+    schema.details.forEach(function (h) { v[h] = cell(own[h]); });
+    const attr = byHeader(ATTR_HEADERS, attrRow(d));
+    ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });
+    const triage = byHeader(TRIAGE_HEADERS, triageRow(d));
+    TRIAGE_HEADERS.forEach(function (h) { v[h] = triage[h]; });
+    return v;
+  };
+  schema.row = function (d) {
+    const v = schema.values(d);
+    return schema.headers.map(function (h) { return v[h]; });
+  };
+  return schema;
+}
+Object.keys(SOURCE_SCHEMAS).forEach(function (key) { finishLeadSchema(SOURCE_SCHEMAS[key]); });
+finishLeadSchema(LEADS_SCHEMA);
+
 const LANDING_SOURCES = Object.keys(SOURCE_SCHEMAS);
 
-// 'Licensed?' sits AFTER the attribution columns, which reads oddly next to the
-// other tabs where it comes before them. That is the append-only rule at work:
-// this tab already holds rows written under the current order, and inserting the
-// column where it "belongs" would shift the meaning of every historical cell to
-// its right. An odd-looking header is worth far less than a corrupted tab.
-const DEBT_CONSOLIDATION_HEADERS = [
-  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
-  'Best Time to Call', 'Lead Source',
-  'Home Value', 'Mortgage Balance', 'Mortgage Payment',
-  // These two sit mid-array, which is the one exception to the append-only rule
-  // in this file, and it was only safe because the two columns were inserted
-  // into the live tab by hand FIRST, so every historical row shifted right with
-  // its headers. Do not repeat this pattern: anything else new goes at the end.
-  'Mortgage Rate', 'Mortgage Term',
-  'Total Debt Balance', 'Total Debt Payment', 'Monthly Savings',
-  'Refi Monthly Payment', 'Refi Monthly Savings',
-  'HELOAN Monthly Payment', 'HELOAN Monthly Savings'
-  // 'HELOAN Credit Tier' and 'HELOAN Term' are appended at the very END rather
-  // than placed next to the other HELOAN columns, where they read best. This
-  // tab already holds rows written under the current order and the append-only
-  // rule is what keeps them readable.
-  //
-  // AFTER the triage columns, not before them. They went in before on @38 and
-  // it corrupted the live tab: the triage columns were already the last three
-  // on the sheet, so ensureHeaders, which only writes PAST the current last
-  // column, appended 'Status' and 'Contacted' a second time and the two new
-  // names never appeared. Rows were then written in this file's order against
-  // the sheet's older order, so a lead's TEST flag landed under Contacted and a
-  // chosen credit tier would have landed under Test?. "Append" means the end of
-  // the whole list, not the end of the part that reads sensibly.
-].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS, ['HELOAN Credit Tier', 'HELOAN Term']);
+// The two lists other code and the tests know by name.
+const LEAD_HEADERS = LEADS_SCHEMA.headers;
+const DEBT_CONSOLIDATION_HEADERS = SOURCE_SCHEMAS['DebtConsolidation'].headers;
 
+/** Every lead tab's schema, once each: what the audit and the migration walk. */
+function leadTabSchemas() {
+  return Object.keys(SOURCE_SCHEMAS).map(function (key) { return SOURCE_SCHEMAS[key]; }).concat([LEADS_SCHEMA]);
+}
 
-function getOrCreateSheet(ss, name, headers) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.appendRow(headers);
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
-    headerRange.setFontWeight('bold');
-    headerRange.setBackground('#223d55');
-    headerRange.setFontColor('#ffffff');
-    sheet.setFrozenRows(1);
-  } else {
-    ensureHeaders(sheet, headers);
-  }
+// Newsletter is a different shape: email only, no name or phone, and no
+// attribution columns. Nothing on the site sends source 'newsletter' any more,
+// so this exists to keep the historical tab readable.
+const NEWSLETTER_HEADERS = [
+  'Timestamp', 'Email', 'Source'
+];
+
+// Qualify has no sender either and keeps the shape it was created with. It is
+// written by header name like the lead tabs, so the attribution column added
+// above cannot shift it, but it is not part of the standard order and
+// migrateLeadTabs() leaves it alone.
+const QUALIFY_HEADERS = [
+  'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone',
+  'Loan Type', 'Timeline', 'Price Range', 'Credit Range',
+  'Employment', 'Notes', 'Source'
+].concat(ATTR_HEADERS, TRIAGE_HEADERS);
+
+function styleHeaderRange(range) {
+  range.setFontWeight('bold');
+  range.setBackground('#223d55');
+  range.setFontColor('#ffffff');
+}
+
+function createSheetWithHeaders(ss, name, headers) {
+  const sheet = ss.insertSheet(name);
+  sheet.appendRow(headers);
+  styleHeaderRange(sheet.getRange(1, 1, 1, headers.length));
+  sheet.setFrozenRows(1);
   return sheet;
 }
 
-// Adds header cells for columns a schema has gained since the tab was created.
-// Append-only and idempotent by construction: it writes just the tail past the
-// sheet's current last column and never touches an existing header cell, so a
-// tab full of historical rows keeps every column meaning it already had. Rows
-// written before the new columns existed simply stay blank underneath them,
-// which is accurate — those leads genuinely have no attribution.
+// For the tabs that are still written by position: Follow-ups, Debug and
+// Newsletter. Their columns are fixed and only ever grow at the end.
+function getOrCreateSheet(ss, name, headers) {
+  const sheet = ss.getSheetByName(name);
+  if (!sheet) return createSheetWithHeaders(ss, name, headers);
+  ensureHeaders(sheet, headers);
+  return sheet;
+}
+
+// Adds header cells for columns a POSITIONAL tab has gained since it was
+// created. Append-only and idempotent by construction: it writes just the tail
+// past the sheet's current last column and never touches an existing header
+// cell.
+//
+// NEVER call this on a lead tab. It assumes the sheet's columns are a prefix of
+// `headers`, which stopped being true for the lead tabs the day their order
+// changed: on a tab still in its old order it would write the tail of the NEW
+// list past the old last column, naming columns that are not there. That is the
+// @38 incident again. Lead tabs go through appendByHeader, which finds each
+// header by name.
 function ensureHeaders(sheet, headers) {
   const lastCol = sheet.getLastColumn();
   if (lastCol >= headers.length) return;
   const extra = headers.slice(lastCol);
   const range = sheet.getRange(1, lastCol + 1, 1, extra.length);
   range.setValues([extra]);
-  range.setFontWeight('bold');
-  range.setBackground('#223d55');
-  range.setFontColor('#ffffff');
+  styleHeaderRange(range);
+}
+
+/** A sheet's header row as trimmed strings, '' for an empty cell. */
+function liveHeaders(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+    return String(h === null || h === undefined ? '' : h).trim();
+  });
+}
+
+/**
+ * Appends one row, putting each value under the live header of the same name.
+ *
+ * WHY BY NAME. Rows used to be built in the order of a header list in this file
+ * and appended blind. That holds only while the sheet's columns are in that same
+ * order, and nothing checked. On @38 two columns went into a list one place
+ * left of where the sheet had them, and every cell from Test? onwards was
+ * written under the wrong header: a TEST flag under Contacted. Every test
+ * passed, because the row and the list agreed with each other.
+ *
+ * Here the sheet's own header row decides where a value goes, so this file and
+ * the sheet cannot disagree about position. That also takes the deadline out of
+ * a migration: this code is correct on a tab in its old order, in its new order,
+ * or half way between.
+ *
+ * A header the sheet lacks is added at the END, which is the one place that
+ * disturbs nothing. A header the sheet has twice gets the value in the first
+ * and a blank in the rest. Either, or columns in an order the schema does not
+ * describe, is reported by alertSheetDrift, and the lead is written regardless:
+ * refusing it would turn a cosmetic problem into a lost lead.
+ */
+function appendByHeader(ss, sheet, tabName, headers, values) {
+  let live = liveHeaders(sheet);
+
+  // The name each schema header goes by on this sheet: its own, or an old name
+  // the sheet still carries.
+  const nameOnSheet = {};
+  const missing = [];
+  headers.forEach(function (h) {
+    if (live.indexOf(h) !== -1) { nameOnSheet[h] = h; return; }
+    const aliases = Object.prototype.hasOwnProperty.call(HEADER_ALIASES, h) ? HEADER_ALIASES[h] : [];
+    for (let i = 0; i < aliases.length; i++) {
+      if (live.indexOf(aliases[i]) !== -1) { nameOnSheet[h] = aliases[i]; return; }
+    }
+    nameOnSheet[h] = h;
+    missing.push(h);
+  });
+
+  if (missing.length) {
+    const range = sheet.getRange(1, live.length + 1, 1, missing.length);
+    range.setValues([missing]);
+    styleHeaderRange(range);
+    live = live.concat(missing);
+  }
+
+  const row = [];
+  for (let i = 0; i < live.length; i++) row.push('');
+  headers.forEach(function (h) {
+    const at = live.indexOf(nameOnSheet[h]); // first occurrence, if the sheet has it twice
+    // safeCell: every value here can be a visitor's text (see safeCell).
+    if (at !== -1) row[at] = safeCell(cell(values[h]));
+  });
+  sheet.appendRow(row);
+
+  const drift = describeSheetDrift(live.slice(0, live.length - missing.length), headers, missing);
+  if (drift) alertSheetDrift(ss, tabName, drift);
+}
+
+/**
+ * What is wrong with a tab's columns, in words, or '' when the tab is exactly
+ * the schema (with or without extra columns after it, which a person is free to
+ * add). Pure, so the audit, the alert and the tests all read the same verdict.
+ */
+function describeSheetDrift(live, headers, missing) {
+  const problems = [];
+  if (missing && missing.length) problems.push('missing: ' + missing.join(', '));
+  const seen = {};
+  const twice = [];
+  live.forEach(function (h) {
+    if (h === '') return;
+    if (Object.prototype.hasOwnProperty.call(seen, h) && twice.indexOf(h) === -1) twice.push(h);
+    seen[h] = true;
+  });
+  if (twice.length) problems.push('there twice: ' + twice.join(', '));
+  for (let i = 0; i < headers.length; i++) {
+    if (live[i] !== headers[i]) {
+      problems.push('order differs from column ' + (i + 1) + ' (sheet has "' + (live[i] || '') +
+        '", schema has "' + headers[i] + '")');
+      break;
+    }
+  }
+  return problems.join('; ');
+}
+
+/**
+ * Says, at most once every 6 hours per tab, that a tab's columns are not the
+ * schema's. Expected between deploying this file and running migrateLeadTabs();
+ * at any other time it means someone moved, renamed or deleted a column by hand.
+ * Not alertFailure: nothing failed, the lead is saved under the right headers.
+ */
+function alertSheetDrift(ss, tabName, drift) {
+  try {
+    logDebug(ss, 'appendByHeader: "' + tabName + '" columns differ from the schema: ' + drift, '');
+    const cache = CacheService.getScriptCache();
+    const key = 'sheet_drift_' + String(tabName).replace(/[^A-Za-z0-9]/g, '_');
+    if (cache.get(key)) return;
+    cache.put(key, '1', 21600); // 6h, CacheService's maximum
+    MailApp.sendEmail({
+      to: ALERT_EMAIL,
+      subject: 'Sheet columns out of order: ' + tabName,
+      body: 'The "' + tabName + '" tab\'s columns are not in the order the script expects.\n\n  ' + drift + '\n\n' +
+        'NO LEAD IS AFFECTED. Rows are written under their header by name, so every value is in the right column.\n\n' +
+        'If the script was just updated, this is expected until migrateLeadTabs() has been run from the Apps Script editor ' +
+        '(run auditLeadTabs() first and read the Debug tab).\n' +
+        'Otherwise a column on this tab was moved, renamed or deleted by hand. Renaming a header back fixes it; ' +
+        'so does running migrateLeadTabs().\n\n' +
+        'This email repeats at most every 6 hours per tab.'
+    });
+  } catch (err) {
+    Logger.log('alertSheetDrift failed: ' + err.toString()); // never break a lead over a notice
+  }
+}
+
+/**
+ * The tab a lead schema writes to, created in the standard order if it does not
+ * exist. An existing tab is returned untouched: appendByHeader works out where
+ * things go, and only migrateLeadTabs() moves a column.
+ */
+function openLeadSheet(ss, schema) {
+  return ss.getSheetByName(schema.tab) || createSheetWithHeaders(ss, schema.tab, schema.headers);
+}
+
+/** Writes one lead to its schema's tab. */
+function writeLead(ss, schema, data) {
+  appendByHeader(ss, openLeadSheet(ss, schema), schema.tab, schema.headers, schema.values(data));
 }
 
 // Bonzo's Mortgage-group field keys, with the types the API reports:
@@ -1344,6 +1631,10 @@ function doPost(e) {
 
     lock.waitLock(20000);
 
+    // Minted here rather than by the form, so every row has one whatever sent
+    // it, and a replayed payload keeps the id it was first given.
+    if (!data.submissionId) data.submissionId = Utilities.getUuid();
+
     if (data.source === 'newsletter') {
       const sheet = getOrCreateSheet(ss, 'Newsletter', NEWSLETTER_HEADERS);
       appendSafeRow(sheet, [
@@ -1351,14 +1642,9 @@ function doPost(e) {
         data.email     || '',
         'newsletter'
       ]);
-    } else if (SOURCE_SCHEMAS[data.source]) {
-      // Each landing funnel writes to its OWN tab with its own columns.
-      const schema = SOURCE_SCHEMAS[data.source];
-      const sheet = getOrCreateSheet(ss, schema.tab, schema.headers);
-      appendSafeRow(sheet, schema.row(data));
     } else if (data.source === 'QualifyForm') {
-      const sheet = getOrCreateSheet(ss, 'Qualify', QUALIFY_HEADERS);
-      appendSafeRow(sheet, [
+      const sheet = ss.getSheetByName('Qualify') || createSheetWithHeaders(ss, 'Qualify', QUALIFY_HEADERS);
+      appendByHeader(ss, sheet, 'Qualify', QUALIFY_HEADERS, byHeader(QUALIFY_HEADERS, [
         data.timestamp   || new Date().toISOString(),
         data.firstName   || '',
         data.lastName    || '',
@@ -1371,68 +1657,17 @@ function doPost(e) {
         data.employment  || '',
         data.notes       || '',
         'QualifyForm'
-      ].concat(attrRow(data), triageRow(data)));
-    } else if (data.source === 'DebtConsolidation') {
-      const sheet = getOrCreateSheet(ss, 'Debt Consolidation', DEBT_CONSOLIDATION_HEADERS);
-      appendSafeRow(sheet, [
-        data.timestamp            || new Date().toISOString(),
-        data.firstName            || '',
-        data.lastName             || '',
-        data.email                || '',
-        data.phone                || '',
-        data.state                || '',
-        data.bestTimeToCall       || '',
-        data.leadSource           || '',
-        data.homeValue            || 0,
-        data.mortgageBalance      || 0,
-        data.mortgagePayment      || 0,
-        // Blank, not 0, for everything the visitor may not have given.
-        //
-        // Mortgage Rate and Mortgage Term are optional fields, and `|| 0` wrote
-        // a 0 into both on every submit that skipped them, which reads as a 0%
-        // rate on a 0-year term rather than as "not asked". The HELOAN figures
-        // are the same: they are only computed once a credit tier and a term
-        // are chosen, and a 0 there looks like a priced option worth nothing.
-        data.mortgageRate         || '',
-        data.mortgageTerm         || '',
-        data.totalDebtBalance     || 0,
-        data.totalDebtPayment     || 0,
-        data.monthlySavings       || '',
-        data.refiMonthlyPayment   || 0,
-        data.refiMonthlySavings   || 0,
-        data.heloanMonthlyPayment || '',
-        data.heloanMonthlySavings || '',
-      ].concat(
-        attrRow(data),
-        [licensedCell(data)],
-        triageRow(data),
-        // What the HELOAN figures above were priced at. Without them a saving
-        // quoted at the 680+ tier is indistinguishable from one quoted at 580,
-        // and the tool used to pick 680+ on the visitor's behalf.
-        //
-        // Last, matching DEBT_CONSOLIDATION_HEADERS. These two sat before
-        // triageRow on @38, which put every cell from Test? onwards one or two
-        // columns out of step with its header.
-        [data.heloanCreditTier || '', data.heloanTermYears || '']
-      ));
+      ].concat(attrRow(data), triageRow(data))));
     } else {
-      const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
-      appendSafeRow(sheet, [
-        data.timestamp            || new Date().toISOString(),
-        data.firstName            || '',
-        data.lastName             || '',
-        data.email                || '',
-        data.phone                || '',
-        data.state                || '',
-        data.loanAmount           || '',
-        data.termYears            || '',
-        data.annualRate           || '',
-        data.message              || '',
-        data.target               || '',
-        data.timeline             || '',
-        data.source               || 'SimpleMortgageCalculator',
-        licensedCell(data)
-      ].concat(attrRow(data), triageRow(data)));
+      // Each funnel writes to its OWN tab with its own columns; anything without
+      // a schema lands on Leads rather than being lost. hasOwnProperty, not a
+      // bare lookup: data.source arrives from the posted body, and a source of
+      // 'constructor' would otherwise find an inherited property and be treated
+      // as a schema with no tab.
+      const schema = Object.prototype.hasOwnProperty.call(SOURCE_SCHEMAS, data.source)
+        ? SOURCE_SCHEMAS[data.source]
+        : LEADS_SCHEMA;
+      writeLead(ss, schema, data);
     }
 
     // Queue the slow work instead of doing it here. pushToBonzo plus the guide
@@ -1441,7 +1676,10 @@ function doPost(e) {
     // Darren got a false "LEAD NOT SAVED" alert. Replying as soon as the row is
     // written keeps this response fast; processFollowUps does the rest within
     // about a minute.
-    enqueueFollowUp(ss, data, raw);
+    //
+    // Re-serialised so the queued payload carries the Submission ID the row was
+    // just given. `raw` stays as received for the failure alert below.
+    enqueueFollowUp(ss, data, JSON.stringify(data));
 
     lock.releaseLock();
 
@@ -1460,6 +1698,283 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (e) { /* already released on the happy path */ }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Lead tab audit and migration. Both are run BY HAND from the Apps Script
+// editor; nothing calls them. See docs/MANUAL-TEST-RUNBOOK.md for the order.
+// ---------------------------------------------------------------------------
+//
+// WHY A FUNCTION AND NOT A DRAG. Moving a column in the Sheets UI works, until
+// one is dropped a place out, or a filter view was pinned to column letters, or
+// two people do it on the same afternoon. A column's position is then whatever
+// the last person left, with no record. This rebuilds each tab from its header
+// NAMES into the schema's order, verifies the result against the original
+// before anything is renamed, and leaves the original beside it untouched.
+//
+// It never deletes a lead tab and never edits one in place. The worst outcome of
+// a run that goes wrong is a "(new)" tab to delete.
+
+/** True when every value a person or a form could have put in a cell is absent. */
+function isBlankCell(v) {
+  return v === '' || v === null || v === undefined;
+}
+
+/** Two cell values that are the same value, Dates included. */
+function sameCell(a, b) {
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+  return a === b || String(a) === String(b);
+}
+
+/**
+ * Where each column of a live tab goes under a schema. Pure: takes the header
+ * row and the data rows, returns the plan and anything worth saying about it.
+ *
+ *   kept     schema header -> the live column indexes that feed it (more than
+ *            one when the sheet has the header twice)
+ *   extras   live columns the schema does not know, carried across after the
+ *            schema's own so nothing a person added by hand is lost
+ *   dropped  live columns deliberately left behind (DROPPED_HEADERS)
+ *   empty    blank-headed columns with nothing under them, left behind
+ */
+function planTabMigration(tabName, live, headers, rows) {
+  const dropList = Object.prototype.hasOwnProperty.call(DROPPED_HEADERS, tabName) ? DROPPED_HEADERS[tabName] : [];
+  const oldNames = {}; // an old name -> the schema header it became
+  Object.keys(HEADER_ALIASES).forEach(function (h) {
+    HEADER_ALIASES[h].forEach(function (old) { oldNames[old] = h; });
+  });
+
+  const kept = {};
+  headers.forEach(function (h) { kept[h] = []; });
+  const extras = [];
+  const dropped = [];
+  let empty = 0;
+
+  live.forEach(function (name, i) {
+    const target = Object.prototype.hasOwnProperty.call(oldNames, name) ? oldNames[name] : name;
+    if (dropList.indexOf(name) !== -1) { dropped.push(name); return; }
+    if (name !== '' && Object.prototype.hasOwnProperty.call(kept, target)) { kept[target].push(i); return; }
+    const hasData = rows.some(function (r) { return !isBlankCell(r[i]); });
+    if (name === '' && !hasData) { empty++; return; }
+    extras.push({ index: i, name: name });
+  });
+
+  return { kept: kept, extras: extras, dropped: dropped, empty: empty };
+}
+
+/**
+ * Reports each lead tab against its schema, to the Debug tab and the execution
+ * log. Read-only. Run it before migrateLeadTabs(), and fix or accept what it
+ * says: an extra column is carried across, a formula is copied as its value.
+ */
+function auditLeadTabs() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const lines = [];
+  leadTabSchemas().forEach(function (schema) {
+    const sheet = ss.getSheetByName(schema.tab);
+    if (!sheet) { lines.push(schema.tab + ': no such tab yet (it is created, in order, on its first lead)'); return; }
+    const grid = sheet.getDataRange().getValues();
+    const live = (grid[0] || []).map(function (h) { return String(isBlankCell(h) ? '' : h).trim(); });
+    const rows = grid.slice(1);
+    const plan = planTabMigration(schema.tab, live, schema.headers, rows);
+    const missing = schema.headers.filter(function (h) { return plan.kept[h].length === 0; });
+    const drift = describeSheetDrift(live, schema.headers, []);
+
+    let formulas = 0;
+    try {
+      sheet.getDataRange().getFormulas().forEach(function (r) {
+        r.forEach(function (f) { if (f) formulas++; });
+      });
+    } catch (err) { /* a count, not a gate */ }
+    let filtered = false;
+    try { filtered = !!sheet.getFilter(); } catch (err) { /* not every sheet type has one */ }
+
+    lines.push(schema.tab + ': ' + rows.length + ' row(s), ' + live.length + ' column(s). ' +
+      (drift ? 'NEEDS MIGRATION (' + drift + ')' : 'already in schema order') + '. ' +
+      'New columns it will gain: ' + (missing.length ? missing.join(', ') : 'none') + '. ' +
+      'Left behind: ' + (plan.dropped.length ? plan.dropped.join(', ') : 'none') + '. ' +
+      'Carried across though not in the schema: ' +
+        (plan.extras.length ? plan.extras.map(function (e) { return '"' + e.name + '"'; }).join(', ') : 'none') + '. ' +
+      'Formulas: ' + formulas + (formulas ? ' (copied as their current VALUE, not as formulas)' : '') + '. ' +
+      'Filter on the tab: ' + (filtered ? 'YES, check it after migrating' : 'no') + '.');
+  });
+  lines.forEach(function (line) {
+    Logger.log('auditLeadTabs: ' + line);
+    logDebug(ss, 'auditLeadTabs: ' + line, '');
+  });
+  return lines;
+}
+
+/** A tab name that is free: `base`, or `base 2`, `base 3` and so on. */
+function freeTabName(ss, base) {
+  if (!ss.getSheetByName(base)) return base;
+  for (let n = 2; n < 50; n++) {
+    if (!ss.getSheetByName(base + ' ' + n)) return base + ' ' + n;
+  }
+  throw new Error('no free tab name for ' + base);
+}
+
+/**
+ * Rebuilds one tab in schema order. Returns one line saying what happened.
+ * Leaves the tab exactly as it found it unless every check passes.
+ */
+function migrateLeadTab(ss, schema, stamp) {
+  const tab = schema.tab;
+  const headers = schema.headers;
+  const sheet = ss.getSheetByName(tab);
+  if (!sheet) return tab + ': no such tab, nothing to migrate';
+
+  const range = sheet.getDataRange();
+  const grid = range.getValues();
+  const formats = range.getNumberFormats();
+  const live = (grid[0] || []).map(function (h) { return String(isBlankCell(h) ? '' : h).trim(); });
+  const rows = grid.slice(1);
+
+  if (!describeSheetDrift(live, headers, [])) return tab + ': already in schema order, left alone';
+
+  const plan = planTabMigration(tab, live, headers, rows);
+
+  // The value for one schema header on one row. When the sheet has the header
+  // twice, as the @38 incident left Status and Contacted, the two columns must
+  // not disagree: picking one would silently discard what a person typed in
+  // the other.
+  let conflict = '';
+  function pick(r, cols) {
+    let at = -1;
+    for (let i = 0; i < cols.length; i++) {
+      if (isBlankCell(rows[r][cols[i]])) continue;
+      if (at === -1) { at = cols[i]; continue; }
+      if (!sameCell(rows[r][at], rows[r][cols[i]]) && !conflict) {
+        conflict = 'row ' + (r + 2) + ' has two different values under "' + live[at] + '"';
+      }
+    }
+    return at;
+  }
+
+  const newHeaders = headers.concat(plan.extras.map(function (e) { return e.name; }));
+  const outValues = [];
+  const outFormats = [];
+  for (let r = 0; r < rows.length; r++) {
+    const values = [];
+    const fmts = [];
+    headers.forEach(function (h) {
+      const from = pick(r, plan.kept[h]);
+      values.push(from === -1 ? '' : rows[r][from]);
+      fmts.push(from === -1 ? '' : formats[r + 1][from]);
+    });
+    plan.extras.forEach(function (e) {
+      values.push(isBlankCell(rows[r][e.index]) ? '' : rows[r][e.index]);
+      fmts.push(formats[r + 1][e.index]);
+    });
+    // Text goes back as text. getValues() only returns a string for a cell
+    // that holds text, and writing one back unformatted lets Sheets re-read
+    // it: "+1 714..." as a formula, "$240,000" as a number, "007" as 7. A
+    // number or a date keeps the format it had.
+    //
+    // Except text that would read as a formula. A cell the formula guard
+    // stored as text (=IMAGE(...) typed as a name) comes back from getValues()
+    // as the bare string, and whether setValues honours the plain-text format
+    // for it is not something to find out on Darren's Sheet. So it goes back
+    // the way doPost wrote it, through safeCell, into an ordinary cell, where
+    // the apostrophe is consumed and the text stored exactly as it was; the
+    // check below then reads it back unchanged.
+    for (let c = 0; c < values.length; c++) {
+      if (typeof values[c] === 'string' && values[c] !== '' && safeCell(values[c]) !== values[c]) {
+        values[c] = safeCell(values[c]);
+        fmts[c] = 'General';
+      } else if (typeof values[c] === 'string' && values[c] !== '') fmts[c] = '@';
+      else if (!fmts[c]) fmts[c] = 'General';
+    }
+    outValues.push(values);
+    outFormats.push(fmts);
+  }
+  if (conflict) return tab + ': NOT MIGRATED, ' + conflict + '. Clear one of the two cells and run again';
+
+  // A "(new)" tab left by a run that died is ours and holds nothing original.
+  const scratchName = tab + ' (new)';
+  const stale = ss.getSheetByName(scratchName);
+  if (stale) ss.deleteSheet(stale);
+
+  const fresh = createSheetWithHeaders(ss, scratchName, newHeaders);
+  if (outValues.length) {
+    const target = fresh.getRange(2, 1, outValues.length, newHeaders.length);
+    target.setNumberFormats(outFormats);
+    target.setValues(outValues);
+  }
+  SpreadsheetApp.flush();
+
+  // Verify against the ORIGINAL before anything is renamed: same number of
+  // rows, and every value that was not deliberately left behind is under the
+  // header it was under before.
+  const written = fresh.getDataRange().getValues();
+  let wrong = '';
+  if (written.length !== grid.length) {
+    wrong = 'row count ' + (written.length - 1) + ' against ' + rows.length;
+  }
+  for (let r = 0; r < rows.length && !wrong; r++) {
+    headers.forEach(function (h, c) {
+      plan.kept[h].forEach(function (from) {
+        if (wrong || isBlankCell(rows[r][from])) return;
+        if (!sameCell(written[r + 1][c], rows[r][from])) wrong = 'row ' + (r + 2) + ', "' + h + '"';
+      });
+    });
+    plan.extras.forEach(function (e, k) {
+      if (wrong || isBlankCell(rows[r][e.index])) return;
+      if (!sameCell(written[r + 1][headers.length + k], rows[r][e.index])) wrong = 'row ' + (r + 2) + ', "' + e.name + '"';
+    });
+  }
+  if (wrong) {
+    ss.deleteSheet(fresh);
+    return tab + ': NOT MIGRATED, the copy did not match the original at ' + wrong + '. The tab is unchanged';
+  }
+
+  const oldName = freeTabName(ss, tab + ' (old ' + stamp + ')');
+  let position = -1;
+  try { position = sheet.getIndex(); } catch (err) { /* cosmetic */ }
+  sheet.setName(oldName);
+  fresh.setName(tab);
+  // Put the new tab where the old one was, so the tab bar reads as before.
+  try {
+    if (position > 0) { ss.setActiveSheet(fresh); ss.moveActiveSheet(position); }
+  } catch (err) { /* cosmetic: the data is already in place */ }
+
+  return tab + ': migrated ' + rows.length + ' row(s) into ' + headers.length + ' schema column(s)' +
+    (plan.extras.length ? ', carried ' + plan.extras.map(function (e) { return '"' + e.name + '"'; }).join(', ') : '') +
+    (plan.dropped.length ? ', left behind ' + plan.dropped.join(', ') : '') +
+    '. Original kept as "' + oldName + '"';
+}
+
+/**
+ * Puts every lead tab into the schema's column order. Run once, by hand, after
+ * auditLeadTabs() and after copying the spreadsheet (File > Make a copy).
+ *
+ * Holds the script lock throughout, which is the same lock doPost waits on, so
+ * a lead submitted mid-run is written after the rename, to the new tab, rather
+ * than to a tab that is about to become "(old ...)". Safe to run twice: a tab
+ * already in order is left alone.
+ */
+function migrateLeadTabs() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const stamp = Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
+  const lines = [];
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    leadTabSchemas().forEach(function (schema) {
+      try {
+        lines.push(migrateLeadTab(ss, schema, stamp));
+      } catch (err) {
+        lines.push(schema.tab + ': NOT MIGRATED, threw ' + err.toString());
+      }
+    });
+  } finally {
+    try { lock.releaseLock(); } catch (err) { /* released or expired */ }
+  }
+  lines.forEach(function (line) {
+    Logger.log('migrateLeadTabs: ' + line);
+    logDebug(ss, 'migrateLeadTabs: ' + line, '');
+  });
+  return lines;
 }
 
 // ---------------------------------------------------------------------------

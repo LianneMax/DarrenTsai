@@ -6,13 +6,19 @@ The one rule: **update the existing deployment in place.** Never `clasp deploy` 
 
 ## What @45 is
 
-- Source: `google-apps-script.js` at commit `997054f` (branch `claude/wizardly-ramanujan-1dww99`).
+- Source: `google-apps-script.js` at commit `997054f` (merged into `main`).
 - Change against live @44: 32 lines added, 7 changed, nothing else. It adds `safeCell` and `appendSafeRow`, and the seven `sheet.appendRow(` calls that write visitor input become `appendSafeRow(sheet, `.
 - No site change is needed with it, and none depends on it. It can go before or after the site merge.
 
 ## After @45: @46, the confirmation emails
 
 The branch tip also has the R2 routing (`confirmationContext`): debt, home equity, ADU and mortgage-calculator review leads get their approved confirmation email. Deploy it as @46 **only after the site is merged to `main` and live**, because the email words ship with the site. Same steps, with the branch tip's commit in step 2, and expect step 4's diff against @45 to be only `CONFIRMATION_CONTEXTS`, `confirmationContext` and the new `sendContactConfirmation`.
+
+## @47: R1, the Sheet schema release
+
+Deploy it only inside the migration window, as step 2 of `docs/MANUAL-TEST-RUNBOOK.md` section 0.5, straight after copying the spreadsheet and straight before `auditLeadTabs()`. Source: `google-apps-script.js` on `main` at the R1 merge or later. Use the steps below with that commit in step 2 and `dt-47` in the folder names. Step 4's diff against @46 is large this time (rows written by header name, the migration and audit functions), so check the other way round: the file you clone in step 3 must match `main` at `8740407`, which is @46. If it does not, stop: someone changed the editor since @46.
+
+Deploying it without migrating is safe (rows are written by name), but it mails a "Sheet columns out of order" notice per tab every 6 hours until the migration runs.
 
 ## Steps (Windows, PowerShell)
 

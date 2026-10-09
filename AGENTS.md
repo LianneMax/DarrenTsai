@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 31 files / 1091 tests, all passing |
+| Tests | Vitest + jsdom, 32 files / 1162 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1091 tests)
+npm test         # vitest run (1162 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -157,12 +157,37 @@ were removed, and the constant with them. A savings number now only ever comes
 from the visitor's own inputs. `tests/debt-calculator-guards.test.ts` fails on a
 dollar range in the debt page or the hub.
 
-**Sheet columns are append-only.** New headers go at the *end* of a header array
-and the end of the matching row builder, never inserted mid-array.
-`ensureHeaders()` only writes past the sheet's current last column and never
-rewrites an existing header cell. Inserting a column shifts the meaning of every
-historical row to its right, with no way to tell old rows from new. This is why
-`Licensed?` sits in an odd place on the Debt Consolidation tab; leave it there.
+**Lead rows are written by header name; columns move only through the
+migration (R1).** Every lead tab is one standard order (`LEAD_PREFIX`, the
+funnel's own details, `ATTR_HEADERS`, `TRIAGE_HEADERS`;
+`docs/lead-sheet-schema.md`), and `appendByHeader()` puts each value under the
+live header of the same name, through `safeCell()`. This replaces the
+append-only rule. That rule existed because rows were written by position: on
+@38 two columns went into a list one place left of where the sheet had them,
+and a TEST flag landed under Contacted with every test green. Now the sheet's
+own header row decides where a value goes, so the file and the sheet cannot
+disagree about position. Three things follow:
+
+- Editing a header list in the script moves **nothing** on the sheet. A new
+  column goes where it belongs in the schema, is added at the end of the live
+  tab by the next lead, and is put in place by `migrateLeadTabs()`, run by hand
+  after `auditLeadTabs()`. Never drag a column or rename a header in the Sheets
+  UI. A renamed header needs a `HEADER_ALIASES` entry; a removed one goes in
+  `DROPPED_HEADERS` and stays readable in the "(old ...)" tab.
+- A tab whose columns are not the schema's is reported by email
+  (`alertSheetDrift`, at most every 6 hours per tab) and the lead is saved
+  regardless. That email is expected between a deploy and its migration.
+- `ensureHeaders()` is positional and is only for Follow-ups, Debug and
+  Newsletter. Calling it on a lead tab is the @38 incident again.
+
+The migration copies text back through `safeCell()` too: a name stored as text
+since @45 (`=IMAGE(...)`) comes back from `getValues()` as a bare string and
+would otherwise become a live formula again. The test harness treats a `=`
+string as a formula even in a plain-text cell, because Sheets' behaviour there
+is not verified, so the guard cannot quietly depend on it.
+`tests/sheet-columns.test.ts` pins the order and writes against shuffled sheets;
+`tests/sheet-migration.test.ts` checks every old value arrives under the same
+header name.
 
 **Fail open on uncertainty, fail loudly on certainty.** The DNS email check
 refuses a lead only on a definitive NXDOMAIN; a timeout or SERVFAIL lets it
@@ -201,8 +226,10 @@ More are planned. Each one repeats the same pattern, and all of it has to line u
 or the lead lands on the generic tab with its fields dropped:
 
 1. `public/<slug>/index.html`, copying an existing page (contact modal included).
-2. A `SOURCE_SCHEMAS` entry in `google-apps-script.js`: tab name, headers, row
-   builder. Headers end with `ATTR_HEADERS`.
+2. A `SOURCE_SCHEMAS` entry in `google-apps-script.js`: tab name, `details`
+   (the funnel's own columns) and `detailValues`. The shared columns, the
+   attribution block and the triage columns are added for it. Pin the new tab in
+   `tests/sheet-columns.test.ts`.
 3. Campaign routing in `pushToBonzo()` plus a `BONZO_<SOURCE>_CAMPAIGN_ID` Script
    Property, and a tag branch.
 4. If it has a magnet: a `netlify/functions/send-<slug>-guide.mts`, a
@@ -236,12 +263,27 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1091 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1162 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- **The Sheet schema release (R1) is on `main` and NOT yet deployed to Apps
+  Script or migrated (10 Oct).** The by-header-name rule above describes it.
+  The site half ships with `main` and is safe against the live @46 script (the
+  two removed debt fields were already blank, and @46 ignores the new ones).
+  Until the window, the live Apps Script and the live tabs are still
+  positional, so no column may be moved by hand. To do, by hand, in one quiet
+  window and in this order: copy the spreadsheet, deploy the Apps Script in
+  place (`docs/APPS-SCRIPT-DEPLOY.md`), run `auditLeadTabs()`, run
+  `migrateLeadTabs()`, send one test lead per tab with fake details. `docs/MANUAL-TEST-RUNBOOK.md` section 0.5 has the steps. Deploying
+  the script without migrating is safe (rows are written by name) but mails a
+  drift notice per tab every 6 hours until it is done. The debt lead now sends
+  savings signed (negative means the payment goes up), the equity snapshot
+  under `estimatedEquity` as the equity and ADU pages do, today's payment, the
+  debts' average rate, the same-payoff refi and the PMMS date, and no longer
+  sends Best Time to Call or Lead Source. Delete this bullet once migrated.
 - **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
   delete it there and add a line to its "Done" section in the same commit.
-  `docs/revamp/BRANCHES.md` says what exists only on side branches
-  (`debt-consolidation-page` holds R1 and the R2 email contexts, unmerged).
+  All work happens on `main`; there are no side branches (10 Oct).
+  `docs/revamp/BRANCHES.md` records what the old ones held.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.

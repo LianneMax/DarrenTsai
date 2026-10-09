@@ -113,7 +113,7 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
     expect(gas.attrRow(SAMPLE).length).toBe(gas.ATTR_HEADERS.length);
   });
 
-  it.each(['dscr', 'self-employed', 'fha', 'real-estate-investing'])(
+  it.each(['dscr', 'self-employed', 'fha', 'real-estate-investing', 'DebtConsolidation', 'home-equity', 'adu'])(
     'SOURCE_SCHEMAS[%s] headers match its row length',
     (key) => {
       const schema = gas.SOURCE_SCHEMAS[key];
@@ -122,12 +122,8 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
   );
 
   /**
-   * The invariant is that the attribution block stays CONTIGUOUS and in order,
-   * so attrRow's values keep landing under their own headers. It used to be
-   * phrased as "must be last", which is how it happens to sit on most tabs but
-   * is not the actual requirement: Debt Consolidation has 'Licensed?' appended
-   * after it, because that column was added later and the append-only rule
-   * forbids inserting it further left on a tab that already holds rows.
+   * The attribution block is CONTIGUOUS and in order on every tab, so where a
+   * lead came from reads as one run of columns rather than being scattered.
    */
   it('keeps the attribution columns contiguous and in order on every tab', () => {
     const schemas: Array<[string, string[]]> = [
@@ -146,19 +142,25 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
     }
   });
 
-  it('puts Licensed? after attribution on Debt Consolidation, and nowhere else', () => {
-    // Pinned because it looks like a mistake and is not: see the header comment
-    // on DEBT_CONSOLIDATION_HEADERS.
-    // The invariant is "immediately after attribution", not "last": the triage
-    // columns were appended after it later, by the same append-only rule.
-    const dc = gas.DEBT_CONSOLIDATION_HEADERS;
-    const licensed = dc.indexOf('Licensed?');
-    expect(licensed).toBeGreaterThan(-1);
-    expect(dc[licensed - 1]).toBe(gas.ATTR_HEADERS[gas.ATTR_HEADERS.length - 1]);
-    // Every other tab still has it before the attribution block.
+  it('puts Licensed? straight after State on every lead tab, Debt Consolidation included', () => {
+    // It used to sit after the attribution block on Debt Consolidation alone,
+    // where the append-only rule had left it. The 8 Oct schema put it beside
+    // the state it is a verdict on, the same on every tab.
+    const all = [
+      ...Object.keys(gas.SOURCE_SCHEMAS).map((k) => gas.SOURCE_SCHEMAS[k].headers),
+      gas.LEAD_HEADERS,
+      gas.DEBT_CONSOLIDATION_HEADERS,
+    ];
+    for (const headers of all) {
+      expect(headers[headers.indexOf('Licensed?') - 1]).toBe('State');
+    }
+  });
+
+  it('ends every lead tab on the triage columns, with attribution just before them', () => {
     for (const key of Object.keys(gas.SOURCE_SCHEMAS)) {
       const headers = gas.SOURCE_SCHEMAS[key].headers;
-      expect(headers.indexOf('Licensed?')).toBeLessThan(headers.indexOf(gas.ATTR_HEADERS[0]));
+      expect(headers.slice(-3)).toEqual(['Test?', 'Status', 'Contacted']);
+      expect(headers.slice(-3 - gas.ATTR_HEADERS.length, -3)).toEqual(gas.ATTR_HEADERS);
     }
   });
 
@@ -188,35 +190,32 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
   });
 
   /**
-   * doPost builds some rows inline rather than through SOURCE_SCHEMAS, so the
-   * length-parity tests above cannot see them. This caught a real bug: the
-   * Qualify branch kept writing 12 values after QUALIFY_HEADERS grew to 23,
-   * which would have left attribution permanently blank on that tab.
+   * doPost builds one row inline rather than through a schema: Qualify, which
+   * keeps the shape it was created with. The length-parity tests above cannot
+   * see it, and this caught a real bug there: the branch kept writing 12 values
+   * after QUALIFY_HEADERS grew to 23, which would have left attribution
+   * permanently blank on that tab.
    *
-   * Source-level rather than behavioural because those rows are literals inside
+   * Source-level rather than behavioural because the row is a literal inside
    * doPost with no seam to call.
    */
-  it('every inline appendRow in doPost writes the attribution columns', () => {
+  it('the one inline row in doPost still writes the attribution columns', () => {
     const doPost = SOURCE.slice(SOURCE.indexOf('function doPost'));
-    const branches = [...doPost.matchAll(/getOrCreateSheet\(ss, '([^']+)', (\w+)\)/g)];
-    expect(branches.length).toBeGreaterThan(0);
+    const branch = doPost.slice(doPost.indexOf("data.source === 'QualifyForm'"), doPost.indexOf('writeLead(ss, schema, data)'));
+    expect(branch).toContain("appendByHeader(ss, sheet, 'Qualify', QUALIFY_HEADERS, byHeader(QUALIFY_HEADERS, [");
+    expect(branch).toMatch(/concat\(\s*attrRow\(data\), triageRow\(data\)\)/);
+  });
 
-    for (const [, tabName, headersConst] of branches) {
-      // Newsletter deliberately has no attribution columns.
-      if (headersConst === 'NEWSLETTER_HEADERS') continue;
-
-      const after = doPost.slice(doPost.indexOf(`getOrCreateSheet(ss, '${tabName}'`));
-      const upToNextBranch = after.slice(0, after.indexOf('getOrCreateSheet', 10) + 1 || after.length);
-      expect(
-        // Whitespace-tolerant: a branch that concatenates several lists reads
-        // better broken across lines, and the invariant is that attrRow(data)
-        // is in there, not that it is on one line. No closing paren either, so
-        // a branch that appends a further column after it still counts.
-        /concat\(\s*attrRow\(data\)/.test(upToNextBranch) || upToNextBranch.includes('schema.row(data)'),
-        `the "${tabName}" branch writes a row without concat(attrRow(data)), so its ` +
-        `${headersConst} attribution columns would stay blank`,
-      ).toBe(true);
-    }
+  it('writes no lead tab by position', () => {
+    // A positional sheet.appendRow is how @38 happened. Three are left in the
+    // whole file, and none of them writes a lead by position: the header row of
+    // a new tab, the by-name writer itself, and appendSafeRow, the formula guard
+    // that Debug, Follow-ups and Newsletter's three columns go through.
+    expect(SOURCE.match(/\.appendRow\(/g)).toHaveLength(3);
+    const doPost = SOURCE.slice(SOURCE.indexOf('function doPost'), SOURCE.indexOf('// Lead tab audit and migration'));
+    expect(doPost.match(/\.appendRow\(/g)).toBeNull();
+    expect(doPost.match(/appendSafeRow\(/g)).toHaveLength(1); // Newsletter
+    expect(doPost).toContain("getOrCreateSheet(ss, 'Newsletter', NEWSLETTER_HEADERS)");
   });
 });
 
@@ -339,7 +338,9 @@ describe('first-touch fallback for returning visitors', () => {
   it('records every first-touch field attribution.js sends', () => {
     // A field sent by the client but absent from ATTR_HEADERS is silently
     // dropped, which is exactly how the first-touch click id was lost.
-    const sent = ['firstUtmSource', 'firstUtmCampaign', 'firstClickId', 'firstClickIdType', 'firstTouchTs'];
+    // firstUtmMedium was exactly that until 8 Oct: sent on every lead, stored
+    // on none.
+    const sent = ['firstUtmSource', 'firstUtmMedium', 'firstUtmCampaign', 'firstClickId', 'firstClickIdType', 'firstTouchTs'];
     const written = gas.attrRow(
       Object.fromEntries(sent.map((k) => [k, `value-${k}`])),
     ) as string[];

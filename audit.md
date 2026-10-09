@@ -1,6 +1,6 @@
 # realdarrentsai.com lead-path audit
 
-**Current launch verification (10 Oct 2026):** start with [docs/go-live-checklist.md](docs/go-live-checklist.md). It records Max's latest Niko email, current main versus the R1/R2 side branch, live HubSpot permission limits, property types, and fresh checks. Older status paragraphs below are historical; do not treat them as current deployment or account evidence.
+**Current state (10 Oct 2026):** start with [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md), the one list of what is left before Google Ads. Older status paragraphs below are historical; do not treat them as current deployment or account evidence.
 
 Last updated 28 Sep 2026 · Max (with Claude) · re-tested against `origin/main` at `80b21e4`, Apps Script deployment @39 (round R9); H3 deployed 29 Sep as @41
 
