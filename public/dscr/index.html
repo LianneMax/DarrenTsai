@@ -1801,8 +1801,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         // other failure has already been rescued by email, which is why the copy
         // below tells them not to resubmit. Saying that here would be a lie.
         var visitorMessage = null;
-        if (res.status === 422) {
-          try { var fix = await res.json(); if (fix && fix.field === 'email') visitorMessage = fix.message; }
+        // 429: the rate limit refused it before reading it, so nothing reached
+        // Darren and no rescue email went out. Its message says so.
+        if (res.status === 422 || res.status === 429) {
+          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'rate')) visitorMessage = fix.message; }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);
@@ -2373,8 +2375,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         // other failure has already been rescued by email, which is why the copy
         // below tells them not to resubmit. Saying that here would be a lie.
         var visitorMessage = null;
-        if (res.status === 422) {
-          try { var fix = await res.json(); if (fix && fix.field === 'email') visitorMessage = fix.message; }
+        // 429: the rate limit refused it before reading it, so nothing reached
+        // Darren and no rescue email went out. Its message says so.
+        if (res.status === 422 || res.status === 429) {
+          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'rate')) visitorMessage = fix.message; }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);

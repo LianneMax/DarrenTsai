@@ -47,7 +47,7 @@ describe.each(PAGES)('/%s email rejection', (page) => {
   const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
 
   it('reads the message off a 422 in both form handlers', () => {
-    expect(html.match(/if \(res\.status === 422\)/g) ?? []).toHaveLength(2);
+    expect(html.match(/if \(res\.status === 422 \|\| res\.status === 429\)/g) ?? []).toHaveLength(2);
     expect(html.match(/fix\.field === 'email'/g) ?? []).toHaveLength(2);
   });
 
@@ -87,5 +87,19 @@ describe('/fha/ review button', () => {
   it('prefills the loan and rate only once the estimate shows a payment', () => {
     const hook = FHA_PAGE.slice(FHA_PAGE.indexOf('window.LF_CONTACT_PREFILL = function () {'));
     expect(hook.slice(0, 400)).toContain('if (!(price > 0 && rate > 0 && downPct >= MIN_DOWN_PCT)) return {};');
+  });
+});
+
+/**
+ * A rate-limited post (429) was refused before it was read: nothing reached
+ * Darren and no rescue email went out. Every form on the static pages must show
+ * the endpoint's message then, never its generic "your details were passed to
+ * Darren" copy, which is only true because other failures are rescued.
+ */
+describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ on a rate-limited post', (page) => {
+  it('shows the endpoint\'s message on both of its forms', () => {
+    const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
+    expect(html.split('if (res.status === 422 || res.status === 429) {').length - 1).toBe(2);
+    expect(html.split("(fix.field === 'email' || fix.field === 'rate')").length - 1).toBe(2);
   });
 });
