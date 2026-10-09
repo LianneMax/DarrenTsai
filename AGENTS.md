@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 29 files / 1040 tests, all passing |
+| Tests | Vitest + jsdom, 30 files / 1080 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1040 tests)
+npm test         # vitest run (1080 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -230,7 +230,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1040 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1080 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
   delete it there and add a line to its "Done" section in the same commit.
@@ -283,7 +283,12 @@ or the lead lands on the generic tab with its fields dropped:
   not updated. That needs an update-by-email call whose v3 behaviour must be
   verified live first, the way the Mortgage fields were.
 - **The contact modal's confirmation email is live** (its properties are set;
-  see `docs/revamp/BRANCHES.md`). It was built dark first. Every magnet
+  see `docs/revamp/BRANCHES.md`). It was built dark first. Since 10 Oct the same
+  sender has four more approved contexts, named by `confirmationContext` in the
+  Apps Script: `debt`, `home-equity`, `adu`, and `mortgage-review` (the mortgage
+  calculator's modal, only when its numbers came with it). Ship the site before
+  the Apps Script version that sends them; `npm run emails` renders all five to
+  `docs/revamp/emails/`. Every magnet
   form sent the visitor something; the modal, the form that asks the most, sent
   nothing. `netlify/functions/send-contact-confirmation.mts` carries the calendar
   rather than an attachment, with UTMs on the link. It needs
