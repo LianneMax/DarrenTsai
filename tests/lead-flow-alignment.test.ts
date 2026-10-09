@@ -73,10 +73,11 @@ function routesInAppsScript(): Map<string, string> {
     routes.set(m[1], m[2]);
   }
 
-  // The hand-written branches in doPost.
+  // The hand-written branches in doPost: the two tabs with no schema, each
+  // opened by its literal name on the line after the branch.
   const doPost = GAS.slice(GAS.indexOf('function doPost'));
   for (const m of doPost.matchAll(
-    /data\.source === '([\w-]+)'\)\s*\{\s*\n\s*const sheet = getOrCreateSheet\(ss, '([^']+)'/g,
+    /data\.source === '([\w-]+)'\)\s*\{\s*\n\s*const sheet = [^\n]*?\(ss, '([^']+)'/g,
   )) {
     routes.set(m[1], m[2]);
   }
@@ -200,13 +201,24 @@ describe('the DSCR tab holds every field the DSCR page sends', () => {
   const page = readFileSync(resolve(ROOT, 'public/dscr/index.html'), 'utf8');
   const schemaBlock = GAS.slice(GAS.indexOf("'dscr': {"), GAS.indexOf("'self-employed': {"));
 
-  it.each(['dscr', 'downPayment', 'loanAmount', 'rate', 'magnet'])(
+  // Everything the calculator sends. The second half of this list reached
+  // Bonzo's pinned note and nowhere else until the 8 Oct schema.
+  it.each([
+    'dscr', 'downPayment', 'loanAmount', 'rate',
+    'purchasePrice', 'monthlyRent', 'annualTax', 'annualInsurance', 'monthlyHoa', 'monthlyPI', 'monthlyPitia',
+  ])(
     'writes %s to a column of its own',
     (field) => {
       expect(page).toContain(field); // the page sends it
       expect(schemaBlock).toContain(`d.${field}`); // the row builder writes it
     },
   );
+
+  it('writes the magnet through the columns every tab shares', () => {
+    expect(page).toContain('magnet:');
+    const common = GAS.slice(GAS.indexOf('function finishLeadSchema'), GAS.indexOf('const LANDING_SOURCES'));
+    expect(common).toContain("d.magnet || ''");
+  });
 });
 
 describe('the Sheet tabs the script relies on', () => {
@@ -220,10 +232,17 @@ describe('the Sheet tabs the script relies on', () => {
     // own parameter, neither of which names a tab.
     const tabs = [...GAS.matchAll(/getOrCreateSheet\(ss,\s*(?:'([^']+)'|([A-Z_]+))/g)]
       .map((m) => m[1] ?? m[2]);
-    expect(new Set(tabs)).toEqual(
-      new Set(['Debug', 'Newsletter', 'Qualify', 'Debt Consolidation', 'Leads', 'FOLLOWUP_TAB']),
-    );
+    // The three tabs still written by position. Lead tabs are not opened this
+    // way any more: getOrCreateSheet runs ensureHeaders, which must never
+    // touch a tab whose columns can be in an order other than the schema's.
+    expect(new Set(tabs)).toEqual(new Set(['Debug', 'Newsletter', 'FOLLOWUP_TAB']));
     expect(GAS).toContain("const FOLLOWUP_TAB = 'Follow-ups'");
+    // Qualify and every schema tab, by the names they are created under.
+    expect(GAS).toContain("ss.getSheetByName('Qualify') || createSheetWithHeaders(ss, 'Qualify', QUALIFY_HEADERS)");
+    const schemaTabs = [...GAS.matchAll(/^\s+tab: '([^']+)',$/gm)].map((m) => m[1]);
+    expect(schemaTabs).toEqual([
+      'DSCR', 'Self-Employed', 'FHA', 'Real Estate Investing', 'Debt Consolidation', 'Home Equity', 'ADU', 'Leads',
+    ]);
   });
 
   it('keeps the Follow-ups column map in step with its headers', () => {
@@ -259,18 +278,21 @@ describe('audit fixes stay fixed', () => {
     // It collects State but was neither a LANDING_SOURCE nor tagged
     // mortgage-calculator, so an out-of-area lead there looked identical to a
     // workable one in both the Sheet and Bonzo.
-    expect(GAS).toContain("].concat(ATTR_HEADERS, ['Licensed?'], TRIAGE_HEADERS, ['HELOAN Credit Tier', 'HELOAN Term']);");
+    // Through the columns every lead tab shares now, rather than a column of
+    // this tab's own.
+    expect(GAS).toContain("'Licensed?', 'Source', 'Magnet/Goal', 'Form ID', 'Page'");
     expect(GAS).toContain("data.source === 'DebtConsolidation' ||");
   });
 
-  it("appends that column rather than placing it where it reads best", () => {
-    // The append-only rule: inserting 'Licensed?' into the literal would change
-    // the meaning of every historical cell to its right. It was the last column
-    // when it was added; the triage columns were appended after it later, by
-    // the same rule, which is why this checks the append and not the position.
-    const headers = /const DEBT_CONSOLIDATION_HEADERS = \[([\s\S]*?)\.concat\(([^;]*?)\);/.exec(GAS)!;
-    expect(headers[1]).not.toContain("'Licensed?'"); // not in the literal
-    expect(headers[2]).toContain("ATTR_HEADERS, ['Licensed?']"); // appended after
+  it('never runs the positional header helper on a lead tab', () => {
+    // ensureHeaders writes the tail of a list past the sheet's last column. On
+    // a lead tab in any order but the schema's, that names columns that are
+    // not there, which is the @38 incident. Lead tabs are opened without it.
+    const open = GAS.slice(GAS.indexOf('function openLeadSheet'), GAS.indexOf('function writeLead'));
+    expect(open).not.toContain('ensureHeaders');
+    expect(open).not.toContain('getOrCreateSheet');
+    const append = GAS.slice(GAS.indexOf('function appendByHeader'), GAS.indexOf('function describeSheetDrift'));
+    expect(append).not.toContain('ensureHeaders(');
   });
 
   it('no longer carries a dedupe function nothing calls', () => {

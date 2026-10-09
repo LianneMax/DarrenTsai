@@ -28,7 +28,11 @@ import { resolve } from 'node:path';
 
 const SOURCE = readFileSync(resolve(__dirname, '../../google-apps-script.js'), 'utf8');
 
-export type Tab = { name: string; rows: unknown[][] };
+/**
+ * `formats` is the number format of each cell, row by row, and is only ever set
+ * by a test that cares or by setNumberFormats. Absent means 'General'.
+ */
+export type Tab = { name: string; rows: unknown[][]; formats?: string[][] };
 export type FetchCall = { url: string; options: Record<string, unknown> };
 
 /** What UrlFetchApp.fetch hands back to the Apps Script code. */
@@ -86,27 +90,103 @@ const INERT_RESPONSE: FetchResponse = {
  * counts ensureHeaders reads, and a Range with setValues/getValues plus the
  * formatting calls, which are chained and so must each return something
  * chainable.
+ *
+ * The migration (migrateLeadTabs) needs more of a sheet than a write does: its
+ * name, a rename, the whole grid at once and each cell's number format. A
+ * rename re-keys `tabs`, because that map is how getSheetByName finds a tab and
+ * how a test reads one back.
  */
-function makeSheet(tab: Tab) {
+/**
+ * A cell Sheets would evaluate. What `entered()` stores for a string that
+ * starts with "=" in an ordinary cell, so a test can tell "stored as text" from
+ * "became a formula", which is the whole point of safeCell.
+ */
+export class Formula {
+  constructor(public formula: string) {}
+}
+
+/**
+ * What Sheets stores when a value is written into a cell, as typed input: a
+ * leading apostrophe is consumed and the rest kept as text; a string starting
+ * with "=" becomes a formula; a cell formatted as plain text ('@') keeps any
+ * string as text. Everything else is stored as given. Without this the fake
+ * kept "'=X" with its apostrophe, which no real sheet ever shows, and could not
+ * tell a guarded value from a live formula.
+ */
+export function entered(value: unknown, format?: string): unknown {
+  if (typeof value !== 'string') return value;
+  // Whether setValues honours a plain-text format for a string starting with
+  // "=" is not something we have verified, so the harness assumes the worst:
+  // it becomes a formula. Code that relies on '@' alone to defuse one fails here.
+  if (format === '@') return value.startsWith('=') ? new Formula(value) : value;
+  if (value.startsWith("'")) return value.slice(1);
+  if (value.startsWith('=')) return new Formula(value);
+  return value;
+}
+
+function makeSheet(tab: Tab, tabs: Map<string, Tab>) {
+  const width = () => tab.rows.reduce((w, r) => Math.max(w, r ? r.length : 0), 0);
   const sheet = {
-    appendRow(values: unknown[]) { tab.rows.push(values); },
+    __tab: tab,
+    appendRow(values: unknown[]) { tab.rows.push(values.map((v) => entered(v))); },
     getLastRow: () => tab.rows.length,
-    getLastColumn: () => (tab.rows[0] ? tab.rows[0].length : 0),
+    getLastColumn: () => width(),
     setFrozenRows: () => sheet,
-    getRange(row: number, col: number, numRows: number, numCols: number) {
+    getName: () => tab.name,
+    setName(name: string) {
+      tabs.delete(tab.name);
+      tab.name = name;
+      tabs.set(name, tab);
+      return sheet;
+    },
+    getIndex: () => [...tabs.keys()].indexOf(tab.name) + 1,
+    getFilter: () => null,
+    getDataRange() {
+      return sheet.getRange(1, 1, Math.max(tab.rows.length, 1), Math.max(width(), 1));
+    },
+    getRange(row: number, col: number, numRows = 1, numCols = 1) {
       return {
+        getNumberFormats() {
+          const out: string[][] = [];
+          for (let r = 0; r < numRows; r++) {
+            const line: string[] = [];
+            for (let c = 0; c < numCols; c++) line.push(tab.formats?.[row - 1 + r]?.[col - 1 + c] ?? 'General');
+            out.push(line);
+          }
+          return out;
+        },
+        setNumberFormats(formats: string[][]) {
+          tab.formats ??= [];
+          for (let r = 0; r < numRows; r++) {
+            const target = (tab.formats[row - 1 + r] ??= []);
+            for (let c = 0; c < numCols; c++) target[col - 1 + c] = formats[r][c];
+          }
+          return this;
+        },
+        getFormulas() {
+          return Array.from({ length: numRows }, (_, r) => Array.from({ length: numCols }, (_, c) => {
+            const v = tab.rows[row - 1 + r]?.[col - 1 + c];
+            return v instanceof Formula ? v.formula : '';
+          }));
+        },
         setValues(values: unknown[][]) {
           for (let r = 0; r < numRows; r++) {
             const target = (tab.rows[row - 1 + r] ??= []);
-            for (let c = 0; c < numCols; c++) target[col - 1 + c] = values[r][c];
+            for (let c = 0; c < numCols; c++) {
+              target[col - 1 + c] = entered(values[r][c], tab.formats?.[row - 1 + r]?.[col - 1 + c]);
+            }
           }
           return this;
         },
         getValues() {
+          // Padded to the requested width, as Sheets does: a short row reads
+          // back as '' in the columns it never filled, not as a shorter array.
           const out: unknown[][] = [];
           for (let r = 0; r < numRows; r++) {
             const src = tab.rows[row - 1 + r] ?? [];
-            out.push(src.slice(col - 1, col - 1 + numCols));
+            const line: unknown[] = [];
+            for (let c = 0; c < numCols; c++) line.push(src[col - 1 + c] ?? '');
+            out.push(line);
           }
           return out;
         },
@@ -135,6 +215,7 @@ const STUBS = `
   var CacheService = { getScriptCache: function(){ return { get: function(){ return null; }, put: function(){}, remove: function(){} }; } };
   var LockService = { getScriptLock: function(){ return { waitLock: function(){}, tryLock: function(){ return true; }, releaseLock: function(){} }; } };
   var ScriptApp = { getProjectTriggers: function(){ return []; }, deleteTrigger: function(){}, newTrigger: function(){ return { timeBased: function(){ return { everyMinutes: function(){ return { create: function(){} }; }, everyDays: function(){ return { atHour: function(){ return { create: function(){} }; } }; } }; } }; } };
+  var Utilities = { getUuid: function(){ return __uuid(); }, formatDate: function(d){ return d.toISOString().slice(0, 10); } };
   var ContentService = { createTextOutput: function(t){ return { setMimeType: function(){ return { __body: t }; } }; }, MimeType: { JSON: 'json' } };
 `;
 
@@ -144,25 +225,32 @@ export function loadGas<T = Record<string, unknown>>(options: GasOptions): GasHa
   const spreadsheet = options.spreadsheet === false ? {} : {
     getSheetByName(name: string) {
       const tab = tabs.get(name);
-      return tab ? makeSheet(tab) : null;
+      return tab ? makeSheet(tab, tabs) : null;
     },
     insertSheet(name: string) {
       const tab: Tab = { name, rows: [] };
       tabs.set(name, tab);
-      return makeSheet(tab);
+      return makeSheet(tab, tabs);
     },
+    deleteSheet(sheet: { __tab: Tab }) { tabs.delete(sheet.__tab.name); },
+    // Tab order is cosmetic and the migration treats a failure here as such.
+    setActiveSheet() {},
+    moveActiveSheet() {},
   };
 
   const props = options.props;
   const getProp = (key: string) => (props ? props[key] || '' : '');
   const doFetch = options.fetch ?? (() => INERT_RESPONSE);
   const onMail = options.onMail ?? (() => {});
+  // Predictable ids, so a test can say which submission a row belongs to.
+  let minted = 0;
+  const uuid = () => `uuid-${++minted}`;
 
   const factory = new Function(
-    '__ss', '__getProp', '__fetch', '__mail',
+    '__ss', '__getProp', '__fetch', '__mail', '__uuid',
     `${STUBS}\n${SOURCE}\nreturn { ${options.exports.join(', ')} };`,
   );
-  const gas = factory(spreadsheet, getProp, doFetch, onMail) as T;
+  const gas = factory(spreadsheet, getProp, doFetch, onMail, uuid) as T;
 
   return {
     gas,

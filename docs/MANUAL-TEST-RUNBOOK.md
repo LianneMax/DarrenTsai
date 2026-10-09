@@ -43,9 +43,85 @@ interfere with what you are really testing.
 ### Where to look
 
 - **Sheet:** one tab per funnel. `DSCR`, `FHA`, `Real Estate Investing`,
-  `Debt Consolidation`, `Leads`, plus `Follow-ups` and `Debug` which you will use
-  for diagnosis.
+  `Debt Consolidation`, `Leads`, and `Home Equity` and `ADU` once each has had
+  its first lead, plus `Follow-ups` and `Debug` which you will use for
+  diagnosis.
 - **Bonzo:** the prospect record, its Tags, and its Mortgage fields.
+
+---
+
+## 0.5 The Sheet schema migration (R1, once)
+
+This is the release that replaces the append-only rule. Rows are written under
+their header **by name** from this version on, and `migrateLeadTabs()` puts the
+existing tabs into the one standard column order. Do it in one sitting at a
+quiet hour. Every step is safe to stop after: a lead that arrives mid-way still
+lands under the right headers.
+
+**Before the window.** Answered on 10 Oct: nobody keeps a filter or a saved
+view on the lead tabs, and Darren does not use Best Time to Call. If that has
+changed: a formula is copied as its current value, not as a formula, and a
+filter stays on the old tab.
+
+1. **Copy the spreadsheet.** File > Make a copy. Name it with today's date.
+2. **Deploy the Apps Script, in place.** Paste the file from the R1 commit, then
+   Deploy > Manage deployments > edit > New version (see
+   `docs/APPS-SCRIPT-DEPLOY.md`). Never a new deployment: that changes the
+   `/exec` URL.
+3. **Run `auditLeadTabs`** from the editor, then open the `Debug` tab. One line
+   per tab. Read every one:
+
+   | It says | Meaning |
+   | --- | --- |
+   | `NEEDS MIGRATION (...)` | Expected for all five existing tabs the first time |
+   | `New columns it will gain` | Blank on old rows afterwards. Correct |
+   | `Left behind: Best Time to Call, Lead Source` | Debt Consolidation only. They stay readable in the old tab |
+   | `Carried across though not in the schema: "..."` | A column someone added by hand. It is kept, after `Contacted` |
+   | `Formulas: N` above 0 | Stop and look at them first |
+   | `Filter on the tab: YES` | Note it; re-create it on the new tab afterwards |
+   | `Home Equity` / `ADU` / `Self-Employed`: `no such tab yet` | Expected until each has a lead |
+   | `FHA` or `DSCR`: `no such tab yet` | **Stop.** The tab exists, so its name does not match. Send the line to Max before migrating |
+
+   On 10 Oct the audit was run in the test harness against the live Sheet's
+   real header rows: all five tabs read `NEEDS MIGRATION`, every value moved
+   under its own header, and only the two Debt Consolidation columns above
+   were left behind.
+4. **Run `migrateLeadTabs`.** A few seconds. Read the `Debug` tab again:
+
+   | It says | Do |
+   | --- | --- |
+   | `migrated N row(s) ... Original kept as "X (old 2026-10-..)"` | Check N against the old tab's row count |
+   | `already in schema order, left alone` | Nothing. Safe to have run twice |
+   | `NOT MIGRATED, row R has two different values under "Status"` | The tab is untouched. Two columns share that header and disagree on that row; clear the wrong cell and run again |
+   | `NOT MIGRATED, the copy did not match` | The tab is untouched. Send the line to Max |
+
+5. **Check three rows per tab by eye**, old tab beside new: a name, an email
+   and whatever is in `Status` and `Contacted` must be under the same header in
+   both. On Debt Consolidation check the oldest row: its `Total Debt Balance`
+   must be the same number in both tabs.
+6. **Push the site.** The debt page stops sending the two removed fields and
+   starts sending the new ones (signed savings, equity, LTV, today's payment,
+   the debts' average rate, the same-payoff refi and the rate date).
+7. **One test lead per tab**, with fake details only (`delivered@resend.dev`,
+   a `555-01xx` phone): cases 1.1 to 1.5, 1.10 and 1.11. For each, read the
+   row header by header.
+
+| After the migration | Expect |
+| --- | --- |
+| Every lead tab's first columns | `Timestamp`, `Submission ID`, `First Name`, `Last Name`, `Email`, `Phone`, `State`, `Licensed?`, `Source`, `Magnet/Goal`, `Form ID`, `Page` |
+| Every lead tab's last columns | the attribution block (with `First Touch Medium` after `First Touch Source`), then `Test?`, `Status`, `Contacted` |
+| A new row's `Submission ID` | A long id. The same id is inside that lead's `Payload` on the `Follow-ups` tab |
+| A new row's `Page` | The path only, e.g. `/dscr/` |
+| An old row's new columns | Blank. Those leads were never asked |
+| Inbox | No "Sheet columns out of order" email after step 4. Before it, one per tab is expected |
+
+If a "Sheet columns out of order" email arrives on a later day, someone moved,
+renamed or deleted a column by hand. No lead is affected. Rename the header
+back, or run `migrateLeadTabs` again.
+
+**Rollback.** Deploy the previous version in place (Manage deployments > edit >
+pick the old version). The new tabs stay; the old script appends by position
+again, so rename each "(old ...)" tab back over its new one first.
 
 ---
 
@@ -98,7 +174,7 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 
 ### Case 1.4 - Debt Consolidation
 
-1. Go to the homepage. **Before touching anything, try "Continue to Home Info".**
+1. Go to `/debt-consolidation/`. **Before touching anything, try "Continue to Home Info".**
    It should stop you and say a debt is needed. The two debt rows must be empty,
    with grey `e.g. ...` placeholders, not a filled-in credit card and auto loan.
 2. Enter one debt. Try "See My Comparison" with step 2 blank: it should stop you
@@ -108,17 +184,19 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 | Check | Expect |
 | --- | --- |
 | Site | Success card, "You're all set!" |
-| Sheet tab `Debt Consolidation` | New row with the savings figures. **`Licensed?` sits after the attribution columns**, with `Test?`, `Status` and `Contacted` after it. That is correct, see section 4 |
+| Sheet tab `Debt Consolidation` | New row with the savings figures. `Licensed?` sits straight after `State`, as on every tab since the R1 migration; `Test?`, `Status` and `Contacted` are the last three |
+| Sheet `Debts` | One readable line per debt you entered, e.g. `Credit Card $8,500 at 24.99% ($250/mo)` |
+| Sheet `Estimated Home Equity` / `Current LTV` / `Current Monthly Payment` | The equity snapshot from step 2 and the "Today" card from step 3. A paid-off home (balance `0`) shows its whole value as equity and an LTV of `0` |
+| Sheet `Rate Source Date` | The PMMS week in the page's rate note, e.g. `2026-10-08`. Blank only if the rates call failed |
+| Step 4 | Asks name, phone, email and state. **No** "Best Time to Call", **no** "How Did You Find Me?" |
 | Sheet `Test?` | **`TEST`**, because you used a `zztest+` address on a listed test account. A real lead's cell is blank |
-| Sheet `Mortgage Rate` / `Mortgage Term` | The values you typed in step 2, sitting **between `Mortgage Payment` and `Total Debt Balance`** |
-| An older row, e.g. Steven Salas | Still reads correctly: `29656.8` under `Total Debt Balance`, with the two new cells blank |
+| Sheet `Mortgage Rate` / `Mortgage Term` | The values you typed in step 2, straight after `Mortgage Payment`. Blank, not 0, if you skipped them |
+| The oldest row | Still reads correctly: the same `Total Debt Balance` as in the "(old ...)" tab, with the new cells blank |
 | Bonzo tags | `debt-consolidation`, `HELOC/cash-out interest`, `licensed-state`, `state:CA` |
 | Email | **None.** This funnel has no guide |
 
-**Run this case twice: once on the homepage, once on `/debt-consolidation/`.**
-The second page is the same calculator on the URL the debt ads use (since
-8 Oct). Everything in the table above is the same for both, on purpose. What
-differs:
+The homepage no longer has the calculator (revamp phase 4); its debt card
+links here. Also check:
 
 | Check on `/debt-consolidation/` | Expect |
 | --- | --- |
@@ -132,9 +210,19 @@ If the modal row says `Source` `debt-consolidation-contact` but Bonzo tags it
 `mortgage-calculator`, the Apps Script deployment is older than the page:
 update the existing deployment in place.
 
-Check the savings figure on step 4 and on the mobile sticky bar: both should now
-echo **your own computed number**, not a `$900 - $1,500` range. The range only
-appears when nothing could be computed.
+The page shows **your own computed numbers** only, never a dollar range, and
+there is no sticky savings bar.
+
+**Run it once more with a scenario that costs MORE**: one debt of `3000` at
+`90` a month and `24`%, home value `650000`, balance `350000`, mortgage payment
+`1500`, mortgage rate `3`.
+
+| Check | Expect |
+| --- | --- |
+| Cash-out refi card | "Payment goes up $.../mo". **Never** a minus sign, never "Save" |
+| Sheet `Refi Monthly Savings` | A **negative** number. Negative means the payment goes up by that much |
+| Sheet `Monthly Savings` | The better of the priced options, signed. Here the home equity loan still saves a little, so it is positive |
+| Sheet `HELOAN Monthly Savings` | Blank unless you chose a credit tier and a term on step 3 |
 
 In step 2, fill in the mortgage rate (e.g. `3.5`) and years remaining (e.g. `27`).
 On the results screen you should then see a third card, **"Refi, Same Payoff
@@ -142,8 +230,8 @@ Date"**, and a note on the 30-year card saying how many years it adds and what
 rate is being traded away. Leave both fields blank and neither should appear, with
 every other number unchanged.
 
-The two older rows are the important check: if their values have shifted one or
-two columns right, the Sheet migration was not done before the deploy. Stop and
+The older rows are the important check: compare them with the "(old ...)" tab
+the migration left. If a value sits under a different header there, stop and
 report it.
 
 ### Case 1.5 - Contact modal
@@ -286,6 +374,44 @@ funnel's campaign and their Bonzo tags are not updated. A DSCR lead who returns
 for the FHA guide stays tagged as they were. That needs an update-by-email call
 and belongs with the HubSpot work.
 
+### Case 1.10 - Home Equity
+
+Ship order: the Apps Script version with the `home-equity` route first, then
+the site. Until then the lead lands on `Leads`, saved but without its columns.
+
+1. Go to `/home-equity/`. Try to continue with nothing filled in: it should
+   stop you and ask for the home value and balance.
+2. Home value `650000`, balance `350000`. Pick a goal, an amount (e.g.
+   `75000`) and a preference. Fill the contact step, State **CA**. Submit.
+
+| Check | Expect |
+| --- | --- |
+| Site | Success card, "Darren will be in touch." and no response time |
+| Sheet tab `Home Equity` | Created on this first lead, in the standard order. `Source` `home-equity`, `Form ID` `home-equity-calculator`, `Page` `/home-equity/` |
+| Sheet `Estimated Home Equity` / `Current LTV` / `Illustrative CLTV` | `300000` / `53.8` / `65.4` with the amounts above |
+| Bonzo tags | `home-equity`, `HELOC/cash-out interest`, `goal:...`, `preference:...`, `licensed-state`, `state:CA` |
+| Email | The home-equity confirmation, with the calendar link |
+
+Run it once more with balance `0`: the row must say `0` under `Mortgage
+Balance`, not blank. A paid-off home is an answer.
+
+### Case 1.11 - ADU
+
+Same ship order as 1.10, with the `adu` route.
+
+1. Go to `/adu/`. All four numbers and a purpose are required before the
+   contact step: try to skip each.
+2. Home value `650000`, balance `350000`, project cost `175000`, amount to
+   finance `75000`, purpose **Rental ADU**. Contact step, State **CA**. Submit.
+
+| Check | Expect |
+| --- | --- |
+| Site | Success card. The page says plainly that financing does not confirm an ADU can be permitted, built or rented |
+| Sheet tab `ADU` | Created on this first lead. `Source` `adu`, `Form ID` `adu-calculator`, `Page` `/adu/`, `Project Purpose` `Rental ADU` |
+| Sheet `Estimated Home Equity` / `Current LTV` / `Illustrative CLTV` | `300000` / `53.8` / `65.4` |
+| Bonzo tags | `adu`, `HELOC/cash-out interest`, `purpose:...`, `licensed-state`, `state:CA` |
+| Email | The ADU confirmation, with the calendar link |
+
 ---
 
 ## 2. Attribution and Google Ads
@@ -416,10 +542,14 @@ column:
 **The Debug tab is the real log.** Apps Script's own cloud logging is unreliable
 for this. The `Debug` tab is trustworthy. It is trimmed to 2000 rows daily.
 
-**`Licensed?` is in a strange place on the Debt Consolidation tab.** It sits after
-the attribution columns there, and before them on every other tab. This is
-deliberate. Columns are only ever added at the end, because inserting one would
-shift the meaning of every historical row to its right. Do not "fix" it.
+**A new column shows up at the far right of a tab.** That is where the script
+adds a column the tab does not have yet. It moves into place the next time
+`migrateLeadTabs` is run. Do not drag it: rows are written under their header by
+name, so nothing is misfiled while it sits there, and a column moved by hand is
+what the "Sheet columns out of order" email is about.
+
+**A negative number under a Savings header is not an error.** It means that
+option raises the monthly payment by that much. The site says so in words.
 
 **The phone number in tracking is not Darren's number.** CallRail swaps phone
 numbers on the page so it can attribute calls, so tracking shows a pool number.

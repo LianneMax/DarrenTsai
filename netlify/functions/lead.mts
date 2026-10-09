@@ -299,8 +299,6 @@ const LEAD_FIELDS: Array<[key: string, label: string]> = [
   ["state", "State"],
   ["source", "Source"],
   ["magnet", "Magnet"],
-  ["leadSource", "How they found us"],
-  ["bestTimeToCall", "Best time to call"],
   ["timestamp", "Submitted"],
 ];
 

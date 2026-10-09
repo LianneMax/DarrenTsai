@@ -170,6 +170,7 @@ export default tseslint.config(
         ScriptApp: 'readonly',
         ContentService: 'readonly',
         MailApp: 'readonly',
+        Utilities: 'readonly',
         Logger: 'readonly',
       },
     },

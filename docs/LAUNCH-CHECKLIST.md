@@ -26,7 +26,7 @@ Last updated: 10 Oct 2026, after the phase 4 and 5 deploy (`3430fd2`, Apps Scrip
 
 ## 2. Code still to build (Claude Code)
 
-- [ ] **R1, the Sheet schema release.** Reference implementation is `4f56832` on `debt-consolidation-page`; redo it on current `main` and include the Home Equity and ADU tabs. See `docs/revamp/BRANCHES.md` and `docs/lead-sheet-schema.md`. Both questions are answered (10 Oct): no filters or saved views on the lead tabs, and Darren does not use Best Time to Call. Ready to build; it still needs a Sheet backup, a formula check and a verified migration in its own quiet window.
+- [ ] **R1, the Sheet schema release: run the migration window.** Built on `claude/wizardly-ramanujan-1dww99` on top of current `main`, Home Equity and ADU included, and checked against the live Sheet's header rows (see `docs/revamp/BRANCHES.md`). Left, by hand, in one quiet window: copy the spreadsheet, deploy the branch's Apps Script in place, `auditLeadTabs()`, `migrateLeadTabs()`, merge the branch and push the site, one fake test lead per tab. Steps in `docs/MANUAL-TEST-RUNBOOK.md` section 0.5. Owner: Max (Sheet and deploy), Claude (merge and checks).
 - [ ] **HubSpot loan fields** (audit L12). Loan Amount, Loan Type and Property Use reach HubSpot empty. Names received from Niko (10 Oct): `loan_amount`, `loan_type`, `property_use`, `lead_source_detail`, all hidden fields on the form. Repeat submissions: latest known answer wins, blanks are omitted, history stays. Blocked on the final field types: Loan Amount was a number and the other three text, and Niko is still changing them, so the dropdown values are not settled.
 
 ## 3. Accounts and settings (outside the code)
@@ -74,6 +74,7 @@ These were still listed as open in `SESSION_HANDOFF_PRIVATE.md`, but have since 
 
 ## Done
 
+- 10 Oct: R1 rebuilt on current `main`, on `claude/wizardly-ramanujan-1dww99`: rows written by header name through the formula guard, the migration and audit functions, Home Equity and ADU in the standard order, and the debt page's R1 fields. Checked with real payloads captured in Chromium and run through the real Apps Script, and with the live Sheet's header rows. Not merged, deployed or migrated (item above).
 - 10 Oct: CallRail pool settled. Niko's "1 number" meant one number type for ads, not a pool of one: the website pool stays at 4 numbers, so each call still ties to its ad click. No separate Google Business Profile number for now (Max).
 - 10 Oct: rate limit on `/api/lead`, in code: 10 posts per address per 15 minutes, counted in Netlify Blobs with the address hashed, failing open on any Blobs error or a reply slower than 600ms. A refused post gets a 429 before its body is read, so it sends no rescue email; the static pages show its message instead of "your details were passed to Darren". Checked in Chromium on all three static pages. On `main` from 10 Oct; an ordinary lead going through in the live test above confirms it lets real posts by.
 - 10 Oct: honeypot decided: no hidden field. Browser autofill can fill one, and a filled honeypot gets a silent 200, which is a lost lead nobody hears about; the rate limit covers the flood case instead. The server's `company` check stays, harmless with nothing sending it.

@@ -8,7 +8,7 @@
  * real doPost against the stubbed runtime.
  */
 import { describe, it, expect } from 'vitest';
-import { loadGas } from './helpers/gas-harness';
+import { loadGas, Formula } from './helpers/gas-harness';
 
 function post(payload: Record<string, unknown>) {
   const { gas, rowOf } = loadGas<{ doPost: (e: unknown) => { __body: string } }>({
@@ -31,10 +31,10 @@ describe('formula-like text is written as text', () => {
     const { res, rowOf } = post(payload);
     expect(res.success).toBe(true);
     const row = rowOf(tab);
-    expect(row['First Name']).toBe(`'${ATTACK}`);
-    for (const v of Object.values(row)) {
-      if (typeof v === 'string') expect(v, String(v)).not.toMatch(/^[=@]|^[+-]\s*[A-Za-z]/);
-    }
+    // Stored as the text that was typed, exactly; the harness turns any
+    // unguarded "=..." into a Formula, as Sheets would.
+    expect(row['First Name']).toBe(ATTACK);
+    for (const v of Object.values(row)) expect(v).not.toBeInstanceOf(Formula);
   });
 
   it('leaves ordinary values exactly as they were', () => {

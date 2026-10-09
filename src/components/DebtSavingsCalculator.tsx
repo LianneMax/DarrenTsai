@@ -267,7 +267,14 @@ export default function DebtSavingsCalculator() {
   const heloanSave  = heloanPmt > 0 ? todayTotal - heloanTotal : 0;
   const cltv        = hv > 0 ? (mb + heloanAmt) / hv * 100 : 0;
 
-  const bestSave = Math.max(refiSave > 0 ? refiSave : 0, heloanSave > 0 ? heloanSave : 0);
+  /**
+   * The better of the priced options, SIGNED, for the Sheet's Monthly Savings
+   * (R1). It used to be floored at 0, which made a visitor whose every option
+   * costs more look the same as one who never reached the comparison.
+   * Negative means the payment goes up by that much. The HELOAN only counts
+   * once it has been priced.
+   */
+  const bestSigned = heloanPmt > 0 ? Math.max(refiSave, heloanSave) : refiSave;
 
   /**
    * How far the visitor is allowed to go.
@@ -335,12 +342,23 @@ export default function DebtSavingsCalculator() {
     const payload = {
       firstName: fname, lastName: lname, phone, email,
       state: usState,
-      // Blank when untouched, never the dropdown's opening position.
-      // No longer asked (Max, 8 Oct), sent blank so the payload and the
-      // Debt Consolidation columns stay as they are until R1 drops them.
-      bestTimeToCall: '', leadSource: '',
-      monthlySavings: bestSave > 0 ? Math.round(bestSave) : '',
+      // Signed: negative means the best priced option still raises the payment.
+      // It used to be sent only when positive, so "costs more" and "never
+      // computed" were the same blank cell. (Best Time to Call and Lead Source
+      // are no longer sent: R1 drops their columns.)
+      monthlySavings: Math.round(bestSigned),
       homeValue: hv, mortgageBalance: mb, mortgagePayment: mp,
+      // The equity snapshot step 2 shows, so Darren reads the same two numbers
+      // the visitor saw. Named as the equity and ADU pages name them, so one
+      // header reads one field on every tab. A paid-off home (balance 0) has
+      // its whole value as equity and an LTV of 0, both real answers.
+      estimatedEquity: hv > 0 && balanceGiven ? Math.round(hv - mb) : '',
+      currentLtv: hv > 0 && balanceGiven ? Math.round(mb / hv * 1000) / 10 : '',
+      // The "Today" figure: mortgage payment plus every debt payment.
+      currentMonthlyPayment: Math.round(todayTotal),
+      // Balance-weighted, the figure on the step 1 chip. Blank when no debt
+      // carries a rate, since 0% is not what "no rate entered" means.
+      weightedAvgRate: wtRate > 0 ? Math.round(wtRate * 100) / 100 : '',
       // Optional, and sent as 0 when not given. Darren reads these before he
       // calls: the rate they are giving up and the years they have left are the
       // first two things that decide whether a consolidation is worth doing.
@@ -350,12 +368,20 @@ export default function DebtSavingsCalculator() {
       totalDebtBalance: totBal, totalDebtPayment: totPmt,
       refiMonthlyPayment: Math.round(refiPmt),
       refiMonthlySavings: Math.round(refiSave),
+      // The same-payoff option. Blank unless the visitor gave a remaining term
+      // to price it at.
+      refiSameTermPayment: refiSameTermPmt > 0 ? Math.round(refiSameTermPmt) : '',
+      refiSameTermSavings: refiSameTermPmt > 0 ? Math.round(refiSameTermSave) : '',
       heloanMonthlyPayment: heloanPmt > 0 ? Math.round(heloanPmt) : '',
-      heloanMonthlySavings: heloanSave > 0 ? Math.round(heloanSave) : '',
+      // Signed once priced, blank until then.
+      heloanMonthlySavings: heloanPmt > 0 ? Math.round(heloanSave) : '',
       // The two answers the HELOAN figures were priced at, so Darren can see
       // what assumption produced them. Without these a saving quoted at 680+
       // is indistinguishable from one quoted at 580.
       heloanCreditTier: heloanTier, heloanTermYears: heloanTerm,
+      // The PMMS week the refi figures were priced from. Blank when the rates
+      // call failed and the static fallback did the pricing.
+      rateSourceDate: ratesLive ? rateDate : '',
       debts,
       source: 'DebtConsolidation',
       timestamp: new Date().toISOString(),
