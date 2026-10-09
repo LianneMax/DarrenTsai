@@ -24,7 +24,8 @@ import { resolve } from 'node:path';
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
 const CALC = read('src/components/DebtSavingsCalculator.tsx');
-const HERO = read('src/components/Hero.tsx');
+// The homepage hero since revamp phase 4; it quotes no savings figure at all.
+const HERO = read('src/components/HomeHub.tsx');
 const CONFIG = read('src/config.ts');
 const DSCR = read('public/dscr/index.html');
 const FHA = read('public/fha/index.html');

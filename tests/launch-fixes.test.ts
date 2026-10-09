@@ -159,7 +159,7 @@ describe('L7: the hero paints at once', () => {
   it('the homepage hero has no entry animation at all', () => {
     // Since 5 Oct it is pre-rendered, and an animation would play twice: once
     // on the HTML, once on the elements React swaps in.
-    expect(read('src/components/Hero.tsx')).not.toMatch(/hero-anim/);
+    expect(read('src/components/HomeHub.tsx')).not.toMatch(/hero-anim/);
     expect(read('src/index.css')).not.toMatch(/\.hero-anim\b/);
   });
 

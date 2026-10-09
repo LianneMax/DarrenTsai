@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 27 files / 1015 tests, all passing |
+| Tests | Vitest + jsdom, 28 files / 1021 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1015 tests)
+npm test         # vitest run (1021 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -120,7 +120,7 @@ constrain code:
   one filter finds both) plus `goal:` and `preference:`. `/yt/heloc` and
   `/yt/equity` point there. It is a new source, not a revival of the old
   `heloc-hei` route, which stays removed. Until the page existed that intent was
-  served by the homepage's debt-consolidation funnel.
+  served by the debt-consolidation funnel.
 - **Renovation and ADU have their own page, `/adu/` (revamp phase 5, 9 Oct;
   not live).** Source `adu`, its own "ADU" tab, Bonzo tags `adu` and
   `HELOC/cash-out interest` plus `purpose:`. `/yt/adu` and `/yt/adu-c` point
@@ -228,7 +228,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1015 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1021 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.

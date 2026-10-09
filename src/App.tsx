@@ -2,17 +2,17 @@ import { useEffect, useState } from 'react';
 import type { MortgageInputs } from './types/mortgage';
 import { loadInputs } from './hooks/useMortgageInputs';
 import Nav from './components/Nav';
-import Hero from './components/Hero';
-import DebtSavingsCalculator from './components/DebtSavingsCalculator';
-import Education from './components/Education';
+import { HomeHero, HomeGoals, HomeAbout, HomeTools, HomeEducation } from './components/HomeHub';
+import Reviews from './components/Education';
 import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 
 export default function App() {
-  // The homepage carries a single CTA now: debt consolidation. The amortization
-  // calculator moved to /mortgage-calculator/. The contact modal still prefills
-  // its loan fields, so the stored inputs are read once here (read-only: only
-  // the calculator page writes them).
+  // The homepage is the goal hub (revamp phase 4): it sends each visitor to the
+  // page for their goal and hosts no calculator of its own. The debt calculator
+  // lives at /debt-consolidation/, the amortization one at /mortgage-calculator/.
+  // The contact modal still prefills its loan fields, so the stored inputs are
+  // read once here (read-only: only the calculator page writes them).
   const [inputs] = useState<MortgageInputs>(loadInputs);
   const [contactOpen, setContactOpen] = useState(false);
 
@@ -43,9 +43,12 @@ export default function App() {
       {/* One <main> landmark per page (audit L3): screen-reader users jump to it,
           and Lighthouse fails a page without one. Nav and Footer stay outside. */}
       <main>
-        <Hero onOpenContact={openContact} />
-        <DebtSavingsCalculator />
-        <Education />
+        <HomeHero />
+        <HomeGoals onOpenContact={openContact} />
+        <HomeAbout />
+        <Reviews />
+        <HomeTools />
+        <HomeEducation />
       </main>
       <Footer />
 
@@ -56,7 +59,7 @@ export default function App() {
           title="Talk to Darren"
           subtitle="No credit pull. No pressure. Four fields and a licensed loan officer gets back to you."
           formId="home-contact-modal"
-          nextStep="In the meantime, the savings calculator above shows your full breakdown."
+          nextStep="In the meantime, each goal card on this page leads to an estimate of its own."
         />}
     </>
   );

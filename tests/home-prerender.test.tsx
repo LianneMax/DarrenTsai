@@ -17,7 +17,8 @@ describe('the pre-rendered homepage shell', () => {
     const shell = renderHomeShell();
     expect(shell.startsWith('<nav')).toBe(true);
     expect(shell).toContain('<main>');
-    expect(shell).toMatch(/<h1[^>]*>Most mortgages cost you money/);
+    expect(shell).toMatch(/<h1[^>]*>Start with your goal\. Make your next move/);
+    expect(shell.match(/<h1\b/g)).toHaveLength(1);
   });
 
   it('is exactly the start of what the app renders, so nothing moves when React swaps in', async () => {
@@ -33,8 +34,10 @@ describe('the pre-rendered homepage shell', () => {
   it('marks every button that needs JavaScript, so an early click is queued', async () => {
     const { renderHomeShell } = await import('../src/prerender');
     const shell = renderHomeShell();
-    for (const key of ['nav-book', 'nav-contact', 'nav-calc', 'nav-menu', 'nav-savings', 'nav-reviews',
-      'hero-savings', 'hero-contact', 'hero-reviews']) {
+    // Since revamp phase 4 the hero's only call to action is an anchor (#goals)
+    // and Monthly Reset is a plain link to /debt-consolidation/, so neither
+    // needs a key: a link works before React does.
+    for (const key of ['nav-book', 'nav-contact', 'nav-calc', 'nav-menu', 'nav-reviews']) {
       expect(shell, key).toContain(`data-early="${key}"`);
     }
     // Every <button> in the shell is marked: a button does nothing without React.
@@ -167,7 +170,7 @@ describe('the early-click queue in index.html', () => {
   });
 
   it('keeps only the last click', () => {
-    document.body.innerHTML = '<button data-early="hero-savings"></button><button data-early="nav-book"></button>';
+    document.body.innerHTML = '<button data-early="nav-calc"></button><button data-early="nav-book"></button>';
     for (const b of document.querySelectorAll('button')) b.click();
     expect(early().take()).toBe('nav-book');
   });

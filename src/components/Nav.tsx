@@ -113,7 +113,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
 
           {/* Desktop links */}
           <div className="nav-links">
-            <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-link" data-early="nav-savings">Monthly Reset</a>
+            <a href="/debt-consolidation/" className="nav-link">Monthly Reset</a>
             <div className={`nav-dropdown${calcOpen ? ' nav-dropdown--open' : ''}`} ref={calcDropdownRef}>
               <button
                 type="button"
@@ -129,7 +129,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
                 </svg>
               </button>
               <div className="nav-dropdown-menu">
-                <a href="/#savings" onClick={(e) => { scrollTo('savings')(e); setCalcOpen(false); }} className="nav-dropdown-item">Debt Consolidation</a>
+                <a href="/debt-consolidation/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">Debt Consolidation</a>
                 <a href="/mortgage-calculator/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">Mortgage Calculator</a>
                 <a href="/dscr/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">DSCR</a>
                 <a href="/fha/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">FHA Calculator</a>
@@ -164,9 +164,9 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
           order (audit L3): otherwise a keyboard user tabs into links a screen
           reader has been told do not exist, and Lighthouse fails the page. */}
       <div className={`nav-mobile-menu${menuOpen ? ' nav-mobile-menu--open' : ''}`} aria-hidden={!menuOpen}>
-        <a href="/#savings"    onClick={scrollTo('savings')}    className="nav-mobile-link" tabIndex={drawerTab}>Monthly Reset</a>
+        <a href="/debt-consolidation/" className="nav-mobile-link" tabIndex={drawerTab}>Monthly Reset</a>
         <span className="nav-mobile-link nav-mobile-label">Calculator</span>
-        <a href="/#savings" onClick={scrollTo('savings')} className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Debt Consolidation</a>
+        <a href="/debt-consolidation/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Debt Consolidation</a>
         <a href="/mortgage-calculator/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Mortgage Calculator</a>
         <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>DSCR</a>
         <a href="/fha/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>FHA Calculator</a>

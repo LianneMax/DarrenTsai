@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 27 files / 1015 tests, all passing |
+| Tests | Vitest + jsdom, 28 files / 1021 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1015 tests)
+npm test         # vitest run (1021 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -137,7 +137,7 @@ constrain code:
   one filter finds both) plus `goal:` and `preference:`. `/yt/heloc` and
   `/yt/equity` point there. It is a new source, not a revival of the old
   `heloc-hei` route, which stays removed. Until the page existed that intent was
-  served by the homepage's debt-consolidation funnel.
+  served by the debt-consolidation funnel.
 - The `/yt/*` redirects in `netlify.toml` are `302` on purpose: a `301` is cached
   permanently, so the destination could never be changed afterwards. One link per
   bucket plus a `-c` variant, so a description click and a pinned-comment click
@@ -251,19 +251,31 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1015 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1021 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves the homepage's calculator, the same component with `standalone`, so
   the lead is identical: source `DebtConsolidation`, form id
   `debt-savings-calculator`, same Sheet tab, same GA4 conversion, and
   `page_path` tells the two pages apart. It exists ahead of the revamp because
   the revamp moves the calculator off the homepage and an ad's final URL cannot
-  follow it. Until that phase the homepage keeps its copy, the nav's
-  `/#savings` links stay as they are, and each page is canonical to itself.
+  follow it. Since phase 4 the homepage no longer has the calculator, and
+  each page is canonical to itself.
   The plan for the remaining phases, and the Sheet schema migration that
   replaces the append-only rule, are in `docs/frontend-revamp-review.md` and
   `docs/lead-sheet-schema.md`; neither is built yet, so append-only still
   holds.
+- **The homepage is the goal hub (revamp phase 4, 9 Oct; not live).**
+  `HomeHub.tsx`: a static hero (pre-rendered, its one CTA an anchor to
+  `#goals`), five goal cards, About Me, the reviews, Calculators & Tools and
+  Education. Pay Off Debt, Access Home Equity, Renovate / ADU and Buy a Home are
+  plain links to `/debt-consolidation/`, `/home-equity/`, `/adu/` and `/fha/`;
+  Invest asks first (DSCR calculator or Real Estate Investing); "Not sure where
+  to start?" opens the contact modal (`home-contact`, Leads tab). The homepage
+  hosts no calculator, so every `/#savings` link now points at
+  `/debt-consolidation/`, and `tests/home-hub.test.tsx` fails on any link to a
+  page that is not served. `DebtSavingsCalculator`'s non-standalone layout (the
+  old homepage one, sticky bar included) is no longer rendered anywhere; it and
+  the guard tests that pin it are left for a separate clean-up.
 - **`/debt-consolidation/` has its own layout (revamp phase 2, 9 Oct; not
   live).** `DebtPageViews.tsx` draws the hero, four steps and the recap from Max's
   design preview v4, and computes nothing: `DebtSavingsCalculator` with

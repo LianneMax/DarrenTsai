@@ -9,12 +9,12 @@
  * for the landing pages. vite.config.ts writes this markup into index.html's
  * #root, so the hero is in the HTML itself.
  *
- * HOW IT STAYS CORRECT. It is the same Nav and Hero components the app
+ * HOW IT STAYS CORRECT. It is the same Nav and HomeHero components the app
  * renders, not a copy, so the two cannot drift. main.tsx is unchanged:
  * createRoot replaces this markup with identical DOM when the app loads. That
  * replacement is deliberate rather than hydration: hydrating would mean the
- * whole App renders on the server too, which pulls in the debt calculator and
- * the lead form, and a mismatch there is a lead-path risk (audit, Option B).
+ * whole App renders on the server too, which pulls in the contact modal and the
+ * booking code, and a mismatch there is a lead-path risk (audit, Option B).
  *
  * The wrapper mirrors App.tsx: Nav, then <main> holding the hero first, so the
  * DOM React builds has the same shape and nothing moves when it swaps in.
@@ -24,7 +24,7 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import Nav from './components/Nav';
-import Hero from './components/Hero';
+import { HomeHero } from './components/HomeHub';
 import { DebtPageHero } from './components/DebtPageViews';
 import { EquityPageHero } from './components/HomeEquityViews';
 import { AduPageHero } from './components/AduViews';
@@ -95,7 +95,7 @@ export function renderHomeShell(): string {
     <>
       <Nav onOpenContact={noop} />
       <main>
-        <Hero onOpenContact={noop} />
+        <HomeHero />
       </main>
     </>,
   );
