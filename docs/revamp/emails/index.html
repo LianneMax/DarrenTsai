@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirmation emails: previews for sign-off</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#223d55;background:#f5f7f9;margin:0;padding:32px 16px;line-height:1.5;}
+  main{max-width:920px;margin:0 auto;background:#fff;border:1px solid #e6ebf0;border-radius:14px;padding:28px 32px;}
+  h1{font-size:22px;margin:0 0 6px;} p{margin:8px 0;color:#4b5563;font-size:14px;}
+  table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14px;}
+  th{text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#517686;padding:8px 10px;border-bottom:2px solid #e6ebf0;}
+  td{padding:14px 10px;border-bottom:1px solid #e6ebf0;vertical-align:top;}
+  a{color:#517686;font-weight:700;} .muted{color:#6b7280;font-size:13px;}
+  .tag{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;letter-spacing:.8px;padding:2px 8px;border-radius:10px;}
+  .draft{background:#fffaeb;color:#b45309;} .live{background:#d5f4d2;color:#35785c;}
+  code{background:#f5f7f9;padding:1px 5px;border-radius:4px;font-size:12px;}
+</style>
+</head>
+<body>
+<main>
+  <h1>Confirmation emails: previews for sign-off</h1>
+  <p>Each file is what the existing email template renders for a sample lead: same layout, colours, greeting, signature, licence footer and unsubscribe line as the live contact email. Only the words differ.</p>
+  <p><strong>Nothing here is sent.</strong> The four drafts are not connected to any form. The names, goals and messages are samples.</p>
+  <p>Narrow the browser window to about 400px to see the phone layout. Regenerate after a copy change with <code>npm run emails</code>.</p>
+  <table>
+    <tr><th>Email</th><th>Subject and inbox preview line</th><th>Who would get it</th></tr>
+    <tr>
+      <td><a href="debt-consolidation.html">Debt Consolidation</a><br><span class="tag draft">DRAFT, not sent</span></td>
+      <td><strong>Got your debt comparison request, here is my calendar</strong><br><span class="muted">Your request has been received. The comparison you ran is a starting point.</span></td>
+      <td class="muted">A lead from the debt calculator, on / or /debt-consolidation/.</td>
+    </tr>
+    <tr>
+      <td><a href="home-equity.html">Home Equity</a><br><span class="tag draft">DRAFT, not sent</span></td>
+      <td><strong>Got your home equity request, here is my calendar</strong><br><span class="muted">Your request has been received. Here is what happens next.</span></td>
+      <td class="muted">A lead from /home-equity/ (page not built yet). Sample goal: Renovation / ADU.</td>
+    </tr>
+    <tr>
+      <td><a href="adu.html">Renovation / ADU</a><br><span class="tag draft">DRAFT, not sent</span></td>
+      <td><strong>Got your project funding request, here is my calendar</strong><br><span class="muted">Your request has been received. Funding and the project itself are two separate checks.</span></td>
+      <td class="muted">A lead from /adu/ (page not built yet). Sample purpose: Rental ADU.</td>
+    </tr>
+    <tr>
+      <td><a href="mortgage-calculator-review.html">Mortgage Calculator review</a><br><span class="tag draft">DRAFT, not sent</span></td>
+      <td><strong>Got your mortgage review request, here is my calendar</strong><br><span class="muted">Your request has been received. Your calculator numbers came with it.</span></td>
+      <td class="muted">A lead who asks for a review from /mortgage-calculator/. Sample message included.</td>
+    </tr>
+    <tr>
+      <td><a href="contact-live.html">Contact modal</a><br><span class="tag live">LIVE, unchanged</span></td>
+      <td><strong>Got your details, here is my calendar</strong><br><span class="muted">Your details reached me. If you would rather not wait, my calendar is open below.</span></td>
+      <td class="muted">Sent today to every contact modal lead. Unchanged, shown for comparison.</td>
+    </tr>
+  </table>
+  <p style="margin-top:18px;">The copy, with the decisions that are yours, is in <code>docs/revamp/confirmation-email-copy.md</code>.</p>
+</main>
+</body>
+</html>
