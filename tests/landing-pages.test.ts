@@ -61,3 +61,31 @@ describe.each(PAGES)('/%s email rejection', (page) => {
     expect(html).toContain('btn.disabled = false');
   });
 });
+
+/**
+ * /fha/ "Have Darren Review My Payment" (revamp brief section 9, preview v4).
+ * The estimate's button opens the contact modal under its own form id, with the
+ * estimate's loan and rate prefilled once a payment is showing. Checked in
+ * Chromium on 10 Oct: a review posts formId fha-payment-review, and the nav's
+ * Contact still posts fha-contact-modal.
+ */
+describe('/fha/ review button', () => {
+  const FHA_PAGE = readFileSync(resolve(__dirname, '../public/fha/index.html'), 'utf8');
+
+  it('opens the contact modal as a payment review, not the guide form', () => {
+    expect(FHA_PAGE).toContain('>Have Darren Review My Payment</button>');
+    expect(FHA_PAGE).toContain("window.openContactModal({ formId: 'fha-payment-review', title: 'Have Darren Review My Payment' });");
+  });
+
+  it('posts whichever form id opened it, and the modal\'s own by default', () => {
+    expect(FHA_PAGE).toContain("var DEFAULT_FORM_ID = 'fha-contact-modal';");
+    expect(FHA_PAGE).toContain('formIdNow = (opts && opts.formId) || DEFAULT_FORM_ID;');
+    expect(FHA_PAGE).toContain('{ formId: formIdNow })');
+    expect(FHA_PAGE).toContain('form_id: formIdNow,');
+  });
+
+  it('prefills the loan and rate only once the estimate shows a payment', () => {
+    const hook = FHA_PAGE.slice(FHA_PAGE.indexOf('window.LF_CONTACT_PREFILL = function () {'));
+    expect(hook.slice(0, 400)).toContain('if (!(price > 0 && rate > 0 && downPct >= MIN_DOWN_PCT)) return {};');
+  });
+});

@@ -1254,7 +1254,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
 
           <p class="fha-note">Estimate only, on a 30-year fixed FHA loan. FHA charges annual MIP on the average outstanding balance; this uses the starting balance, so the real figure drifts slightly below it over time. Not a rate lock or a quote.</p>
-          <button type="button" class="cta solid-accent" id="fhaCalcCta" style="width:100%;justify-content:center;margin-top:16px;">Get my real rate</button>
+          <button type="button" class="cta solid-accent" id="fhaCalcCta" style="width:100%;justify-content:center;margin-top:16px;">Have Darren Review My Payment</button>
         </div>
       </div>
     </div>
@@ -1798,9 +1798,32 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       };
     };
 
+    // The contact modal prefills its two optional loan fields from this
+    // estimate, the way /dscr/ does: the financed loan (base loan plus the
+    // upfront MIP) and the rate. Only once the page has stood behind a
+    // payment, so an unfinished estimate never reaches the Leads tab as the
+    // visitor's own answer.
+    window.LF_CONTACT_PREFILL = function () {
+      var price = num(priceEl), downPct = num(downEl), rate = num(rateEl);
+      if (!(price > 0 && rate > 0 && downPct >= MIN_DOWN_PCT)) return {};
+      return {
+        loanAmount: document.getElementById('fhaTotalLoan').textContent.replace(/[^0-9]/g, ''),
+        annualRate: String(rate)
+      };
+    };
+
+    // "Have Darren Review My Payment" (revamp brief section 9, preview v4):
+    // the contact modal, under a form id of its own so GA4 and HubSpot can
+    // tell a review of this estimate from a general enquiry. It used to scroll
+    // to the guide form, which offers the spreadsheet version of the tool the
+    // visitor has just used, and asks for it by a different name.
     var cta = document.getElementById('fhaCalcCta');
     if (cta) {
       cta.addEventListener('click', function () {
+        if (typeof window.openContactModal === 'function') {
+          window.openContactModal({ formId: 'fha-payment-review', title: 'Have Darren Review My Payment' });
+          return;
+        }
         var form = document.getElementById('get-fha-estimate');
         if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -2584,7 +2607,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   var SUBMIT_LABEL = el('submitContact').innerHTML;
 
-  function openContact() {
+  // The form id this opening will post. A caller may pass its own (the FHA
+  // estimate's review button does); a plain click passes an Event, which has
+  // no formId, so every other opener keeps the modal's own id.
+  var DEFAULT_FORM_ID = 'fha-contact-modal';
+  var DEFAULT_TITLE = el('lfTitle').textContent;
+  var formIdNow = DEFAULT_FORM_ID;
+
+  function openContact(opts) {
+    formIdNow = (opts && opts.formId) || DEFAULT_FORM_ID;
+    el('lfTitle').textContent = (opts && opts.title) || DEFAULT_TITLE;
     clearErrors();
     var submit = el('submitContact');
     submit.disabled = false;
@@ -2674,7 +2706,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'fha-contact-modal' })),
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: formIdNow })),
       });
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the
@@ -2691,7 +2723,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (window.DT) {
         window.DT.track('generate_lead', {
           lead_source: payload.source,
-          form_id: 'fha-contact-modal',
+          form_id: formIdNow,
           page_path: location.pathname,
           user_data: {
             email: payload.email,

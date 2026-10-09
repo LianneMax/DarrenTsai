@@ -28,7 +28,6 @@ Last updated: 10 Oct 2026, after the phase 4 and 5 deploy (`3430fd2`, Apps Scrip
 
 ## 2. Code still to build (Claude Code)
 
-- [ ] **FHA review form** (revamp brief section 9, preview v4). Add "Have Darren Review My Payment" with its own form id. The guide form keeps Credit Score; the FHA tab stores it.
 - [ ] **R1, the Sheet schema release.** Reference implementation is `4f56832` on `debt-consolidation-page`; redo it on current `main` and include the Home Equity and ADU tabs. See `docs/revamp/BRANCHES.md` and `docs/lead-sheet-schema.md`. Blocked on two answers: whether Darren or Kocah keep filters, formulas or saved views on the lead tabs, and whether Darren uses the best-time answer. Runs in its own quiet window.
 - [ ] **R2, contextual confirmation emails** (brief section 11.1) for debt, home equity, ADU and mortgage-calculator review. Blocked on Max's sign-off of `docs/revamp/confirmation-email-copy.md` (previews in `docs/revamp/emails/`), and possibly Saxton compliance. Then re-apply `c8967bb` from the branch, keep its hash test, and only after that make Apps Script send a context.
 - [ ] **HubSpot loan fields** (audit L12). Loan Amount, Loan Type and Property Use reach HubSpot empty. Blocked on Niko's internal property names and allowed values.
@@ -81,6 +80,7 @@ These were still listed as open in `SESSION_HANDOFF_PRIVATE.md`, but have since 
 
 ## Done
 
+- 10 Oct: `/fha/` "Have Darren Review My Payment". The estimate's button opens the contact modal as form `fha-payment-review` with the financed loan and rate prefilled (it used to scroll to the guide form); leads go to the Leads tab as `fha-contact`. The guide form and its Credit Score are unchanged. Tell Kocah about the new form id.
 - 10 Oct: the old homepage layout of the debt calculator removed (about 650 lines and its `dsc-` CSS), with the unused `SAVINGS_RANGE`; the guard tests now scan `DebtPageViews.tsx`, the page visitors see.
 - 10 Oct: the email typo hint no longer swallows the next click. It now appears once that click has landed (`afterPress` in `public/email-suggest.js`, shared by React and the static pages). Reproduced on the old build at 1280px, fixed on the new.
 - 10 Oct: revamp phase 6, navigation. The hub and mortgage calculator nav has About Me, Reviews, Calculators (now with Home Equity and ADU), Contact and Book a Call; the three ad pages show only Contact and Book a Call; the static pages' logo goes to `/` directly.
