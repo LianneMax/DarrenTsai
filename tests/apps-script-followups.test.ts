@@ -320,6 +320,44 @@ describe('the contact confirmation', () => {
     },
   );
 
+  /**
+   * R2 (10 Oct, copy approved by Max): the calculator funnels get the email that
+   * fits them, on the same template. The context is what picks the words; the
+   * dropdown answers ride along for the one sentence that may name them.
+   */
+  const bodyOf = (c: Harness) => JSON.parse(String(guideCalls(c)[0].options.payload));
+
+  it.each([
+    [{ source: 'DebtConsolidation', firstName: 'Dee' }, 'debt'],
+    [{ source: 'home-equity', firstName: 'Hal', goal: 'Renovation / ADU' }, 'home-equity'],
+    [{ source: 'adu', firstName: 'Ada', projectPurpose: 'Rental ADU' }, 'adu'],
+    [{ source: 'mortgage-calculator-contact', firstName: 'Mo', loanAmount: 400000, message: 'Under 2,800' }, 'mortgage-review'],
+  ])('sends a %o lead the %s confirmation', (lead, context) => {
+    const c = configured();
+    c.queue({ ...CONTACT_LEAD, message: '', ...lead });
+    c.processFollowUps();
+    const body = bodyOf(c);
+    expect(guideCalls(c)[0].url).toContain('send-contact-confirmation');
+    expect(body.context).toBe(context);
+    if (context === 'home-equity') expect(body.goal).toBe('Renovation / ADU');
+    if (context === 'adu') expect(body.projectPurpose).toBe('Rental ADU');
+    expect(c.statusOf().status).toBe('done');
+  });
+
+  it('keeps the contact email, and its body, for a contact lead', () => {
+    const c = configured();
+    c.queue(CONTACT_LEAD);
+    c.processFollowUps();
+    expect(Object.keys(bodyOf(c)).sort()).toEqual(['email', 'firstName', 'lastName', 'message']);
+  });
+
+  it('sends the mortgage review email only when the calculator numbers came with it', () => {
+    const c = configured();
+    c.queue({ ...CONTACT_LEAD, source: 'mortgage-calculator-contact' });
+    c.processFollowUps();
+    expect(bodyOf(c).context).toBeUndefined();
+  });
+
   it('sends nothing on a magnet lead, which has its own guide', () => {
     const c = configured();
     c.queue(DSCR_LEAD);

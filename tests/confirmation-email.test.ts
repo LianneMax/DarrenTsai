@@ -46,13 +46,13 @@ describe('the email being sent today is untouched', () => {
     expect(copyFor({}).subject).toBe('Got your details, here is my calendar');
   });
 
-  it('is the only one the Apps Script can ask for', () => {
-    // Not wired up: the sender posts four fields and no context. When one is
-    // turned on, this is the assertion to change, deliberately.
+  it('is still what every contact lead is sent: the Apps Script names no context for them', () => {
+    // Wired up on 10 Oct (copy approved by Max). A contact lead's body is the
+    // four fields it always was; only the calculator funnels add a context.
     const gas = read('google-apps-script.js');
     const sender = gas.slice(gas.indexOf('function sendContactConfirmation'), gas.indexOf('/** Run whichever guide applies'));
     expect(sender).toContain("message: data.message || ''");
-    expect(sender).not.toContain('context');
+    expect(sender).toContain("if (context !== 'contact') {");
   });
 
   it('lists the five contexts and no more', () => {

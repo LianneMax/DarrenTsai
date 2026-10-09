@@ -1244,18 +1244,59 @@ function sendFhaGuide(ss, data) {
  * arrived perfectly. It also means the Netlify function and this file can be
  * deployed in either order.
  */
+/**
+ * Which confirmation email a lead gets, or '' for none (R2, 10 Oct 2026).
+ *
+ * WHY. Every magnet form sent the visitor something and the contact modal sent
+ * its "Got your details" email, but a lead from the debt, home equity or ADU
+ * calculator got nothing, though those forms ask the most. The revamp brief
+ * (section 11.1) asks for a confirmation that fits the funnel, on the same
+ * template; Max approved the copy on 10 Oct (docs/revamp/confirmation-email-copy.md).
+ * The words live in netlify/functions/send-contact-confirmation.mts; this only
+ * names which set.
+ *
+ * The mortgage calculator's modal gets its review email only when the
+ * calculator's numbers came with it: that email thanks the visitor for them,
+ * and a modal opened from the nav with nothing in the calculator has none. It
+ * gets the contact email instead, as before.
+ */
+const CONFIRMATION_CONTEXTS = {
+  'DebtConsolidation': 'debt',
+  'home-equity':       'home-equity',
+  'adu':               'adu'
+};
+
+function confirmationContext(data) {
+  const source = data && data.source;
+  if (Object.prototype.hasOwnProperty.call(CONFIRMATION_CONTEXTS, source)) return CONFIRMATION_CONTEXTS[source];
+  if (source === 'mortgage-calculator-contact' && Number(data.loanAmount) > 0) return 'mortgage-review';
+  if (Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, source)) return 'contact';
+  return '';
+}
+
 function sendContactConfirmation(ss, data) {
-  if (!Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, data.source)) return { outcome: 'skipped' };
+  const context = confirmationContext(data);
+  if (!context) return { outcome: 'skipped' };
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty('NETLIFY_CONTACT_CONFIRM_URL') || !props.getProperty('NETLIFY_CONTACT_CONFIRM_KEY')) {
     return { outcome: 'skipped' };
   }
-  return postGuide(ss, 'sendContactConfirmation', 'NETLIFY_CONTACT_CONFIRM_URL', 'NETLIFY_CONTACT_CONFIRM_KEY', {
+  const body = {
     firstName: data.firstName || '',
     lastName: data.lastName || '',
     email: data.email || '',
     message: data.message || ''
-  });
+  };
+  // The contact email is the template's default, so a contact lead's body stays
+  // exactly what it was before contexts existed. The others name their set, and
+  // the two dropdown answers the copy may mention, which the template only ever
+  // turns into a phrase from its own fixed list.
+  if (context !== 'contact') {
+    body.context = context;
+    body.goal = data.goal || '';
+    body.projectPurpose = data.projectPurpose || '';
+  }
+  return postGuide(ss, 'sendContactConfirmation', 'NETLIFY_CONTACT_CONFIRM_URL', 'NETLIFY_CONTACT_CONFIRM_KEY', body);
 }
 
 /** Run whichever guide applies to this lead (at most one does). */

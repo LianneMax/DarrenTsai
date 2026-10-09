@@ -41,14 +41,18 @@ const CALENDLY_BASE =
 // a confirmation that fits the funnel the request came from, on the design this
 // email already has, and explicitly not a second email system.
 //
-// NOT WIRED UP (8 Oct 2026). Nothing sends a `context`: the Apps Script posts
-// firstName, lastName, email and message, so every email this function sends
-// today is the 'contact' one, byte for byte what it was before this table
-// existed (tests/confirmation-email.test.ts holds that). The other four are
-// here so they can be rendered and read: `npm run emails` writes each to
-// docs/revamp/emails/. Turning one on means the Apps Script sending its name,
-// which is a separate, deliberate change, because this email is live and
-// anything it gains starts reaching borrowers on deploy.
+// WIRED UP 10 Oct 2026, after Max approved the copy. The Apps Script names the
+// context (confirmationContext in google-apps-script.js): 'debt' for the debt
+// calculator, 'home-equity', 'adu', and 'mortgage-review' for the mortgage
+// calculator's review form when its numbers came with it. Contact leads send no
+// context and get the 'contact' email, byte for byte what it was before this
+// table existed (tests/confirmation-email.test.ts holds that). `npm run emails`
+// renders each set to docs/revamp/emails/ for review.
+//
+// SHIP ORDER: this file (the site) before the Apps Script version that sends
+// contexts. The other way round, the old function would ignore the context and
+// send calculator leads the contact email, which thanks them for "your details"
+// and says nothing about their funnel.
 //
 // What every context must hold to (brief 11.1, and Max's 8 Oct decisions):
 // the request was RECEIVED, never reviewed or approved; no response time; no
