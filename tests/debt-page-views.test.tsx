@@ -29,12 +29,12 @@ function view(over: Partial<DebtPageView> = {}): DebtPageView {
     totPmt: 0, totBal: 0, wtRate: 0, hasDebt: false,
     homeValue: '', setHomeValue: noop, mtgBalance: '', setMtgBalance: noop,
     mtgPayment: '', setMtgPayment: noop, mtgRate: '', setMtgRate: noop, mtgTerm: '', setMtgTerm: noop,
-    hv: 0, mb: 0, mp: 0, mr: 0, mt: 0, hasHome: false,
-    rate30: 6.41, todayTotal: 0, newLoan: 0, refiPmt: 0, refiSave: 0,
+    hv: 0, mb: 0, mp: 0, mr: 0, mt: 0, hasHome: false, balanceGiven: false,
+    rate30: 6.41, todayTotal: 0, newLoan: 0, refiPmt: 0, refiSave: 0, refiLtv: 0,
     sameTermYears: 0, refiSameTermPmt: 0, refiSameTermSave: 0, yearsAdded: 0,
     heloanTier: '', setHeloanTier: noop, heloanTerm: '', setHeloanTerm: noop,
     tierRate: 0, tierYears: 0, heloanPriced: false,
-    heloanAmt: 0, heloanPmt: 0, heloanTotal: 0, heloanSave: 0, cltv: 0,
+    heloanAmt: 0, heloanPmt: 0, leftoverPmt: 0, heloanTotal: 0, heloanSave: 0, cltv: 0,
     chosen: '', setChosen: noop,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop, usState: '', setUsState: noop,
@@ -50,8 +50,8 @@ const filled = view({
   debts: [{ id: 1, type: 'Credit Card', bal: 75000, pmt: 2000, rate: 16.09 }],
   totBal: 75000, totPmt: 2000, wtRate: 16.09,
   homeValue: '650000', mtgBalance: '350000', mtgPayment: '1800',
-  hv: 650000, mb: 350000, mp: 1800, todayTotal: 3800,
-  newLoan: 425000, refiPmt: 2661, refiSave: 1139,
+  hv: 650000, mb: 350000, mp: 1800, todayTotal: 3800, balanceGiven: true,
+  newLoan: 425000, refiPmt: 2661, refiSave: 1139, refiLtv: 65.4,
   heloanAmt: 75000, cltv: 65.4,
 });
 
@@ -78,7 +78,7 @@ describe('an untouched page shows no figures', () => {
 
   it('step 2 draws no equity picture until there is a value and a balance', () => {
     expect(html(<StepHome v={view({ step: 2 })} />)).not.toContain('Estimated Home Equity');
-    expect(html(<StepHome v={view({ step: 2, hv: 650000, mb: 350000 })} />)).toContain('Estimated Home Equity');
+    expect(html(<StepHome v={view({ step: 2, hv: 650000, mb: 350000, balanceGiven: true })} />)).toContain('Estimated Home Equity');
   });
 
   it('the HELOAN card asks for a tier and term instead of quoting the best case', () => {
@@ -180,5 +180,45 @@ describe('savingsText', () => {
   it('drops the verb in a breakdown row, whose label already says Savings', () => {
     expect(savingsRowText(1139)).toBe('$1,139/mo');
     expect(savingsRowText(-140)).toBe('Payment goes up $140/mo');
+  });
+});
+
+/**
+ * Three corrections from 10 Oct (Max's decisions): a HELOAN that cannot reach
+ * all the debt counts the payments it leaves; a cash-out refinance past 80% of
+ * the home's value says lenders often stop there; a paid-off home gets a
+ * comparison instead of a closed gate.
+ */
+describe('the comparison is honest at the edges', () => {
+  const calc = readFileSync(resolve(__dirname, '../src/components/DebtSavingsCalculator.tsx'), 'utf8');
+
+  it('adds back the payments on debt the HELOAN cannot reach', () => {
+    expect(calc).toContain('const leftoverPmt = totPmt * heloanLeftShare;');
+    expect(calc).toContain('const heloanTotal = heloanPmt > 0 ? mp + heloanPmt + leftoverPmt : 0;');
+    const short = html(<StepCompare v={{ ...filled, heloanAmt: 40000, heloanPriced: true, tierRate: 9.99, tierYears: 15,
+      heloanPmt: 430, leftoverPmt: 933, heloanTotal: 3163, heloanSave: 637 }} />);
+    expect(short).toContain('Mortgage + HELOAN + remaining debts');
+    expect(short).toContain('The rest stays with its current lenders, about $933/mo, and is included in the payment above.');
+    expect(html(<StepCompare v={{ ...filled, heloanPriced: true, tierRate: 9.99, tierYears: 15, heloanPmt: 800, heloanTotal: 2600 }} />))
+      .not.toContain('remaining debts');
+  });
+
+  it('says when a cash-out refinance passes 80% of the home\'s value, without capping it', () => {
+    expect(html(<StepCompare v={filled} />)).not.toContain('cap a cash-out refinance');
+    const over = html(<StepCompare v={{ ...filled, refiLtv: 92.3 }} />);
+    expect(over).toContain('a new loan of about 92% of your home&#x27;s value; many lenders');
+    expect(over).toContain('cap a cash-out refinance at 80%');
+  });
+
+  it('compares a paid-off home instead of refusing it', () => {
+    expect(calc).toContain('const hasHome = hv > 0 && balanceGiven && (mb === 0 || mp > 0);');
+    const paid = { ...filled, mb: 0, mp: 0, mtgBalance: '0', mtgPayment: '', todayTotal: 2000, newLoan: 75000, refiLtv: 11.5 };
+    expect(html(<StepHome v={{ ...paid, step: 2 }} />)).toContain('Estimated Home Equity');
+    const page = html(<StepCompare v={paid} />);
+    expect(page).toContain('All debts (no mortgage)');
+    expect(page).toContain('New mortgage of $75,000 for your debts');
+    expect(page).toContain('With no mortgage there is no payoff date to keep');
+    expect(page).not.toContain('Mortgage: replaced');
+    expect(page).not.toContain('current mortgage');
   });
 });

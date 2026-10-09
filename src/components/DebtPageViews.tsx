@@ -58,12 +58,16 @@ export interface DebtPageView {
   mtgTerm: string; setMtgTerm: (v: string) => void;
   hv: number; mb: number; mp: number; mr: number; mt: number;
   hasHome: boolean;
+  /** A balance was entered; 0 counts (a paid-off home). */
+  balanceGiven: boolean;
 
   rate30: number;
   todayTotal: number;
   newLoan: number;
   refiPmt: number;
   refiSave: number;
+  /** The cash-out loan as a % of the home's value. */
+  refiLtv: number;
   sameTermYears: number;
   refiSameTermPmt: number;
   refiSameTermSave: number;
@@ -76,6 +80,8 @@ export interface DebtPageView {
   heloanPriced: boolean;
   heloanAmt: number;
   heloanPmt: number;
+  /** Payments on the debt the HELOAN cannot reach, already inside heloanTotal. */
+  leftoverPmt: number;
   heloanTotal: number;
   heloanSave: number;
   cltv: number;
@@ -99,6 +105,9 @@ export interface DebtPageView {
   rateBadge: ReactNode;
   disclosure: ReactNode;
 }
+
+/** The loan-to-value many lenders stop a cash-out refinance at. Said, not enforced. */
+const CASH_OUT_LIMIT = 80;
 
 const STEPS = ['Your Debts', 'Your Home', 'Comparison', 'Talk to Darren'];
 
@@ -326,11 +335,12 @@ export function StepHome({ v }: { v: DebtPageView }) {
       </div>
 
       <p className="dcp-hint">
-        Home value, mortgage balance and monthly payment establish your comparison. Rate and
-        remaining term add refinance context. The grey numbers are examples.
+        Home value, mortgage balance and monthly payment establish your comparison. If the home is
+        paid off, enter 0 for the balance and leave the payment blank. Rate and remaining term add
+        refinance context. The grey numbers are examples.
       </p>
 
-      {v.hv > 0 && v.mb > 0 && <EquitySnapshot hv={v.hv} mb={v.mb} />}
+      {v.hv > 0 && v.balanceGiven && <EquitySnapshot hv={v.hv} mb={v.mb} />}
 
       <StepNav
         back="← Back" onBack={() => v.goStep(1)}
@@ -396,6 +406,14 @@ export function StepCompare({ v }: { v: DebtPageView }) {
   // used to keep asking for a credit range the visitor had already picked.
   const heloanNoRoom = v.hasHome && v.heloanAmt <= 0;
   const heloanShort = v.heloanAmt > 0 && v.heloanAmt < v.totBal;
+  // A paid-off home (balance 0): nothing to replace, keep or keep the date of.
+  const paidOff = v.mb === 0;
+  // Past 80% of the home's value, many lenders will not do a cash-out refinance.
+  // Said on both refi cards; the figure itself is not capped (Max, 10 Oct).
+  const refiOverLimit = v.refiLtv > CASH_OUT_LIMIT
+    ? <> That is a new loan of about {Math.round(v.refiLtv)}% of your home&apos;s value; many lenders
+        cap a cash-out refinance at {CASH_OUT_LIMIT}%. Darren can tell you what may be possible.</>
+    : null;
 
   return (
     <div className="dcp-panel">
@@ -422,36 +440,44 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <div className="dcp-option dcp-option-today">
           <span className="dcp-option-title">Today</span>
           <span className="dcp-option-pay dcp-rose">{formatCurrency(v.todayTotal)}</span>
-          <span className="dcp-option-scope">Mortgage P&amp;I + all debts</span>
+          <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : <>Mortgage P&amp;I + all debts</>}</span>
           <div className="dcp-option-body">
-            Keeps your current mortgage and separate debts. Debt payoff dates depend on your
-            existing repayment plans.
+            {paidOff ? 'Keeps your separate debts.' : 'Keeps your current mortgage and separate debts.'}{' '}
+            Debt payoff dates depend on your existing repayment plans.
           </div>
         </div>
 
         <OptionCard id="refi" title="Est. Cash-Out Refi" v={v}
           payment={v.refiPmt > 0 ? v.refiPmt : null}
           scope="Estimated P&I · new 30YR fixed" save={v.refiSave}>
-          Mortgage: replaced. {rateChange} Repayment: new 30 years
-          {v.yearsAdded > 0 ? `, about ${years(v.yearsAdded)} longer.` : '.'}
+          {paidOff
+            ? <>New mortgage of {formatCurrency(v.newLoan)} for your debts, about {v.rate30.toFixed(2)}% over 30 years.</>
+            : <>Mortgage: replaced. {rateChange} Repayment: new 30 years
+              {v.yearsAdded > 0 ? `, about ${years(v.yearsAdded)} longer.` : '.'}</>}
+          {refiOverLimit}
         </OptionCard>
 
         <OptionCard id="refiSame" title="Refi, Same Payoff Date" v={v}
           payment={v.refiSameTermPmt > 0 ? v.refiSameTermPmt : null}
           scope={`Estimated P&I · new ${v.sameTermYears}YR fixed`} save={v.refiSameTermSave}
-          unavailable={
-            <>
+          unavailable={paidOff
+            ? <>With no mortgage there is no payoff date to keep, so this option does not apply.</>
+            : <>
               Add your remaining term to see a refinance that keeps your current payoff date.
               <button type="button" className="dcp-link" onClick={() => v.goStep(2)}>Add mortgage details</button>
             </>
           }>
           Mortgage: replaced. {rateChange} Repayment: about {years(v.sameTermYears)}, keeping your
           current payoff date.
+          {refiOverLimit}
         </OptionCard>
 
         <OptionCard id="heloan" title="Est. Fixed HELOAN" v={v}
           payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
-          scope="Combined mortgage + HELOAN" save={v.heloanSave}
+          scope={heloanShort
+            ? (paidOff ? 'HELOAN + remaining debts' : 'Mortgage + HELOAN + remaining debts')
+            : (paidOff ? 'HELOAN, the only loan on the home' : 'Combined mortgage + HELOAN')}
+          save={v.heloanSave}
           unavailable={heloanNoRoom
             ? <>At these numbers there is no room under the 85% combined loan-to-value limit,
                 so a home equity loan cannot be priced. Darren can look at what else may work.</>
@@ -460,13 +486,15 @@ export function StepCompare({ v }: { v: DebtPageView }) {
             // different person.
             : <>Pick your credit range and a term below to price this option.</>
           }>
-          Mortgage: kept{v.mr > 0 ? ` at ${v.mr.toFixed(2)}%` : ''}
-          {v.mt > 0 ? ` with ${years(v.mt)} remaining` : ''}. New loan: {v.tierRate.toFixed(2)}% over{' '}
-          {years(v.tierYears)}.
+          {paidOff
+            ? <>No mortgage to keep. </>
+            : <>Mortgage: kept{v.mr > 0 ? ` at ${v.mr.toFixed(2)}%` : ''}
+              {v.mt > 0 ? ` with ${years(v.mt)} remaining` : ''}. </>}
+          New loan: {v.tierRate.toFixed(2)}% over {years(v.tierYears)}.
           {heloanShort && (
             <> Limited to {formatCurrency(v.heloanAmt)} by an 85% combined loan-to-value, which is
-              less than your {formatCurrency(v.totBal)} in debts. Ask Darren how the rest would be
-              handled.</>
+              less than your {formatCurrency(v.totBal)} in debts. The rest stays with its current
+              lenders, about {formatCurrency(v.leftoverPmt)}/mo, and is included in the payment above.</>
           )}
         </OptionCard>
       </div>

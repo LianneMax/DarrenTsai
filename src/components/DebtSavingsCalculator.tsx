@@ -191,11 +191,24 @@ export default function DebtSavingsCalculator() {
   const hv = parseFloat(homeValue)  || 0;
   const mb = parseFloat(mtgBalance) || 0;
   const mp = parseFloat(mtgPayment) || 0;
+  // A balance of 0 is a real answer: the home is paid off (10 Oct). So whether
+  // a balance was given is read from the field, not from mb, which is 0 either
+  // way. The equity and ADU pages already worked like this; this page refused
+  // a paid-off home outright.
+  const balanceGiven = mtgBalance.trim() !== '' && (parseFloat(mtgBalance) || 0) >= 0;
 
   const todayTotal = totPmt + mp;
   const newLoan    = mb + totBal;
   const refiPmt    = calcPmt(newLoan, rate30, 30);
   const refiSave   = todayTotal - refiPmt;
+  /**
+   * The cash-out loan as a share of the home's value. The refi above rolls every
+   * debt into the new mortgage whatever that comes to, and many lenders stop a
+   * cash-out refinance at 80%. The page says so past that line rather than
+   * capping the figure (Max, 10 Oct): the cap varies by lender and program, and
+   * Darren is the one who knows it.
+   */
+  const refiLtv    = hv > 0 ? newLoan / hv * 100 : 0;
 
   // The borrower's current mortgage, as they described it. Both are optional:
   // every number above is computed without them, because the visitor gives us
@@ -234,9 +247,23 @@ export default function DebtSavingsCalculator() {
   const tierYears = parseInt(heloanTerm, 10) || 0;
   const heloanPriced = tierRate > 0 && tierYears > 0;
 
-  const heloanAmt   = hv > 0 && mb > 0 ? Math.max(Math.min(totBal, hv * 0.85 - mb), 0) : 0;
+  const heloanAmt   = hv > 0 && balanceGiven ? Math.max(Math.min(totBal, hv * 0.85 - mb), 0) : 0;
   const heloanPmt   = heloanPriced ? calcPmt(heloanAmt, tierRate, tierYears) : 0;
-  const heloanTotal = heloanPmt > 0 ? mp + heloanPmt : 0;
+  /**
+   * What stays when the HELOAN cannot reach all the debt.
+   *
+   * WHY. The 85% limit can leave the loan short of the debts, and the combined
+   * payment used to be the mortgage plus the HELOAN alone: the debts it did not
+   * pay off simply vanished from the comparison, so the "saving" was overstated
+   * by their whole payment. Those debts keep their payments, so they are added
+   * back, in proportion to the balance the loan leaves (Max, 10 Oct; the
+   * revamp brief's formula guide says the same). Which debts would actually be
+   * cleared is Darren's conversation; a share of the balance is the neutral
+   * assumption.
+   */
+  const heloanLeftShare = heloanAmt > 0 && totBal > heloanAmt ? (totBal - heloanAmt) / totBal : 0;
+  const leftoverPmt = totPmt * heloanLeftShare;
+  const heloanTotal = heloanPmt > 0 ? mp + heloanPmt + leftoverPmt : 0;
   const heloanSave  = heloanPmt > 0 ? todayTotal - heloanTotal : 0;
   const cltv        = hv > 0 ? (mb + heloanAmt) / hv * 100 : 0;
 
@@ -256,11 +283,12 @@ export default function DebtSavingsCalculator() {
    * backwards is always allowed: re-reading what you typed is not a risk.
    */
   const hasDebt = debts.some(d => (d.bal || 0) > 0 && (d.pmt || 0) > 0);
-  const hasHome = hv > 0 && mb > 0 && mp > 0;
+  // A mortgage needs its payment; a paid-off home (balance 0) has none to give.
+  const hasHome = hv > 0 && balanceGiven && (mb === 0 || mp > 0);
   const furthestStep = !hasDebt ? 1 : !hasHome ? 2 : 4;
   const gateMessage = !hasDebt
     ? 'Add at least one debt with a balance and a monthly payment, so the comparison is about your money and not an example.'
-    : 'Enter your home value, mortgage balance and monthly payment. Without them there is nothing to compare your debts against.';
+    : 'Enter your home value, your mortgage balance (0 if the home is paid off) and, if you have a mortgage, its monthly payment. Without them there is nothing to compare your debts against.';
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -457,11 +485,11 @@ export default function DebtSavingsCalculator() {
     totPmt, totBal, wtRate, hasDebt,
     homeValue, setHomeValue, mtgBalance, setMtgBalance, mtgPayment, setMtgPayment,
     mtgRate, setMtgRate, mtgTerm, setMtgTerm,
-    hv, mb, mp, mr, mt, hasHome,
-    rate30, todayTotal, newLoan, refiPmt, refiSave,
+    hv, mb, mp, mr, mt, hasHome, balanceGiven,
+    rate30, todayTotal, newLoan, refiPmt, refiSave, refiLtv,
     sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
     heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
-    tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, heloanTotal, heloanSave, cltv,
+    tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, leftoverPmt, heloanTotal, heloanSave, cltv,
     chosen, setChosen,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, usState, setUsState,

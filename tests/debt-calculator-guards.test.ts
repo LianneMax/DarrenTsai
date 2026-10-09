@@ -65,7 +65,9 @@ describe('the steps are gated', () => {
   });
 
   it('needs the home value, balance and payment before the comparison', () => {
-    expect(CALC).toMatch(/hasHome\s*=\s*hv > 0 && mb > 0 && mp > 0/);
+    // A balance of 0 (a paid-off home) counts as given and needs no payment
+    // (10 Oct); any other balance still needs its payment.
+    expect(CALC).toContain('const hasHome = hv > 0 && balanceGiven && (mb === 0 || mp > 0);');
   });
 
   it('gates the pill tabs too, not only the Continue buttons', () => {
