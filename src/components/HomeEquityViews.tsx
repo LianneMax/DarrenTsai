@@ -16,14 +16,12 @@
  * has been received" (not "Darren has reviewed"). Never approved, qualify or
  * available credit.
  */
-import { AsYouType } from 'libphonenumber-js';
 import type { ReactNode } from 'react';
-import { LICENSED_STATES, PHONE, isLicensedState } from '../config';
+import { PHONE } from '../config';
 import { formatCurrency, formatRate } from '../utils/formatters';
-import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import { type EmailSuggestion } from '../utils/emailSuggest';
 import { EQUITY_GOALS, EQUITY_PREFERENCES, COMMON_CLTV_LIMIT } from '../utils/homeEquity';
-import StateSelect from './StateSelect';
-import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip, Chips, MoneyInput, LeadContactStep } from './PageParts';
 
 /** Everything the page shows, held by HomeEquityCalculator. */
 export interface EquityPageView {
@@ -101,39 +99,6 @@ export function EquityPageHero() {
 }
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
-
-/** A row of single-choice buttons. Clicking the chosen one again clears it. */
-function Chips({ options, value, onChange, label }: {
-  options: readonly string[]; value: string; onChange: (v: string) => void; label: string;
-}) {
-  return (
-    <div className="dcp-chips" role="group" aria-label={label}>
-      {options.map((o) => (
-        <button key={o} type="button" className="dcp-chip" aria-pressed={value === o}
-          onClick={() => onChange(value === o ? '' : o)}>
-          {o}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function MoneyInput({ id, label, value, onChange, placeholder, optional }: {
-  id: string; label: ReactNode; value: string; onChange: (v: string) => void; placeholder: string; optional?: boolean;
-}) {
-  return (
-    <div>
-      <label className="input-label" htmlFor={id}>
-        {label}{optional && <span className="dcp-optional"> · optional</span>}
-      </label>
-      <div className="input-prefix-wrap">
-        <span className="input-prefix">$</span>
-        <input id={id} type="number" inputMode="decimal" className="form-input input-has-prefix"
-          placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
-      </div>
-    </div>
-  );
-}
 
 // ─── Step 1: home ─────────────────────────────────────────────────────────────
 
@@ -261,75 +226,13 @@ export function StepEquityOptions({ v }: { v: EquityPageView }) {
 
 export function StepEquityContact({ v }: { v: EquityPageView }) {
   return (
-    <div className="dcp-panel">
-      <h2 className="dcp-h2 dcp-h2-lg">Find out which equity options may fit.</h2>
-      <p className="dcp-lead">
-        Your estimate is a starting point. A personal review helps you understand which options may
-        fit your goals. No hard pull, no obligation.
-      </p>
-
-      <div className="dcp-grid-2">
-        <div>
-          <label className="input-label" htmlFor="he-fname">First Name</label>
-          <input id="he-fname" type="text" className="form-input" placeholder="First name"
-            value={v.fname} onChange={(e) => v.setFname(e.target.value)} />
-        </div>
-        <div>
-          <label className="input-label" htmlFor="he-lname">Last Name</label>
-          <input id="he-lname" type="text" className="form-input" placeholder="Last name"
-            value={v.lname} onChange={(e) => v.setLname(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="dcp-grid-2">
-        <div>
-          <label className="input-label" htmlFor="he-email">Email Address</label>
-          <input id="he-email" type="email" className="form-input" placeholder="you@email.com"
-            value={v.email}
-            onChange={(e) => { v.setEmailHint(null); v.setEmail(e.target.value); }}
-            onBlur={(e) => v.setEmailHint(checkEmail(e.target.value))} />
-          {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
-          {v.emailHint && (v.emailHint.kind === 'typo' ? (
-            <button type="button" className="email-hint"
-              onClick={() => { const hint = v.emailHint; if (hint && hint.kind === 'typo') { v.setEmail(hint.email); v.setEmailHint(null); } }}>
-              {emailHintMessage(v.emailHint)}
-            </button>
-          ) : (
-            <span className="email-hint">{emailHintMessage(v.emailHint)}</span>
-          ))}
-        </div>
-        <div>
-          <label className="input-label" htmlFor="he-phone">Phone Number</label>
-          <input id="he-phone" type="tel" className="form-input" placeholder="(714) 000-0000"
-            value={v.phone} onChange={(e) => v.setPhone(new AsYouType('US').input(e.target.value))} />
-        </div>
-      </div>
-
-      <div className="dcp-field">
-        <label className="input-label" htmlFor="us-state">State</label>
-        <StateSelect id="us-state" value={v.usState} onChange={v.setUsState} placeholder="Select your state…" />
-        {v.usState && !isLicensedState(v.usState) && (
-          <span className="email-hint">
-            Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and he
-            will point you to someone who can help where you are.
-          </span>
-        )}
-      </div>
-
-      <p className="dcp-caption">
-        Darren will review your goal, requested amount and home snapshot, then discuss eligibility and
-        lender terms. This request is not a loan application.
-      </p>
-
-      <StepNav
-        back="← Back" onBack={() => v.goStep(2)}
-        disabled={v.sending}
-        next={v.sending
-          ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
-          : <>Send My Request to Darren <Arrow /></>}
-        onNext={v.submitLead}
-      />
-    </div>
+    <LeadContactStep
+      v={v}
+      title="Find out which equity options may fit."
+      caption="Darren will review your goal, requested amount and home snapshot, then discuss eligibility and lender terms. This request is not a loan application."
+      submitLabel="Send My Request to Darren"
+      onBack={() => v.goStep(2)}
+    />
   );
 }
 

@@ -14,7 +14,7 @@ Ads launch on the pages that exist now. The revamp ships later in phases. Any ad
 2. Debt Consolidation refinements on /debt-consolidation/ (labels, optional mortgage fields, result hierarchy, remove Best Time to Call and How did you hear about us). Formulas from the repo only. **Built 9 Oct on `claude/wizardly-ramanujan-1dww99`, not live.**
 3. /home-equity/ (3 steps). Then repoint /yt/heloc and /yt/equity and any HELOC/equity ads to it, query strings preserved. **Built 9 Oct on the same branch, not live**, with the home-equity part of phase 1 (its schema, tab, Bonzo tags, contact source); the /yt/ links are repointed in netlify.toml. Ads move with Kocah.
 4. Homepage becomes the goal hub. Same release: replace every /#savings link with /debt-consolidation/. Checked in the repo on 8 Oct: those are the four links in Nav.tsx, Hero.tsx's scroll button, and the `nav-savings` / `hero-savings` early-click keys; the three static landing pages do not link to /#savings.
-5. /adu/.
+5. /adu/. **Built 9 Oct on `claude/wizardly-ramanujan-1dww99`, not live**, with the adu part of phase 1 (its schema, "ADU" tab, Bonzo tags and campaign property, `adu-contact` source) and /yt/adu, /yt/adu-c. Built before phase 4 so the homepage's Renovate / ADU card has a real page to link to.
 6. Navigation polish for DSCR/FHA/REI/Mortgage Calculator; no rebuilds.
 
 ## Every new page must inherit the speed and tracking work already shipped

@@ -130,7 +130,9 @@ const CONTACT_SOURCES = {
   'fha-contact':                 'fha',
   'rei-contact':                 'real-estate-investing',
   // /home-equity/, added with the page (revamp phase 3).
-  'home-equity-contact':         'home-equity'
+  'home-equity-contact':         'home-equity',
+  // /adu/, added with the page (revamp phase 5).
+  'adu-contact':                 'adu'
 };
 
 // /home-equity/ has no campaign of its own yet, so its fallback is null and it
@@ -141,7 +143,10 @@ const FUNNEL_CAMPAIGNS = {
   'dscr':                  { prop: 'BONZO_DSCR_CAMPAIGN_ID', fallback: DSCR_CAMPAIGN_ID },
   'fha':                   { prop: 'BONZO_FHA_CAMPAIGN_ID',  fallback: FHA_CAMPAIGN_ID },
   'real-estate-investing': { prop: 'BONZO_REI_CAMPAIGN_ID',  fallback: REI_CAMPAIGN_ID },
-  'home-equity':           { prop: 'BONZO_HOME_EQUITY_CAMPAIGN_ID', fallback: null }
+  'home-equity':           { prop: 'BONZO_HOME_EQUITY_CAMPAIGN_ID', fallback: null },
+  // /adu/ (phase 5): the same arrangement, default campaign until
+  // BONZO_ADU_CAMPAIGN_ID is set.
+  'adu':                   { prop: 'BONZO_ADU_CAMPAIGN_ID', fallback: null }
 };
 
 // Ad attribution, captured by public/attribution.js and sent with every form.
@@ -347,6 +352,26 @@ const SOURCE_SCHEMAS = {
         optionalCell(d.estimatedEquity), optionalCell(d.currentLtv),
         d.goal || '', optionalCell(d.amountExploring), optionalCell(d.illustrativeCltv),
         d.preference || '', licensedCell(d)
+      ], attrRow(d), triageRow(d));
+    }
+  },
+  // /adu/ (revamp phase 5). Funnel columns from docs/lead-sheet-schema.md's ADU
+  // row, laid out in today's order like 'home-equity' above. Mortgage Balance
+  // can be 0, so the numbers go through optionalCell.
+  'adu': {
+    tab: 'ADU',
+    headers: COMMON_LEAD.concat(
+      ['Source', 'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
+        'Project Cost', 'Amount to Finance', 'Illustrative CLTV', 'Project Purpose', 'Licensed?'],
+      ATTR_HEADERS, TRIAGE_HEADERS
+    ),
+    row: function (d) {
+      return commonLeadRow(d).concat([
+        d.source,
+        optionalCell(d.homeValue), optionalCell(d.mortgageBalance),
+        optionalCell(d.estimatedEquity), optionalCell(d.currentLtv),
+        optionalCell(d.projectCost), optionalCell(d.amountToFinance), optionalCell(d.illustrativeCltv),
+        d.projectPurpose || '', licensedCell(d)
       ], attrRow(d), triageRow(d));
     }
   }
@@ -691,6 +716,12 @@ function pushToBonzo(data) {
     tags.push('home-equity', 'HELOC/cash-out interest');
     if (data.goal) tags.push('goal:' + bonzoTag(data.goal));
     if (data.preference) tags.push('preference:' + bonzoTag(data.preference));
+  }
+  else if (data.source === 'adu') {
+    // Every funding path the page describes draws on equity, so the equity
+    // tag rides along: one Bonzo filter still finds all of that intent.
+    tags.push('adu', 'HELOC/cash-out interest');
+    if (data.projectPurpose) tags.push('purpose:' + bonzoTag(data.projectPurpose));
   }
   else tags.push('mortgage-calculator');
 

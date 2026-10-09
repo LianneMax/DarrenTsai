@@ -88,6 +88,16 @@
   to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=pinned-comment"
   status = 302
 
+# ADU and renovation (revamp phase 5). New bucket, same pattern.
+[[redirects]]
+  from = "/yt/adu"
+  to = "/adu/?utm_source=youtube&utm_medium=social&utm_campaign=yt-adu&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/adu-c"
+  to = "/adu/?utm_source=youtube&utm_medium=social&utm_campaign=yt-adu&utm_content=pinned-comment"
+  status = 302
+
 [[redirects]]
   from = "/yt/dscr"
   to = "/dscr/?utm_source=youtube&utm_medium=social&utm_campaign=yt-dscr&utm_content=description"

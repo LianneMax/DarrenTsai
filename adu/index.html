@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Plan an ADU or renovation with your numbers: home equity, project cost and the amount to finance, then have a licensed broker review the funding paths. Darren Tsai serves AZ, CA, FL, HI, OR, PA, TN and TX." />
+    <link rel="canonical" href="https://realdarrentsai.com/adu/" />
+    <title>ADU and Renovation Financing Snapshot | Darren Tsai</title>
+
+    <!-- Outfit is self-hosted (audit L4); @font-face is at the top of
+         src/index.css. Preloaded so the font request starts with the HTML
+         instead of waiting for the stylesheet to be parsed. -->
+    <link rel="preload" href="/fonts/outfit-v15-latin.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- Records gclid/UTMs and loads GTM. async with high priority (audit L7):
+         off the render path, and GTM starts as soon as the file arrives. Every
+         reader (form submit, click tracking) checks window.DT at that moment,
+         long after this has run. -->
+    <script src="/attribution.js" async fetchpriority="high"></script>
+    <!-- Deferred (audit L4): only read on a click or a field blur. -->
+    <script src="/booking-chooser.js" defer></script>
+    <script src="/email-suggest.js" defer></script>
+
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7Z8Q4QF"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <!-- Early-click queue, the same script as the homepage's (index.html).
+         The nav and the page hero below are pre-rendered into #root
+         at build time, so they are on screen before React has loaded, and the
+         nav's buttons do nothing until it has. A "Book a Call" tap in that
+         window would be lost. This keeps the last click on any element marked
+         data-early, and AduApp.tsx replays it on the real
+         element once React has mounted, so it runs the same handler and fires
+         the same tracking. tests/home-prerender.test.tsx holds the two copies
+         of the script identical. -->
+    <script>
+      (function () {
+        var queued = null;
+        // Only ever the static pre-rendered nodes. React's own elements carry
+        // a __reactFiber$ key and are left alone, so even if take() were never
+        // called, no click on the live app could be swallowed.
+        function isReact(el) {
+          return Object.keys(el).some(function (k) { return k.indexOf('__reactFiber$') === 0; });
+        }
+        function onClick(e) {
+          var el = e.target && e.target.closest ? e.target.closest('[data-early]') : null;
+          if (!el || isReact(el)) return;
+          e.preventDefault();
+          queued = el.getAttribute('data-early');
+          document.documentElement.style.cursor = 'progress';
+        }
+        document.addEventListener('click', onClick, true);
+        window.__dtEarlyClick = {
+          take: function () {
+            document.removeEventListener('click', onClick, true);
+            document.documentElement.style.cursor = '';
+            var key = queued;
+            queued = null;
+            return key;
+          }
+        };
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/adu-main.tsx"></script>
+
+    <!-- CallRail Dynamic Number Insertion, at the end of <body> (audit L10,
+         7 Oct), which is where CallRail's install guide puts it. It used to sit
+         in the <head> so the number would be swapped before first paint, but
+         measured it did not do that: on a visitor's first page swap.js still
+         fetches the pool number in a second request, so the real number showed
+         for ~0.5s after paint anyway, while first paint waited ~3s for
+         CallRail (PSI: 920 ms render-blocking). Here it no longer holds the
+         page back. It stays synchronous: loaded async, it never swapped the
+         number at all (L7). Swap timing per page is recorded in audit.md, L10. -->
+    <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
+  </body>
+</html>

@@ -2267,8 +2267,8 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 
 /* ============================================================
    /debt-consolidation/ PAGE (revamp phase 2, 9 Oct), and /home-equity/
-   (phase 3), which shares these classes.
-   Drawn by DebtPageViews.tsx and HomeEquityViews.tsx. Layout, spacing and colours follow Max's design
+   (phase 3) and /adu/ (phase 5), which share these classes.
+   Drawn by DebtPageViews.tsx, HomeEquityViews.tsx and AduViews.tsx. Layout, spacing and colours follow Max's design
    preview v4 (darren-frontend-preview-v4.html, Debt Consolidation page). The
    homepage keeps its own calculator layout (the dsc- classes) until phase 4.
    No font-family here: everything inherits body's stack, which carries
@@ -2491,6 +2491,15 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 .dcp-product summary { cursor: pointer; font-size: 13px; font-weight: 500; color: var(--teal); }
 .dcp-product details p { margin-top: 8px; }
 
+/* /adu/: the white card in the hero. */
+.dcp-hero-card {
+  background: #fff; color: var(--dcp-ink); border-radius: 12px; padding: 28px;
+  box-shadow: 0 14px 35px rgba(25, 59, 75, .19); min-width: 0;
+}
+.dcp-hero-card-title { font-size: 25px; font-weight: 600; line-height: 1.25; color: var(--teal); margin-bottom: 8px; }
+.dcp-hero-card .dcp-caption { margin: 0 0 8px; }
+.dcp-hero-card .dcp-row { font-size: 13px; }
+
 @media (max-width: 850px) {
   .dcp-debt { grid-template-columns: repeat(2, minmax(0, 1fr)) 22px; }
   .dcp-debt > .dcp-remove { grid-column: 3; grid-row: 1 / 3; }
@@ -2513,6 +2522,8 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
   .dcp-option-today { flex-direction: column; text-align: center; }
   .dcp-option-today .dcp-option-body { flex-basis: auto; }
   .dcp-snapshot-head { flex-direction: column; gap: 8px; }
+  .dcp-hero-card { padding: 23px; }
+  .dcp-hero-card-title { font-size: 22px; }
   .dcp-actions .btn { width: 100%; justify-content: center; }
   .dcp-recap-actions .btn { width: 100%; justify-content: center; }
 }

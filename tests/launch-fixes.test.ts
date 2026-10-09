@@ -60,7 +60,8 @@ describe('L2: old site URLs are permanently redirected', () => {
 
   it('leaves the /yt short links as 302s', () => {
     const yt = rules.filter((r) => r.from?.startsWith('/yt/'));
-    expect(yt.length).toBe(10);
+    // Twelve since /yt/adu and /yt/adu-c (revamp phase 5, 9 Oct).
+    expect(yt.length).toBe(12);
     for (const r of yt) expect(r.status).toBe(302);
   });
 

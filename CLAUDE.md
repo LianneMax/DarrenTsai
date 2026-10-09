@@ -34,12 +34,12 @@ Visitor (paid click / YouTube link / organic)
   -> GA4 generate_lead / phone_click via GTM; CallRail owns paid calls
 ```
 
-Every submit path feeds `/api/lead`: three React forms (the debt calculator,
-the home-equity estimate and the mortgage calculator's lead form), three static
+Every submit path feeds `/api/lead`: four React forms (the debt calculator,
+the home-equity estimate, the ADU project snapshot and the mortgage calculator's lead form), three static
 landing-page magnet forms, and the contact modal on every page.
 
 **Every copy of the contact modal posts its own `source`**, one per page:
-`home-contact`, `debt-consolidation-contact`, `home-equity-contact`,
+`home-contact`, `debt-consolidation-contact`, `home-equity-contact`, `adu-contact`,
 `mortgage-calculator-contact`, `dscr-contact`, `fha-contact`, `rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
 Sheet's Source column, the Bonzo tags and the GA4 event said the same thing
 wherever the lead came from. They have no funnel-specific columns, so they still
@@ -54,14 +54,14 @@ with an unrouted source fails there.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 18 + TypeScript, Vite 6, plain CSS (`src/index.css`, ~2200 lines, CSS custom properties on `:root`) |
-| Routing | None. Four HTML entries (`index.html`, `debt-consolidation/index.html`, `home-equity/index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The first screen of `/` (nav and hero) and of `/debt-consolidation/` and `/home-equity/` (nav and the page hero) is pre-rendered into its HTML at build and its CSS inlined (`src/prerender.tsx`, `PRERENDERED` in `vite.config.ts`); React replaces it on load, and early clicks on it are queued and replayed (`data-early`, the inline script in each entry, `App.tsx` and `DebtConsolidationApp.tsx`) |
+| Routing | None. Five HTML entries (`index.html`, `debt-consolidation/index.html`, `home-equity/index.html`, `adu/index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The first screen of `/` (nav and hero) and of `/debt-consolidation/`, `/home-equity/` and `/adu/` (nav and the page hero) is pre-rendered into its HTML at build and its CSS inlined (`src/prerender.tsx`, `PRERENDERED` in `vite.config.ts`); React replaces it on load, and early clicks on it are queued and replayed (`data-early`, the inline script in each entry, `App.tsx` and `DebtConsolidationApp.tsx`) |
 | Landing pages | Hand-written static HTML in `public/dscr/`, `public/fha/`, `public/realestateinvesting/`. No build step, ~2000 lines each, inline `<script>` |
 | Server | Netlify Functions (`.mts`, `Netlify.env.get`), routes declared via `export const config.path` |
 | Storage of record | Google Sheet `1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI`, driven by `google-apps-script.js` |
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 26 files / 983 tests, all passing |
+| Tests | Vitest + jsdom, 27 files / 1015 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,14 +71,14 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (983 tests)
+npm test         # vitest run (1015 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
 ```
 
 **Run `npm run test:layout` before pushing any change to a page or the CSS.** It
-builds the site, serves it with `vite preview`, and drives Chromium over all seven
+builds the site, serves it with `vite preview`, and drives Chromium over all eight
 pages at 320, 360, 375, 414, 768, 850, 1024, 1280 and 1440px, failing on any
 sideways scroll or any focusable field under 16px at phone widths. Everything
 that is not localhost is blocked, so a run does not depend on Calendly, CallRail
@@ -251,7 +251,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 983 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1015 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves the homepage's calculator, the same component with `standalone`, so
   the lead is identical: source `DebtConsolidation`, form id
@@ -287,6 +287,20 @@ or the lead lands on the generic tab with its fields dropped:
   generic Leads tab, saved but without their equity columns). It enrolls in
   `BONZO_CAMPAIGN_ID`; set `BONZO_HOME_EQUITY_CAMPAIGN_ID` to give it its own
   campaign without a deploy. HELOC/equity ads move to it with Kocah.
+- **`/adu/` (revamp phase 5, 9 Oct; not live).** Two steps (your project,
+  talk to Darren) and a recap, from design preview v4. `AduCalculator` holds
+  state, gates and the lead; `AduViews` draws it; `src/utils/adu.ts` builds the
+  payload. Four numbers (home value, balance, project cost, amount to finance)
+  and a purpose (ADU for family, Rental ADU, Renovation, Other), all required
+  before the contact step. It shows equity, LTV, an illustrative CLTV and how
+  much of the budget the financing leaves uncovered, and says plainly that
+  financing does not confirm an ADU can be permitted, built or rented. Source
+  `adu`, its own "ADU" tab, Bonzo tags `adu`, `HELOC/cash-out interest` and
+  `purpose:`; `/yt/adu` and `/yt/adu-c` point there. The chips, money input,
+  contact step and error dialog are shared with `/home-equity/` through
+  `PageParts.tsx`. **Ship order:** deploy the Apps Script version with the
+  `adu` route first, then the site. It enrolls in `BONZO_CAMPAIGN_ID` until
+  `BONZO_ADU_CAMPAIGN_ID` is set.
 - **No APR figure and no response time, anywhere (Max, 8 Oct).** "Est. APR" was
   the rate plus a flat 0.20 that no lender had quoted; every place now reads
   "See cost assumptions" with a note that APR depends on fees and lender terms.

@@ -272,6 +272,18 @@ const DEPLOYED_AT_37: Record<string, string[]> = {
     'First Click ID', 'First Click ID Type', 'First Touch At',
     'Test?', 'Status', 'Contacted',
   ],
+  // Not yet deployed. Pinned at creation (revamp phase 5, 9 Oct), like
+  // 'home-equity' above.
+  "SOURCE_SCHEMAS['adu']": [
+    'Timestamp', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
+    'Source', 'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
+    'Project Cost', 'Amount to Finance', 'Illustrative CLTV', 'Project Purpose', 'Licensed?',
+    'UTM Source', 'UTM Medium', 'UTM Campaign', 'UTM Term', 'UTM Content',
+    'Click ID', 'Click ID Type', 'Landing Page', 'Referrer',
+    'First Touch Source', 'First Touch Campaign',
+    'First Click ID', 'First Click ID Type', 'First Touch At',
+    'Test?', 'Status', 'Contacted',
+  ],
 };
 
 const { gas } = loadGas<{

@@ -18,6 +18,7 @@ const PRERENDERED: Record<string, string> = {
   '/index.html': 'renderHomeShell',
   '/debt-consolidation/index.html': 'renderDebtShell',
   '/home-equity/index.html': 'renderEquityShell',
+  '/adu/index.html': 'renderAduShell',
 }
 
 /**
@@ -157,6 +158,7 @@ export default defineConfig({
         mortgageCalculator: 'mortgage-calculator/index.html',
         debtConsolidation: 'debt-consolidation/index.html',
         homeEquity: 'home-equity/index.html',
+        adu: 'adu/index.html',
       },
     },
     // recharts (~537KB) used to be forced into a named `charts` chunk here.

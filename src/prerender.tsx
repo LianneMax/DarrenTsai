@@ -27,6 +27,7 @@ import Nav from './components/Nav';
 import Hero from './components/Hero';
 import { DebtPageHero } from './components/DebtPageViews';
 import { EquityPageHero } from './components/HomeEquityViews';
+import { AduPageHero } from './components/AduViews';
 
 const noop = () => {};
 
@@ -68,6 +69,21 @@ export function renderEquityShell(): string {
       <main>
         <section className="dcp">
           <EquityPageHero />
+        </section>
+      </main>
+    </>,
+  );
+}
+
+/** /adu/ (revamp phase 5): nav and hero, mirroring AduApp and AduPage. */
+export function renderAduShell(): string {
+  return renderToStaticMarkup(
+    <>
+      <Nav onOpenContact={noop} alwaysSolid />
+      <div className="page-top-spacer" />
+      <main>
+        <section className="dcp">
+          <AduPageHero />
         </section>
       </main>
     </>,

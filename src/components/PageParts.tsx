@@ -5,8 +5,11 @@
  * them. Styles are the dcp- block in src/index.css, which both pages share.
  */
 import type { ReactNode } from 'react';
-import { LICENSED_STATES, NMLS, DRE } from '../config';
+import { AsYouType } from 'libphonenumber-js';
+import { LICENSED_STATES, NMLS, DRE, isLicensedState } from '../config';
 import { formatCurrency } from '../utils/formatters';
+import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import StateSelect from './StateSelect';
 
 export const Arrow = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -88,6 +91,151 @@ export function LicensedStrip() {
       <span>NMLS #{NMLS}</span>
       <span>CA DRE #{DRE}</span>
       <span>Equal Housing Opportunity</span>
+    </div>
+  );
+}
+
+/** A row of single-choice buttons. Clicking the chosen one again clears it. */
+export function Chips({ options, value, onChange, label }: {
+  options: readonly string[]; value: string; onChange: (v: string) => void; label: string;
+}) {
+  return (
+    <div className="dcp-chips" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button key={o} type="button" className="dcp-chip" aria-pressed={value === o}
+          onClick={() => onChange(value === o ? '' : o)}>
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function MoneyInput({ id, label, value, onChange, placeholder, optional }: {
+  id: string; label: ReactNode; value: string; onChange: (v: string) => void; placeholder: string; optional?: boolean;
+}) {
+  return (
+    <div>
+      <label className="input-label" htmlFor={id}>
+        {label}{optional && <span className="dcp-optional"> · optional</span>}
+      </label>
+      <div className="input-prefix-wrap">
+        <span className="input-prefix">$</span>
+        <input id={id} type="number" inputMode="decimal" className="form-input input-has-prefix"
+          placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+/** The contact fields every revamp page's last step asks for. */
+export interface ContactView {
+  fname: string; setFname: (v: string) => void;
+  lname: string; setLname: (v: string) => void;
+  phone: string; setPhone: (v: string) => void;
+  email: string; setEmail: (v: string) => void;
+  emailHint: EmailSuggestion | null; setEmailHint: (h: EmailSuggestion | null) => void;
+  usState: string; setUsState: (v: string) => void;
+  sending: boolean;
+  submitLead: () => void;
+}
+
+/**
+ * The "talk to Darren" step of /home-equity/ and /adu/: name, email, phone and
+ * state, nothing else (no best time to call, no "how did you hear": tracked
+ * attribution answers the second, and both came off the debt form on 8 Oct).
+ */
+export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }: {
+  v: ContactView; title: string; lead?: string; caption: string; submitLabel: string; onBack: () => void;
+}) {
+  return (
+    <div className="dcp-panel">
+      <h2 className="dcp-h2 dcp-h2-lg">{title}</h2>
+      <p className="dcp-lead">
+        {lead ?? 'Your estimate is a starting point. A personal review helps you understand which options may fit your goals. No hard pull, no obligation.'}
+      </p>
+
+      <div className="dcp-grid-2">
+        <div>
+          <label className="input-label" htmlFor="lead-fname">First Name</label>
+          <input id="lead-fname" type="text" className="form-input" placeholder="First name"
+            value={v.fname} onChange={(e) => v.setFname(e.target.value)} />
+        </div>
+        <div>
+          <label className="input-label" htmlFor="lead-lname">Last Name</label>
+          <input id="lead-lname" type="text" className="form-input" placeholder="Last name"
+            value={v.lname} onChange={(e) => v.setLname(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="dcp-grid-2">
+        <div>
+          <label className="input-label" htmlFor="lead-email">Email Address</label>
+          <input id="lead-email" type="email" className="form-input" placeholder="you@email.com"
+            value={v.email}
+            onChange={(e) => { v.setEmailHint(null); v.setEmail(e.target.value); }}
+            onBlur={(e) => v.setEmailHint(checkEmail(e.target.value))} />
+          {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
+          {v.emailHint && (v.emailHint.kind === 'typo' ? (
+            <button type="button" className="email-hint"
+              onClick={() => { const hint = v.emailHint; if (hint && hint.kind === 'typo') { v.setEmail(hint.email); v.setEmailHint(null); } }}>
+              {emailHintMessage(v.emailHint)}
+            </button>
+          ) : (
+            <span className="email-hint">{emailHintMessage(v.emailHint)}</span>
+          ))}
+        </div>
+        <div>
+          <label className="input-label" htmlFor="lead-phone">Phone Number</label>
+          <input id="lead-phone" type="tel" className="form-input" placeholder="(714) 000-0000"
+            value={v.phone} onChange={(e) => v.setPhone(new AsYouType('US').input(e.target.value))} />
+        </div>
+      </div>
+
+      <div className="dcp-field">
+        <label className="input-label" htmlFor="us-state">State</label>
+        <StateSelect id="us-state" value={v.usState} onChange={v.setUsState} placeholder="Select your state…" />
+        {v.usState && !isLicensedState(v.usState) && (
+          <span className="email-hint">
+            Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and he
+            will point you to someone who can help where you are.
+          </span>
+        )}
+      </div>
+
+      <p className="dcp-caption">{caption}</p>
+
+      <StepNav
+        back="← Back" onBack={onBack}
+        disabled={v.sending}
+        next={v.sending
+          ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
+          : <>{submitLabel} <Arrow /></>}
+        onNext={v.submitLead}
+      />
+    </div>
+  );
+}
+
+/** The "Something's missing" dialog behind every gate and every failed submit. */
+export function ErrorDialog({ message, onClose, id }: { message: string | null; onClose: () => void; id: string }) {
+  if (!message) return null;
+  return (
+    <div className="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby={id} onClick={onClose}>
+      <div className="modal-panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 id={id} className="modal-title" style={{ fontSize: '1.15rem' }}>Something&apos;s missing</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div className="modal-body">
+          <p className="modal-sub" style={{ marginBottom: 24 }}>{message}</p>
+          <button className="btn btn-rose btn-full" onClick={onClose}>Got it</button>
+        </div>
+      </div>
     </div>
   );
 }

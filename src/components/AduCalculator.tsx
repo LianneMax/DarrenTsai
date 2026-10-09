@@ -5,38 +5,34 @@ import { EMAIL } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openCalendly } from '../utils/calendly';
 import { type EmailSuggestion } from '../utils/emailSuggest';
-import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
-import EquityPage, { type EquityPageView } from './HomeEquityViews';
+import { aduNumbers, buildAduLead } from '../utils/adu';
+import AduPage, { type AduPageView } from './AduViews';
 import { ErrorDialog } from './PageParts';
 
 const emailSchema = z.string().email();
 
 /**
- * /home-equity/ (frontend revamp, phase 3): state, gates and the lead.
- * HomeEquityViews.tsx draws it.
+ * /adu/ (frontend revamp, phase 5): state, gates and the lead. AduViews.tsx
+ * draws it.
  *
- * WHY THIS PAGE EXISTS. Home-equity and HELOC intent had no page: /yt/heloc
- * and /yt/equity landed on the homepage, and the debt calculator, which prices
- * the two fixed alternatives to a HELOC, was the closest thing. Someone who
- * wants to renovate or invest with their equity is not consolidating debt, and
- * arrived in the Sheet and Bonzo looking like someone who was. This page asks
- * what the equity is for and sends that with the lead, to its own tab.
+ * WHY THIS PAGE EXISTS. Someone planning an ADU or a renovation arrives with a
+ * project cost, not a debt or an equity goal, and the homepage's goal hub
+ * (phase 4) needs a real page to send them to: the plan's rule is never to link
+ * to a page that does not exist. The lead carries the project's numbers and
+ * purpose to its own tab, so Darren starts the call knowing the budget gap.
  *
- * It follows the rules the debt calculator learned the hard way:
- *  - every input starts empty, and no goal or preference is pre-selected,
- *    because a pre-filled answer reaches the Sheet as the visitor's own;
- *  - the steps are gated forwards only, the step tabs included;
- *  - a double submit is stopped by a ref as well as by state;
- *  - success is shown only once /api/lead has confirmed the save.
+ * The same rules as the other revamp calculators: empty inputs, no pre-chosen
+ * project type, forward-only gates, a ref against the double submit, and a
+ * success state only after /api/lead confirms the save.
  */
-export default function HomeEquityCalculator() {
+export default function AduCalculator() {
   const [step, setStep] = useState(1);
 
   const [homeValue, setHomeValue] = useState('');
   const [mtgBalance, setMtgBalance] = useState('');
-  const [amount, setAmount] = useState('');
-  const [goal, setGoal] = useState('');
-  const [preference, setPreference] = useState('');
+  const [projectCost, setProjectCost] = useState('');
+  const [toFinance, setToFinance] = useState('');
+  const [purpose, setPurpose] = useState('');
 
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
@@ -47,46 +43,45 @@ export default function HomeEquityCalculator() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  // State is read from the render already on screen, so two clicks in one tick
-  // both pass it. The ref is written synchronously (see DebtSavingsCalculator).
   const inFlight = useRef(false);
 
   const postLead = useLeadSubmit({
-    formId: 'home-equity-calculator',
-    thankYouPath: '/thank-you/home-equity',
-    thankYouTitle: 'Thank You — Home Equity',
+    formId: 'adu-calculator',
+    thankYouPath: '/thank-you/adu',
+    thankYouTitle: 'Thank You — ADU',
   });
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
   const hv = parseFloat(homeValue) || 0;
-  // A balance of 0 is a real answer (a paid-off home), unlike on the debt page,
-  // so "entered" is tested on the string, not on the number.
+  // 0 is a real balance (a paid-off home), so "entered" is tested on the string.
   const balanceGiven = mtgBalance.trim() !== '' && (parseFloat(mtgBalance) || 0) >= 0;
   const mb = balanceGiven ? (parseFloat(mtgBalance) || 0) : 0;
-  const amt = parseFloat(amount) || 0;
+  const cost = parseFloat(projectCost) || 0;
+  const fin = parseFloat(toFinance) || 0;
   const hasHome = hv > 0 && balanceGiven;
-  const { equity, ltv, cltv } = equityNumbers(hv, mb, amt);
+  const { equity, ltv, cltv, gap } = aduNumbers(hv, mb, cost, fin);
 
   /**
-   * How far the visitor may go. The snapshot on step 2 is made of the value and
-   * the balance, so it waits for both; the goal is the one question this page
-   * exists to ask, and it is one tap. The amount and the preference stay
-   * optional and are sent blank when skipped.
+   * All four numbers and the project type before the contact step: the
+   * snapshot and the budget gap are made of them, and the lead is not much use
+   * to Darren without the project's cost and the amount to finance.
    */
-  const furthestStep = !hasHome || !goal ? 1 : 3;
+  const ready = hasHome && cost > 0 && fin > 0 && !!purpose;
   const gateMessage = !hasHome
-    ? 'Enter your home value and your mortgage balance (0 if the home is paid off), so the estimate is about your home and not an example.'
-    : 'Choose what you would use your equity for, so Darren knows where to start.';
+    ? 'Enter your home value and your mortgage balance (0 if the home is paid off), so the snapshot is about your home and not an example.'
+    : !(cost > 0 && fin > 0)
+      ? 'Enter the estimated project cost and the amount you would like to finance.'
+      : 'Choose what you are planning, so Darren knows where to start.';
 
   const goStep = (n: number) => {
-    if (n > step && n > furthestStep) {
+    if (n > step && !ready) {
       setErrorMsg(gateMessage);
       return;
     }
     setStep(n);
     setTimeout(() => {
-      document.getElementById('equity')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('project')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
   };
 
@@ -108,9 +103,9 @@ export default function HomeEquityCalculator() {
 
     inFlight.current = true;
     setSending(true);
-    const result = await postLead(buildEquityLead({
+    const result = await postLead(buildAduLead({
       firstName: fname, lastName: lname, phone, email, state: usState,
-      homeValue: hv, mortgageBalance: mb, goal, amountExploring: amt, preference,
+      homeValue: hv, mortgageBalance: mb, projectCost: cost, amountToFinance: fin, purpose,
     }));
     if (!result.ok) {
       inFlight.current = false;
@@ -130,11 +125,11 @@ export default function HomeEquityCalculator() {
     setSubmitted(true);
   };
 
-  const view: EquityPageView = {
+  const view: AduPageView = {
     step, goStep,
-    homeValue, setHomeValue, mtgBalance, setMtgBalance, amount, setAmount,
-    hv, mb, amt, hasHome, equity, ltv, cltv,
-    goal, setGoal, preference, setPreference,
+    homeValue, setHomeValue, mtgBalance, setMtgBalance, projectCost, setProjectCost, toFinance, setToFinance,
+    hv, mb, cost, fin, hasHome, equity, ltv, cltv, gap,
+    purpose, setPurpose,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, usState, setUsState,
     sending, submitted, submitLead: () => { void submitLead(); }, openCalendly,
@@ -143,11 +138,11 @@ export default function HomeEquityCalculator() {
   const disclosure = (
     <p className="dcp-caption">
       <strong>Important Disclosures:</strong> This tool provides estimates for educational purposes
-      only. It is not an appraisal, a loan application, an approval or a statement of available
-      credit. Actual rates, terms and amounts depend on creditworthiness, property appraisal,
-      combined loan-to-value, other liens and lender approval. Not a commitment to lend. All loans
-      subject to underwriting approval. Borrowing against your home can put your home at risk.
-      Equal Housing Opportunity.
+      only. It is not an appraisal, a loan application, an approval, a statement of available credit,
+      or a confirmation that a project can be permitted, built or rented. Actual rates, terms and
+      amounts depend on creditworthiness, property appraisal, combined loan-to-value, other liens and
+      lender approval. Not a commitment to lend. All loans subject to underwriting approval.
+      Borrowing against your home can put your home at risk. Equal Housing Opportunity.
       <br /><br />
       <strong>Darren Tsai</strong> · Senior Loan Officer · NMLS# 2438102 · DRE# 02103705
       · Licensed with Saxton Mortgage. For licensing information, visit{' '}
@@ -157,7 +152,11 @@ export default function HomeEquityCalculator() {
     </p>
   );
 
-  const overlays = <ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} id="he-error-title" />;
-
-  return <EquityPage v={view} overlays={overlays} disclosure={disclosure} />;
+  return (
+    <AduPage
+      v={view}
+      overlays={<ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} id="adu-error-title" />}
+      disclosure={disclosure}
+    />
+  );
 }

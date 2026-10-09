@@ -104,6 +104,7 @@ describe('every lead the site sends has somewhere to land', () => {
    * asserted below, so falling through here costs nothing but the tab.
    */
   const CONTACT_SOURCES = [
+    'adu-contact',
     'debt-consolidation-contact',
     'dscr-contact',
     'fha-contact',
