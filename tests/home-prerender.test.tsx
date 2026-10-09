@@ -114,7 +114,11 @@ describe('the pre-rendered /debt-consolidation/ shell', () => {
     expect(script(page)).toBeDefined();
     // Two copies, because a static HTML entry cannot import. Held identical so
     // a fix to one is a fix to both; the behaviour is tested below, once.
-    expect(script(page)).toBe(script(read('index.html')));
+    // Windows checkouts may mix CRLF and LF between these two entries. Compare
+    // the code after newline normalization, so Git's checkout format cannot
+    // fail this guard while a real difference in the early-click logic still does.
+    expect(script(page)?.replace(/\r\n/g, '\n'))
+      .toBe(script(read('index.html'))?.replace(/\r\n/g, '\n'));
   });
 
   it('replays the queued click, as the homepage does', () => {

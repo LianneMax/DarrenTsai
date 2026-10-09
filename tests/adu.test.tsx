@@ -189,7 +189,10 @@ describe('the pre-rendered /adu/ shell', () => {
     expect(page).toContain('<link rel="canonical" href="https://realdarrentsai.com/adu/" />');
     expect(read('public/sitemap.xml')).toContain('<loc>https://realdarrentsai.com/adu/</loc>');
     const script = (f: string) => /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(read(f))?.[1];
-    expect(script('adu/index.html')).toBe(script('index.html'));
+    expect(script('adu/index.html')).toBeDefined();
+    // Checkout line endings can differ; changes to the script itself must not.
+    expect(script('adu/index.html')?.replace(/\r\n/g, '\n'))
+      .toBe(script('index.html')?.replace(/\r\n/g, '\n'));
     expect(read('src/AduApp.tsx')).toContain('leadSource="adu-contact"');
   });
 

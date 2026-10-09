@@ -8,10 +8,10 @@ Written so a session that can only see GitHub knows what exists beyond `main`, w
 | --- | --- | --- |
 | `r0-debt-consolidation` | No (local only) | Fully in `main`. Safe to delete. |
 | `debt-page-redesign` | No (local only) | Fully in `main`. Safe to delete. |
-| `claude/wizardly-ramanujan-1dww99` | Yes | Fully in `main` (phases 5 and 4). Safe to delete. |
+| `claude/wizardly-ramanujan-1dww99` | Yes | Eight new commits outside `main`, through `997054f` (verified after fetch, 10 Oct). Do not delete. |
 | `debt-consolidation-page` | **Yes, pushed 10 Oct** | **Five commits not in `main`. Do not delete, do not merge as it is.** |
 
-"Fully in `main`" was checked with `git log origin/main..<branch>`, which is empty for the first three.
+The cloud branch was previously fully in main, but has since gained eight commits: launch checklist, phase 6 nav, email-hint click fix, legacy calculator removal, FHA payment review, Sheet formula guard/build dependency fixes, debt comparison fixes, and homepage metadata. Cloud reports 1,040 passing tests, lint, build and layout checks; these results have not been independently rerun here. Main and deployed Apps Script have not been changed by this cross-check. See `docs/go-live-checklist.md` for newer decisions and verification evidence.
 
 ## `debt-consolidation-page`: what it holds
 
@@ -36,7 +36,7 @@ Copied into `main` with this file, as documents only: `docs/revamp/confirmation-
 
 ## How to pick each piece up
 
-**R1 (Sheet schema).** Treat `4f56832` as the reference implementation, not as a patch to apply. The design is in `docs/lead-sheet-schema.md`; the order of work for the migration window is in the branch's `docs/MANUAL-TEST-RUNBOOK.md`, section 0.5. Decided by Max on 8 Oct: rows are written by header name, a tab out of schema order is reported by email and never refuses a lead, and the migration runs in its own quiet window after R0. Still open before it can run: whether Darren or Kocah keep filters, formulas or saved views on the lead tabs, and whether Darren uses the best-time answer.
+**R1 (Sheet schema).** Treat `4f56832` as the reference implementation, not as a patch to apply. The design is in `docs/lead-sheet-schema.md`; the order of work for the migration window is in the branch's `docs/MANUAL-TEST-RUNBOOK.md`, section 0.5. Decided by Max on 8 Oct: rows are written by header name, a tab out of schema order is reported by email and never refuses a lead, and the migration runs in its own quiet window after R0. Max resolved the questions on 10 Oct: neither Darren nor Kocah uses filters or saved views on the lead tabs, and Darren does not use the best-time answer. Audit formulas separately; preparation is unblocked, production migration still needs its backup and verified release plan.
 
 **Confirmation emails (R2).** Waiting on Max's sign-off of the copy. `docs/revamp/emails/index.html` shows the four drafts beside the live email. When approved, re-apply `c8967bb` to current `main` (the template file has not changed on `main` since, so it should apply cleanly), keep the hash test, and only then make the Apps Script send a `context`. That last step is what turns an email on, and it starts reaching borrowers on deploy.
 

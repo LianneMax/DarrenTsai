@@ -1,5 +1,7 @@
 # realdarrentsai.com lead-path audit
 
+**Current launch verification (10 Oct 2026):** start with [docs/go-live-checklist.md](docs/go-live-checklist.md). It records Max's latest Niko email, current main versus the R1/R2 side branch, live HubSpot permission limits, property types, and fresh checks. Older status paragraphs below are historical; do not treat them as current deployment or account evidence.
+
 Last updated 28 Sep 2026 · Max (with Claude) · re-tested against `origin/main` at `80b21e4`, Apps Script deployment @39 (round R9); H3 deployed 29 Sep as @41
 
 The pipes work and most of the first-round fixes are live and verified (27 Sep). Round 5 (`87f7166..d3a246c`) then fixed every remaining code item: the forms that sent or showed values the visitor never chose (R3-1, R3-3, R3-7, R3-9, R3-10, R4-1 to R4-9) and the booking path that could stall or lose data (R3-2, R3-5, R3-8). All of it is **fixed in code and not verified live**, and the Apps Script part is **not yet deployed**. What remains genuinely outside the code: GTM tags (#6, #16, R3-6), the CallRail pool (#8), four YouTube descriptions (#14), and the confirmation-email settings.

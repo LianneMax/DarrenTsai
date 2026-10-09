@@ -237,7 +237,10 @@ describe('the pre-rendered /home-equity/ shell', () => {
     expect(page).toContain('<div id="root"></div>');
     expect(read('public/sitemap.xml')).toContain('<loc>https://realdarrentsai.com/home-equity/</loc>');
     const script = (f: string) => /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(read(f))?.[1];
-    expect(script('home-equity/index.html')).toBe(script('index.html'));
+    expect(script('home-equity/index.html')).toBeDefined();
+    // Checkout line endings can differ; changes to the script itself must not.
+    expect(script('home-equity/index.html')?.replace(/\r\n/g, '\n'))
+      .toBe(script('index.html')?.replace(/\r\n/g, '\n'));
   });
 
   it('posts its contact modal under its own source', () => {
