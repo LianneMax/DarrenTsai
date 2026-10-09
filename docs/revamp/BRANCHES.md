@@ -1,46 +1,26 @@
-# Branches outside `main`, and what is still only on them (10 Oct 2026)
+# Branches outside `main`, and what is still only on them (10 Oct 2026, R1)
 
 Written so a session that can only see GitHub knows what exists beyond `main`, what is safe to delete, and what must not be merged as it stands.
 
 ## Summary
 
-| Branch | On GitHub | Status |
-| --- | --- | --- |
-| `r0-debt-consolidation` | No (local only) | Fully in `main`. Safe to delete. |
-| `debt-page-redesign` | No (local only) | Fully in `main`. Safe to delete. |
-| `claude/wizardly-ramanujan-1dww99` | Yes | Fully in `main` (phases 5 and 4). Safe to delete. |
-| `debt-consolidation-page` | **Yes, pushed 10 Oct** | **Five commits not in `main`. Do not delete, do not merge as it is.** |
-
-"Fully in `main`" was checked with `git log origin/main..<branch>`, which is empty for the first three.
-
-## `debt-consolidation-page`: what it holds
-
-Five commits on top of `aef60d3` (the R0 release), oldest first:
-
-| Commit | What |
+| Branch | Status |
 | --- | --- |
-| `4f56832` | **R1, the Sheet schema release.** One standard column order for every lead tab, rows written by header name (`appendByHeader`), `Submission ID` / `Form ID` / `Page` / `First Touch Medium`, the DSCR scenario columns, signed savings on the debt tab, `auditLeadTabs()` and `migrateLeadTabs()`, Best Time to Call and Lead Source removed from the debt form. Tests: `tests/sheet-columns.test.ts` rewritten, `tests/sheet-migration.test.ts` new. |
-| `7d6e954` | A CLAUDE.md note that the contact confirmation email is live. |
-| `4597c60` | `docs/revamp/confirmation-email-copy.md`, the email copy for sign-off. |
-| `c8967bb` | Four contexts added to `netlify/functions/send-contact-confirmation.mts` (debt, home-equity, adu, mortgage-review), `scripts/build-email-previews.mjs`, `npm run emails`, `tests/confirmation-email.test.ts`, and the rendered previews. |
-| `3b939da` | The decision that emails say "I will be in touch." and the site says "Darren will be in touch." |
+| `claude/wizardly-ramanujan-1dww99` | **Holds R1, the Sheet schema release, rebuilt on current `main`. Do not delete. Merge only in the migration window.** |
+| `debt-consolidation-page` | Superseded. Everything on it is in `main` (R2, the email copy and the wording decision, all since refined) or rebuilt on the branch above (R1). Safe to delete once the branch above is pushed. |
 
-Copied into `main` with this file, as documents only: `docs/revamp/confirmation-email-copy.md` and `docs/revamp/emails/`. The code they describe is **not** in `main`.
+Checked on 10 Oct by comparing each of its five commits' files with `main`: the email previews and the build script are identical; `send-contact-confirmation.mts`, its test and the copy doc differ only because `main` went further (contexts wired up, the decision recorded).
 
-## Why it cannot simply be merged
+## R1 on `claude/wizardly-ramanujan-1dww99`
 
-- **It predates phases 2 to 5.** `main` has since rebuilt the debt page, added `/home-equity/` and `/adu/`, and turned the homepage into the hub. `src/components/DebtSavingsCalculator.tsx`, `google-apps-script.js` and several tests conflict.
-- **`main`'s Apps Script is still positional.** The `home-equity` and `adu` schemas in `main` were added in the old append-only style (`COMMON_LEAD.concat(...)`, `row: function`). R1 replaces that whole mechanism, so R1 has to be redone on top of current `main` and must then include those two tabs.
-- **The Apps Script live today is @44**, deployed from `main`. Nothing from R1 has ever been deployed and no tab has been migrated.
-- **The contact confirmation email is live.** The contexts in `c8967bb` leave it byte for byte unchanged and nothing sends a context, but that guarantee is a test on the branch, not on `main`.
+`4f56832` was used as the reference implementation and merged three ways onto `main` at `8740407`, keeping everything `main` added since: `CONTACT_SOURCES`, `FUNNEL_CAMPAIGNS`, the formula guard (`safeCell` / `appendSafeRow`), the `preference:` tag, the confirmation contexts, the rate limit. What changed on the way:
 
-## How to pick each piece up
+- **The Home Equity and ADU tabs are in the standard order**, built from `main`'s live columns. The equity field is `estimatedEquity` on every tab; R1 called it `estimatedHomeEquity` on the debt tab, which would have left that column blank.
+- **Rows go through `safeCell()`** in `appendByHeader()`, and so does text copied by the migration: a name stored as text since @45 comes back from `getValues()` as a bare `=...` string and would be a live formula again if written back as it is. The test harness now models Sheets value entry (an apostrophe is consumed, a bare `=` becomes a formula, also in a plain-text cell, since that is not verified), and the migration test fails with the guard removed.
+- **The debt page sends the R1 fields from the new layout**: signed savings, `estimatedEquity`, `currentLtv`, `currentMonthlyPayment`, `weightedAvgRate`, the same-payoff refi and `rateSourceDate`; Best Time to Call and Lead Source are gone from the payload and the rescue email. Checked by capturing the real payload in Chromium for four cases (saves, costs more, paid-off home, rates down) and running it through the real Apps Script.
+- **Run against the live Sheet's header rows** (read 10 Oct): the audit says all five tabs need migrating, and every value moved under its own header, with only the two dropped debt columns left behind in the "(old ...)" tab.
 
-**R1 (Sheet schema).** Treat `4f56832` as the reference implementation, not as a patch to apply. The design is in `docs/lead-sheet-schema.md`; the order of work for the migration window is in the branch's `docs/MANUAL-TEST-RUNBOOK.md`, section 0.5. Decided by Max on 8 Oct: rows are written by header name, a tab out of schema order is reported by email and never refuses a lead, and the migration runs in its own quiet window after R0. Still open before it can run: whether Darren or Kocah keep filters, formulas or saved views on the lead tabs, and whether Darren uses the best-time answer.
-
-**Confirmation emails (R2).** Waiting on Max's sign-off of the copy. `docs/revamp/emails/index.html` shows the four drafts beside the live email. When approved, re-apply `c8967bb` to current `main` (the template file has not changed on `main` since, so it should apply cleanly), keep the hash test, and only then make the Apps Script send a `context`. That last step is what turns an email on, and it starts reaching borrowers on deploy.
-
-**Signed savings on the debt page.** `main`'s debt page already shows "Payment goes up $X/mo" through `src/utils/savingsText.ts`, but the lead still sends savings only when positive. The signed payload is part of R1.
+**How it ships**: `docs/MANUAL-TEST-RUNBOOK.md` section 0.5. Copy the spreadsheet, deploy the Apps Script in place, `auditLeadTabs()`, `migrateLeadTabs()`, then merge this branch and push the site, then one fake test lead per tab. The two questions it waited on are answered (10 Oct): no filters or saved views on the lead tabs, and Darren does not use Best Time to Call.
 
 ## Things only on someone's machine
 
