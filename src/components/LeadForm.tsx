@@ -7,7 +7,7 @@ import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openCalendly } from '../utils/calendly';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
-import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 
 const emailSchema = z.string().email();
 
@@ -290,7 +290,7 @@ export default function LeadForm({
             id="lf-email" type="email"
             className={`form-input${errors.email ? ' input-error' : ''}`}
             value={form.email} onChange={(e) => { setEmailHint(null); set('email')(e); }}
-            onBlur={(e) => setEmailHint(checkEmail(e.target.value))}
+            onBlur={(e) => hintAfterBlur(e.target.value, setEmailHint)}
             autoComplete="email"
           />
           {errors.email && <span className="field-error">{errors.email}</span>}

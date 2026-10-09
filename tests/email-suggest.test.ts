@@ -4,7 +4,7 @@
  * bad domain is the form. These tests pin the two things that matter: it catches
  * the common typos, and it stays quiet about anything it isn't sure of.
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -77,7 +77,8 @@ describe('stays quiet when unsure — a wrong guess must not stop a real address
 });
 
 describe('wiring', () => {
-  const pages = ['../index.html', '../debt-consolidation/index.html', '../public/dscr/index.html', '../public/fha/index.html', '../public/realestateinvesting/index.html'];
+  const pages = ['../index.html', '../debt-consolidation/index.html', '../home-equity/index.html', '../adu/index.html',
+    '../mortgage-calculator/index.html', '../public/dscr/index.html', '../public/fha/index.html', '../public/realestateinvesting/index.html'];
 
   it.each(pages)('%s loads the shared checker', (page) => {
     expect(readFileSync(resolve(__dirname, page), 'utf8')).toContain('/email-suggest.js');
@@ -88,12 +89,62 @@ describe('wiring', () => {
     expect(src).toContain("closest('#root')");
   });
 
-  it.each(['../src/components/LeadForm.tsx', '../src/components/DebtSavingsCalculator.tsx'])(
-    '%s renders its own hint on blur',
+  it.each(['../src/components/LeadForm.tsx', '../src/components/PageParts.tsx', '../src/components/DebtPageViews.tsx'])(
+    '%s renders its own hint on blur, once the tap has landed',
     (file) => {
       const src = readFileSync(resolve(__dirname, file), 'utf8');
-      expect(src).toContain('checkEmail(e.target.value)');
+      expect(src).toMatch(/onBlur=\{\(e\) => hintAfterBlur\(e\.target\.value, (v\.)?setEmailHint\)\}/);
       expect(src).toContain('email-hint');
     },
   );
+});
+
+/**
+ * The hint used to appear on the press of the next tap, move the layout a line,
+ * and lose the tap: the release landed on another element. afterPress holds it
+ * until the click has landed (9 Oct walkthroughs; see public/email-suggest.js).
+ */
+describe('the hint waits for the tap that took focus away', () => {
+  let afterPress: (fn: () => void) => void;
+  beforeAll(() => {
+    const src = readFileSync(resolve(__dirname, '../public/email-suggest.js'), 'utf8');
+    const g: Record<string, unknown> = {};
+    new Function('window', 'document', 'module', src)(g, document, undefined);
+    afterPress = (g.dtEmailSuggest as { afterPress: typeof afterPress }).afterPress;
+  });
+
+  it('shows at once after a keyboard Tab, when nothing is pressed', () => {
+    const fn = vi.fn();
+    afterPress(fn);
+    expect(fn).toHaveBeenCalledOnce();
+  });
+
+  it('waits for the click to land, then shows after its handlers', () => {
+    vi.useFakeTimers();
+    try {
+      const target = document.body.appendChild(document.createElement('button'));
+      const order: string[] = [];
+      target.addEventListener('click', () => order.push('click'));
+      target.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      afterPress(() => order.push('hint'));
+      expect(order).toEqual([]);
+      target.click();
+      vi.advanceTimersByTime(1);
+      expect(order).toEqual(['click', 'hint']);
+      target.remove();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('gives up waiting when the press was a scroll and never became a click', () => {
+    vi.useFakeTimers();
+    try {
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      const fn = vi.fn();
+      afterPress(fn);
+      vi.advanceTimersByTime(799);
+      expect(fn).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(2);
+      expect(fn).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
 });

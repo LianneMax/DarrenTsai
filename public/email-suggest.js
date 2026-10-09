@@ -83,7 +83,38 @@
     return 'Did you mean ' + result.email + '?';
   }
 
-  root.dtEmailSuggest = { check: check, message: message };
+  // Runs fn once the tap or click in progress has landed, or at once when none
+  // is (a keyboard Tab).
+  //
+  // WHY. The hint is drawn when the email field loses focus, and a click takes
+  // focus away on the PRESS. The hint pushed everything under it down by a
+  // line before the RELEASE, so the release landed on a different element and
+  // the browser dropped the click: the visitor tapped State or Submit and
+  // nothing happened. Seen in every walkthrough of a contact step since the
+  // hint shipped (9 Oct). Waiting for the click to land first means the layout
+  // only moves after the tap has done what the visitor meant. A press that
+  // never becomes a click (a scroll, a drag) gives up waiting after 800ms.
+  var pressedAt = 0;
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', function () { pressedAt = Date.now(); }, true);
+    document.addEventListener('click', function () { setTimeout(function () { pressedAt = 0; }, 0); }, true);
+  }
+  function afterPress(fn) {
+    if (!pressedAt || Date.now() - pressedAt > 1000) { fn(); return; }
+    var done = false;
+    var timer;
+    function run() {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      document.removeEventListener('click', run, true);
+      setTimeout(fn, 0); // after every click handler, so the click is not the one moved
+    }
+    document.addEventListener('click', run, true);
+    timer = setTimeout(run, 800);
+  }
+
+  root.dtEmailSuggest = { check: check, message: message, afterPress: afterPress };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = root.dtEmailSuggest;
 
@@ -126,6 +157,8 @@
     var t = e.target;
     if (!t || t.tagName !== 'INPUT' || t.type !== 'email') return;
     if (t.closest && t.closest('#root')) return; // React owns that DOM
-    try { review(t); } catch (err) { /* a hint must never break a form */ }
+    afterPress(function () {
+      try { review(t); } catch (err) { /* a hint must never break a form */ }
+    });
   }, true);
 })(typeof window !== 'undefined' ? window : globalThis);

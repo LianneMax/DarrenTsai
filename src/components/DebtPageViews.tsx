@@ -23,7 +23,7 @@ import type { ReactNode } from 'react';
 import { LICENSED_STATES, PHONE, isLicensedState } from '../config';
 import { formatCurrency, formatRate } from '../utils/formatters';
 import { savingsText, savingsRowText } from '../utils/savingsText';
-import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 import CustomSelect from './CustomSelect';
 import StateSelect from './StateSelect';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
@@ -565,7 +565,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
           <input type="email" className="form-input" placeholder="you@email.com"
             value={v.email}
             onChange={(e) => { v.setEmailHint(null); v.setEmail(e.target.value); }}
-            onBlur={(e) => v.setEmailHint(checkEmail(e.target.value))} />
+            onBlur={(e) => hintAfterBlur(e.target.value, v.setEmailHint)} />
           {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
           {v.emailHint && (v.emailHint.kind === 'typo' ? (
             <button type="button" className="email-hint"

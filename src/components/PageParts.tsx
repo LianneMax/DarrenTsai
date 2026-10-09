@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { AsYouType } from 'libphonenumber-js';
 import { LICENSED_STATES, NMLS, DRE, isLicensedState } from '../config';
 import { formatCurrency } from '../utils/formatters';
-import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 import StateSelect from './StateSelect';
 
 export const Arrow = () => (
@@ -174,7 +174,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }
           <input id="lead-email" type="email" className="form-input" placeholder="you@email.com"
             value={v.email}
             onChange={(e) => { v.setEmailHint(null); v.setEmail(e.target.value); }}
-            onBlur={(e) => v.setEmailHint(checkEmail(e.target.value))} />
+            onBlur={(e) => hintAfterBlur(e.target.value, v.setEmailHint)} />
           {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
           {v.emailHint && (v.emailHint.kind === 'typo' ? (
             <button type="button" className="email-hint"

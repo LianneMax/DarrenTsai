@@ -10,6 +10,7 @@ export type EmailSuggestion =
 type Api = {
   check: (value: string) => EmailSuggestion | null;
   message: (result: EmailSuggestion | null) => string;
+  afterPress?: (fn: () => void) => void;
 };
 
 function api(): Api | null {
@@ -23,4 +24,16 @@ export function checkEmail(value: string): EmailSuggestion | null {
 
 export function emailHintMessage(result: EmailSuggestion | null): string {
   try { return api()?.message(result) ?? ''; } catch { return ''; }
+}
+
+/**
+ * Checks the address and hands the hint to `show` once the tap that took focus
+ * away has landed (see afterPress in public/email-suggest.js): drawing it on the
+ * press moved the layout under the visitor's finger and the tap was lost.
+ */
+export function hintAfterBlur(value: string, show: (hint: EmailSuggestion | null) => void): void {
+  const hint = checkEmail(value);
+  const a = api();
+  if (a?.afterPress) a.afterPress(() => show(hint));
+  else show(hint);
 }

@@ -34,7 +34,6 @@ Last updated: 10 Oct 2026, after the phase 4 and 5 deploy (`3430fd2`, Apps Scrip
 - [ ] **HubSpot loan fields** (audit L12). Loan Amount, Loan Type and Property Use reach HubSpot empty. Blocked on Niko's internal property names and allowed values.
 - [ ] **HELOAN savings when the HELOAN is capped.** A capped HELOAN pays off only part of the debt, but the payment comparison ignores the debts left over, so the saving is overstated. Needs Max's decision on how to show it.
 - [ ] **A paid-off home on the debt page.** `hasHome` requires a mortgage balance above 0, so a homeowner with no mortgage cannot reach the comparison. The brief says 0 is a valid answer (the equity and ADU pages already accept it). Check which options still make sense with no first mortgage before changing the gate.
-- [ ] **The email hint swallows the next tap.** On every contact step, the "Did you mean ...?" hint appears when the email field loses focus and moves the layout, so the next tap lands on the wrong spot. Predates the revamp.
 - [ ] **Delete the old homepage calculator layout.** `DebtSavingsCalculator`'s non-standalone branch (sticky bar, "Available Equity" chip) is no longer rendered anywhere; it and the guard tests that pin it can go.
 - [ ] **Homepage title and meta description** still say "Home Equity & Investment Property Lending". Max to decide the new wording; it affects search.
 
@@ -83,6 +82,7 @@ These were still listed as open in `SESSION_HANDOFF_PRIVATE.md`, but have since 
 
 ## Done
 
+- 10 Oct: the email typo hint no longer swallows the next click. It now appears once that click has landed (`afterPress` in `public/email-suggest.js`, shared by React and the static pages). Reproduced on the old build at 1280px, fixed on the new.
 - 10 Oct: revamp phase 6, navigation. The hub and mortgage calculator nav has About Me, Reviews, Calculators (now with Home Equity and ADU), Contact and Book a Call; the three ad pages show only Contact and Book a Call; the static pages' logo goes to `/` directly.
 - 10 Oct: the copy decisions document and email previews brought to `main` from `debt-consolidation-page` (`fba2134`); `r0-debt-consolidation` and `debt-page-redesign` confirmed fully in `main`.
 - 9 Oct: homepage goal hub, revamp phase 4 (`3430fd2`).
