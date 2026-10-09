@@ -229,6 +229,11 @@ or the lead lands on the generic tab with its fields dropped:
 ## Known state and open work
 
 - All 1021 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
+  Ads**: code, accounts and decisions, each with an owner. When an item is done,
+  delete it there and add a line to its "Done" section in the same commit.
+  `docs/revamp/BRANCHES.md` says what exists only on side branches
+  (`debt-consolidation-page` holds R1 and the R2 email contexts, unmerged).
 - HubSpot is the largest pending piece: CRM portal access is still blocked, and
   the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
   -> Bonzo flow intact until a replacement is tested end to end.
@@ -275,7 +280,8 @@ or the lead lands on the generic tab with its fields dropped:
   returning prospect is still not enrolled in the new campaign and their tags are
   not updated. That needs an update-by-email call whose v3 behaviour must be
   verified live first, the way the Mortgage fields were.
-- **The contact modal's confirmation email is built but silent.** Every magnet
+- **The contact modal's confirmation email is live** (its properties are set;
+  see `docs/revamp/BRANCHES.md`). It was built dark first. Every magnet
   form sent the visitor something; the modal, the form that asks the most, sent
   nothing. `netlify/functions/send-contact-confirmation.mts` carries the calendar
   rather than an attachment, with UTMs on the link. It needs

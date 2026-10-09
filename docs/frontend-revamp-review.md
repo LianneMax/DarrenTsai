@@ -9,6 +9,8 @@ Direction is sound and compatible with the repo's backend (same /api/lead, Apps 
 Ads launch on the pages that exist now. The revamp ships later in phases. Any ad URL that a phase changes is switched in the same release, coordinated with Kocah.
 
 ## Phases
+What is left of these phases, and everything else before ads, is tracked in `docs/LAUNCH-CHECKLIST.md`.
+
 0. Before launch (small): add /debt-consolidation/ serving the same debt calculator as /. Give Kocah /debt-consolidation/ as the debt ads URL so the later homepage change never touches a live ad URL. Canonical on each page to itself. Add to sitemap. **Built 8 Oct.**
 1. Backend plumbing for new sources: home-equity and adu in SOURCE_SCHEMAS, new Sheet tabs, Follow-ups routes, CONTACT_SOURCES, HubSpot field mapping (L12 loan fields), licensed/test handling, contextual confirmation emails (extend send-contact-confirmation, no parallel system). Debt keeps its existing source value. Sheet column order follows docs/lead-sheet-schema.md (one planned migration).
 2. Debt Consolidation refinements on /debt-consolidation/ (labels, optional mortgage fields, result hierarchy, remove Best Time to Call and How did you hear about us). Formulas from the repo only. **Built 9 Oct on `claude/wizardly-ramanujan-1dww99`, not live.**

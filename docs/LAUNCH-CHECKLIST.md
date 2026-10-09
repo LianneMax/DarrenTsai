@@ -1,0 +1,91 @@
+# Before Google Ads: what is left
+
+The one living list of what still stands between the site and paid traffic. Code, accounts and decisions are all here, so a new session or a new person can pick it up from this file alone.
+
+**How to keep it current**
+
+- When an item is done, **delete it** and add one line to "Done" at the bottom: the date, what was done and the commit or version. Keep only the last 15 lines of "Done"; older history lives in `git log` and `audit.md`.
+- A new item gets an owner and a reason. If it is blocked, say on what.
+- Never put keys, tokens, IP addresses, private phone numbers or lead details here. This file is committed. Account-side detail lives in `SESSION_HANDOFF_PRIVATE.md` (git-ignored).
+
+Owners: **Max** (site, tracking, accounts), **Darren**, **Kocah** (Niko, Google Ads and HubSpot admin), **Claude Code** (code in this repo).
+
+Last updated: 10 Oct 2026, after the phase 4 and 5 deploy (`3430fd2`, Apps Script @44).
+
+---
+
+## 1. Must be done before the first ad goes live
+
+- [ ] **Check the 9 Oct deploy live** (Max). One test lead each on `/home-equity/` and `/adu/`: the row lands on its own tab ("Home Equity", "ADU"), not on Leads, and `generate_lead` shows in GA4 Realtime with form id `home-equity-calculator` / `adu-calculator`. Click every homepage goal card once, and open "Not sure where to start?" (the contact modal). Then delete the test rows.
+- [ ] **Call and text consent line on every form** (audit L5). Blocked on Darren and Saxton approving the wording. Bonzo texts leads, so this is the item an Ads or compliance review is most likely to ask about. Once approved, Claude Code adds the same text under every submit button, the three static pages included.
+- [ ] **CallRail pool size** (Max with Niko). Niko suggests starting with one number. With a single shared number CallRail cannot tie a call to the ad click, so calls lose their gclid and keyword. Decide before launch.
+- [ ] **Ad final URLs and form ids to Kocah** (Max). Debt ads to `/debt-consolidation/`, HELOC and equity ads to `/home-equity/`, ADU ads to `/adu/`. Tell them the new form ids in case a GTM trigger or Ads report filters on form id. No ads point at `/`, so the homepage hub touches no ad.
+- [ ] **Loan Type options in HubSpot cover the new funnels** (Kocah). HELOC, home equity loan, cash-out refinance, ADU/renovation.
+- [ ] **Google Ads tracking template and final URL suffix audit** (Kocah or Darren). The account's existing values were left untouched on purpose (24 Sep). Read them before campaigns are built so nothing overwrites the UTMs the site depends on.
+- [ ] **Security pass before paid traffic** (Claude Code, then Max). Raised in the 8 Oct meeting and in the revamp brief (sections 18 and 19): `/api/lead` validation, size limits and spam protection, no secrets in the client bundle, response headers, and dependency audit. Report findings; fix what is real.
+- [ ] **PageSpeed on the new pages** (Max). Three mobile runs of the new homepage (its hero changed, so the 8 Oct numbers no longer apply), and one each of `/home-equity/`, `/adu/` and `/debt-consolidation/`. Decide then whether the homepage still needs L11 fix 2.
+- [ ] **Search Console** (Max). Resubmit `sitemap.xml`, which now lists `/home-equity/` and `/adu/`. Keep monitoring `/dscr/`, `/fha/` and `/realestateinvesting/`; do not resubmit them repeatedly.
+
+## 2. Code still to build (Claude Code)
+
+- [ ] **Phase 6, navigation.** The Calculator dropdown and the mobile drawer list Debt, Mortgage, DSCR and FHA but not Home Equity or ADU, and there is no About link although the homepage now has an About section.
+- [ ] **FHA review form** (revamp brief section 9, preview v4). Add "Have Darren Review My Payment" with its own form id. The guide form keeps Credit Score; the FHA tab stores it.
+- [ ] **R1, the Sheet schema release.** Reference implementation is `4f56832` on `debt-consolidation-page`; redo it on current `main` and include the Home Equity and ADU tabs. See `docs/revamp/BRANCHES.md` and `docs/lead-sheet-schema.md`. Blocked on two answers: whether Darren or Kocah keep filters, formulas or saved views on the lead tabs, and whether Darren uses the best-time answer. Runs in its own quiet window.
+- [ ] **R2, contextual confirmation emails** (brief section 11.1) for debt, home equity, ADU and mortgage-calculator review. Blocked on Max's sign-off of `docs/revamp/confirmation-email-copy.md` (previews in `docs/revamp/emails/`), and possibly Saxton compliance. Then re-apply `c8967bb` from the branch, keep its hash test, and only after that make Apps Script send a context.
+- [ ] **HubSpot loan fields** (audit L12). Loan Amount, Loan Type and Property Use reach HubSpot empty. Blocked on Niko's internal property names and allowed values.
+- [ ] **HELOAN savings when the HELOAN is capped.** A capped HELOAN pays off only part of the debt, but the payment comparison ignores the debts left over, so the saving is overstated. Needs Max's decision on how to show it.
+- [ ] **A paid-off home on the debt page.** `hasHome` requires a mortgage balance above 0, so a homeowner with no mortgage cannot reach the comparison. The brief says 0 is a valid answer (the equity and ADU pages already accept it). Check which options still make sense with no first mortgage before changing the gate.
+- [ ] **The email hint swallows the next tap.** On every contact step, the "Did you mean ...?" hint appears when the email field loses focus and moves the layout, so the next tap lands on the wrong spot. Predates the revamp.
+- [ ] **Delete the old homepage calculator layout.** `DebtSavingsCalculator`'s non-standalone branch (sticky bar, "Available Equity" chip) is no longer rendered anywhere; it and the guard tests that pin it can go.
+- [ ] **Homepage title and meta description** still say "Home Equity & Investment Property Lending". Max to decide the new wording; it affects search.
+
+## 3. Accounts and settings (outside the code)
+
+- [ ] **HubSpot plan tier** (H1, Darren or Kocah). Ad conversion events need Marketing Hub Starter or above.
+- [ ] **HubSpot lifecycle sync** (H2, Kocah). Application Submitted to Opportunity and Funded to Customer need workflows, which this account does not have, or the pipeline's built-in lifecycle setting.
+- [ ] **Max's new HubSpot seat** (Darren), then the three HubSpot switches (Max): Google Ads pixel, non-HubSpot form capture, cookie banner.
+- [ ] **HubSpot test clean-up** (Niko). Delete the `TEST H3 Live` contact.
+- [ ] **YouTube copy for the moved buckets** (Max). `/yt/heloc` and `/yt/equity` now land on `/home-equity/`, but the description and pinned-comment text still say "Request your Private Debt Analysis", which is the old homepage offer. Update those videos' text to match the equity page, and use `/yt/adu` and `/yt/adu-c` on ADU videos.
+- [ ] **Dedicated Bonzo campaigns** (optional, Max). `BONZO_HOME_EQUITY_CAMPAIGN_ID` and `BONZO_ADU_CAMPAIGN_ID`; until set, both funnels enroll in the default campaign.
+- [ ] **Update the SOP and the private handoff** (Max). The Google Doc SOP and `SESSION_HANDOFF_PRIVATE.md` (last updated 24 Sep) predate HubSpot H3 and the whole revamp.
+
+## 4. After launch, with real traffic
+
+- [ ] First real Google Ads form conversion (`generate_lead`) appears in Ads.
+- [ ] First eligible paid call (website pool, over 60 seconds) appears in Ads from CallRail.
+- [ ] First real Calendly booking shows `calendly_booking` in GA4.
+- [ ] A returning Bonzo prospect is still not enrolled in the new campaign or re-tagged. Needs the v3 update-by-email behaviour verified live first.
+- [ ] Bonzo retirement, as a separate switch once HubSpot is proven complete.
+
+## Rules that stay true (not tasks)
+
+- GTM is the only tag path. Never add the raw `AW-18451324434` snippet, a second GTM install or a direct gtag.
+- GA4 `generate_lead` is the only website form conversion. CallRail owns paid calls. `phone_click` is never imported. `calendly_booking` is imported by Kocah's decision (8 Oct).
+- No PII in GA4 parameters. No enhanced conversions without a consent review.
+- Do not rename CallRail's `Phone Call` conversion or change its "Import from clicks" source.
+- Apps Script: update the existing deployment in place, never a new one.
+- No Splitero or home equity investment content anywhere on the site yet.
+
+## Rollback for the 9 Oct release
+
+- Site: revert `3430fd2` (homepage hub) and/or `012f08e` (`/adu/`) on `main` with a revert commit; Netlify redeploys.
+- Apps Script: point the existing deployment back at version 43. Only do this after the site no longer links to `/adu/`, or ADU leads land on the generic Leads tab.
+
+## Already done (were open in the 24 Sep handoff)
+
+These were still listed as open in `SESSION_HANDOFF_PRIVATE.md`, but have since been done. Listed once here so nobody redoes them:
+
+- GA4 internal-traffic filter set to Active, retention 14 months (29 Sep).
+- HubSpot tracking code through GTM, container version 6 (29 Sep).
+- Server-side HubSpot lead push (H3), live since 7 Oct; Niko confirmed the `rdt_` fields fill.
+- Real Calendly booking tracking: `calendly_booking`, origin-checked, in GTM container version 5 (29 Sep).
+- YouTube description and pinned-comment sweep (29 Sep). The heloc/equity text now needs the update in section 3.
+- The contact modal's confirmation email is live (per `docs/revamp/BRANCHES.md`).
+
+## Done
+
+- 10 Oct: the copy decisions document and email previews brought to `main` from `debt-consolidation-page` (`fba2134`); `r0-debt-consolidation` and `debt-page-redesign` confirmed fully in `main`.
+- 9 Oct: homepage goal hub, revamp phase 4 (`3430fd2`).
+- 9 Oct: `/adu/`, revamp phase 5 (`012f08e`), Apps Script @44 with the `adu` route.
+- 9 Oct: `/home-equity/`, revamp phase 3 (`3419e61`), Apps Script @43.
+- 9 Oct: `/debt-consolidation/` redesign, revamp phase 2 (`7dfe9f1` to `cd9eddc`).
