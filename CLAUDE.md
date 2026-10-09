@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 32 files / 1162 tests, all passing |
+| Tests | Vitest + jsdom, 33 files / 1175 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1162 tests)
+npm test         # vitest run (1175 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -286,7 +286,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1162 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1175 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **The Sheet schema release (R1) is on `main` and NOT yet deployed to Apps
   Script or migrated (10 Oct).** The by-header-name rule above describes it.
   The site half ships with `main` and is safe against the live @46 script (the
@@ -307,6 +307,22 @@ or the lead lands on the generic tab with its fields dropped:
   delete it there and add a line to its "Done" section in the same commit.
   All work happens on `main`; there are no side branches (10 Oct).
   `docs/revamp/BRANCHES.md` records what the old ones held.
+- **One look across the site (10 Oct).** The React pages (the hub,
+  `/debt-consolidation/`, `/home-equity/`, `/adu/`) use the static landing
+  pages' palette, which now lives in `src/index.css`'s `:root` as well
+  (`--accent`, `--accent-on-teal`, `--header-text`, `--teal-deep`, `--line`;
+  change both sides together, `tests/page-style.test.tsx` compares them). That
+  means the white header with Contact outlined and Book a Call in slate, one
+  accent word per headline (light cyan, slanted), the teal homepage hero, the
+  spaced licensed strip, and the closing teal band. Pink stays only on error
+  states and the contact form's submit, as on the static pages. Motion is
+  theirs too: sections below the first screen fade up (`useScrollReveal`,
+  which now does nothing where IntersectionObserver is missing rather than
+  leaving a section invisible), cards lift on hover, and phones get the
+  static pages' bottom action bar (`MobileActionBar`: the page's one action
+  and a `tel:` call button), which steps aside while the calculator is on
+  screen. Nothing on a first screen fades in, and the bar is never in the
+  pre-rendered HTML, so LCP and the no-phone-number shell rule are unchanged.
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
   serves what was the homepage's calculator, the same component, so
   the lead is identical: source `DebtConsolidation`, form id

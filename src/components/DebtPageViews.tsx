@@ -135,7 +135,7 @@ export function DebtPageHero() {
         <div className="dcp-hero-inner">
           <div>
             <span className="dcp-eyebrow">Monthly Reset · Debt Consolidation</span>
-            <h1 className="dcp-h1">Boost Your Monthly Cashflow</h1>
+            <h1 className="dcp-h1">Boost Your Monthly <em>Cashflow</em></h1>
             <p className="dcp-hero-sub">
               You have a low mortgage rate but expensive credit card and other debt. Compare a
               fixed home equity loan with cash-out refinancing to understand your monthly payment
@@ -176,7 +176,7 @@ export function DebtPageHero() {
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
 
-function Stat({ label, value, tone }: { label: string; value: string; tone: 'teal' | 'rose' }) {
+function Stat({ label, value, tone }: { label: string; value: string; tone: 'teal' | 'navy' }) {
   return (
     <div className="dcp-stat">
       <span className="dcp-stat-label">{label}</span>
@@ -257,9 +257,9 @@ export function StepDebts({ v }: { v: DebtPageView }) {
       {v.debts.length > 0 && (
         <div className="dcp-stats">
           <Stat label="Total Monthly Payments" value={formatCurrency(v.totPmt)} tone="teal" />
-          <Stat label="Total Debt Balance" value={formatCurrency(v.totBal)} tone="rose" />
+          <Stat label="Total Debt Balance" value={formatCurrency(v.totBal)} tone="navy" />
           {/* Balance-weighted, which is what the label claims. */}
-          <Stat label="Weighted Avg Interest Rate" value={formatRate(v.wtRate)} tone="rose" />
+          <Stat label="Weighted Avg Interest Rate" value={formatRate(v.wtRate)} tone="navy" />
         </div>
       )}
 
@@ -439,7 +439,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       <div className="dcp-options">
         <div className="dcp-option dcp-option-today">
           <span className="dcp-option-title">Today</span>
-          <span className="dcp-option-pay dcp-rose">{formatCurrency(v.todayTotal)}</span>
+          <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}</span>
           <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : <>Mortgage P&amp;I + all debts</>}</span>
           <div className="dcp-option-body">
             {paidOff ? 'Keeps your separate debts.' : 'Keeps your current mortgage and separate debts.'}{' '}

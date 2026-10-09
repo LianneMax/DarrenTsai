@@ -20,6 +20,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NMLS, DRE, COMPANY, LICENSED_STATES } from '../config';
 import { openCalendly } from '../utils/calendly';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 const STATES = LICENSED_STATES.join(' · ');
 
@@ -180,9 +181,10 @@ function InvestChooser({ onClose }: { onClose: () => void }) {
 
 export function HomeGoals({ onOpenContact }: { onOpenContact: () => void }) {
   const [investOpen, setInvestOpen] = useState(false);
+  const reveal = useScrollReveal<HTMLDivElement>();
   return (
     <section id="goals" className="hub-section">
-      <div className="container">
+      <div className="container" ref={reveal}>
         <span className="hub-eyebrow hub-eyebrow-dark">Your goal. Your starting point.</span>
         <h2 className="hub-h2">What are you looking to do?</h2>
         <p className="hub-lead">You don&apos;t need to know the loan product to get started.</p>
@@ -210,9 +212,10 @@ export function HomeGoals({ onOpenContact }: { onOpenContact: () => void }) {
 // ─── About ────────────────────────────────────────────────────────────────────
 
 export function HomeAbout() {
+  const reveal = useScrollReveal<HTMLDivElement>();
   return (
     <section id="about" className="hub-section hub-about-wrap">
-      <div className="container hub-about">
+      <div className="container hub-about" ref={reveal}>
         <img src="/darren.jpg" width={240} height={240} alt="Darren Tsai" loading="lazy" decoding="async" />
         <div>
           <span className="hub-eyebrow hub-eyebrow-dark">About Me</span>
@@ -243,9 +246,10 @@ const TOOLS = [
 ];
 
 export function HomeTools() {
+  const reveal = useScrollReveal<HTMLDivElement>();
   return (
     <section id="tools" className="hub-section">
-      <div className="container">
+      <div className="container" ref={reveal}>
         <span className="hub-eyebrow hub-eyebrow-dark">Calculators &amp; Tools</span>
         <h2 className="hub-h2">Get a clearer picture.</h2>
         <div className="hub-tools">
@@ -263,9 +267,10 @@ export function HomeTools() {
 }
 
 export function HomeEducation() {
+  const reveal = useScrollReveal<HTMLDivElement>();
   return (
     <section className="hub-section">
-      <div className="container hub-education">
+      <div className="container hub-education" ref={reveal}>
         <div>
           <span className="hub-eyebrow hub-eyebrow-dark">Education &amp; Resources</span>
           <h2 className="hub-h2">A little understanding goes a long way.</h2>
@@ -275,7 +280,7 @@ export function HomeEducation() {
         <aside>
           <h3>Prefer to talk it through?</h3>
           <p>Bring your questions. Darren can help you understand the numbers and decide what to explore next.</p>
-          <button type="button" className="btn btn-rose" onClick={() => openCalendly()}>Book a Call</button>
+          <button type="button" className="btn btn-accent" onClick={() => openCalendly()}>Book a Call</button>
         </aside>
       </div>
     </section>

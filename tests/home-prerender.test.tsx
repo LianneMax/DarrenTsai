@@ -70,7 +70,8 @@ describe('the pre-rendered /debt-consolidation/ shell', () => {
     const { renderDebtShell } = await import('../src/prerender');
     const shell = renderDebtShell();
     expect(shell.startsWith('<nav')).toBe(true);
-    expect(shell).toMatch(/<h1[^>]*>Boost Your Monthly Cashflow<\/h1>/);
+    // The accent word is an <em>, as on the static pages' headlines (10 Oct).
+    expect(shell).toMatch(/<h1[^>]*>Boost Your Monthly <em>Cashflow<\/em><\/h1>/);
     expect(shell.match(/<h1\b/g)).toHaveLength(1);
   });
 

@@ -105,7 +105,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
 
   return (
     <>
-      <nav className={`nav${scrolled || alwaysSolid ? ' nav-scrolled' : ''}${menuOpen ? ' nav-menu-open' : ''}`}>
+      <nav className={`nav${scrolled || alwaysSolid ? ' nav-scrolled' : ''}${menuOpen ? ' nav-menu-open' : ''}${landing ? ' nav-landing' : ''}`}>
         <div className="nav-inner container">
 
           <a href="/" className="nav-logo" aria-label="Darren Tsai Home">
@@ -156,8 +156,9 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
               </div>
             </div>
             </>}
-            <button onClick={handleContactClick} className="nav-link" data-early="nav-contact" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
-            <button onClick={openCalendly} className="btn btn-rose btn-sm" data-early="nav-book">Book a Call</button>
+            {/* The static pages' pair: Contact outlined, Book a Call solid slate. */}
+            <button onClick={handleContactClick} className="btn btn-outline-teal btn-sm" data-early="nav-contact">Contact</button>
+            <button onClick={openCalendly} className="btn btn-teal btn-sm" data-early="nav-book">Book a Call</button>
           </div>
 
           {/* Hamburger button — mobile only */}
@@ -195,7 +196,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
           ))}
         </>}
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn" tabIndex={drawerTab}>Contact</button>
-        <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
+        <button onClick={handleCalendlyClick} className="btn btn-teal btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
       </div>
     </>
   );

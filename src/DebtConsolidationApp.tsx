@@ -5,6 +5,7 @@ import Nav from './components/Nav';
 import DebtSavingsCalculator from './components/DebtSavingsCalculator';
 import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
+import { MobileActionBar } from './components/PageParts';
 
 // The debt calculator on a URL of its own (frontend revamp, phase 0, 8 Oct).
 //
@@ -54,6 +55,7 @@ export default function DebtConsolidationApp() {
         <DebtSavingsCalculator />
       </main>
       <Footer />
+      <MobileActionBar target="savings" label="See My Comparison" />
 
       {contactOpen && <ContactModal
           currentInputs={inputs}

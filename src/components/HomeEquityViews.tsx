@@ -68,7 +68,7 @@ export function EquityPageHero() {
         <div className="dcp-hero-inner">
           <div>
             <span className="dcp-eyebrow">Home Equity</span>
-            <h1 className="dcp-h1">See what your home equity could help you do.</h1>
+            <h1 className="dcp-h1">See what your home <em>equity</em> could help you do.</h1>
             <p className="dcp-hero-sub">
               A quick estimate. Clear explanations. A starting point for a personal conversation.
             </p>

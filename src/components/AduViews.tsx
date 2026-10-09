@@ -62,7 +62,7 @@ export function AduPageHero() {
         <div className="dcp-hero-inner">
           <div>
             <span className="dcp-eyebrow">Renovation / ADU</span>
-            <h1 className="dcp-h1">Make room for your next chapter.</h1>
+            <h1 className="dcp-h1">Make room for your <em>next chapter.</em></h1>
             <p className="dcp-hero-sub">
               Explore how your home equity could support a renovation or an ADU.
             </p>

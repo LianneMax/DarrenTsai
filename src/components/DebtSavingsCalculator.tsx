@@ -491,7 +491,7 @@ export default function DebtSavingsCalculator() {
             <div className="modal-body">
               <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
               <button
-                className="btn btn-rose btn-full"
+                className="btn btn-teal btn-full"
                 onClick={() => setErrorMsg(null)}
               >
                 Got it

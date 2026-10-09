@@ -4,9 +4,9 @@
  * equity picture the same way. Presentation only, like the page views that use
  * them. Styles are the dcp- block in src/index.css, which both pages share.
  */
-import type { ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { AsYouType } from 'libphonenumber-js';
-import { LICENSED_STATES, NMLS, DRE, isLicensedState } from '../config';
+import { LICENSED_STATES, NMLS, DRE, PHONE, isLicensedState } from '../config';
 import { formatCurrency } from '../utils/formatters';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 import StateSelect from './StateSelect';
@@ -84,14 +84,90 @@ export function EquitySnapshot({ hv, mb }: { hv: number; mb: number }) {
 }
 
 /** Where Darren is licensed, under each page's hero. Pre-rendered with it. */
+/**
+ * The static pages' licensed strip (public/dscr and the others): five items
+ * spread across the 1080px container with hairline dividers, the Equal Housing
+ * mark beside its words. On a phone it wraps into two centred lines instead of
+ * the static pages' five stacked rows, so the calculator stays near the top on
+ * the pages ads point at.
+ */
 export function LicensedStrip() {
+  const items: ReactNode[] = [
+    'Licensed in',
+    LICENSED_STATES.join(', '),
+    `NMLS #${NMLS}`,
+    `CA DRE #${DRE}`,
+    <>
+      <svg width="18" height="18" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+        <defs>
+          <mask id="dcp-eho-mask">
+            <rect width="60" height="60" fill="white" />
+            <rect x="17" y="35" width="26" height="5" fill="black" />
+            <rect x="17" y="44" width="26" height="5" fill="black" />
+          </mask>
+        </defs>
+        <polygon points="30,5 56,28 4,28" fill="currentColor" />
+        <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#dcp-eho-mask)" />
+      </svg>
+      Equal Housing Opportunity
+    </>,
+  ];
   return (
     <div className="dcp-licensed">
-      <span>Licensed in {LICENSED_STATES.join(' · ')}</span>
-      <span>NMLS #{NMLS}</span>
-      <span>CA DRE #{DRE}</span>
-      <span>Equal Housing Opportunity</span>
+      <div className="dcp-licensed-inner">
+        {items.map((item, i) => (
+          <Fragment key={i}>
+            {i > 0 && <span className="dcp-licensed-divider" aria-hidden="true" />}
+            <span className="dcp-licensed-item">{item}</span>
+          </Fragment>
+        ))}
+      </div>
     </div>
+  );
+}
+
+/**
+ * The static pages' mobile sticky bar (public/dscr, /realestateinvesting): the
+ * page's one action and a call button, pinned to the bottom of a phone screen.
+ *
+ * Unlike theirs it steps aside while the calculator is on screen. Their bar
+ * points at a form further down; here the calculator starts right under the
+ * hero, so a bar saying "See My Comparison" over the comparison would only
+ * cover its buttons. It comes back once the visitor has scrolled past (the
+ * footer), where it is the way back up. Without IntersectionObserver it stays.
+ *
+ * The call button is a real tel: anchor, so CallRail swaps the number and GTM's
+ * phone_click fires with no extra code, as on every other call link. It is
+ * never in the pre-rendered HTML: the bar mounts after the shell.
+ */
+export function MobileActionBar({ target, label }: { target: string; label: string }) {
+  const [toolInView, setToolInView] = useState(false);
+  useEffect(() => {
+    const el = document.getElementById(target);
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    // The bottom 40% of the screen does not count: on the shorter heroes the
+    // tool's first line peeks in at the bottom of a phone's first screen, and
+    // that is exactly when the bar is most useful.
+    const io = new IntersectionObserver(([e]) => setToolInView(e.isIntersecting),
+      { threshold: 0, rootMargin: '0px 0px -40% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [target]);
+  return (
+    <>
+      <div className="dcp-mobile-bar-space" aria-hidden="true" />
+      <div className={`dcp-mobile-bar${toolInView ? ' is-away' : ''}`} aria-hidden={toolInView}>
+        <a href={`#${target}`} className="btn btn-accent dcp-mobile-bar-cta" tabIndex={toolInView ? -1 : undefined}>
+          {label}
+        </a>
+        <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="dcp-mobile-bar-call"
+          aria-label="Call Darren Tsai" tabIndex={toolInView ? -1 : undefined}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.07 1.18 2 2 0 012.07 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </a>
+      </div>
+    </>
   );
 }
 
@@ -233,7 +309,7 @@ export function ErrorDialog({ message, onClose, id }: { message: string | null; 
         </div>
         <div className="modal-body">
           <p className="modal-sub" style={{ marginBottom: 24 }}>{message}</p>
-          <button className="btn btn-rose btn-full" onClick={onClose}>Got it</button>
+          <button className="btn btn-teal btn-full" onClick={onClose}>Got it</button>
         </div>
       </div>
     </div>

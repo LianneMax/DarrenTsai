@@ -5,6 +5,7 @@ import Nav from './components/Nav';
 import AduCalculator from './components/AduCalculator';
 import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
+import { MobileActionBar } from './components/PageParts';
 
 // /adu/ (frontend revamp, phase 5). The same shell as HomeEquityApp: nav, page,
 // footer, and a contact modal that posts its own source, 'adu-contact', so a
@@ -46,6 +47,7 @@ export default function AduApp() {
         <AduCalculator />
       </main>
       <Footer />
+      <MobileActionBar target="project" label="Explore My Project" />
 
       {contactOpen && <ContactModal
           currentInputs={inputs}
