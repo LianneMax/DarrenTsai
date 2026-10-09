@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 30 files / 1080 tests, all passing |
+| Tests | Vitest + jsdom, 31 files / 1091 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1080 tests)
+npm test         # vitest run (1091 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -225,12 +225,18 @@ or the lead lands on the generic tab with its fields dropped:
   sheet tab is the trustworthy record (trimmed to 2000 rows daily).
 - Netlify kills a synchronous function at 10s. `/api/lead` budgets 9s upstream
   and leaves roughly 300ms for the rescue email.
+- `/api/lead` rate-limits per address in code (10 posts per 15 minutes,
+  Netlify Blobs store `lead-rate`, address hashed), failing open on any Blobs
+  error or after 600ms, inside the same 9s budget. A refused post gets a 429
+  with `field: "rate"` before its body is read, so no rescue email; the static
+  pages show its message. No honeypot field, on purpose: autofill can fill one
+  and a filled honeypot is a silent 200.
 - Hosting is Netlify with the custom domain. The user prefers to be asked before
   anything is pushed.
 
 ## Known state and open work
 
-- All 1080 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1091 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
   delete it there and add a line to its "Done" section in the same commit.

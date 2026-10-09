@@ -30,6 +30,8 @@
 //   RESEND_API_KEY = <already set, shared with the guide functions>
 
 import type { Config, Context } from "@netlify/functions";
+import { getStore } from "@netlify/blobs";
+import { createHash } from "node:crypto";
 import { Resolver } from "node:dns/promises";
 
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
@@ -49,6 +51,68 @@ const ALERT_TO = ["darren@realdarrentsai.com", "liannemaxbalbastro@gmail.com"];
 const UPSTREAM_TIMEOUT_MS = 9000;
 
 const ALLOWED_HOSTS = ["realdarrentsai.com", "www.realdarrentsai.com"];
+
+// ── Rate limit ──────────────────────────────────────────────────────────────
+//
+// WHY. Nothing limited how often this endpoint could be called (security pass,
+// 10 Oct). Every accepted post writes a Sheet row, creates a Bonzo and a HubSpot
+// contact, and since R2 makes the site email whatever address it was given
+// from Darren's domain. A script posting fake leads would do all of that at
+// once, and the email part is the one that costs the sending reputation every
+// real lead's guide depends on.
+//
+// WHY IN CODE. Netlify's own rate-limit rules could not be confirmed for this
+// plan, and the installed type for the function config does not match the
+// documented one, so a config line could be rejected or silently ignored on
+// the deploy. Counting here, in the Blobs store the rates already use, is
+// under our control and testable.
+//
+// FAILS OPEN. The count is a guard, never a gate a real visitor can trip over
+// by accident: any Blobs error, or an answer slower than LIMIT_BUDGET_MS, lets
+// the post through. LEAD_LIMIT posts per address per window is several times
+// what one person sends (one form, maybe a corrected resubmit); an office or a
+// phone carrier sharing one address would have to send that many leads inside
+// fifteen minutes to be refused.
+//
+// A refused post is answered before the body is read, so it can never send the
+// rescue email: the pages say "your details were passed to Darren" only because
+// every other failure does send one, and a flood must not fill his inbox
+// instead. The 429 carries a message the pages show as it is.
+//
+// The address is stored hashed, not as typed: the count needs to recognise it,
+// not to know it.
+export const LEAD_LIMIT = 10;
+export const LEAD_WINDOW_MS = 15 * 60 * 1000;
+const LIMIT_BUDGET_MS = 600;
+const LIMIT_STORE = "lead-rate";
+export const RATE_LIMIT_MESSAGE =
+  "Too many requests from this connection. Please wait a few minutes and try again, or call (714) 887-5432.";
+
+type Counter = { count: number; windowStart: number };
+
+/** The next count for one address. Pure, so the window logic is testable. */
+export function nextCount(prev: Counter | null, now: number): Counter {
+  if (!prev || now - prev.windowStart >= LEAD_WINDOW_MS) return { count: 1, windowStart: now };
+  return { count: prev.count + 1, windowStart: prev.windowStart };
+}
+
+/** False only when this address is known, for certain, to be over the limit. */
+export async function withinRateLimit(ip: string | undefined, now = Date.now()): Promise<boolean> {
+  if (!ip) return true;
+  const key = createHash("sha256").update(ip).digest("hex").slice(0, 32);
+  const check = (async () => {
+    const store = getStore(LIMIT_STORE);
+    const next = nextCount((await store.get(key, { type: "json" })) as Counter | null, now);
+    await store.setJSON(key, next);
+    return next.count <= LEAD_LIMIT;
+  })();
+  const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(true), LIMIT_BUDGET_MS));
+  try {
+    return await Promise.race([check.catch(() => true), timeout]);
+  } catch {
+    return true;
+  }
+}
 
 // ── Email domain check ──────────────────────────────────────────────────────
 //
@@ -473,9 +537,17 @@ async function rescueEmail(reason: string, payload: string, uncertain = false) {
   }
 }
 
-export default async (req: Request, _context: Context) => {
+export default async (req: Request, context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
   if (!originAllowed(req)) return jsonResponse(403, { error: "forbidden" });
+
+  // Measured from here, so the rate-limit check comes out of the same 9s budget
+  // as the upstream call and the function still answers inside Netlify's 10s.
+  const startedAt = Date.now();
+  if (!(await withinRateLimit(context?.ip))) {
+    console.warn("lead: rate limited");
+    return jsonResponse(429, { ok: false, error: "rate limited", field: "rate", message: RATE_LIMIT_MESSAGE });
+  }
 
   // The body is read before the config check on purpose. Both of the checks
   // below refuse a lead that a real visitor submitted, and refusing it silently
@@ -538,7 +610,6 @@ export default async (req: Request, _context: Context) => {
   // The visitor is still on the page at this point, so a dead email domain can
   // still be fixed by the person who typed it. One step later the lead is
   // stored, the response has been sent, and there is nobody left to ask.
-  const startedAt = Date.now();
   const domain = emailDomain(payload.email);
   if (domain && (await domainCannotReceiveMail(domain))) {
     return jsonResponse(422, {
