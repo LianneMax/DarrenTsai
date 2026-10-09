@@ -96,15 +96,6 @@ describe('the pre-rendered /debt-consolidation/ shell', () => {
     expect(renderToStaticMarkup(<DebtConsolidationApp />)).not.toMatch(/class="[^"]*\breveal\b/);
   });
 
-  it('leaves the homepage copy as it was: an <h2> that reveals on scroll', async () => {
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { default: DebtSavingsCalculator } = await import('../src/components/DebtSavingsCalculator');
-    const html = renderToStaticMarkup(<DebtSavingsCalculator />);
-    expect(html).toMatch(/<h2[^>]*>Boost Your Monthly Cashflow<\/h2>/);
-    expect(html).toContain('class="section-header reveal"');
-    expect(html).not.toMatch(/<h1\b/);
-  });
-
   it('marks every button that needs JavaScript, and carries no phone number', async () => {
     const { renderDebtShell } = await import('../src/prerender');
     const shell = renderDebtShell();
@@ -131,11 +122,11 @@ describe('the pre-rendered /debt-consolidation/ shell', () => {
     expect(app).toMatch(/querySelector<HTMLElement>\(`\[data-early="\$\{CSS\.escape\(key\)\}"\]`\)\?\.click\(\)/);
   });
 
-  it('sends the same lead as the homepage calculator, from a contact modal of its own', () => {
+  it('sends the calculator\'s lead, from a contact modal of its own', () => {
     const app = read('src/DebtConsolidationApp.tsx');
     // The calculator's source and form id live in the shared component, so the
     // page cannot fork them. The modal is the one thing that is this page's own.
-    expect(app).toContain('<DebtSavingsCalculator standalone />');
+    expect(app).toContain('<DebtSavingsCalculator />');
     expect(app).toContain('leadSource="debt-consolidation-contact"');
     expect(app).toContain('formId="debt-consolidation-contact-modal"');
   });

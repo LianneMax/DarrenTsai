@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 28 files / 1021 tests, all passing |
+| Tests | Vitest + jsdom, 28 files / 1028 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1021 tests)
+npm test         # vitest run (1028 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 npm run test:layout  # real-browser layout check, by hand, before a layout push
@@ -157,16 +157,18 @@ looks no different once filled, a visitor who walked past it submitted the
 example as fact: $26,500 of debt nobody owed reached the Sheet and reached
 Darren, and three of the five DSCR rows are the untouched sample. Inputs start
 empty, every numeric placeholder reads `e.g. ...`, and each tool holds its
-result back until it has the fields the result is made of. The homepage steps
+result back until it has the fields the result is made of. The debt page's steps
 are gated forwards only, including the pill tabs, which were the easier way
 past. `tests/debt-calculator-guards.test.ts` scans for all of it.
 
-**One savings claim, from one constant.** The homepage carried three at once:
-`$1,500–$3,000/mo` in the hero, `$900–$1,500/mo` in the sticky bar and step 4,
-and the tool's own default of `$334/mo`. `SAVINGS_RANGE` in `src/config.ts` is
-the single source; step 4 and the sticky bar echo the visitor's own computed
-figure when there is one, and the range is only the fallback. The figure itself
-needs Saxton sign-off.
+**No savings range, only the visitor's own figure.** The homepage once carried
+three claims at once: `$1,500–$3,000/mo` in the hero, `$900–$1,500/mo` in the
+sticky bar and step 4, and the tool's own default of `$334/mo`. They were folded
+into one `SAVINGS_RANGE` constant, which never had Saxton's sign-off; on 10 Oct
+the last surfaces that showed it (the homepage calculator and its sticky bar)
+were removed, and the constant with them. A savings number now only ever comes
+from the visitor's own inputs. `tests/debt-calculator-guards.test.ts` fails on a
+dollar range in the debt page or the hub.
 
 **Sheet columns are append-only.** New headers go at the *end* of a header array
 and the end of the matching row builder, never inserted mid-array.
@@ -251,14 +253,14 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1021 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1028 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
   delete it there and add a line to its "Done" section in the same commit.
   `docs/revamp/BRANCHES.md` says what exists only on side branches
   (`debt-consolidation-page` holds R1 and the R2 email contexts, unmerged).
 - **`/debt-consolidation/` is the debt ads' URL (revamp phase 0, 8 Oct).** It
-  serves the homepage's calculator, the same component with `standalone`, so
+  serves what was the homepage's calculator, the same component, so
   the lead is identical: source `DebtConsolidation`, form id
   `debt-savings-calculator`, same Sheet tab, same GA4 conversion, and
   `page_path` tells the two pages apart. It exists ahead of the revamp because
@@ -278,19 +280,18 @@ or the lead lands on the generic tab with its fields dropped:
   to start?" opens the contact modal (`home-contact`, Leads tab). The homepage
   hosts no calculator, so every `/#savings` link now points at
   `/debt-consolidation/`, and `tests/home-hub.test.tsx` fails on any link to a
-  page that is not served. `DebtSavingsCalculator`'s non-standalone layout (the
-  old homepage one, sticky bar included) is no longer rendered anywhere; it and
-  the guard tests that pin it are left for a separate clean-up.
+  page that is not served. The homepage's own layout of the debt calculator,
+  sticky bar included, was removed on 10 Oct; `DebtSavingsCalculator` now has
+  one layout, `DebtPageViews.tsx`.
 - **`/debt-consolidation/` has its own layout (revamp phase 2, 9 Oct; not
   live).** `DebtPageViews.tsx` draws the hero, four steps and the recap from Max's
-  design preview v4, and computes nothing: `DebtSavingsCalculator` with
-  `standalone` builds one `view` object from the same formulas, gates and lead
-  the homepage uses, so the two layouts cannot disagree and the payload is
-  unchanged. The option a visitor picks to discuss (`chosen`) is shown on the
+  design preview v4, and computes nothing: `DebtSavingsCalculator` builds one
+  `view` object from the formulas, gates and lead, so the layout cannot
+  disagree with the numbers and the payload is unchanged. The option a visitor picks to discuss (`chosen`) is shown on the
   recap only; it is not in the lead until the Sheet migration gives it a column.
-  Styles are the `dcp-` block at the end of `src/index.css`. The rose sticky
-  savings bar is homepage only: it named the larger saving "your result", which
-  picks a winner on a page built to have no "best option".
+  Styles are the `dcp-` block at the end of `src/index.css`. There is no rose
+  sticky savings bar: it named the larger saving "your result", which picks a
+  winner on a page built to have no "best option".
   `tests/debt-page-views.test.tsx` renders each step from props.
 - **`/home-equity/` (revamp phase 3, 9 Oct; not live).** Three steps (your home,
   your options, talk to Darren) and a recap, from design preview v4.

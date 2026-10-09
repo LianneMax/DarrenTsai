@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 28 files / 1021 tests, all passing |
+| Tests | Vitest + jsdom, 28 files / 1028 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1021 tests)
+npm test         # vitest run (1028 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -144,16 +144,18 @@ looks no different once filled, a visitor who walked past it submitted the
 example as fact: $26,500 of debt nobody owed reached the Sheet and reached
 Darren, and three of the five DSCR rows are the untouched sample. Inputs start
 empty, every numeric placeholder reads `e.g. ...`, and each tool holds its
-result back until it has the fields the result is made of. The homepage steps
+result back until it has the fields the result is made of. The debt page's steps
 are gated forwards only, including the pill tabs, which were the easier way
 past. `tests/debt-calculator-guards.test.ts` scans for all of it.
 
-**One savings claim, from one constant.** The homepage carried three at once:
-`$1,500–$3,000/mo` in the hero, `$900–$1,500/mo` in the sticky bar and step 4,
-and the tool's own default of `$334/mo`. `SAVINGS_RANGE` in `src/config.ts` is
-the single source; step 4 and the sticky bar echo the visitor's own computed
-figure when there is one, and the range is only the fallback. The figure itself
-needs Saxton sign-off.
+**No savings range, only the visitor's own figure.** The homepage once carried
+three claims at once: `$1,500–$3,000/mo` in the hero, `$900–$1,500/mo` in the
+sticky bar and step 4, and the tool's own default of `$334/mo`. They were folded
+into one `SAVINGS_RANGE` constant, which never had Saxton's sign-off; on 10 Oct
+the last surfaces that showed it (the homepage calculator and its sticky bar)
+were removed, and the constant with them. A savings number now only ever comes
+from the visitor's own inputs. `tests/debt-calculator-guards.test.ts` fails on a
+dollar range in the debt page or the hub.
 
 **Sheet columns are append-only.** New headers go at the *end* of a header array
 and the end of the matching row builder, never inserted mid-array.
@@ -228,7 +230,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1021 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1028 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
   delete it there and add a line to its "Done" section in the same commit.

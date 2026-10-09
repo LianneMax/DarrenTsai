@@ -51,7 +51,7 @@ export default function DebtConsolidationApp() {
       <div className="page-top-spacer" />
 
       <main>
-        <DebtSavingsCalculator standalone />
+        <DebtSavingsCalculator />
       </main>
       <Footer />
 

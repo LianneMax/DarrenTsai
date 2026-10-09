@@ -1,5 +1,6 @@
 /**
- * Guards on the homepage savings calculator, scanned from the real source.
+ * Guards on the debt consolidation calculator (the homepage's until revamp phase 4,
+ * /debt-consolidation/ since), scanned from the real source.
  *
  * WHY THIS FILE IS A TEXT SCAN. There is no React test renderer in this repo and
  * adding one for four assertions would be a heavier change than the fixes are.
@@ -24,6 +25,9 @@ import { resolve } from 'node:path';
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
 const CALC = read('src/components/DebtSavingsCalculator.tsx');
+// What the visitor sees. Since 10 Oct the only layout: the homepage's own copy
+// of the calculator went when the homepage became the goal hub.
+const VIEWS = read('src/components/DebtPageViews.tsx');
 // The homepage hero since revamp phase 4; it quotes no savings figure at all.
 const HERO = read('src/components/HomeHub.tsx');
 const CONFIG = read('src/config.ts');
@@ -44,7 +48,7 @@ describe('the calculator does not arrive pre-filled', () => {
   it('marks every example number as an example', () => {
     // A bare "650000" in grey reads as a value the tool already has. "e.g."
     // is the whole difference between a hint and a claim.
-    const placeholders = [...CALC.matchAll(/placeholder="([^"]+)"/g)].map((m) => m[1]);
+    const placeholders = [...(CALC + VIEWS).matchAll(/placeholder="([^"]+)"/g)].map((m) => m[1]);
     const numeric = placeholders.filter((p) => /^[\d.]+$/.test(p));
     expect(numeric).toHaveLength(0);
   });
@@ -66,23 +70,22 @@ describe('the steps are gated', () => {
 
   it('gates the pill tabs too, not only the Continue buttons', () => {
     // The tabs jump straight to any step and were the easier way past this.
-    expect(CALC).toMatch(/onClick=\{\(\) => goStep\(n\)\}/);
+    expect(VIEWS).toMatch(/onClick=\{\(\) => v\.goStep\(n\)\}/);
   });
 });
 
-describe('one savings claim for the whole page', () => {
-  it('keeps the number in a single place', () => {
-    expect(CONFIG).toContain('export const SAVINGS_RANGE');
-  });
-
-  it('leaves no hard-coded range in the hero, the sticky bar or step 4', () => {
-    for (const source of [CALC, HERO]) {
-      expect(source).not.toMatch(/\$\s?\d[\d,]*\s*[–-]\s*\$\s?\d[\d,]*/);
+describe('no savings figure the visitor did not produce', () => {
+  // The homepage once carried three claims at once ($1,500-$3,000 in the hero,
+  // $900-$1,500 in the sticky bar and step 4, $334 from the tool's default).
+  // They were folded into one constant; since 10 Oct nothing shows a range at
+  // all, because the only pages that did (the homepage calculator and its
+  // sticky bar) are gone. The figure never had Saxton's sign-off. A savings
+  // number now only ever comes from the visitor's own inputs.
+  it('quotes no dollar range anywhere a visitor can see', () => {
+    for (const [name, src] of [['DebtSavingsCalculator', CALC], ['DebtPageViews', VIEWS], ['HomeHub', HERO]]) {
+      expect(src, name).not.toMatch(/\$\s?\d[\d,]*\s*[–-]\s*\$\s?\d[\d,]*/);
     }
-  });
-
-  it('shows the visitor their own computed figure when there is one', () => {
-    expect(CALC).toMatch(/bestSave > 0[\s\S]{0,200}fmt\(bestSave\)/);
+    expect(CONFIG).not.toContain('SAVINGS_RANGE');
   });
 });
 
@@ -226,8 +229,6 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
     for (const decl of [
       'const [heloanTier, setHeloanTier] = useState',
       'const [heloanTerm, setHeloanTerm] = useState',
-      'const [bestTime,  setBestTime]  = useState',
-      'const [leadSrc,   setLeadSrc]   = useState',
     ]) {
       const line = CALC.split(/\r?\n/).find((l) => l.includes(decl));
       expect(line, `${decl} not found`).toBeDefined();
@@ -249,7 +250,7 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
   it('prices no HELOAN until a tier and a term are chosen', () => {
     expect(CALC).toContain('const heloanPriced = tierRate > 0 && tierYears > 0;');
     expect(CALC).toContain('const heloanPmt   = heloanPriced ? calcPmt(heloanAmt, tierRate, tierYears) : 0;');
-    expect(CALC).toContain('Pick your credit range and a term below to price this option.');
+    expect(VIEWS).toContain('Pick your credit range and a term below to price this option.');
   });
 
   it('sends blank rather than zero for anything not given', () => {
@@ -268,16 +269,15 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
     // visitor who had just entered their debts, home value and mortgage could
     // book a call and never create a Sheet row. Booking lives on the success
     // card, where the lead is already saved.
-    const step4 = CALC.slice(CALC.indexOf('{step === 4 && !submitted &&'), CALC.indexOf('{submitted && ('));
+    const step4 = VIEWS.slice(VIEWS.indexOf('export function StepContact('), VIEWS.indexOf('export function DebtRecap('));
     expect(step4).not.toContain('openCalendly');
-    expect(step4).not.toContain('Schedule a Free 15-Min Call');
-    expect(CALC.slice(CALC.indexOf('{submitted && ('))).toContain('Book a Free Strategy Call');
+    expect(VIEWS.slice(VIEWS.indexOf('export function DebtRecap('))).toContain('onClick={v.openCalendly}');
   });
 
   it('does not offer a text nobody answers', () => {
     // R4-4. CallRail swaps this number for a pool number, and texts to a pool
     // number land in CallRail's messaging inbox, not on Darren's phone.
-    expect(CALC).not.toContain('Call or text');
+    expect(CALC + VIEWS).not.toContain('Call or text');
   });
 });
 
@@ -295,7 +295,7 @@ describe('a waiting page does not describe what it is waiting for', () => {
   const REI = read('public/realestateinvesting/index.html');
 
   it('R5-3: shows no HELOAN saving verdict before a tier and term are chosen', () => {
-    expect(CALC).toContain("!heloanPriced ? '—'");
+    expect(VIEWS).toContain("value={v.heloanPriced && v.heloanPmt > 0 ? savingsRowText(v.heloanSave) : '—'}");
   });
 
   it('R5-4: does not promise figures it is withholding', () => {

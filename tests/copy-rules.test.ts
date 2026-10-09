@@ -71,8 +71,10 @@ describe('no APR is quoted that nobody calculated', () => {
   });
 
   it('the debt comparison points at its cost assumptions instead', () => {
-    const calc = read('src/components/DebtSavingsCalculator.tsx');
-    expect(calc.match(/<BreakdownRow label="APR"\s+value="See cost assumptions" \/>/g)).toHaveLength(2);
+    // DebtPageViews draws the comparison since revamp phase 2; the homepage's
+    // copy of it went with the homepage layout (10 Oct).
+    const calc = read('src/components/DebtPageViews.tsx');
+    expect(calc.match(/<Row label="APR" value="See cost assumptions" \/>/g)).toHaveLength(2);
     expect(calc).toContain('id="dsc-cost-assumptions"');
     expect(calc).toMatch(/APR is\s+not shown: it depends on fees and lender terms, and needs a personal quote\./);
   });
@@ -105,10 +107,11 @@ describe('no response time is promised', () => {
   });
 
   it('every success state that speaks for Darren uses the one sentence', () => {
-    const calc = read('src/components/DebtSavingsCalculator.tsx');
-    const form = read('src/components/LeadForm.tsx');
-    expect(calc).toContain('Darren will be in touch.');
-    expect(form).toContain('Darren will be in touch.');
+    // Whitespace folded: a JSX paragraph can wrap the sentence across lines.
+    for (const file of ['DebtPageViews', 'HomeEquityViews', 'AduViews', 'LeadForm']) {
+      const src = read(`src/components/${file}.tsx`).replace(/\s+/g, ' ');
+      expect(src, file).toContain('Darren will be in touch.');
+    }
     for (const page of ['dscr', 'fha', 'realestateinvesting']) {
       const html = read(`public/${page}/index.html`);
       expect(html, page).toContain('Darren will be in touch.');

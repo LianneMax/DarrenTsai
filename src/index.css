@@ -1442,93 +1442,6 @@ p {
 }
 
 /* ============================================================
-   12. DEBT SAVINGS CALCULATOR LAYOUT CLASSES
-   ============================================================ */
-
-/* Step indicator pill tabs */
-.dsc-steps {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  background: #e9ecf0;
-  border-radius: 14px;
-  padding: 5px;
-}
-
-.dsc-step-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 10px 8px;
-  border: none;
-  cursor: pointer;
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
-}
-
-.dsc-step-num {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  background: #d1d5db;
-  color: #6b7280;
-}
-
-.dsc-step-btn[style*="var(--teal)"] .dsc-step-num {
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-}
-
-/* Debt entry card */
-.dsc-debt-card {
-  background: var(--light-bg);
-  border: 1px solid #e2e5ed;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 10px;
-}
-
-/* Debt row: 5-column grid (type · balance · payment · rate · remove) */
-.dsc-debt-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr 28px;
-  gap: 10px;
-  align-items: end;
-}
-
-/* Responsive 2-col grids (Step 2 home, Step 4 lead form) */
-.dsc-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-/* Responsive 3-col grid (Step 2 mortgage details) */
-.dsc-grid-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
-}
-
-/* Comparison cards (Today · Cash-Out Refi · HELOAN) */
-.dsc-compare-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-/* ============================================================
    13. MEDIA QUERIES
    ============================================================ */
 @media (max-width: 900px) {
@@ -1617,32 +1530,6 @@ p {
 
   .footer-right { align-items: flex-start; }
 
-  /* ── DebtSavingsCalculator mobile ── */
-
-  /* Debt row: collapse to 2-col grid
-     Row 1: [Debt Type — full width]
-     Row 2: [Balance] [Monthly Payment]
-     Row 3: [Rate]    [Remove ×]       */
-  .dsc-debt-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  .dsc-debt-row > *:first-child { grid-column: span 2; }
-  .dsc-debt-row > *:nth-child(4) { grid-column: 1; }
-  .dsc-debt-row > *:last-child {
-    grid-column: 2;
-    justify-self: end;
-    align-self: flex-end;
-  }
-
-  /* Home & lead form grids → single column */
-  .dsc-grid-2 { grid-template-columns: 1fr; gap: 10px; }
-  .dsc-grid-3 { grid-template-columns: 1fr; gap: 10px; }
-
-  /* Comparison cards → single column */
-  .dsc-compare-grid { grid-template-columns: 1fr; }
-
-  /* Step tabs: smaller font, tighter padding */
-  .dsc-step-btn { font-size: 11px; padding: 9px 4px; gap: 4px; }
 }
 
 @media (max-width: 480px) {
@@ -1660,10 +1547,6 @@ p {
 
   /* Review card height auto on tiny screens */
   .review-card { height: auto; min-height: 220px; }
-
-  /* Step tabs: hide text labels, show only number/checkmark */
-  .dsc-step-label { display: none; }
-  .dsc-step-btn { padding: 10px 6px; gap: 0; }
 }
 
 /* ============================================================
@@ -1993,7 +1876,6 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
    (phase 3) and /adu/ (phase 5), which share these classes.
    Drawn by DebtPageViews.tsx, HomeEquityViews.tsx and AduViews.tsx. Layout, spacing and colours follow Max's design
    preview v4 (darren-frontend-preview-v4.html, Debt Consolidation page). The
-   homepage keeps its own calculator layout (the dsc- classes) until phase 4.
    No font-family here: everything inherits body's stack, which carries
    'Outfit Fallback' (tests/font-fallback.test.ts).
    ============================================================ */

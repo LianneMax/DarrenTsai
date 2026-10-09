@@ -157,13 +157,13 @@ describe('the page', () => {
 });
 
 describe('the sticky savings bar', () => {
-  it('is drawn on the homepage only', () => {
-    // It announces the larger saving as "your result", which picks a winner on
-    // a page that has no "best option" badge. Dropped there on 9 Oct. A source
-    // scan, because the bar only appears once a saving exists, which takes the
-    // calculator's state and so a browser.
+  it('is gone with the homepage layout, and never drawn on this page', () => {
+    // It announced the larger saving as "your result", which picks a winner on
+    // a page that has no "best option" badge. Dropped here on 9 Oct, and gone
+    // entirely on 10 Oct with the homepage layout that drew it.
     const calc = readFileSync(resolve(__dirname, '../src/components/DebtSavingsCalculator.tsx'), 'utf8');
-    expect(calc).toContain('{!standalone && bestSave > 0 && (');
+    expect(calc).not.toMatch(/Your result: about/);
+    expect(calc).not.toContain("position: 'fixed', bottom: 0");
   });
 });
 

@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
-import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
-import { useScrollReveal } from '../hooks/useScrollReveal';
-import { RATES_ENDPOINT, EMAIL, SAVINGS_RANGE, LICENSED_STATES, isLicensedState } from '../config';
+import { isValidPhoneNumber } from 'libphonenumber-js';
+import { RATES_ENDPOINT, EMAIL } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openCalendly as openCalendlyPopup } from '../utils/calendly';
-import CustomSelect from './CustomSelect';
-import StateSelect from './StateSelect';
-import { checkEmail, emailHintMessage, type EmailSuggestion } from '../utils/emailSuggest';
+import { type EmailSuggestion } from '../utils/emailSuggest';
 import DebtPage, { type DebtPageView } from './DebtPageViews';
-import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
+import { type DebtOption } from './debtOptions';
 
 const emailSchema = z.string().email();
 
@@ -35,108 +32,10 @@ function calcPmt(principal: number, annualRate: number, years: number): number {
   return principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-function fmt(n: number) {
-  return '$' + Math.round(n).toLocaleString();
-}
-
-function pct(n: number) {
-  return n.toFixed(2) + '%';
-}
-
 // Was a second local copy of the shared helper, which assumed the widget had
 // been eagerly loaded in <head>. Re-exported here so the call sites below are
 // untouched.
 const openCalendly = openCalendlyPopup;
-
-// ─── Shared sub-components ───────────────────────────────────────────────────
-
-function Chip({ label, value, bg }: { label: string; value: string; bg: string }) {
-  return (
-    <div style={{
-      background: '#fff', padding: '10px 18px',
-      borderRadius: 10, flex: 1, minWidth: 140,
-      border: '2px solid #e2e5ed',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-    }}>
-      <div style={{ fontSize: 11, marginBottom: 3, color: 'var(--text-muted)' }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: bg }}>{value}</div>
-    </div>
-  );
-}
-
-function BreakdownRow({
-  label,
-  value,
-  green,
-  bold,
-}: {
-  label: string;
-  value: string;
-  green?: boolean;
-  bold?: boolean;
-}) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '8px 0', borderBottom: bold ? 'none' : '1px solid #e2e5ed',
-      fontSize: 13, fontWeight: bold ? 600 : 400,
-      color: green ? '#35785C' : 'inherit',
-    }}>
-      <span>{label}</span>
-      <span>{value}</span>
-    </div>
-  );
-}
-
-// ─── Section header ──────────────────────────────────────────────────────────
-
-/**
- * The homepage's heading block for the calculator: an <h2> under the hero that
- * reveals on scroll. /debt-consolidation/ has its own top of page, DebtPageHero
- * in DebtPageViews.tsx, which is that page's <h1> and is pre-rendered.
- */
-function DebtCalculatorHeader({ headerRef }: { headerRef?: React.Ref<HTMLDivElement> }) {
-  const Title = 'h2';
-  return (
-    <div ref={headerRef} className="section-header reveal">
-      <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Monthly Reset</span>
-      <Title className="section-title" style={{ color: 'var(--teal)' }}>Boost Your Monthly Cashflow</Title>
-      {/* Names the products by the words a viewer arrives with. /yt/heloc and
-          /yt/equity both land here, because HELOC and home-equity intent is
-          served by this funnel and has no page of its own yet, and someone
-          who has just watched a HELOC video needs to recognise that within a
-          second of landing. */}
-      <p className="section-sub">
-        You have a low mortgage rate but "expensive" credit card and other debt.
-        This tool compares your options for tapping your home's equity, a HELOAN or
-        a cash-out refinance, to clear those high-interest bills and keep more cash
-        every month.
-      </p>
-      {/* Said plainly rather than implied. A HELOC is a revolving line and
-          this tool prices the two fixed alternatives, so claiming to be a
-          HELOC calculator would be wrong; leaving the word out entirely sent
-          every HELOC viewer looking for a page that does not exist. */}
-      <p className="section-sub" style={{ marginTop: 10 }}>
-        Looking at a HELOC? This compares the two fixed alternatives Darren places most
-        often, so you can see what each one costs before you decide.
-      </p>
-      <ul style={{
-        listStyle: 'none', padding: 0, margin: '16px auto 0',
-        display: 'inline-flex', flexDirection: 'column', gap: 6,
-        textAlign: 'left', color: 'var(--navy)', fontSize: '0.95rem',
-      }}>
-        {['Takes under 3 minutes.', 'Zero impact on your credit score.', 'No cost to see your numbers.'].map(item => (
-          <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--teal)' }}>
-              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -178,25 +77,16 @@ function formatRateDate(iso: string): string {
 }
 
 /**
- * `standalone` is /debt-consolidation/, where the calculator is the whole page
- * rather than a section under the homepage hero. Nothing about the tool or the
- * lead it sends differs: same formulas, same gates, same source and form id, so
- * the Sheet tab and the GA4 conversion are the same and `page_path` is what
- * tells the two apart.
+ * The debt consolidation calculator on /debt-consolidation/: its state, rates,
+ * gates and lead. DebtPageViews.tsx draws it from the `view` built below and
+ * computes nothing, so the layout cannot disagree with the numbers.
  *
- * What differs is the layout. Since phase 2 of the revamp (9 Oct) the page has
- * its own, drawn by DebtPageViews.tsx from the values computed here; the
- * homepage keeps the layout below until phase 4 retires it. Everything above
- * the two `return`s is shared, which is the point: two layouts over one set of
- * numbers cannot disagree about a payment.
+ * Until revamp phase 4 (9 Oct) the homepage drew this same component in a
+ * layout of its own, sticky savings bar included. The homepage became the goal
+ * hub and that layout was removed on 10 Oct; the lead is unchanged (source
+ * DebtConsolidation, form id debt-savings-calculator).
  */
-export default function DebtSavingsCalculator({ standalone = false }: { standalone?: boolean } = {}) {
-  // Used by the homepage layout only. Always created, because hooks cannot be
-  // conditional; useScrollReveal does nothing for a ref with no element.
-  const headerRef  = useScrollReveal<HTMLDivElement>();
-  const stepsRef   = useScrollReveal<HTMLDivElement>(80);
-  const contentRef = useScrollReveal<HTMLDivElement>(160);
-
+export default function DebtSavingsCalculator() {
   const [step, setStep] = useState(1);
 
   // Current rates, fetched on mount. No deploy is involved: a new weekly PMMS
@@ -268,8 +158,6 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
   // to the Sheet as the visitor's answer: Best Time to Call and Lead Source
   // were the form's own defaults on every untouched submit. They stay optional,
   // so an untouched dropdown sends blank rather than blocking the lead.
-  const [bestTime,  setBestTime]  = useState('');
-  const [leadSrc,   setLeadSrc]   = useState('');
   const [usState,   setUsState]   = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
@@ -420,7 +308,9 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
       firstName: fname, lastName: lname, phone, email,
       state: usState,
       // Blank when untouched, never the dropdown's opening position.
-      bestTimeToCall: bestTime, leadSource: leadSrc,
+      // No longer asked (Max, 8 Oct), sent blank so the payload and the
+      // Debt Consolidation columns stay as they are until R1 drops them.
+      bestTimeToCall: '', leadSource: '',
       monthlySavings: bestSave > 0 ? Math.round(bestSave) : '',
       homeValue: hv, mortgageBalance: mb, mortgagePayment: mp,
       // Optional, and sent as 0 when not given. Darren reads these before he
@@ -474,21 +364,8 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
     setSubmitted(true)
   };
 
-  // ── Step tab bar ───────────────────────────────────────────────────────────
-
-  const STEPS = [
-    { n: 1, label: 'Your Debts' },
-    { n: 2, label: 'Your Home' },
-    { n: 3, label: 'Comparison' },
-    { n: 4, label: 'Talk to Darren' },
-  ];
-
-  // ── Shown by both layouts ───────────────────────────────────────────────────
-  //
-  // Built once so the page and the homepage cannot drift on the three things
-  // that must read the same wherever the calculator is: where the rates came
-  // from, the full disclosure, and the error dialog. The sticky savings bar
-  // lives here too but is drawn on the homepage only (see below).
+  // ── Handed to the page: where the rates came from, the full disclosure,
+  // and the error dialog.
 
   const rateBadge = (
     <div style={{
@@ -528,34 +405,6 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
 
   const overlays = (
     <>
-      {/* Sticky savings bar, homepage only. On /debt-consolidation/ it was
-          dropped (Lianne, 9 Oct): it shows the larger of the options' savings
-          as "your result", which picks a winner on a page that deliberately
-          has no "best option" badge and lets the visitor choose what to
-          discuss. That page books from the recap and the nav instead. */}
-      {!standalone && bestSave > 0 && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={openCalendly}
-          onKeyDown={(e) => e.key === 'Enter' && openCalendly()}
-          style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: 'var(--rose)', color: '#fff',
-            textAlign: 'center',
-            padding: '12px 16px',
-            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-            fontSize: 13, fontWeight: 600, zIndex: 97,
-            boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-            cursor: 'pointer',
-          }}
-        >
-          {bestSave > 0
-            ? `Your result: about ${fmt(bestSave)}/month freed up, talk to Darren today →`
-            : `Most clients save ${SAVINGS_RANGE}/month, talk to Darren today →`}
-        </div>
-      )}
-
       {errorMsg && (
         <div
           className="modal-overlay"
@@ -602,647 +451,24 @@ export default function DebtSavingsCalculator({ standalone = false }: { standalo
 
   // ── Render: /debt-consolidation/ ────────────────────────────────────────────
 
-  if (standalone) {
-    const view: DebtPageView = {
-      step, goStep,
-      debts, addDebt, removeDebt, updateDebt,
-      totPmt, totBal, wtRate, hasDebt,
-      homeValue, setHomeValue, mtgBalance, setMtgBalance, mtgPayment, setMtgPayment,
-      mtgRate, setMtgRate, mtgTerm, setMtgTerm,
-      hv, mb, mp, mr, mt, hasHome,
-      rate30, todayTotal, newLoan, refiPmt, refiSave,
-      sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
-      heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
-      tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, heloanTotal, heloanSave, cltv,
-      chosen, setChosen,
-      fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
-      emailHint, setEmailHint, usState, setUsState,
-      sending, submitted, submitLead, openCalendly,
-      rateBadge, disclosure,
-    };
-    return <DebtPage v={view} overlays={overlays} />;
-  }
+  const view: DebtPageView = {
+    step, goStep,
+    debts, addDebt, removeDebt, updateDebt,
+    totPmt, totBal, wtRate, hasDebt,
+    homeValue, setHomeValue, mtgBalance, setMtgBalance, mtgPayment, setMtgPayment,
+    mtgRate, setMtgRate, mtgTerm, setMtgTerm,
+    hv, mb, mp, mr, mt, hasHome,
+    rate30, todayTotal, newLoan, refiPmt, refiSave,
+    sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
+    heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
+    tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, heloanTotal, heloanSave, cltv,
+    chosen, setChosen,
+    fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
+    emailHint, setEmailHint, usState, setUsState,
+    sending, submitted, submitLead, openCalendly,
+    rateBadge, disclosure,
+  };
+  return <DebtPage v={view} overlays={overlays} />;
 
-  // ── Render: the homepage section ────────────────────────────────────────────
 
-  return (
-    <section id="savings" className="section section-light">
-      <div className="container">
-
-        {/* Section header */}
-        <DebtCalculatorHeader headerRef={headerRef} />
-
-        {/* Step indicator — pill tabs */}
-        <div ref={stepsRef} className="reveal dsc-steps">
-          {STEPS.map(({ n, label }) => {
-            const isDone   = step > n;
-            const isActive = step === n;
-            return (
-              <button
-                key={n}
-                onClick={() => goStep(n)}
-                className="dsc-step-btn"
-                style={{
-                  background: isActive ? 'var(--teal)' : isDone ? '#fff' : 'transparent',
-                  color: isActive ? '#fff' : isDone ? 'var(--teal)' : '#9ca3af',
-                  boxShadow: isActive ? '0 2px 8px rgba(81,118,134,0.25)' : 'none',
-                }}
-              >
-                {isDone ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ) : (
-                  <span
-                    className="dsc-step-num"
-                    style={{
-                      background: isActive ? 'rgba(255,255,255,0.2)' : '#d1d5db',
-                      color: isActive ? '#fff' : '#6b7280',
-                    }}
-                  >
-                    {n}
-                  </span>
-                )}
-                <span className="dsc-step-label">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Step content ────────────────────────────────────────────────── */}
-        <div ref={contentRef} className="reveal">
-
-        {/* ── STEP 1: Your Debts ─────────────────────────────────────────── */}
-        {step === 1 && (
-          <div className="card">
-            <h3 className="card-heading">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <path d="M2 10h20" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-              Your Current Monthly Debts
-            </h3>
-
-            {debts.map((d) => (
-              <div key={d.id} className="dsc-debt-card">
-                <div className="dsc-debt-row">
-                  {/* Type */}
-                  <div>
-                    <label className="input-label">Debt Type</label>
-                    <CustomSelect
-                      id={`debt-type-${d.id}`}
-                      value={d.type}
-                      options={DEBT_TYPES.map(t => ({ value: t, label: t }))}
-                      onChange={(v) => updateDebt(d.id, 'type', v)}
-                      placeholder="Select debt type…"
-                    />
-                  </div>
-
-                  {/* Balance */}
-                  <div>
-                    <label className="input-label">Balance ($)</label>
-                    <div className="input-prefix-wrap">
-                      <span className="input-prefix">$</span>
-                      <input
-                        type="number" className="form-input input-has-prefix"
-                        value={d.bal || ''} placeholder="e.g. 5,000"
-                        onChange={(e) => updateDebt(d.id, 'bal', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Monthly payment */}
-                  <div>
-                    <label className="input-label">Monthly Payment</label>
-                    <div className="input-prefix-wrap">
-                      <span className="input-prefix">$</span>
-                      <input
-                        type="number" className="form-input input-has-prefix"
-                        value={d.pmt || ''} placeholder="e.g. 150"
-                        onChange={(e) => updateDebt(d.id, 'pmt', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Rate */}
-                  <div>
-                    <label className="input-label">Interest Rate</label>
-                    <div className="input-suffix-wrap">
-                      <input
-                        type="number" step="0.1" className="form-input input-has-suffix"
-                        value={d.rate || ''} placeholder="e.g. 24.99"
-                        onChange={(e) => updateDebt(d.id, 'rate', e.target.value)}
-                      />
-                      <span className="input-suffix">%</span>
-                    </div>
-                  </div>
-
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeDebt(d.id)}
-                    aria-label="Remove debt"
-                    style={{
-                      background: 'none', border: 'none', fontSize: 20,
-                      color: '#ccc', cursor: 'pointer', lineHeight: 1, padding: 0,
-                      alignSelf: 'flex-end', paddingBottom: 6,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {/* Add debt */}
-            <button
-              onClick={addDebt}
-              style={{
-                background: 'none', border: '2px dashed #9ca3af',
-                color: '#6b7280', padding: '9px 16px', borderRadius: 8,
-                cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                width: '100%', fontFamily: 'inherit', marginBottom: 16,
-              }}
-            >
-              + Add Another Debt
-            </button>
-
-            {/* Totals chips */}
-            {debts.length > 0 && (
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                <Chip label="Total Monthly Payments" value={fmt(totPmt)} bg="var(--teal)" />
-                <Chip label="Total Debt Balance"      value={fmt(totBal)} bg="var(--rose)" />
-                <Chip label="Avg Interest Rate"       value={pct(wtRate)} bg="var(--rose)" />
-              </div>
-            )}
-
-            {!hasDebt && (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 10 }}>
-                Enter at least one debt to continue. The grey numbers are examples, not your figures.
-              </p>
-            )}
-
-            <button className="btn btn-teal btn-full" onClick={() => goStep(2)}>
-              Continue to Home Info
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* ── STEP 2: Your Home ──────────────────────────────────────────── */}
-        {step === 2 && (
-          <div className="card">
-            <h3 className="card-heading">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-              </svg>
-              Your Home &amp; Mortgage
-            </h3>
-
-            <div className="dsc-grid-2" style={{ marginBottom: 14 }}>
-              <div>
-                <label className="input-label">Current Home Value</label>
-                <div className="input-prefix-wrap">
-                  <span className="input-prefix">$</span>
-                  <input type="number" className="form-input input-has-prefix"
-                    placeholder="e.g. 650,000" value={homeValue}
-                    onChange={(e) => setHomeValue(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <label className="input-label">Current Mortgage Balance</label>
-                <div className="input-prefix-wrap">
-                  <span className="input-prefix">$</span>
-                  <input type="number" className="form-input input-has-prefix"
-                    placeholder="e.g. 350,000" value={mtgBalance}
-                    onChange={(e) => setMtgBalance(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            <div className="dsc-grid-3" style={{ marginBottom: 16 }}>
-              <div>
-                <label className="input-label">Monthly Payment (P&amp;I)</label>
-                <div className="input-prefix-wrap">
-                  <span className="input-prefix">$</span>
-                  <input type="number" className="form-input input-has-prefix"
-                    placeholder="e.g. 2,200" value={mtgPayment}
-                    onChange={(e) => setMtgPayment(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <label className="input-label">Current Mortgage Rate</label>
-                <div className="input-suffix-wrap">
-                  <input type="number" step="0.1" className="form-input input-has-suffix"
-                    placeholder="e.g. 3.5" value={mtgRate}
-                    onChange={(e) => setMtgRate(e.target.value)} />
-                  <span className="input-suffix">%</span>
-                </div>
-              </div>
-              <div>
-                <label className="input-label">Remaining Term (yrs)</label>
-                <input type="number" className="form-input"
-                  placeholder="e.g. 27" value={mtgTerm}
-                  onChange={(e) => setMtgTerm(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Equity chips */}
-            {hv > 0 && mb > 0 && (
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                <Chip label="Available Equity" value={fmt(hv - mb)} bg="var(--navy)" />
-                <Chip label="Current LTV"      value={pct(mb / hv * 100)} bg="var(--teal)" />
-              </div>
-            )}
-
-            {!hasHome && (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 10 }}>
-                Home value, mortgage balance and monthly payment are needed for the comparison. The grey numbers are examples.
-              </p>
-            )}
-
-            <button className="btn btn-teal btn-full" onClick={() => goStep(3)}>
-              See My Comparison
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* ── STEP 3: Comparison ────────────────────────────────────────── */}
-        {step === 3 && (
-          <div className="card">
-            <h3 className="card-heading">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M3 3v18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M8 17l4-8 4 4 4-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Your Side-by-Side Comparison
-            </h3>
-
-            {rateBadge}
-
-            {/* Compare cards */}
-            <div className="dsc-compare-grid" style={{ marginBottom: 18 }}>
-              {/* Today */}
-              <div style={{
-                border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--rose)', marginBottom: 8 }}>Today</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--rose)' }}>{fmt(todayTotal)}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Mortgage + all debts</div>
-              </div>
-
-              {/* Cash-out Refi */}
-              <div style={{
-                border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Cash-Out Refi</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiPmt)}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New 30YR fixed</div>
-                {refiSave > 0 && (
-                  <div style={{
-                    display: 'inline-block', marginTop: 8,
-                    background: '#D5F4D2', color: '#35785C',
-                    borderRadius: 20, padding: '3px 12px',
-                    fontSize: 12, fontWeight: 700,
-                  }}>
-                    Save {fmt(refiSave)}/mo
-                  </div>
-                )}
-                {/*
-                  What the monthly saving costs. A borrower who knows they are
-                  restarting the clock, and giving up a rate they will not see
-                  again, can weigh this properly; one who is not told finds out
-                  later. Only shown when they gave us the numbers to say it with.
-                */}
-                {(yearsAdded > 0 || mr > 0) && (
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-                    {yearsAdded > 0 && <>Adds {yearsAdded} {yearsAdded === 1 ? 'year' : 'years'} to your payoff</>}
-                    {yearsAdded > 0 && mr > 0 && <br />}
-                    {mr > 0 && <>Trades your {mr.toFixed(2)}% rate for about {rate30.toFixed(2)}%</>}
-                  </div>
-                )}
-              </div>
-
-              {/*
-                The same option without restarting the clock. Usually still shows
-                a saving, because the card rates are what is doing the damage,
-                not the mortgage term. Appears only once they tell us the term.
-              */}
-              {refiSameTermPmt > 0 && (
-                <div style={{
-                  border: '2px solid var(--teal)', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Refi, Same Payoff Date</div>
-                  <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(refiSameTermPmt)}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>New {sameTermYears}YR fixed</div>
-                  {refiSameTermSave > 0 && (
-                    <div style={{
-                      display: 'inline-block', marginTop: 8,
-                      background: '#D5F4D2', color: '#35785C',
-                      borderRadius: 20, padding: '3px 12px',
-                      fontSize: 12, fontWeight: 700,
-                    }}>
-                      Save {fmt(refiSameTermSave)}/mo
-                    </div>
-                  )}
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-                    Keeps your current payoff date
-                  </div>
-                </div>
-              )}
-
-              {/* HELOAN */}
-              <div style={{
-                border: '2px solid #e2e5ed', borderRadius: 10, padding: 18, textAlign: 'center', background: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--teal)', marginBottom: 8 }}>Est. Fixed HELOAN</div>
-                {heloanPriced ? (
-                  <>
-                    <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--teal)' }}>{fmt(heloanTotal)}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Keep mortgage + HELOAN</div>
-                  </>
-                ) : (
-                  // A HELOAN rate is a credit-score question, and the spread
-                  // across these tiers is five points. Showing the 680+ number
-                  // to someone who has not said is not a default, it is a quote
-                  // for a different person.
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-                    Pick your credit range and a term below to price this option.
-                  </div>
-                )}
-                {heloanSave > 0 && (
-                  <div style={{
-                    display: 'inline-block', marginTop: 8,
-                    background: '#D5F4D2', color: '#35785C',
-                    borderRadius: 20, padding: '3px 12px',
-                    fontSize: 12, fontWeight: 700,
-                  }}>
-                    Save {fmt(heloanSave)}/mo
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* HELOAN options */}
-            <div style={{ display: 'flex', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label className="input-label">HELOAN Credit Tier</label>
-                <CustomSelect
-                  id="heloan-tier"
-                  value={heloanTier}
-                  options={HELOAN_TIERS}
-                  onChange={setHeloanTier}
-                  placeholder="Select credit tier…"
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label className="input-label">HELOAN Term</label>
-                <CustomSelect
-                  id="heloan-term"
-                  value={heloanTerm}
-                  options={HELOAN_TERMS}
-                  onChange={setHeloanTerm}
-                  placeholder="Select term…"
-                />
-              </div>
-            </div>
-
-            {/* Refi breakdown */}
-            <div style={{ background: 'var(--light-bg)', borderRadius: 10, padding: 16, marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 10 }}>
-                Estimated Cash-Out Refinance Breakdown
-              </div>
-              <BreakdownRow label="New Loan Amount"       value={newLoan > 0 ? fmt(newLoan)    : '—'} />
-              <BreakdownRow label="Rate (30YR fixed)"     value={pct(rate30)} />
-              {/* No APR figure (8 Oct). This row used to read rate + 0.20, a flat
-                  guess at fees that no lender had quoted, printed to two decimals
-                  beside a real benchmark rate. An APR is a disclosure with a
-                  legal meaning; one invented from a constant is worse than none. */}
-              <BreakdownRow label="APR"                   value="See cost assumptions" />
-              <BreakdownRow label="Monthly P&I Payment"   value={refiPmt > 0 ? fmt(refiPmt)    : '—'} />
-              <BreakdownRow
-                label="Monthly Savings vs. Today"
-                value={refiSave > 0 ? fmt(refiSave) + '/mo' : newLoan > 0 ? 'No savings at this rate' : '—'}
-                green bold
-              />
-            </div>
-
-            {/* HELOAN breakdown */}
-            <div style={{ background: 'var(--light-bg)', borderRadius: 10, padding: 16, marginBottom: 22 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 10 }}>
-                Estimated Fixed-Rate HELOAN Breakdown
-              </div>
-              <BreakdownRow label="HELOAN Amount (total debt)" value={heloanAmt > 0 ? fmt(heloanAmt) : '—'} />
-              <BreakdownRow
-                label="HELOAN Rate / Term"
-                value={heloanPriced && heloanAmt > 0 ? `${pct(tierRate)} / ${tierYears} yr` : '—'}
-              />
-              <BreakdownRow label="APR"                       value="See cost assumptions" />
-              <BreakdownRow label="HELOAN Monthly Payment"    value={heloanPmt > 0 ? fmt(heloanPmt)   : '—'} />
-              <BreakdownRow label="Existing Mortgage Payment" value={mp > 0 ? fmt(mp) : '—'} />
-              <BreakdownRow label="Combined CLTV"             value={cltv > 0 ? pct(cltv) : '—'} />
-              <BreakdownRow
-                label="Blended Monthly Savings vs. Today"
-                // "No savings at this rate" needs a rate. With no tier or term
-                // chosen there is no rate to have no savings at, and the card
-                // above correctly says so, so this line was contradicting it.
-                value={
-                  !heloanPriced ? '—'
-                    : heloanSave > 0 ? fmt(heloanSave) + '/mo'
-                    : heloanAmt > 0 ? 'No savings at this rate'
-                    : '—'
-                }
-                green bold
-              />
-            </div>
-
-            <p id="dsc-cost-assumptions" style={{ fontSize: 12, color: 'var(--text-muted)', margin: '-10px 0 22px', lineHeight: 1.5 }}>
-              <strong>Cost assumptions:</strong> these estimates show principal and interest only. APR is
-              not shown: it depends on fees and lender terms, and needs a personal quote.
-            </p>
-
-            <button className="btn btn-rose btn-full" onClick={() => goStep(4)}>
-              I Want to See My Actual Numbers
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* ── STEP 4: Lead form ─────────────────────────────────────────── */}
-        {step === 4 && !submitted && (
-          <div className="card">
-            <h3 className="card-heading" style={{ fontSize: 20, marginBottom: 6 }}>
-              Let's Get You Real Numbers
-            </h3>
-            {/* The visitor's own result, not a range. Step 3 has just shown them a
-                number; quoting a different one here is what made the page read as
-                sales copy rather than a tool. The range is only the fallback for
-                the case where nothing could be computed. */}
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 22 }}>
-              {bestSave > 0
-                ? `Your numbers show about ${fmt(bestSave)} a month freed up. A 15-minute call confirms what is really available, no hard pull, no obligation.`
-                : `A 15-minute call could free up ${SAVINGS_RANGE} every month, no hard pull, no obligation.`}
-            </p>
-
-            <div className="dsc-grid-2" style={{ marginBottom: 12 }}>
-              <div>
-                <label className="input-label">First Name</label>
-                <input type="text" className="form-input" placeholder="First name"
-                  value={fname} onChange={(e) => setFname(e.target.value)} />
-              </div>
-              <div>
-                <label className="input-label">Last Name</label>
-                <input type="text" className="form-input" placeholder="Last name"
-                  value={lname} onChange={(e) => setLname(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="dsc-grid-2" style={{ marginBottom: 12 }}>
-              <div>
-                <label className="input-label">Phone Number</label>
-                <input type="tel" className="form-input" placeholder="(714) 000-0000"
-                  value={phone} onChange={(e) => setPhone(new AsYouType('US').input(e.target.value))} />
-              </div>
-              <div>
-                <label className="input-label">Email Address</label>
-                <input type="email" className="form-input" placeholder="you@email.com"
-                  value={email}
-                  onChange={(e) => { setEmailHint(null); setEmail(e.target.value); }}
-                  onBlur={(e) => setEmailHint(checkEmail(e.target.value))} />
-                {/* Suggests, never blocks: a wrong guess must not stop a real address. */}
-                {emailHint && (emailHint.kind === 'typo' ? (
-                  <button type="button" className="email-hint"
-                    onClick={() => { setEmail(emailHint.email); setEmailHint(null); }}>
-                    {emailHintMessage(emailHint)}
-                  </button>
-                ) : (
-                  <span className="email-hint">{emailHintMessage(emailHint)}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="dsc-grid-3" style={{ marginBottom: 20 }}>
-              <div>
-                <label className="input-label">Best Time to Call</label>
-                <CustomSelect
-                  id="best-time"
-                  value={bestTime}
-                  options={[
-                    { value: 'Morning (8am–12pm)',   label: 'Morning (8am–12pm)' },
-                    { value: 'Afternoon (12pm–5pm)', label: 'Afternoon (12pm–5pm)' },
-                    { value: 'Evening (5pm–8pm)',    label: 'Evening (5pm–8pm)' },
-                  ]}
-                  onChange={setBestTime}
-                  placeholder="Select a time…"
-                />
-              </div>
-              <div>
-                <label className="input-label">How Did You Find Me?</label>
-                <CustomSelect
-                  id="lead-src"
-                  value={leadSrc}
-                  options={[
-                    { value: 'YouTube',  label: 'YouTube' },
-                    { value: 'Google',   label: 'Google' },
-                    { value: 'Referral', label: 'Referral' },
-                    { value: 'Other',    label: 'Other' },
-                  ]}
-                  onChange={setLeadSrc}
-                  placeholder="Select…"
-                />
-              </div>
-              <div>
-                <label className="input-label">State</label>
-                <StateSelect id="us-state" value={usState} onChange={setUsState} placeholder="Select…" />
-                {/* Said before they submit. The lead is still saved and Darren
-                    still refers it; what was missing was telling the visitor. */}
-                {usState && !isLicensedState(usState) && (
-                  <span className="email-hint">
-                    Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and
-                    he will point you to someone who can help where you are.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-rose btn-full"
-              style={{ marginBottom: 18 }}
-              onClick={submitLead}
-              disabled={sending}
-            >
-              {sending ? (
-                <>
-                  <span className="btn-spinner" aria-hidden="true" />
-                  Sending…
-                </>
-              ) : (
-                <>
-                  Get My Free Savings Analysis
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </>
-              )}
-            </button>
-
-            {/* The booking card that used to sit here has gone. It opened
-                Calendly without submitting, so a visitor who had just entered
-                their debts, their home value and their mortgage could book a
-                call and never create a Sheet row: Darren took the call with
-                none of it. One extra step for someone who only wants to book,
-                against every booked call arriving with its numbers. Booking
-                lives on the success card below, where the lead is already
-                saved and Calendly can be prefilled. The header and sticky
-                "Book a Call" buttons are untouched, since no numbers exist
-                there to lose. */}
-          </div>
-        )}
-
-        {/* ── Success state ─────────────────────────────────────────────── */}
-        {submitted && (
-          <div className="success-state" style={{ padding: 28 }}>
-            <div className="success-check" role="img" aria-label="Success">✓</div>
-            <h3 className="success-heading">You're all set!</h3>
-            <p className="success-body">
-              {/* No deadline (8 Oct): nobody had agreed to "within 1 business day" and
-                  nothing measures it. Nor "review": that has not happened yet. */}
-              Thanks! Your numbers were sent with your request. Darren will be in touch.
-            </p>
-            <button
-              type="button"
-              className="btn btn-outline-navy btn-full success-cta"
-              onClick={openCalendly}
-            >
-              Book a Free Strategy Call
-            </button>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 14 }}>
-              {/* Not "text". CallRail swaps this for a pool number, and texts to
-                  a pool number land in CallRail's messaging inbox rather than on
-                  Darren's phone, so the offer was one nobody was answering. */}
-              Questions? Call:{' '}
-              <a href="tel:7148875432" style={{ color: 'var(--navy)', fontWeight: 600 }}>
-                (714) 887-5432
-              </a>
-            </p>
-          </div>
-        )}
-
-        </div>{/* end step content */}
-
-        {disclosure}
-
-      </div>
-
-      {overlays}
-    </section>
-  );
 }
