@@ -38,7 +38,7 @@ export default function HomeEquityApp() {
 
   return (
     <>
-      <Nav onOpenContact={openContact} alwaysSolid />
+      <Nav onOpenContact={openContact} alwaysSolid landing />
 
       {/* Offsets the fixed nav, which the hero does on the homepage. */}
       <div className="page-top-spacer" />

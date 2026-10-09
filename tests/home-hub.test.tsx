@@ -85,3 +85,32 @@ describe('the goal cards', () => {
     expect(host.querySelector('[role=dialog]')).toBeNull();
   });
 });
+
+describe('the nav (revamp phase 6)', () => {
+  const navOf = async (landing: boolean) => {
+    const { default: Nav } = await import('../src/components/Nav');
+    return renderToStaticMarkup(<Nav onOpenContact={() => {}} landing={landing} />);
+  };
+
+  it('lists every calculator, the new pages included, in the dropdown and the drawer alike', async () => {
+    const nav = await navOf(false);
+    for (const href of ['/debt-consolidation/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/']) {
+      expect(nav.split(`href="${href}"`).length - 1, href).toBe(2);
+    }
+    expect(nav).toContain('href="/#about"');
+  });
+
+  it('gives an ad landing page only Contact, Book a Call and the way home', async () => {
+    const nav = await navOf(true);
+    expect([...nav.matchAll(/href="([^"]+)"/g)].map((m) => m[1]).sort()).toEqual(['/', '/']);
+    expect(nav).toContain('>Contact<');
+    expect(nav).toContain('Book a Call');
+  });
+
+  it('is the landing nav on exactly the three ad pages', () => {
+    for (const f of ['src/DebtConsolidationApp.tsx', 'src/HomeEquityApp.tsx', 'src/AduApp.tsx']) {
+      expect(read(f), f).toContain('<Nav onOpenContact={openContact} alwaysSolid landing />');
+    }
+    for (const f of ['src/App.tsx', 'src/MortgageCalculatorApp.tsx']) expect(read(f), f).not.toMatch(/<Nav[^>]*landing/);
+  });
+});

@@ -46,7 +46,7 @@ const noop = () => {};
 export function renderDebtShell(): string {
   return renderToStaticMarkup(
     <>
-      <Nav onOpenContact={noop} alwaysSolid />
+      <Nav onOpenContact={noop} alwaysSolid landing />
       <div className="page-top-spacer" />
       <main>
         <section className="dcp">
@@ -64,7 +64,7 @@ export function renderDebtShell(): string {
 export function renderEquityShell(): string {
   return renderToStaticMarkup(
     <>
-      <Nav onOpenContact={noop} alwaysSolid />
+      <Nav onOpenContact={noop} alwaysSolid landing />
       <div className="page-top-spacer" />
       <main>
         <section className="dcp">
@@ -79,7 +79,7 @@ export function renderEquityShell(): string {
 export function renderAduShell(): string {
   return renderToStaticMarkup(
     <>
-      <Nav onOpenContact={noop} alwaysSolid />
+      <Nav onOpenContact={noop} alwaysSolid landing />
       <div className="page-top-spacer" />
       <main>
         <section className="dcp">

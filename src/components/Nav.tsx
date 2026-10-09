@@ -15,9 +15,28 @@ interface Props {
   // Pages that open on a light background (e.g. /mortgage-calculator/) would
   // render it invisible until the first scroll, so they pin the solid style on.
   alwaysSolid?: boolean;
+  // The ad landing pages (/debt-consolidation/, /home-equity/, /adu/) show
+  // only Contact and Book a Call (revamp phase 6, preview v4). A paid visitor
+  // who came for one calculator should meet that calculator and the two ways
+  // to reach Darren, not five exits to other pages. The logo still goes home.
+  landing?: boolean;
 }
 
-export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
+/**
+ * Every calculator, in the order the homepage's goal cards use. One list, so
+ * the desktop dropdown and the mobile drawer cannot drift apart (until phase 6
+ * neither listed /home-equity/ or /adu/).
+ */
+const CALCULATORS = [
+  { href: '/debt-consolidation/', label: 'Debt Consolidation' },
+  { href: '/home-equity/', label: 'Home Equity' },
+  { href: '/adu/', label: 'ADU & Renovation' },
+  { href: '/mortgage-calculator/', label: 'Mortgage Calculator' },
+  { href: '/dscr/', label: 'DSCR' },
+  { href: '/fha/', label: 'FHA Calculator' },
+];
+
+export default function Nav({ onOpenContact, alwaysSolid = false, landing = false }: Props) {
   // Read the scroll position at mount: on the homepage the nav is pre-rendered,
   // so a visitor may have scrolled before React loads, and the transparent
   // style would otherwise sit over content until the next scroll event. False
@@ -113,7 +132,9 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
 
           {/* Desktop links */}
           <div className="nav-links">
-            <a href="/debt-consolidation/" className="nav-link">Monthly Reset</a>
+            {!landing && <>
+            <a href="/#about"      onClick={scrollTo('about')}      className="nav-link" data-early="nav-about">About Me</a>
+            <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-link" data-early="nav-reviews">Reviews</a>
             <div className={`nav-dropdown${calcOpen ? ' nav-dropdown--open' : ''}`} ref={calcDropdownRef}>
               <button
                 type="button"
@@ -123,19 +144,18 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
                 className="nav-link nav-dropdown-trigger"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
               >
-                Calculator
+                Calculators
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
               <div className="nav-dropdown-menu">
-                <a href="/debt-consolidation/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">Debt Consolidation</a>
-                <a href="/mortgage-calculator/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">Mortgage Calculator</a>
-                <a href="/dscr/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">DSCR</a>
-                <a href="/fha/" onClick={() => setCalcOpen(false)} className="nav-dropdown-item">FHA Calculator</a>
+                {CALCULATORS.map((c) => (
+                  <a key={c.href} href={c.href} onClick={() => setCalcOpen(false)} className="nav-dropdown-item">{c.label}</a>
+                ))}
               </div>
             </div>
-            <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-link" data-early="nav-reviews">Reviews</a>
+            </>}
             <button onClick={handleContactClick} className="nav-link" data-early="nav-contact" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Contact</button>
             <button onClick={openCalendly} className="btn btn-rose btn-sm" data-early="nav-book">Book a Call</button>
           </div>
@@ -164,13 +184,16 @@ export default function Nav({ onOpenContact, alwaysSolid = false }: Props) {
           order (audit L3): otherwise a keyboard user tabs into links a screen
           reader has been told do not exist, and Lighthouse fails the page. */}
       <div className={`nav-mobile-menu${menuOpen ? ' nav-mobile-menu--open' : ''}`} aria-hidden={!menuOpen}>
-        <a href="/debt-consolidation/" className="nav-mobile-link" tabIndex={drawerTab}>Monthly Reset</a>
-        <span className="nav-mobile-link nav-mobile-label">Calculator</span>
-        <a href="/debt-consolidation/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Debt Consolidation</a>
-        <a href="/mortgage-calculator/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>Mortgage Calculator</a>
-        <a href="/dscr/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>DSCR</a>
-        <a href="/fha/" className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>FHA Calculator</a>
-        <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link" tabIndex={drawerTab}>Reviews</a>
+        {landing ? (
+          <a href="/" className="nav-mobile-link" tabIndex={drawerTab}>Home</a>
+        ) : <>
+          <a href="/#about"      onClick={scrollTo('about')}      className="nav-mobile-link" tabIndex={drawerTab}>About Me</a>
+          <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link" tabIndex={drawerTab}>Reviews</a>
+          <span className="nav-mobile-link nav-mobile-label">Calculators</span>
+          {CALCULATORS.map((c) => (
+            <a key={c.href} href={c.href} className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>{c.label}</a>
+          ))}
+        </>}
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn" tabIndex={drawerTab}>Contact</button>
         <button onClick={handleCalendlyClick} className="btn btn-rose btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
       </div>

@@ -37,7 +37,7 @@ describe('the pre-rendered homepage shell', () => {
     // Since revamp phase 4 the hero's only call to action is an anchor (#goals)
     // and Monthly Reset is a plain link to /debt-consolidation/, so neither
     // needs a key: a link works before React does.
-    for (const key of ['nav-book', 'nav-contact', 'nav-calc', 'nav-menu', 'nav-reviews']) {
+    for (const key of ['nav-book', 'nav-contact', 'nav-calc', 'nav-menu', 'nav-about', 'nav-reviews']) {
       expect(shell, key).toContain(`data-early="${key}"`);
     }
     // Every <button> in the shell is marked: a button does nothing without React.

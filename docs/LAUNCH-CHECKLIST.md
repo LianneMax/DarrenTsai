@@ -28,7 +28,6 @@ Last updated: 10 Oct 2026, after the phase 4 and 5 deploy (`3430fd2`, Apps Scrip
 
 ## 2. Code still to build (Claude Code)
 
-- [ ] **Phase 6, navigation.** The Calculator dropdown and the mobile drawer list Debt, Mortgage, DSCR and FHA but not Home Equity or ADU, and there is no About link although the homepage now has an About section.
 - [ ] **FHA review form** (revamp brief section 9, preview v4). Add "Have Darren Review My Payment" with its own form id. The guide form keeps Credit Score; the FHA tab stores it.
 - [ ] **R1, the Sheet schema release.** Reference implementation is `4f56832` on `debt-consolidation-page`; redo it on current `main` and include the Home Equity and ADU tabs. See `docs/revamp/BRANCHES.md` and `docs/lead-sheet-schema.md`. Blocked on two answers: whether Darren or Kocah keep filters, formulas or saved views on the lead tabs, and whether Darren uses the best-time answer. Runs in its own quiet window.
 - [ ] **R2, contextual confirmation emails** (brief section 11.1) for debt, home equity, ADU and mortgage-calculator review. Blocked on Max's sign-off of `docs/revamp/confirmation-email-copy.md` (previews in `docs/revamp/emails/`), and possibly Saxton compliance. Then re-apply `c8967bb` from the branch, keep its hash test, and only after that make Apps Script send a context.
@@ -84,6 +83,7 @@ These were still listed as open in `SESSION_HANDOFF_PRIVATE.md`, but have since 
 
 ## Done
 
+- 10 Oct: revamp phase 6, navigation. The hub and mortgage calculator nav has About Me, Reviews, Calculators (now with Home Equity and ADU), Contact and Book a Call; the three ad pages show only Contact and Book a Call; the static pages' logo goes to `/` directly.
 - 10 Oct: the copy decisions document and email previews brought to `main` from `debt-consolidation-page` (`fba2134`); `r0-debt-consolidation` and `debt-page-redesign` confirmed fully in `main`.
 - 9 Oct: homepage goal hub, revamp phase 4 (`3430fd2`).
 - 9 Oct: `/adu/`, revamp phase 5 (`012f08e`), Apps Script @44 with the `adu` route.
