@@ -114,3 +114,11 @@ describe('the nav (revamp phase 6)', () => {
     for (const f of ['src/App.tsx', 'src/MortgageCalculatorApp.tsx']) expect(read(f), f).not.toMatch(/<Nav[^>]*landing/);
   });
 });
+
+describe('the homepage in search results', () => {
+  it('describes the hub, not one product', () => {
+    const page = read('index.html');
+    expect(page).toContain('<title>Darren Tsai | Mortgage &amp; Real Estate Guidance</title>');
+    expect(page).toContain('content="Pay off debt, access home equity, build an ADU, invest or buy a home.');
+  });
+});

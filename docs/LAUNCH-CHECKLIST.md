@@ -33,9 +33,6 @@ Last updated: 10 Oct 2026, after the phase 4 and 5 deploy (`3430fd2`, Apps Scrip
 - [ ] **R1, the Sheet schema release.** Reference implementation is `4f56832` on `debt-consolidation-page`; redo it on current `main` and include the Home Equity and ADU tabs. See `docs/revamp/BRANCHES.md` and `docs/lead-sheet-schema.md`. Blocked on two answers: whether Darren or Kocah keep filters, formulas or saved views on the lead tabs, and whether Darren uses the best-time answer. Runs in its own quiet window.
 - [ ] **R2, contextual confirmation emails** (brief section 11.1) for debt, home equity, ADU and mortgage-calculator review. Blocked on Max's sign-off of `docs/revamp/confirmation-email-copy.md` (previews in `docs/revamp/emails/`), and possibly Saxton compliance. Then re-apply `c8967bb` from the branch, keep its hash test, and only after that make Apps Script send a context.
 - [ ] **HubSpot loan fields** (audit L12). Loan Amount, Loan Type and Property Use reach HubSpot empty. Blocked on Niko's internal property names and allowed values.
-- [ ] **HELOAN savings when the HELOAN is capped.** A capped HELOAN pays off only part of the debt, but the payment comparison ignores the debts left over, so the saving is overstated. Needs Max's decision on how to show it.
-- [ ] **A paid-off home on the debt page.** `hasHome` requires a mortgage balance above 0, so a homeowner with no mortgage cannot reach the comparison. The brief says 0 is a valid answer (the equity and ADU pages already accept it). Check which options still make sense with no first mortgage before changing the gate.
-- [ ] **Homepage title and meta description** still say "Home Equity & Investment Property Lending". Max to decide the new wording; it affects search.
 
 ## 3. Accounts and settings (outside the code)
 
@@ -82,6 +79,7 @@ These were still listed as open in `SESSION_HANDOFF_PRIVATE.md`, but have since 
 
 ## Done
 
+- 10 Oct: debt page math corrected (Max's decisions). A capped HELOAN now counts the payments on the debt it leaves, by balance share (example: $3,139 combined and $661 saved, where it used to claim $1,595); a cash-out refinance past 80% of the home's value says many lenders stop there, without capping the figure; a paid-off home (balance 0) gets a comparison. Homepage title is now "Darren Tsai | Mortgage & Real Estate Guidance" with a hub description.
 - 10 Oct: security pass. Sheet formula injection fixed in code (needs the Apps Script deploy above); 11 build-time dependency advisories fixed with `npm audit fix` (production had none); confirmed no keys in the client bundle, email templates escape visitor text, the guide senders require their key, and the X-Frame-Options, nosniff and Referrer-Policy headers are in place (now pinned by a test). Not done: a Content-Security-Policy (GTM loads tags chosen in its UI, so it needs a Report-Only run on the live site first), and narrowing `/api/lead`'s `*.netlify.app` origin allowance, which needs the Netlify site name.
 - 10 Oct: `/fha/` "Have Darren Review My Payment". The estimate's button opens the contact modal as form `fha-payment-review` with the financed loan and rate prefilled (it used to scroll to the guide form); leads go to the Leads tab as `fha-contact`. The guide form and its Credit Score are unchanged. Tell Kocah about the new form id.
 - 10 Oct: the old homepage layout of the debt calculator removed (about 650 lines and its `dsc-` CSS), with the unused `SAVINGS_RANGE`; the guard tests now scan `DebtPageViews.tsx`, the page visitors see.
