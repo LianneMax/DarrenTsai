@@ -127,7 +127,7 @@ constrain code:
   live, verified 10 Oct).** Source `adu`, its own "ADU" tab, Bonzo tags `adu` and
   `HELOC/cash-out interest` plus `purpose:`. `/yt/adu` and `/yt/adu-c` point
   there. Deploy the Apps Script `adu` route before the site.
-- The `/yt/*` redirects in `netlify.toml` are `302` on purpose: a `301` is cached
+- The `/yt/*` routes in `netlify/functions/youtube-redirect.mts` are `302` on purpose: a `301` is cached
   permanently, so the destination could never be changed afterwards. One link per
   bucket plus a `-c` variant, so a description click and a pinned-comment click
   are distinguishable via `utm_content`.

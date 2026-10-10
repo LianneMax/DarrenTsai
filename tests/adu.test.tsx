@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildAduLead, aduNumbers } from '../src/utils/adu';
 import AduPage, { AduPageHero, StepAduProject, StepAduContact, AduRecap, type AduPageView } from '../src/components/AduViews';
 import { loadGas, recordingFetch, type FetchCall } from './helpers/gas-harness';
@@ -197,11 +198,12 @@ describe('the pre-rendered /adu/ shell', () => {
   });
 
   it('has /yt/adu and /yt/adu-c short links, as 302s with their UTMs', () => {
-    const toml = read('netlify.toml');
     for (const from of ['/yt/adu', '/yt/adu-c']) {
-      const m = new RegExp(`from = "${from}"\\s+to = "([^"]+)"\\s+status = (\\d+)`).exec(toml);
-      expect(m![1]).toMatch(/^\/adu\/\?utm_source=youtube&utm_medium=social&utm_campaign=yt-adu&/);
-      expect(m![2]).toBe('302');
+      const response = youtubeRedirect(new Request(`https://realdarrentsai.com${from}`));
+      const url = new URL(response.headers.get('Location')!);
+      expect(url.pathname).toBe('/adu/');
+      expect(url.searchParams.get('utm_campaign')).toBe('yt-adu');
+      expect(response.status).toBe(302);
     }
   });
 });

@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import youtubeRedirect, { SHORTLINKS } from '../netlify/functions/youtube-redirect.mts';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
@@ -60,15 +61,17 @@ describe('L2: old site URLs are permanently redirected', () => {
 
   it('leaves the /yt short links as 302s', () => {
     const yt = rules.filter((r) => r.from?.startsWith('/yt/'));
-    expect(yt.length).toBe(18);
-    for (const r of yt) expect(r.status).toBe(302);
+    expect(yt.length).toBe(0); // Static target queries must not shadow the query-preserving function.
+    for (const bucket of Object.keys(SHORTLINKS)) {
+      for (const suffix of ['', '-c']) expect(youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${bucket}${suffix}`)).status).toBe(302);
+    }
   });
 
   it.each([['debt', '/debt-consolidation/'], ['mortgage', '/mortgage-calculator/'], ['home', '/']])('tracks %s description and comment clicks separately', (slug, destination) => {
     for (const [suffix, content] of [['', 'description'], ['-c', 'pinned-comment']]) {
-      const rule = rules.find(r => r.from === `/yt/${slug}${suffix}`)!;
-      expect(rule.status).toBe(302);
-      const url = new URL(rule.to!, 'https://realdarrentsai.com');
+      const response = youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${slug}${suffix}`));
+      expect(response.status).toBe(302);
+      const url = new URL(response.headers.get('Location')!);
       expect(url.pathname).toBe(destination);
       expect(url.searchParams.get('utm_source')).toBe('youtube');
       expect(url.searchParams.get('utm_content')).toBe(content);

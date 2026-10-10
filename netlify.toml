@@ -14,24 +14,8 @@
 # Netlify functions declare their own routes via `export const config.path`
 # (see netlify/functions/*.mts), so /api/* resolves without a redirect here.
 
-# YOUTUBE SHORT LINKS
-# One per bucket, plus a -c variant so a description click and a pinned-comment
-# click are distinguishable (utm_content). Short enough to read aloud in a video.
-#
-# These are 302, deliberately. A 301 is cached by the browser permanently, so
-# if a link's destination ever changes, everyone who clicked the old one would
-# keep landing on the previous page with no way to fix it. The whole point of a
-# short link is that the destination can change later.
-#
-# HELOC and home equity both point at /home-equity/ (revamp phase 3). Until that
-# page existed they pointed at the homepage, whose debt-consolidation funnel was
-# the nearest offer. The query string is kept, so the YouTube attribution is the
-# same either way. Deploy the Apps Script version with the 'home-equity' route
-# first: before it, that page's leads are still saved, but on the generic Leads
-# tab without their equity columns.
-#
-# Redirects are evaluated top to bottom, and these must stay above any catch-all
-# if one is ever reintroduced.
+# YouTube description and comment links are routed by youtube-redirect.mts.
+# The function merges incoming click IDs and UTMs with bucket defaults, using 302.
 
 # The amortization calculator moved off the homepage to its own page, so the
 # short /calculator path anyone already types or links stays alive. 302 for the
@@ -69,88 +53,6 @@
   from = "/post/*"
   to = "/"
   status = 301
-
-[[redirects]]
-  from = "/yt/heloc"
-  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/heloc-c"
-  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-heloc&utm_content=pinned-comment"
-  status = 302
-
-[[redirects]]
-  from = "/yt/equity"
-  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/equity-c"
-  to = "/home-equity/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home-equity&utm_content=pinned-comment"
-  status = 302
-
-# ADU and renovation (revamp phase 5). New bucket, same pattern.
-[[redirects]]
-  from = "/yt/adu"
-  to = "/adu/?utm_source=youtube&utm_medium=social&utm_campaign=yt-adu&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/adu-c"
-  to = "/adu/?utm_source=youtube&utm_medium=social&utm_campaign=yt-adu&utm_content=pinned-comment"
-  status = 302
-
-[[redirects]]
-  from = "/yt/dscr"
-  to = "/dscr/?utm_source=youtube&utm_medium=social&utm_campaign=yt-dscr&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/dscr-c"
-  to = "/dscr/?utm_source=youtube&utm_medium=social&utm_campaign=yt-dscr&utm_content=pinned-comment"
-  status = 302
-
-[[redirects]]
-  from = "/yt/rei"
-  to = "/realestateinvesting/?utm_source=youtube&utm_medium=social&utm_campaign=yt-rei&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/rei-c"
-  to = "/realestateinvesting/?utm_source=youtube&utm_medium=social&utm_campaign=yt-rei&utm_content=pinned-comment"
-  status = 302
-
-[[redirects]]
-  from = "/yt/buyer"
-  to = "/fha/?utm_source=youtube&utm_medium=social&utm_campaign=yt-buyer&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/buyer-c"
-  to = "/fha/?utm_source=youtube&utm_medium=social&utm_campaign=yt-buyer&utm_content=pinned-comment"
-  status = 302
-
-
-# General education, debt comparison and principal/interest calculator.
-[[redirects]]
-  from = "/yt/debt"
-  to = "/debt-consolidation/?utm_source=youtube&utm_medium=social&utm_campaign=yt-debt&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/debt-c"
-  to = "/debt-consolidation/?utm_source=youtube&utm_medium=social&utm_campaign=yt-debt&utm_content=pinned-comment"
-  status = 302
-[[redirects]]
-  from = "/yt/mortgage"
-  to = "/mortgage-calculator/?utm_source=youtube&utm_medium=social&utm_campaign=yt-mortgage&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/mortgage-c"
-  to = "/mortgage-calculator/?utm_source=youtube&utm_medium=social&utm_campaign=yt-mortgage&utm_content=pinned-comment"
-  status = 302
-[[redirects]]
-  from = "/yt/home"
-  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home&utm_content=description"
-  status = 302
-[[redirects]]
-  from = "/yt/home-c"
-  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home&utm_content=pinned-comment"
-  status = 302
 
 # Hashed asset filenames change whenever content changes, so they can be cached
 # forever. This is the single cheapest repeat-visit win available.

@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildEquityLead, equityNumbers } from '../src/utils/homeEquity';
 import EquityPage, {
   EquityPageHero, StepEquityHome, StepEquityOptions, StepEquityContact, EquityRecap, type EquityPageView,
@@ -252,12 +253,12 @@ describe('the pre-rendered /home-equity/ shell', () => {
 
 describe('the short links', () => {
   it('send /yt/heloc and /yt/equity, and their -c variants, to /home-equity/ with their UTMs', () => {
-    const toml = read('netlify.toml');
     for (const from of ['/yt/heloc', '/yt/heloc-c', '/yt/equity', '/yt/equity-c']) {
-      const block = new RegExp(`from = "${from}"\\s+to = "([^"]+)"\\s+status = (\\d+)`).exec(toml);
-      expect(block, from).not.toBeNull();
-      expect(block![1]).toMatch(/^\/home-equity\/\?utm_source=youtube&/);
-      expect(block![2]).toBe('302');
+      const response = youtubeRedirect(new Request(`https://realdarrentsai.com${from}`));
+      const url = new URL(response.headers.get('Location')!);
+      expect(url.pathname).toBe('/home-equity/');
+      expect(url.searchParams.get('utm_source')).toBe('youtube');
+      expect(response.status).toBe(302);
     }
   });
 });
