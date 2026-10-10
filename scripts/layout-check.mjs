@@ -137,6 +137,24 @@ try {
       if (phone && r.small.length) {
         failures.push(`${width}px ${path}: fields under 16px (iOS zooms on focus): ${r.small.join(', ')}`);
       }
+      // An empty first screen cannot expose an APR popover overflowing a phone.
+      // Exercise the real calculated state and its editable-fee explanation.
+      if (path === '/mortgage-calculator/' && width < 600) {
+        const reject = page.getByRole('button', { name: 'Reject optional', exact: true });
+        if (await reject.isVisible()) await reject.click();
+        await page.getByRole('textbox', { name: 'Loan Amount', exact: true }).fill('330000');
+        await page.getByRole('spinbutton', { name: 'Annual Interest Rate', exact: true }).fill('4');
+        await page.getByLabel('About this estimated APR', { exact: true }).click();
+        await page.getByLabel('Prepaid finance charges ($)', { exact: true }).fill('4000');
+        const bounds = await page.locator('.apr-tooltip').boundingBox();
+        const active = await page.evaluate(measure);
+        checks++;
+        if (!bounds || bounds.x < 0 || bounds.x + bounds.width > width || active.sw > active.vw) {
+          failures.push(`${width}px ${path}: calculated APR explanation overflows the viewport`);
+        }
+        if (active.small.length) failures.push(`${width}px ${path}: APR fields under 16px`);
+        if (!await page.getByText('4.10%', { exact: true }).isVisible()) failures.push(`${width}px ${path}: APR did not update with entered charges`);
+      }
     }
 
     await ctx.close();

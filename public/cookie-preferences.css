@@ -1,0 +1,13 @@
+.dt-cookie-panel { position: fixed; z-index: 10000; left: 16px; bottom: 55px; width: min(460px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px; background: #fff; color: #263c45; border: 1px solid #cbd8dc; border-radius: 12px; box-shadow: 0 8px 30px #152d3a26; font-family: Outfit, system-ui, sans-serif; font-size: 14px; line-height: 1.5; max-height: 75vh; overflow-y: auto; }
+.dt-cookie-panel[hidden], .dt-cookie-manage[hidden] { display: none; }
+.dt-cookie-panel h2 { font-size: 18px; margin: 0 25px 8px 0; }
+.dt-cookie-panel p { margin: 8px 0; }
+.dt-cookie-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.dt-cookie-panel button { padding: 9px 12px; border: 1px solid #375963; border-radius: 6px; background: white; color: #263c45; cursor: pointer; font: inherit; }
+.dt-cookie-panel button:disabled { opacity: .55; cursor: not-allowed; }
+.dt-cookie-panel [data-choice="accept"] { background: #375963; color: white; }
+.dt-cookie-panel a { color: #375963; }
+.dt-cookie-panel .dt-cookie-close { position: absolute; right: 8px; top: 4px; border: 0; font-size: 22px; }
+.dt-cookie-manage { border-top: 1px solid #d5e1e6; padding-top: 10px; margin-bottom: 10px; }
+.dt-cookie-manage input { width: 18px; height: 18px; vertical-align: middle; }
+.dt-cookie-reopen { display: block; margin: 12px auto 72px; padding: 7px 10px; border: 1px solid #cbd8dc; border-radius: 6px; background: white; color: #263c45; font: 12px Outfit, system-ui, sans-serif; cursor: pointer; }

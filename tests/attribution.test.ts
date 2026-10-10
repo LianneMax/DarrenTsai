@@ -298,11 +298,11 @@ describe('Google Tag Manager is installed exactly once', () => {
     expect(SOURCE.match(new RegExp(CONTAINER, 'g'))).toHaveLength(1);
   });
 
-  it.each(PAGES)('%s carries the noscript iframe and no second loader', (page) => {
+  it.each(PAGES)('%s cannot bypass consent with a noscript iframe or second loader', (page) => {
     const html = read(page);
-    // The noscript half is per-page by necessity: it cannot be injected by a
-    // script that does not run.
-    expect(html).toContain(`googletagmanager.com/ns.html?id=${CONTAINER}`);
+    // A noscript iframe bypasses the visitor's consent controls entirely.
+    expect(html).not.toContain('googletagmanager.com/ns.html');
+    expect(html).toContain('/cookie-preferences.js');
     // But the loader half must not be. This is the duplicate-install check.
     expect(html).not.toContain('googletagmanager.com/gtm.js');
   });

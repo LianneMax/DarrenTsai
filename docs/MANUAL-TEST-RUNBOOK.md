@@ -1,5 +1,7 @@
 # Manual test runbook
 
+**Current status and retention:** use the local `.local-notes/SITE-AUDIT.md` for the live audit and pending work. Max explicitly retains the eight 10 October viewer TEST leads until he requests deletion. Cleanup steps in this runbook are procedures, not authorization to remove those records.
+
 How to verify by hand that a lead travels the whole way: from the form on the
 site, into the Google Sheet, into Bonzo, and out as a guide email, with its ad
 attribution intact.

@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <link rel="stylesheet" href="/cookie-preferences.css" />
+    <script src="/cookie-preferences.js"></script>
     <meta charset="UTF-8" />
     <!-- Darren's headshot, resized. The source darren.jpg is a 320x320 PNG at
          134KB and was being served whole as the tab icon on every page; these
@@ -35,8 +37,6 @@
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7Z8Q4QF"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
 
     <!-- Early-click queue (audit, "Homepage LCP", Option A). The nav and hero
@@ -89,6 +89,6 @@
          CallRail (PSI: 920 ms render-blocking). Here it no longer holds the
          page back. It stays synchronous: loaded async, it never swapped the
          number at all (L7). Swap timing per page is recorded in audit.md, L10. -->
-    <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
+    <script type="application/x-dt-consent" data-src="https://cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
   </body>
 </html>

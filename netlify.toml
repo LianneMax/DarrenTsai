@@ -125,6 +125,33 @@
   to = "/fha/?utm_source=youtube&utm_medium=social&utm_campaign=yt-buyer&utm_content=pinned-comment"
   status = 302
 
+
+# General education, debt comparison and principal/interest calculator.
+[[redirects]]
+  from = "/yt/debt"
+  to = "/debt-consolidation/?utm_source=youtube&utm_medium=social&utm_campaign=yt-debt&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/debt-c"
+  to = "/debt-consolidation/?utm_source=youtube&utm_medium=social&utm_campaign=yt-debt&utm_content=pinned-comment"
+  status = 302
+[[redirects]]
+  from = "/yt/mortgage"
+  to = "/mortgage-calculator/?utm_source=youtube&utm_medium=social&utm_campaign=yt-mortgage&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/mortgage-c"
+  to = "/mortgage-calculator/?utm_source=youtube&utm_medium=social&utm_campaign=yt-mortgage&utm_content=pinned-comment"
+  status = 302
+[[redirects]]
+  from = "/yt/home"
+  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home&utm_content=description"
+  status = 302
+[[redirects]]
+  from = "/yt/home-c"
+  to = "/?utm_source=youtube&utm_medium=social&utm_campaign=yt-home&utm_content=pinned-comment"
+  status = 302
+
 # Hashed asset filenames change whenever content changes, so they can be cached
 # forever. This is the single cheapest repeat-visit win available.
 [[headers]]

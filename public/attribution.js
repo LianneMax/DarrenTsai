@@ -32,6 +32,7 @@
   var memoryFallback = null;
 
   function readStore() {
+    if (window.DTConsent && !window.DTConsent.isAllowed()) return memoryFallback;
     try {
       var raw = window.localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : null;
@@ -42,6 +43,7 @@
 
   function writeStore(value) {
     memoryFallback = value;
+    if (window.DTConsent && !window.DTConsent.isAllowed()) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     } catch (e) {
@@ -229,7 +231,9 @@
     }
   }, true);
 
-  if (GTM_ID) {
+  function startGTM() {
+    if (!GTM_ID) return;
+    writeStore(state);
     (function (w, d, s, l, i) {
       w[l] = w[l] || [];
       w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
@@ -243,4 +247,6 @@
       else if (d.head) d.head.appendChild(j);
     })(window, document, 'script', 'dataLayer', GTM_ID);
   }
+  if (window.DTConsent) window.DTConsent.whenAllowed(startGTM);
+  else startGTM(); // Isolated harnesses retain their original runtime contract.
 })();

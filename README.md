@@ -12,7 +12,7 @@ npm run test:layout  # real-browser layout check, by hand (see below)
 ```
 
 **Run `npm run test:layout` before pushing any change to a page or the CSS.**
-It builds the site, serves it, and drives Chromium over all five pages at nine
+It builds the site, serves it, and drives Chromium over all eight pages at nine
 widths from 320px to 1440px, failing on any sideways scroll or any form field
 under 16px at phone widths (which is what makes iOS zoom mid-form). It is
 deliberately not part of `npm test` or the Netlify build: it needs a browser
@@ -20,5 +20,4 @@ binary and a build, and a deploy that fails for want of Chromium is worse than
 the bug it looks for. `npm test` cannot do this job at all, because jsdom has no
 layout engine.
 
-See `CLAUDE.md` for how the lead flow fits together, and `audit.md` for the
-open items and their history.
+See `AGENTS.md` for the lead flow and implementation safeguards. Operational audits and account evidence stay machine-local in `.local-notes/`, which is excluded from Git.

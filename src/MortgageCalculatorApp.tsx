@@ -20,6 +20,15 @@ export default function MortgageCalculatorApp() {
   const openContact = () => setContactOpen(true);
   const closeContact = () => setContactOpen(false);
 
+  // The same queue used by the other pre-rendered entries. Replaying on the
+  // real mounted element preserves booking/contact behavior and tracking.
+  useEffect(() => {
+    const early = (window as { __dtEarlyClick?: { take: () => string | null } }).__dtEarlyClick;
+    const key = early?.take();
+    if (!key) return;
+    document.querySelector<HTMLElement>(`[data-early="${CSS.escape(key)}"]`)?.click();
+  }, []);
+
   return (
     <>
       <Nav onOpenContact={openContact} alwaysSolid />

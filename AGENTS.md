@@ -1,6 +1,8 @@
 # AGENTS.md
 
 Guidance for Codex working in this repository.
+**Operational status:** maintain only `.local-notes/SITE-AUDIT.md` (machine-local, gitignored). Do not publish account evidence. Retain TEST records until Max explicitly authorizes cleanup.
+
 
 ## What this is
 
@@ -61,7 +63,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 33 files / 1177 tests, all passing |
+| Tests | Vitest + jsdom, Vitest suites, checked with the full run |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +73,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1177 tests)
+npm test         # vitest run
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -115,14 +117,14 @@ constrain code:
 - **`attr:none` is tagged deliberately** so a break in tracking looks different
   from a quiet week.
 - **HELOC and home equity have their own page, `/home-equity/` (revamp phase
-  3, 9 Oct; not live).** Source `home-equity`, its own "Home Equity" tab, Bonzo
+  3, 9 Oct; live, verified 10 Oct).** Source `home-equity`, its own "Home Equity" tab, Bonzo
   tags `home-equity` and `HELOC/cash-out interest` (the debt funnel's tag, so
   one filter finds both) plus `goal:` and `preference:`. `/yt/heloc` and
   `/yt/equity` point there. It is a new source, not a revival of the old
   `heloc-hei` route, which stays removed. Until the page existed that intent was
   served by the debt-consolidation funnel.
 - **Renovation and ADU have their own page, `/adu/` (revamp phase 5, 9 Oct;
-  not live).** Source `adu`, its own "ADU" tab, Bonzo tags `adu` and
+  live, verified 10 Oct).** Source `adu`, its own "ADU" tab, Bonzo tags `adu` and
   `HELOC/cash-out interest` plus `purpose:`. `/yt/adu` and `/yt/adu-c` point
   there. Deploy the Apps Script `adu` route before the site.
 - The `/yt/*` redirects in `netlify.toml` are `302` on purpose: a `301` is cached
@@ -263,22 +265,8 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1177 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
-- **The Sheet schema release (R1) is on `main` and NOT yet deployed to Apps
-  Script or migrated (10 Oct).** The by-header-name rule above describes it.
-  The site half ships with `main` and is safe against the live @46 script (the
-  two removed debt fields were already blank, and @46 ignores the new ones).
-  Until the window, the live Apps Script and the live tabs are still
-  positional, so no column may be moved by hand. To do, by hand, in one quiet
-  window and in this order: copy the spreadsheet, deploy the Apps Script in
-  place (`docs/APPS-SCRIPT-DEPLOY.md`), run `auditLeadTabs()`, run
-  `migrateLeadTabs()`, send one test lead per tab with fake details. `docs/MANUAL-TEST-RUNBOOK.md` section 0.5 has the steps. Deploying
-  the script without migrating is safe (rows are written by name) but mails a
-  drift notice per tab every 6 hours until it is done. The debt lead now sends
-  savings signed (negative means the payment goes up), the equity snapshot
-  under `estimatedEquity` as the equity and ADU pages do, today's payment, the
-  debts' average rate, the same-payoff refi and the PMMS date, and no longer
-  sends Best Time to Call or Lead Source. Delete this bullet once migrated.
+- Run the full test suite, build, lint and real-browser layout checks before publishing site changes.
+- **R1 is deployed at Apps Script @47 and migrated.** The writer is header-aware; never revert to positional @46 against migrated tabs. Release and rollback procedures are in `docs/APPS-SCRIPT-DEPLOY.md`; current evidence stays local.
 - **One look across the site (10 Oct).** The React pages (the hub,
   `/debt-consolidation/`, `/home-equity/`, `/adu/`) use the static landing
   pages' palette, which now lives in `src/index.css`'s `:root` as well
@@ -295,14 +283,14 @@ or the lead lands on the generic tab with its fields dropped:
   and a `tel:` call button), which steps aside while the calculator is on
   screen. Nothing on a first screen fades in, and the bar is never in the
   pre-rendered HTML, so LCP and the no-phone-number shell rule are unchanged.
-- **`docs/LAUNCH-CHECKLIST.md` is the living list of what is left before Google
+- **`.local-notes/SITE-AUDIT.md` is the living list of what is left before Google
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
-  delete it there and add a line to its "Done" section in the same commit.
-  All work happens on `main`; there are no side branches (10 Oct).
-  `docs/revamp/BRANCHES.md` records what the old ones held.
-- HubSpot is the largest pending piece: CRM portal access is still blocked, and
-  the server-side handoff is not built. Keep the Netlify -> Apps Script -> Sheets
-  -> Bonzo flow intact until a replacement is tested end to end.
+  update its status and evidence there and add a line to its change log.
+  The current work is on `main`; do not infer the remote branch inventory from old notes.
+- HubSpot's Forms API handoff exists and is live alongside Sheets and Bonzo.
+  Loan-field mapping and CRM acceptance remain pending. Max has read access
+  but cannot obtain settings-edit permissions; Niko / Kocah owns the admin
+  work in `.local-notes/SITE-AUDIT.md#nikos-short-checklist`. Preserve the existing lead flow.
 - Every "Book a Call" CTA opens a chooser (`public/booking-chooser.js`): call
   now, or schedule. The call half is a real `tel:` anchor, so CallRail swaps the
   number and `phone_click` fires with no extra code, which puts urgent leads on
@@ -347,10 +335,10 @@ or the lead lands on the generic tab with its fields dropped:
   not updated. That needs an update-by-email call whose v3 behaviour must be
   verified live first, the way the Mortgage fields were.
 - **The contact modal's confirmation email is live** (its properties are set;
-  see `docs/revamp/BRANCHES.md`). It was built dark first. Since 10 Oct the same
-  sender has four more approved contexts, named by `confirmationContext` in the
+  see the local audit). It was built dark first. Since 10 Oct the same
+  sender has four more live contexts, named by `confirmationContext` in the
   Apps Script: `debt`, `home-equity`, `adu`, and `mortgage-review` (the mortgage
-  calculator's modal, only when its numbers came with it). Ship the site before
+  calculator's modal, only when its numbers came with it). Max approved the live confirmation copy on 10 Oct 2026. Ship the site before
   the Apps Script version that sends them; `npm run emails` renders all five to
   `docs/revamp/emails/`. Every magnet
   form sent the visitor something; the modal, the form that asks the most, sent
@@ -364,10 +352,7 @@ or the lead lands on the generic tab with its fields dropped:
   turn every contact lead's row red.
 - `docs/MANUAL-TEST-RUNBOOK.md` is the by-hand verification pass: every funnel,
   the attribution and Ads checks, and the gotchas that read as bugs but are not.
-- `audit.md` is the 26 Sep 2026 lead-path audit, ranked, with a file and line per
-  item. Items 6, 8, 14 and 16 are GTM, CallRail and YouTube settings that code
-  cannot reach; everything else in its Fix first table is fixed in code as of
-  `125c445` and awaiting a live check.
+- Historical audits are archived locally. The single current account and launch-status list is `.local-notes/SITE-AUDIT.md`.
 - `/dscr/`, `/fha/` and `/realestateinvesting/` were discovered but not yet
   indexed by Google. Monitor, do not repeatedly resubmit.
 - **Nothing reads the Sheet except this script.** No Zapier, no Make, no
@@ -383,3 +368,12 @@ or the lead lands on the generic tab with its fields dropped:
   on Google's side and leaves no trace here. The live integrations are Bonzo
   (from `pushToBonzo`), Resend (via the Netlify guide senders), CallRail
   (client-side number swap) and GTM/GA4. That is the whole list.
+
+## Approved refinements (10 October 2026)
+
+- Title: Senior Loan Officer · Saxton Mortgage. Confirmation copy approved by Max.
+- Mortgage payment and total are principal and interest only; taxes, insurance and fees are extra.
+- Estimated APR is calculated from amount, note rate, term and editable upfront finance charges. Disclose the zero-fee assumption; no arbitrary rate spread. This simplified regular fixed-rate estimate excludes mortgage insurance and irregular payment timing.
+- DSCR describes rent/payment coverage, not loan qualification or a quoted borrower rate.
+- Cookie preferences gate the existing GTM/HubSpot/Ads path and CallRail until optional tracking is accepted. Calculators, forms and current-page attribution in memory work without consent. Persistent attribution requires acceptance. Consent has one combined optional category because the existing GTM container loads analytics and marketing together; honor Global Privacy Control.
+- New `/yt/debt`, `/yt/mortgage`, `/yt/home` and their `-c` variants track description/comment clicks separately. HELOAN lives under home equity; the site has no HEI pricing model.

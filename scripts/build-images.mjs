@@ -42,6 +42,15 @@ for (const { file, size } of OUTPUTS) {
 console.log(`\nfavicon: ${before.toLocaleString()} -> ${statSync('public/favicon-32.png').size.toLocaleString()} bytes`);
 console.log(`all four derivatives combined: ${total.toLocaleString()} bytes`);
 
+// The goal hub added a 96px hero portrait and a 240px About portrait, both
+// pointing at the original 134KB PNG. PSI estimated 123–126KB wasted on 10 Oct.
+// Separate WebP sizes cover the actual slots without upscaling the 320px source.
+for (const size of [96, 192, 240, 320]) {
+  const file = `public/darren-${size}.webp`;
+  await sharp(readFileSync(SRC)).resize(size, size).webp({ quality: 82, effort: 6 }).toFile(file);
+  console.log(`${file}: ${statSync(file).size.toLocaleString()} bytes`);
+}
+
 /**
  * The FHA hero carousel, as WebP (audit L4, 30 Sep).
  *

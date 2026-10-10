@@ -23,7 +23,7 @@ export const Check = () => (
   </svg>
 );
 
-export function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+export function Row({ label, value, strong }: { label: string; value: ReactNode; strong?: boolean }) {
   return (
     <div className={`dcp-row${strong ? ' dcp-row-strong' : ''}`}>
       <span>{label}</span>

@@ -16,6 +16,8 @@ The branch tip also has the R2 routing (`confirmationContext`): debt, home equit
 
 ## @47: R1, the Sheet schema release
 
+Verified 10 Oct 2026: @47 is deployed in place from main `656bed7`; editor code also matches the later frontend-only main. Deployment count remains 20, manifest unchanged, `/exec` returns `{"status":"ok"}`. **Migration completed at 16:23:59**, after a fresh private owner-account backup and clean live audit. Historical rows were independently compared by header; fake tests passed for all seven active lead tabs and their queues. Original tabs are retained. Evidence is retained in the local audit. The steps below are historical release/rollback guidance, not an instruction to repeat a completed migration.
+
 Deploy it only inside the migration window, as step 2 of `docs/MANUAL-TEST-RUNBOOK.md` section 0.5, straight after copying the spreadsheet and straight before `auditLeadTabs()`. Source: `google-apps-script.js` on `main` at the R1 merge or later. Use the steps below with that commit in step 2 and `dt-47` in the folder names. Step 4's diff against @46 is large this time (rows written by header name, the migration and audit functions), so check the other way round: the file you clone in step 3 must match `main` at `8740407`, which is @46. If it does not, stop: someone changed the editor since @46.
 
 Deploying it without migrating is safe (rows are written by name), but it mails a "Sheet columns out of order" notice per tab every 6 hours until the migration runs.

@@ -28,8 +28,31 @@ import { HomeHero } from './components/HomeHub';
 import { DebtPageHero } from './components/DebtPageViews';
 import { EquityPageHero } from './components/HomeEquityViews';
 import { AduPageHero } from './components/AduViews';
+import Calculator from './components/Calculator';
+import { defaultInputs } from './hooks/useMortgageInputs';
+import { calculateMortgage } from './utils/mortgageCalc';
 
 const noop = () => {};
+
+/**
+ * The mortgage entry was an empty root until its app ran: mobile LCP measured
+ * 4.9–5.4s on 10 Oct. Render the actual empty calculator, not a second copy.
+ * Preview controls are disabled until React mounts so early typing cannot be
+ * lost during replacement. Contact/nav clicks use the existing early queue.
+ * No chart or worked example is emitted; both require the visitor's inputs.
+ */
+export function renderMortgageShell(): string {
+  return renderToStaticMarkup(
+    <>
+      <Nav onOpenContact={noop} alwaysSolid />
+      <div className="page-top-spacer" />
+      <main>
+        <Calculator inputs={defaultInputs} setInputs={noop}
+          summary={calculateMortgage(defaultInputs)} onOpenContact={noop} preview />
+      </main>
+    </>,
+  );
+}
 
 /**
  * The same thing for /debt-consolidation/ (revamp phase 0, 8 Oct): the nav and

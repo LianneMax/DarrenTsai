@@ -60,9 +60,19 @@ describe('L2: old site URLs are permanently redirected', () => {
 
   it('leaves the /yt short links as 302s', () => {
     const yt = rules.filter((r) => r.from?.startsWith('/yt/'));
-    // Twelve since /yt/adu and /yt/adu-c (revamp phase 5, 9 Oct).
-    expect(yt.length).toBe(12);
+    expect(yt.length).toBe(18);
     for (const r of yt) expect(r.status).toBe(302);
+  });
+
+  it.each([['debt', '/debt-consolidation/'], ['mortgage', '/mortgage-calculator/'], ['home', '/']])('tracks %s description and comment clicks separately', (slug, destination) => {
+    for (const [suffix, content] of [['', 'description'], ['-c', 'pinned-comment']]) {
+      const rule = rules.find(r => r.from === `/yt/${slug}${suffix}`)!;
+      expect(rule.status).toBe(302);
+      const url = new URL(rule.to!, 'https://realdarrentsai.com');
+      expect(url.pathname).toBe(destination);
+      expect(url.searchParams.get('utm_source')).toBe('youtube');
+      expect(url.searchParams.get('utm_content')).toBe(content);
+    }
   });
 
   it('has no catch-all that could shadow them', () => {
@@ -75,9 +85,9 @@ describe('L10: nothing of ours or CallRail\'s holds the first paint', () => {
   // 920 ms render-blocking) and still left the real number in place ~0.5 s
   // after paint. At the end of <body> the page paints at once and the swap lands
   // 0.9 to 1.2 s after navigation. It must stay synchronous: async never swapped.
-  const TAG = '<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>';
+  const TAG = '<script type="application/x-dt-consent" data-src="https://cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>';
   it.each([...LANDING, ...BUILT])(
-    '%s loads swap.js once, synchronously, at the end of <body>',
+    '%s declares one consent-gated swap.js at the end of <body>',
     (page) => {
       const html = read(page);
       expect(html.split(TAG).length - 1).toBe(1);
@@ -203,7 +213,9 @@ describe('security headers', () => {
   // whatever is published in the GTM UI, so a policy needs a Report-Only run
   // on the live site first.
   it('sends them on every path', () => {
-    const toml = read('netlify.toml');
+    // Git may check this file out with CRLF on Windows; inspect the same
+    // header block regardless of the checkout's newline convention.
+    const toml = read('netlify.toml').replace(/\r\n/g, '\n');
     const block = toml.slice(toml.indexOf('for = "/*"\n'));
     expect(block).toContain('X-Frame-Options = "SAMEORIGIN"');
     expect(block).toContain('X-Content-Type-Options = "nosniff"');

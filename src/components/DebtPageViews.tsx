@@ -25,6 +25,7 @@ import { formatCurrency, formatRate } from '../utils/formatters';
 import { savingsText, savingsRowText } from '../utils/savingsText';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 import CustomSelect from './CustomSelect';
+import AprEstimate from './AprEstimate';
 import StateSelect from './StateSelect';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip } from './PageParts';
@@ -527,7 +528,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <summary>Estimated Cash-Out Refinance Breakdown · View calculation details</summary>
         <Row label="New Loan Amount" value={v.newLoan > 0 ? formatCurrency(v.newLoan) : '—'} />
         <Row label="Rate (30YR fixed)" value={formatRate(v.rate30)} />
-        <Row label="APR" value="See cost assumptions" />
+        <Row label="Estimated APR" value={<AprEstimate principal={v.newLoan} rate={v.rate30} years={30} />} />
         <Row label="Monthly P&I Payment" value={v.refiPmt > 0 ? formatCurrency(v.refiPmt) : '—'} />
         <Row strong label="Monthly Savings vs. Today" value={v.newLoan > 0 ? savingsRowText(v.refiSave) : '—'} />
       </details>
@@ -537,7 +538,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <Row label="HELOAN Amount" value={v.heloanAmt > 0 ? formatCurrency(v.heloanAmt) : '—'} />
         <Row label="HELOAN Rate / Term"
           value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
-        <Row label="APR" value="See cost assumptions" />
+        <Row label="Estimated APR" value={<AprEstimate principal={v.heloanPriced ? v.heloanAmt : 0} rate={v.tierRate} years={v.tierYears} />} />
         <Row label="HELOAN Monthly Payment" value={v.heloanPmt > 0 ? formatCurrency(v.heloanPmt) : '—'} />
         <Row label="Existing Mortgage Payment" value={v.mp > 0 ? formatCurrency(v.mp) : '—'} />
         <Row label="Illustrative CLTV" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
@@ -547,8 +548,9 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       </details>
 
       <p id="dsc-cost-assumptions" className="dcp-caption">
-        <strong>Cost assumptions:</strong> these estimates show principal and interest only. APR is
-        not shown: it depends on fees and lender terms, and needs a personal quote.
+        <strong>Cost assumptions:</strong> payments show principal and interest only, excluding taxes,
+        insurance and fees. Estimated APR assumes $0 upfront finance charges unless you enter them
+        using the info icon. Actual costs and APR require a lender's Loan Estimate.
       </p>
       <p className="dcp-caption">
         Lower monthly payments do not necessarily mean lower total borrowing costs. Consolidating

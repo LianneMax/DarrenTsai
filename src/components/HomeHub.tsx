@@ -102,7 +102,8 @@ export function HomeHero() {
         </div>
 
         <aside className="hub-hero-aside">
-          <img src="/darren.jpg" width={96} height={96} alt="Darren Tsai" className="hub-hero-photo" />
+          <img src="/darren-96.webp" srcSet="/darren-96.webp 96w, /darren-192.webp 192w"
+            sizes="96px" width={96} height={96} alt="Darren Tsai" className="hub-hero-photo" />
           <div>
             <p className="hub-hero-aside-title">Real numbers. Real guidance.</p>
             <p className="hub-hero-aside-text">
@@ -216,7 +217,8 @@ export function HomeAbout() {
   return (
     <section id="about" className="hub-section hub-about-wrap">
       <div className="container hub-about" ref={reveal}>
-        <img src="/darren.jpg" width={240} height={240} alt="Darren Tsai" loading="lazy" decoding="async" />
+        <img src="/darren-240.webp" srcSet="/darren-240.webp 240w, /darren-320.webp 320w"
+          sizes="240px" width={240} height={240} alt="Darren Tsai" loading="lazy" decoding="async" />
         <div>
           <span className="hub-eyebrow hub-eyebrow-dark">About Me</span>
           <h2 className="hub-h2">I&apos;m Darren Tsai.</h2>

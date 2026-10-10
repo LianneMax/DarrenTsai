@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <link rel="stylesheet" href="/cookie-preferences.css" />
+    <script src="/cookie-preferences.js"></script>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png" />
@@ -27,9 +29,36 @@
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7Z8Q4QF"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+    <!-- Capture a contact/nav click made before the pre-rendered calculator becomes interactive. -->
+    <script>
+      (function () {
+        var queued = null;
+        // Only ever the static pre-rendered nodes. React's own elements carry
+        // a __reactFiber$ key and are left alone, so even if take() were never
+        // called, no click on the live app could be swallowed.
+        function isReact(el) {
+          return Object.keys(el).some(function (k) { return k.indexOf('__reactFiber$') === 0; });
+        }
+        function onClick(e) {
+          var el = e.target && e.target.closest ? e.target.closest('[data-early]') : null;
+          if (!el || isReact(el)) return;
+          e.preventDefault();
+          queued = el.getAttribute('data-early');
+          document.documentElement.style.cursor = 'progress';
+        }
+        document.addEventListener('click', onClick, true);
+        window.__dtEarlyClick = {
+          take: function () {
+            document.removeEventListener('click', onClick, true);
+            document.documentElement.style.cursor = '';
+            var key = queued;
+            queued = null;
+            return key;
+          }
+        };
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/mortgage-main.tsx"></script>
 
@@ -42,6 +71,6 @@
          CallRail (PSI: 920 ms render-blocking). Here it no longer holds the
          page back. It stays synchronous: loaded async, it never swapped the
          number at all (L7). Swap timing per page is recorded in audit.md, L10. -->
-    <script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
+    <script type="application/x-dt-consent" data-src="https://cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
   </body>
 </html>

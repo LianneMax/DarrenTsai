@@ -23,3 +23,7 @@ deno.lock
 .agents/
 .claude/
 skills-lock.json
+
+# Operational status, account evidence and historic audits stay on this machine.
+.local-notes/
+design.md

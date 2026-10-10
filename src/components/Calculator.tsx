@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import type { MortgageInputs, MortgageSummary } from '../types/mortgage';
 import { formatCurrency } from '../utils/formatters';
-import { useScrollReveal } from '../hooks/useScrollReveal';
 import { useCountUp } from '../hooks/useCountUp';
 import AmortizationTable from './AmortizationTable';
+import AprEstimate from './AprEstimate';
 
-// recharts is ~537KB and already its own chunk (vite.config.ts manualChunks),
-// but it was imported eagerly, so it sat on the critical path for a chart well
-// below the fold. Loading it on demand takes it out of first paint entirely.
+// Keep recharts in its lazy chunk, outside the initial preload graph. The
+// empty calculator renders no chart; entering the visitor's own loan and rate
+// loads it on demand, with the placeholder below reserving its height.
 const AmortizationChart = lazy(() => import('./AmortizationChart'));
 
 const MONTH_NAMES = [
@@ -20,6 +20,9 @@ interface Props {
   setInputs: React.Dispatch<React.SetStateAction<MortgageInputs>>;
   summary: MortgageSummary;
   onOpenContact: () => void;
+  // Build-time preview only. A visitor must not type into static inputs that
+  // createRoot will replace and silently discard when the app arrives.
+  preview?: boolean;
 }
 
 function StatCard({
@@ -67,10 +70,7 @@ function StatCard({
   );
 }
 
-export default function Calculator({ inputs, setInputs, summary, onOpenContact }: Props) {
-  const sectionRef = useScrollReveal<HTMLDivElement>();
-  const panelRef = useScrollReveal<HTMLDivElement>(80);
-  const resultsRef = useScrollReveal<HTMLDivElement>(160);
+export default function Calculator({ inputs, setInputs, summary, onOpenContact, preview = false }: Props) {
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear + 1, currentYear + 2];
@@ -110,23 +110,26 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
   };
 
   return (
-    <section id="calculator" className="section section-light">
+    <section id="calculator" className="section section-light" aria-busy={preview || undefined}>
       <div className="container">
-        <div ref={sectionRef} className="section-header reveal">
-          <h2 className="section-title" style={{ color: 'var(--teal)' }}>Mortgage Calculator</h2>
-          <p className="section-sub">Adjust any input to see your full payment breakdown instantly.</p>
+        {/* This is the page's first screen. It must remain visible in the
+            build-time HTML and after React replaces it, without waiting for
+            IntersectionObserver or staggered transitions (10 Oct PSI audit). */}
+        <div className="section-header">
+          <h1 className="section-title" style={{ color: 'var(--teal)' }}>Mortgage Calculator</h1>
+          <p className="section-sub">Estimate principal and interest and your payoff schedule. Taxes, insurance and fees are extra.</p>
         </div>
 
         <div className="calc-grid">
           {/* Input Panel */}
-          <div ref={panelRef} className="card reveal" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <h3 className="card-heading">
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <h2 className="card-heading">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" strokeWidth="2"/>
                 <path d="M9 7h6M9 12h6M9 17h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
               Loan Details
-            </h3>
+            </h2>
 
             <div className="input-group">
               <label htmlFor="loanAmount" className="input-label">Loan Amount</label>
@@ -134,6 +137,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 <span className="input-prefix">$</span>
                 <input
                   id="loanAmount"
+                  disabled={preview}
                   type="text"
                   inputMode="numeric"
                   className="form-input input-has-prefix"
@@ -150,6 +154,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
               <div className="select-wrap">
                 <select
                   id="termYears"
+                  disabled={preview}
                   className="form-select"
                   value={inputs.termYears}
                   onChange={(e) =>
@@ -172,6 +177,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
               <div className="input-suffix-wrap">
                 <input
                   id="annualRate"
+                  disabled={preview}
                   type="number"
                   step="0.01"
                   min="0.1"
@@ -193,6 +199,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 <div className="select-wrap">
                   <select
                     aria-label="Start month"
+                    disabled={preview}
                     className="form-select"
                     value={inputs.startMonth}
                     onChange={(e) =>
@@ -210,6 +217,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 <div className="select-wrap">
                   <select
                     aria-label="Start year"
+                    disabled={preview}
                     className="form-select"
                     value={inputs.startYear}
                     onChange={(e) =>
@@ -229,14 +237,14 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
           </div>
 
           {/* Results Summary */}
-          <div ref={resultsRef} className="card card-results reveal">
-            <h3 className="card-heading">
+          <div className="card card-results">
+            <h2 className="card-heading">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" strokeWidth="2"/>
                 <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
               Payment Summary
-            </h3>
+            </h2>
 
             {!hasLoan && (
               <p className="section-sub" style={{ textAlign: 'left', margin: '4px 0 0' }}>
@@ -253,17 +261,10 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 color="var(--rose)"
                 size="2.4rem"
               />
-              {/* No APR figure (8 Oct). This card used to show the entered rate
-                  plus a flat 0.20, an assumed fee spread nobody had quoted, at the
-                  same size as the payment. The card stays, so the grid keeps its
-                  shape, and points at the note under the schedule instead. */}
-              <StatCard
-                label="Est. APR"
-                value="See cost assumptions"
-                color="var(--navy)"
-                size="1.15rem"
-                isString
-              />
+              <div className="stat-card">
+                <span className="stat-label">Estimated APR</span>
+                <AprEstimate principal={inputs.loanAmount} rate={inputs.annualRate} years={inputs.termYears} />
+              </div>
               <StatCard
                 label="Total Interest Paid"
                 value={summary.totalInterest}
@@ -271,7 +272,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
                 size="1.55rem"
               />
               <StatCard
-                label="Total Cost of Loan"
+                label="Total Principal &amp; Interest"
                 value={summary.totalCost}
                 color="var(--teal)"
                 size="1.55rem"
@@ -302,6 +303,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
 
             <a
               href="#contact"
+              data-early="calc-contact"
               onClick={scrollToContact}
               className="btn btn-teal btn-full calc-cta"
             >
@@ -333,7 +335,8 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact }
         }}>
           <em id="cost-assumptions"><strong>Cost assumptions:</strong> the payment shown is principal and
           interest only, on the amount, rate and term you entered. It excludes taxes, insurance and
-          fees. APR is not shown: it depends on fees and lender terms, and needs a personal quote.
+          fees. Estimated APR assumes $0 upfront finance charges unless you enter them using the
+          info icon. Actual costs and APR require a lender's Loan Estimate.
           This is an estimate for educational purposes only.</em>
           <br />
           CA DRE Broker License #02103705 · This is not a commitment to lend. All loans are

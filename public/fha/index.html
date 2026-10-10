@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/cookie-preferences.css" />
+    <script src="/cookie-preferences.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FHA Mortgage Calculator</title>
@@ -921,8 +923,6 @@
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7Z8Q4QF"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <!-- NAV -->
@@ -2510,15 +2510,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   });
 })();
 </script>
-<!-- CallRail Dynamic Number Insertion, at the end of <body> (audit L10,
-     7 Oct), which is where CallRail's install guide puts it. It used to sit
-     in the <head> so the number would be swapped before first paint, but
-     measured it did not do that: on a visitor's first page swap.js still
-     fetches the pool number in a second request, so the real number showed
-     for ~0.5s after paint anyway, while first paint waited ~3s for
-     CallRail (PSI: 920 ms render-blocking). Here it no longer holds the
-     page back. It stays synchronous: loaded async, it never swapped the
-     number at all (L7). Swap timing per page is recorded in audit.md, L10. -->
-<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
+<!-- CallRail is declared here once, but loaded only after optional consent. -->
+<script type="application/x-dt-consent" data-src="https://cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
 </body>
 </html>

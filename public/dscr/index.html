@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/cookie-preferences.css" />
+    <script src="/cookie-preferences.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DSCR Qualification Calculator</title>
-<meta name="description" content="Check whether a rental property qualifies for a DSCR loan. Free calculator that works out your debt service coverage ratio from rent, price, taxes, insurance and HOA, plus a rate snapshot.">
+<title>DSCR Rent Coverage Calculator | Darren Tsai</title>
+<meta name="description" content="Estimate how rental income covers a property's monthly loan payment, taxes, insurance and HOA. Free calculator that works out your debt service coverage ratio from rent, price, taxes, insurance and HOA, plus a rate snapshot.">
 <link rel="canonical" href="https://realdarrentsai.com/dscr/">
 <!-- Darren's headshot, resized from the 134KB source by scripts/build-images.mjs -->
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
@@ -941,8 +943,6 @@
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N7Z8Q4QF"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <!-- NAV -->
@@ -969,8 +969,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <header class="hero">
   <div class="hero-inner container-1080">
     <div class="hero-left">
-      <span class="hero-eyebrow">DSCR Qualification Check</span>
-      <h1 class="hero-title">Find out if your property <em>actually</em> qualifies, before a lender tells you no.</h1>
+      <span class="hero-eyebrow">DSCR Rent Coverage Check</span>
+      <h1 class="hero-title">See how your rent <em>actually</em> covers the monthly payment.</h1>
       <p class="hero-sub">Enter your numbers below. This tool runs the same debt-service coverage math lenders use, so you know where you stand before you ever submit an application.</p>
     </div>
     <div class="dscr-ratio-panel">
@@ -978,7 +978,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p class="dscr-ratio-formula">Monthly <strong>rent</strong> divided by monthly <strong>PITIA</strong> equals your DSCR.</p>
       <div class="dscr-ratio-rows">
         <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">Below 1.00</span><span class="dscr-ratio-row-desc">Rent misses the payment</span></div>
-        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.00 and above</span><span class="dscr-ratio-row-desc">Most lenders qualify</span></div>
+        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.00 and above</span><span class="dscr-ratio-row-desc">Rent covers the estimated payment</span></div>
         <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.20 and above</span><span class="dscr-ratio-row-desc">Room to spare</span></div>
       </div>
       <div class="dscr-ratio-rule"></div>
@@ -1080,12 +1080,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
            real deal. A result nobody asked for is not a result. -->
       <p class="result-waiting" id="resultWaiting">Enter the monthly rent and the purchase price and your DSCR appears here.</p>
       <div id="statusPillWrap">
-        <span class="status-pill pass" id="statusPill">Qualifies for a DSCR loan</span>
+        <span class="status-pill pass" id="statusPill">Rent covers the estimated payment</span>
       </div>
       <div class="result-hero">
         <div class="dscr-number" id="dscrNumber">1.18<span class="unit">DSCR ratio</span></div>
       </div>
-      <p class="result-note" id="resultNote">Your monthly rent covers your estimated mortgage payment with room to spare. Most DSCR lenders qualify properties at 1.00 or above. The rate and terms you actually get still depend on credit, reserves, and property type.</p>
+      <p class="result-note" id="resultNote">Your monthly rent covers your estimated mortgage payment with room to spare. A ratio of 1.00 means rent equals the estimated payment. The rate and terms you actually get still depend on credit, reserves, and property type.</p>
 
       <div class="pitia-breakdown">
         <div class="pitia-cell"><div class="k">Loan Amount</div><div class="v" id="outLoan">$240,000</div></div>
@@ -1095,7 +1095,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
       <div class="microdisclaimer">Estimate only, based on 30-yr amortization and the rate range for your down payment tier. Not a rate lock or quote.</div>
       <button class="cta solid-teal" id="resultGetRateBtn" style="width:100%;justify-content:center;margin-top:16px;">
-        Get My Real Rate
+        Get My DSCR Breakdown
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </div>
@@ -1104,7 +1104,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <!-- CREDIBILITY -->
   <div class="dscr-panel">
-    <p style="margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);">I'm a senior loan officer at Saxton Mortgage and an investor myself. This calculator runs the same DSCR math lenders use to qualify investment properties. That's how I help clients buy rentals without providing every document under the sun.</p>
+    <p style="margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);">I'm a senior loan officer at Saxton Mortgage and an investor myself. This calculator compares rent with the estimated monthly payment, taxes, insurance and HOA. That's how I help clients buy rentals without providing every document under the sun.</p>
   </div>
 
   <!-- LOCK MODULE -->
@@ -1123,7 +1123,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </ol>
     </div>
     <button class="cta" id="openModalBtn">
-      Get My Real Rate
+      Get My DSCR Breakdown
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </button>
   </div>
@@ -1182,7 +1182,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="footer-bottom">
       <p class="footer-copy">&copy; 2026 Darren Tsai. All rights reserved.</p>
       <p class="footer-disclaimer">
-        This calculator is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and qualification figures shown are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, reserves, and other factors. This is not a guarantee of financing. Equal Housing Opportunity.
+        This calculator is provided for general educational and informational purposes only and does not constitute a loan offer, pre-qualification, pre-approval, or commitment to lend. Rates, terms, and coverage figures shown are estimates based on general market data and hypothetical assumptions; actual rates, terms, and eligibility are determined by underwriting and may vary based on credit profile, property type, loan amount, reserves, and other factors. This is not a guarantee of financing. Equal Housing Opportunity.
       </p>
       <div class="footer-compliance">
         <a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
@@ -1198,7 +1198,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- MOBILE STICKY BAR -->
 <div class="mobile-sticky-bar" id="mobileStickyBar">
-  <button type="button" id="stickyGetRateBtn" class="cta">Get My Real Rate</button>
+  <button type="button" id="stickyGetRateBtn" class="cta">Get My DSCR Breakdown</button>
   <a href="tel:+17148875432" class="cta outline">Call</a>
 </div>
 
@@ -1356,7 +1356,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     dscrReady = dscrHasInputs;
 
     const dscr = pitia > 0 ? (rent / pitia) : 0;
-    const qualifies = dscr >= 1.00;
+    const coversPayment = dscr >= 1.00;
 
     // Update ladder active state
     document.querySelectorAll('.rung').forEach(r => {
@@ -1369,14 +1369,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     const pill = $('statusPill');
     const note = $('resultNote');
-    if (qualifies){
+    if (coversPayment){
       pill.className = 'status-pill pass';
-      pill.textContent = 'Qualifies for a DSCR loan';
-      note.textContent = 'Your monthly rent covers your estimated mortgage payment. Most DSCR lenders qualify properties at 1.00 or above. The rate and terms you actually get still depend on credit, reserves, and property type.';
+      pill.textContent = 'Rent covers the estimated payment';
+      note.textContent = 'Your monthly rent covers your estimated mortgage payment. A ratio of 1.00 means rent equals the estimated payment. The rate and terms you actually get still depend on credit, reserves, and property type.';
     } else {
       pill.className = 'status-pill fail';
-      pill.textContent = 'Below standard qualification';
-      note.textContent = "This is a common spot for investors to hear \u201cno\u201d \u2014 but it doesn't automatically mean no. Some lenders will still approve deals in this range using reserves, credit strength, or loan restructuring. This calculator can't factor those in, but a quick call can.";
+      pill.textContent = 'Rent falls short of the estimated payment';
+      note.textContent = "The rent entered is below the estimated monthly payment, taxes, insurance and HOA. This is a coverage estimate, not an eligibility decision. Actual financing depends on underwriting, credit, reserves and property details.";
     }
 
     lastCalc = {
@@ -1670,7 +1670,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }
   $('openModalBtn').addEventListener('click', openRateModal);
   $('resultGetRateBtn').addEventListener('click', openRateModal);
-  // Mobile sticky bar's "Get My Real Rate" opens the rate modal via the same
+  // Mobile sticky bar's "Get My DSCR Breakdown" opens the rate modal via the same
   // code path as #openModalBtn. Nav "Contact" opens the separate contact
   // modal below.
   $('stickyGetRateBtn').addEventListener('click', openRateModal);
@@ -2438,15 +2438,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   });
 })();
 </script>
-<!-- CallRail Dynamic Number Insertion, at the end of <body> (audit L10,
-     7 Oct), which is where CallRail's install guide puts it. It used to sit
-     in the <head> so the number would be swapped before first paint, but
-     measured it did not do that: on a visitor's first page swap.js still
-     fetches the pool number in a second request, so the real number showed
-     for ~0.5s after paint anyway, while first paint waited ~3s for
-     CallRail (PSI: 920 ms render-blocking). Here it no longer holds the
-     page back. It stays synchronous: loaded async, it never swapped the
-     number at all (L7). Swap timing per page is recorded in audit.md, L10. -->
-<script type="text/javascript" src="//cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
+<!-- CallRail is declared here once, but loaded only after optional consent. -->
+<script type="application/x-dt-consent" data-src="https://cdn.callrail.com/companies/650367292/c3023306605245b12c92/12/swap.js"></script>
 </body>
 </html>

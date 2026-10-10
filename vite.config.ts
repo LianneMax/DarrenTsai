@@ -19,6 +19,7 @@ const PRERENDERED: Record<string, string> = {
   '/debt-consolidation/index.html': 'renderDebtShell',
   '/home-equity/index.html': 'renderEquityShell',
   '/adu/index.html': 'renderAduShell',
+  '/mortgage-calculator/index.html': 'renderMortgageShell',
 }
 
 /**
@@ -27,8 +28,9 @@ const PRERENDERED: Record<string, string> = {
  * (audit, "Homepage LCP", Option A). The markup comes from src/prerender.tsx,
  * which renders the real Nav and Hero components.
  *
- * Build only, and only the pages in PRERENDERED: /mortgage-calculator/ opens on
- * the calculator, which is not pre-rendered. A throwaway Vite server in SSR mode
+ * Build only, and only the pages in PRERENDERED. The mortgage entry includes
+ * the real empty calculator with preview controls disabled until React mounts.
+ * A throwaway Vite server in SSR mode
  * loads the components with the same TSX transform the app uses; it is created
  * without this config file, so it cannot recurse into this plugin.
  *
@@ -82,8 +84,8 @@ function prerenderHomeShell(): Plugin {
  * ~360 ms): with the nav and hero pre-rendered, the first paint still waited
  * for a second request to fetch the CSS they need. Loading it without blocking
  * instead would paint the hero unstyled and then jump, so it goes inside the
- * HTML. The file is still emitted, because /mortgage-calculator/ links it
- * normally. The cost is that / no longer caches its CSS between visits; at
+ * HTML. The CSS file is still emitted by Vite, so future non-pre-rendered
+ * entries can link it normally. The cost is that / no longer caches its CSS between visits; at
  * ~7 KB gzipped against a whole round trip on a phone, that is the better
  * trade for the page people land on.
  *

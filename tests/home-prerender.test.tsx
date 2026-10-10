@@ -143,6 +143,33 @@ describe('the pre-rendered /debt-consolidation/ shell', () => {
   });
 });
 
+describe('the pre-rendered mortgage calculator', () => {
+  it('paints the real empty calculator with controls disabled until React replaces them', async () => {
+    const { renderMortgageShell } = await import('../src/prerender');
+    const shell = renderMortgageShell();
+    document.body.innerHTML = shell;
+    expect(document.querySelector('h1')?.textContent).toBe('Mortgage Calculator');
+    const amount = document.querySelector<HTMLInputElement>('#loanAmount')!;
+    const rate = document.querySelector<HTMLInputElement>('#annualRate')!;
+    expect(amount.value).toBe('');
+    expect(rate.value).toBe('');
+    for (const control of document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select')) {
+      expect(control.disabled).toBe(true);
+    }
+    expect(shell).not.toMatch(/class="[^"]*\breveal\b/);
+    expect(shell).not.toContain('Amortization Over Time');
+    expect(shell).not.toContain('tel:');
+    expect(document.querySelector('[data-early="calc-contact"]')).not.toBeNull();
+  });
+
+  it('uses the same early-click queue and replays the request on the mounted calculator', () => {
+    const script = (html: string) => /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(html)?.[1]?.replace(/\r\n/g, '\n');
+    expect(script(read('mortgage-calculator/index.html'))).toBe(script(read('index.html')));
+    expect(read('src/MortgageCalculatorApp.tsx')).toContain('__dtEarlyClick');
+    expect(read('vite.config.ts')).toContain("'/mortgage-calculator/index.html': 'renderMortgageShell'");
+  });
+});
+
 describe('the early-click queue in index.html', () => {
   type Early = { take: () => string | null };
   const script = /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(read('index.html'))?.[1];

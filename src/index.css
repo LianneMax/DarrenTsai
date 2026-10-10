@@ -2336,3 +2336,18 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
   .hub-about img { max-width: 160px; }
   .hub-choices { grid-template-columns: 1fr; }
 }
+:root { --apr-border: #d5e1e6; }
+.apr-estimate { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
+.apr-number { font-size: 1.15rem; font-weight: 700; color: var(--navy); }
+.apr-assumption { flex-basis: 100%; font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.apr-info { position: relative; text-align: left; font-weight: 400; }
+.apr-info summary { cursor: pointer; list-style: none; font-size: 1.1rem; color: var(--teal); }
+.apr-info summary::-webkit-details-marker { display: none; }
+.apr-info summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.apr-tooltip { display: block; position: absolute; z-index: 10; right: 0; top: 28px; width: min(270px, 75vw); padding: 14px; border: 1px solid var(--apr-border); border-radius: 8px; background: white; color: var(--text-muted); box-shadow: 0 6px 20px #19364026; font-size: 12px; line-height: 1.5; }
+.apr-tooltip label { display: block; margin-top: 10px; font-weight: 600; }
+.apr-tooltip input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 8px; margin: 4px 0; border: 1px solid var(--apr-border); border-radius: 4px; }
+.apr-tooltip small { display: block; }
+@media (max-width: 600px) {
+  .apr-tooltip { position: fixed; left: 16px; right: 16px; top: auto; bottom: 90px; width: auto; }
+}
