@@ -61,7 +61,7 @@ with an unrouted source fails there.
 | CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
-| Tests | Vitest + jsdom, 33 files / 1175 tests, all passing |
+| Tests | Vitest + jsdom, 33 files / 1177 tests, all passing |
 | Validation | zod, libphonenumber-js |
 | PDF | pdf-lib at runtime; reportlab (`scripts/build_dscr_pdf.py`) to build the static template |
 
@@ -71,7 +71,7 @@ with an unrouted source fails there.
 npm run dev      # vite only; /api/* proxies to :8888 and 404s without netlify dev
 netlify dev      # what you actually want: functions + vite together
 npm run build    # tsc -b && vite build
-npm test         # vitest run (1175 tests)
+npm test         # vitest run (1177 tests)
 npm run lint     # eslint . (clean)
 npm run images   # regenerate favicon/avatar derivatives from public/darren.jpg
 ```
@@ -263,7 +263,7 @@ or the lead lands on the generic tab with its fields dropped:
 
 ## Known state and open work
 
-- All 1175 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
+- All 1177 tests pass, `npm run build` succeeds, and `npm run lint` is clean.
 - **The Sheet schema release (R1) is on `main` and NOT yet deployed to Apps
   Script or migrated (10 Oct).** The by-header-name rule above describes it.
   The site half ships with `main` and is safe against the live @46 script (the

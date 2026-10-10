@@ -27,28 +27,22 @@ const FHA = 'public/fha/index.html';
 const REI = 'public/realestateinvesting/index.html';
 const LANDING = [DSCR, FHA, REI];
 
-describe('nothing is sized against the viewport including its scrollbar', () => {
-  /**
-   * R8-3, ~8px over at every desktop width on /fha/ and /realestateinvesting/.
-   *
-   * `.reviews-carousel{width:100vw;left:50%;transform:translateX(-50%)}` is a
-   * full-bleed break-out, and 100vw counts the scrollbar while the page's own
-   * width does not, so the element ends ~8px past each edge. On these two pages
-   * the carousel's parent section is already full width, so width:100% is the
-   * same picture without the overhang.
-   *
-   * src/index.css carries the same rule for the React pages, where the carousel
-   * DOES sit inside a padded container and the break-out is doing real work.
-   * That copy is left alone: `html` and `body` there set `overflow-x:hidden`,
-   * which is why the homepage measures clean, and it cannot be copied onto the
-   * landing pages because it breaks their sticky form.
-   */
-  it.each([FHA, REI])('%s does not size the carousel with 100vw', (page) => {
-    const rule = /\.reviews-carousel\{([^}]*)\}/.exec(read(page));
-    expect(rule, 'the rule moved').not.toBeNull();
-    expect(rule![1]).not.toContain('100vw');
-    // The break-out went with it: the parent section is full width already.
-    expect(rule![1]).not.toContain('translateX(-50%)');
+/**
+ * Client reviews live on the homepage only (Max, 10 Oct). /fha/ and
+ * /realestateinvesting/ each carried a copy of the homepage carousel, nine
+ * reviews in their own script, which put the same social proof between a
+ * visitor and the one form those pages exist for. The carousel's R8-3 width fix
+ * (100vw overhanging by the scrollbar) went with it.
+ */
+describe('client reviews are on the homepage only', () => {
+  it.each(LANDING)('%s has no reviews section, carousel or review modal', (page) => {
+    const html = read(page);
+    for (const gone of ['reviews-section', 'reviews-carousel', 'reviewsTrack', 'reviewModalOverlay', 'var REVIEWS']) {
+      expect(html, gone).not.toContain(gone);
+    }
+  });
+  it('the homepage still has them', () => {
+    expect(read('src/App.tsx')).toMatch(/<Reviews\b/);
   });
 });
 
