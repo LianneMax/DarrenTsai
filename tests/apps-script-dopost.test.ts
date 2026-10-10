@@ -51,6 +51,27 @@ function post(h: Harness, payload: Record<string, unknown>) {
   return JSON.parse(res.__body) as { success: boolean; error?: string };
 }
 
+describe('server-hop authentication', () => {
+  it('rejects missing or forged credentials before writes and alerts', () => {
+    const mail: unknown[] = [];
+    const { gas, tabs } = loadGas<{ doPost: Harness['doPost'] }>({ exports: ['doPost'],
+      props: { LEAD_PROXY_KEY: 'private-test-key' }, onMail: m => mail.push(m) });
+    for (const payload of [{ email: 'test@gmail.com' }, { email: 'test@gmail.com', _proxyKey: 'forged' }]) {
+      const result = gas.doPost({ postData: { contents: JSON.stringify(payload) } }) as { __body: string };
+      expect(JSON.parse(result.__body)).toEqual({ success: false, error: 'Unauthorized' });
+    }
+    expect(tabs.size).toBe(0);
+    expect(mail).toEqual([]);
+  });
+
+  it('accepts an authenticated lead and never stores the credential', () => {
+    const { gas, tabs } = loadGas<{ doPost: Harness['doPost'] }>({ exports: ['doPost'], props: { LEAD_PROXY_KEY: 'private-test-key' } });
+    const result = gas.doPost({ postData: { contents: JSON.stringify({ email: 'test@gmail.com', source: 'home-contact', _proxyKey: 'private-test-key' }) } }) as { __body: string };
+    expect(JSON.parse(result.__body).success).toBe(true);
+    expect(JSON.stringify([...tabs.values()])).not.toContain('private-test-key');
+  });
+});
+
 const ATTR = {
   utm_source: 'google',
   utm_medium: 'cpc',
@@ -470,18 +491,21 @@ describe('a tab that already exists is extended, never rewritten', () => {
 });
 
 describe('failures are reported, not swallowed', () => {
-  it('replies success:false and alerts when the payload is not JSON', () => {
+  it('rejects malformed anonymous JSON without sending a failure email', () => {
     const res = h.doPost({ postData: { contents: '<not json>' } }) as { __body: string };
     const body = JSON.parse(res.__body);
     expect(body.success).toBe(false);
-    expect(h.mail).toHaveLength(1);
-    expect(h.mail[0].subject).toContain('LEAD PIPELINE FAILURE');
-    expect(h.mail[0].body).toContain('<not json>'); // the raw payload is recoverable
+    expect(body.error).toBe('Invalid JSON');
+    expect(h.mail).toHaveLength(0);
   });
 
-  it('alerts both recipients, so a lost lead is never one inbox away from silence', () => {
-    h.doPost({ postData: { contents: 'nope' } });
-    expect(h.mail[0].to.split(',').length).toBe(2);
+  it('rejects non-object input without creating rows or emailing Darren', () => {
+    for (const contents of ['null', '[]', '"text"']) {
+      const res = h.doPost({ postData: { contents } }) as { __body: string };
+      expect(JSON.parse(res.__body)).toEqual({ success: false, error: 'Invalid payload' });
+    }
+    expect(h.tabs.size).toBe(0);
+    expect(h.mail).toEqual([]);
   });
 
   it('an empty POST body is handled as an empty lead, not a crash', () => {

@@ -4,6 +4,14 @@ How to put a new version of `google-apps-script.js` live **without changing the 
 
 The one rule: **update the existing deployment in place.** Never `clasp deploy` without `-i`/`--deploymentId`: that creates a new deployment with a new `/exec` URL, and every form on the site keeps posting to the old one.
 
+## Server authentication and email opt-out rollout
+
+Publish the Netlify changes first, then update Apps Script in place. The proxy adds a server-only `_proxyKey`; the old script ignores that extra field, so mixed versions preserve lead delivery. The updated script validates `LEAD_PROXY_KEY`, falling back to the existing `NETLIFY_CONTACT_CONFIRM_KEY`; Netlify uses the matching `LEAD_PROXY_KEY`, falling back to `CONTACT_CONFIRM_API_KEY`. Verify the private values match without printing them. Prefer a dedicated matching `LEAD_PROXY_KEY` for independent rotation. Without either configured property the script remains in compatibility mode; do not claim protection until the configured deployment rejects unsigned submissions. Check a controlled TEST through the proxy before retiring the old deployment version.
+
+The shared email sender checks persistent suppression before every send and supplies token-based unsubscribe links plus one-click headers. Deploying Netlify enables website suppression; updating Apps Script marks suppressed queued sends as skipped and enables `recordEmailOptOut(email)`. This does not connect an inbox or synchronize native Bonzo/HubSpot campaigns. Preserve all contacts and submission history. Previously sent mail retains its old footer.
+
+Preview origin checks use the configured `SITE_NAME`; verify the site's Netlify name when testing deploy previews. Production domain requests are allowed independently. Rate storage uses strong reads and conditional writes; storage failures/timeouts deliberately retain the existing fail-open lead policy. Browser CSP is report-only initially, so enforcement still requires a vendor-resource review.
+
 ## What @45 is
 
 - Source: `google-apps-script.js` at commit `997054f` (merged into `main`).

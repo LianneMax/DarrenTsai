@@ -101,10 +101,21 @@ export async function withinRateLimit(ip: string | undefined, now = Date.now()):
   if (!ip) return true;
   const key = createHash("sha256").update(ip).digest("hex").slice(0, 32);
   const check = (async () => {
-    const store = getStore(LIMIT_STORE);
-    const next = nextCount((await store.get(key, { type: "json" })) as Counter | null, now);
-    await store.setJSON(key, next);
-    return next.count <= LEAD_LIMIT;
+    const store = getStore({ name: LIMIT_STORE, consistency: "strong" });
+    // Concurrent requests used to overwrite the same count (20 requests became
+    // one). Only a successful version-checked write reserves an allowance.
+    for (let attempt = 0; attempt < 32; attempt++) {
+      const current = await store.getWithMetadata(key, { type: "json", consistency: "strong" });
+      if (current && !current.etag) throw new Error("Rate counter has no version");
+      const next = nextCount(current?.data as Counter | null, now);
+      if (next.count > LEAD_LIMIT) return false;
+      const result = await store.setJSON(key, next, current
+        ? { onlyIfMatch: current.etag }
+        : { onlyIfNew: true });
+      if (result.modified) return true;
+    }
+    // Repeated contention is positive abuse evidence, not a storage outage.
+    return false;
   })();
   const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(true), LIMIT_BUDGET_MS));
   try {
@@ -273,7 +284,12 @@ function originAllowed(req: Request): boolean {
   if (!raw) return false;
   try {
     const host = new URL(raw).hostname.toLowerCase();
-    return ALLOWED_HOSTS.includes(host) || host.endsWith(".netlify.app");
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return false;
+    const siteName = Netlify.env.get("SITE_NAME");
+    const preview = siteName && (host === `${siteName}.netlify.app`
+      || (host.endsWith(`--${siteName}.netlify.app`) && /^[a-z0-9-]+$/.test(host.split("--")[0])));
+    return ALLOWED_HOSTS.includes(host) || Boolean(preview);
   } catch {
     return false;
   }
@@ -620,12 +636,15 @@ export default async (req: Request, context: Context) => {
     });
   }
 
-  // The body goes upstream byte for byte unless there is a HubSpot cookie to
-  // add, so a visitor without one (blocked tracker, first page load before the
-  // script ran) is forwarded exactly as before. The cookie wins over anything
-  // the body claims, because the cookie is the browser's and the body is not.
+  // Preserve lead fields while adding the verified cookie and server-only
+  // authentication. The cookie wins over a visitor-supplied hutk value.
   const hutk = readHutk(req.headers.get("cookie"));
-  const forwarded = hutk ? JSON.stringify({ ...payload, hutk }) : raw;
+  // The secret is added only on the server hop. Never trust a visitor-supplied
+  // copy or include it in the rescue email, which continues to use raw.
+  const proxyKey = Netlify.env.get("LEAD_PROXY_KEY") || Netlify.env.get("CONTACT_CONFIRM_API_KEY");
+  delete payload._proxyKey;
+  const forwarded = JSON.stringify({ ...payload, ...(hutk ? { hutk } : {}),
+    ...(proxyKey ? { _proxyKey: proxyKey } : {}) });
 
   // The DNS check eats into the same budget: Netlify kills the function at 10s
   // and the rescue email still needs its ~300ms at the end.

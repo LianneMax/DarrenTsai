@@ -59,7 +59,7 @@ beforeEach(() => {
   vi.stubGlobal('Netlify', {
     env: {
       get: (k: string) =>
-        ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, RESEND_API_KEY: 're_test' })[k],
+        ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, RESEND_API_KEY: 're_test', SITE_NAME: 'site' })[k],
     },
   });
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -93,6 +93,18 @@ describe('request guards', () => {
   it('allows a Netlify deploy preview', async () => {
     const res = await handler(req(LEAD, { origin: 'https://deploy-preview-3--site.netlify.app' }), ctx);
     expect(res.status).toBe(200);
+  });
+
+  it('rejects an unrelated Netlify site', async () => {
+    const res = await handler(req(LEAD, { origin: 'https://unrelated.netlify.app' }), ctx);
+    expect(res.status).toBe(403);
+    expect(upstreamCalled()).toBe(false);
+  });
+
+  it('adds only the configured server credential to the upstream payload', async () => {
+    vi.stubGlobal('Netlify', { env: { get: (k: string) => ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, LEAD_PROXY_KEY: 'private-test-key' })[k] } });
+    await handler(req({ ...LEAD, _proxyKey: 'visitor-forgery' }), ctx);
+    expect(JSON.parse(String(calls.find(c => c.url === UPSTREAM)!.init.body))).toEqual({ ...LEAD, _proxyKey: 'private-test-key' });
   });
 
   /**

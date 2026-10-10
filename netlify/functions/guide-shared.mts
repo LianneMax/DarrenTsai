@@ -18,6 +18,7 @@
 // guide silently or mails the same lead five times.
 
 import type { Context } from "@netlify/functions";
+import { isEmailSuppressed, unsubscribeLinkFor } from './email-preferences.mts';
 
 export const FROM = "Darren Tsai <darren@realdarrentsai.com>";
 
@@ -103,9 +104,15 @@ export function guideSender(spec: GuideSpec) {
     }
 
     if (!lead.email) return jsonResponse(400, { error: "email required" });
+    if (typeof lead.email !== 'string') return jsonResponse(400, { error: 'invalid email' });
 
     try {
+      if (await isEmailSuppressed(lead.email)) return jsonResponse(200, { success: true, suppressed: true });
+      const unsubscribeUrl = await unsubscribeLinkFor(lead.email);
       const attachments = await spec.buildAttachments(lead);
+      // Check again after any slow PDF work: an opt-out can arrive while the
+      // attachment is being built. No automatic resubscribe on a new lead.
+      if (await isEmailSuppressed(lead.email)) return jsonResponse(200, { success: true, suppressed: true });
 
       const emailRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -117,7 +124,11 @@ export function guideSender(spec: GuideSpec) {
           from: FROM,
           to: [lead.email],
           subject: typeof spec.subject === "function" ? spec.subject(lead) : spec.subject,
-          html: spec.buildEmailHtml(lead),
+          html: spec.buildEmailHtml(lead).replace('mailto:darren@realdarrentsai.com?subject=Unsubscribe', unsubscribeUrl),
+          headers: {
+            'List-Unsubscribe': `<${unsubscribeUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
           attachments,
         }),
       });

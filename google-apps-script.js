@@ -1458,6 +1458,25 @@ function classifyGuideResponse(code) {
   return 'rejected';
 }
 
+/**
+ * Records an explicit unsubscribe request before any more site email sends.
+ * Called by an operator now; an inbox integration can call this once Darren
+ * connects the inbox receiving replies. It does not claim to read that inbox
+ * or change Bonzo/HubSpot's separate campaign subscription settings.
+ */
+function recordEmailOptOut(email) {
+  const props = PropertiesService.getScriptProperties();
+  const senderUrl = String(props.getProperty('NETLIFY_CONTACT_CONFIRM_URL') || '');
+  const key = props.getProperty('NETLIFY_CONTACT_CONFIRM_KEY');
+  if (!/^https:\/\/realdarrentsai\.com\/api\/send-contact-confirmation$/.test(senderUrl) || !key) throw new Error('Email preference endpoint not configured');
+  const response = UrlFetchApp.fetch(senderUrl.replace('/send-contact-confirmation', '/stop-email'), {
+    method: 'post', contentType: 'application/json', headers: { 'x-api-key': key },
+    payload: JSON.stringify({ email: String(email || '').trim(), reason: 'manual' }), muteHttpExceptions: true,
+  });
+  if (response.getResponseCode() !== 200 || JSON.parse(response.getContentText()).suppressed !== true) throw new Error('Could not record email opt-out');
+  return { suppressed: true };
+}
+
 function postGuide(ss, name, urlProp, keyProp, body) {
   const props = PropertiesService.getScriptProperties();
   const url = props.getProperty(urlProp);
@@ -1477,6 +1496,11 @@ function postGuide(ss, name, urlProp, keyProp, body) {
     const code = resp.getResponseCode();
     const text = resp.getContentText().slice(0, 500);
     logDebug(ss, name + ': url=' + url + ' response ' + code + ' ' + text, body.email);
+    if (code >= 200 && code < 300) {
+      try {
+        if (JSON.parse(text).suppressed === true) return { outcome: 'skipped', detail: name + ': recipient opted out' };
+      } catch { /* Older senders return a plain success body; keep compatibility. */ }
+    }
     return { outcome: classifyGuideResponse(code), detail: name + ' ' + code + ' ' + text };
   } catch (err) {
     logDebug(ss, name + ': threw ' + err.toString(), body.email);
@@ -1626,7 +1650,36 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
-    const data = JSON.parse(raw);
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      // Malformed anonymous input is not a lost real lead and must not alert
+      // Darren. The proxy already validates JSON before this server hop.
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Invalid JSON' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Invalid payload' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    // The public exec URL formerly bypassed every proxy abuse guard. During
+    // rollout the existing confirmation key is a compatible private fallback;
+    // LEAD_PROXY_KEY permits independent rotation after both sides are ready.
+    // Reject before Sheet access or alerts, and remove credentials from logs.
+    const proxyKey = PropertiesService.getScriptProperties().getProperty('LEAD_PROXY_KEY') ||
+      PropertiesService.getScriptProperties().getProperty('NETLIFY_CONTACT_CONFIRM_KEY');
+    const suppliedKey = typeof data._proxyKey === 'string' ? data._proxyKey : '';
+    delete data._proxyKey;
+    raw = JSON.stringify(data);
+    if (proxyKey) {
+      let difference = suppliedKey.length ^ proxyKey.length;
+      for (let i = 0; i < proxyKey.length; i++) {
+        difference |= proxyKey.charCodeAt(i) ^ (suppliedKey.charCodeAt(i) || 0);
+      }
+      if (difference) return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
     lock.waitLock(20000);

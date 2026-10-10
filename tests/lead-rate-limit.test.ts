@@ -12,12 +12,16 @@ let store: Record<string, unknown> = {};
 let mode: 'ok' | 'throw' | 'slow' = 'ok';
 vi.mock('@netlify/blobs', () => ({
   getStore: vi.fn(() => ({
-    get: async (key: string) => {
+    getWithMetadata: async (key: string) => {
       if (mode === 'throw') throw new Error('blobs down');
       if (mode === 'slow') await new Promise((r) => setTimeout(r, 5000));
-      return store[key] ?? null;
+      return store[key] ? { data: store[key], etag: JSON.stringify(store[key]) } : null;
     },
-    setJSON: async (key: string, value: unknown) => { store[key] = value; },
+    setJSON: async (key: string, value: unknown, options: { onlyIfNew?: boolean; onlyIfMatch?: string }) => {
+      if ((options.onlyIfNew && store[key]) || (options.onlyIfMatch && options.onlyIfMatch !== JSON.stringify(store[key]))) return { modified: false };
+      store[key] = value;
+      return { modified: true };
+    },
   })),
 }));
 
@@ -62,6 +66,11 @@ describe('the window', () => {
 });
 
 describe('one address', () => {
+  it('reserves exactly ten allowances across one hundred simultaneous requests', async () => {
+    const results = await Promise.all(Array.from({ length: 100 }, () => withinRateLimit('203.0.113.7')));
+    expect(results.filter(Boolean)).toHaveLength(LEAD_LIMIT);
+    expect(Object.values(store)).toEqual([expect.objectContaining({ count: LEAD_LIMIT })]);
+  });
   it(`is let through ${LEAD_LIMIT} times, then refused`, async () => {
     for (let i = 0; i < LEAD_LIMIT; i++) expect(await withinRateLimit('203.0.113.7')).toBe(true);
     expect(await withinRateLimit('203.0.113.7')).toBe(false);

@@ -16,6 +16,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+vi.mock('@netlify/blobs', () => ({ getStore: () => ({
+  get: async () => null, set: async () => {}, setJSON: async () => {},
+}) }));
+
 import dscrHandler from '../netlify/functions/send-dscr-guide.mts';
 import reiHandler from '../netlify/functions/send-rei-guide.mts';
 import fhaHandler from '../netlify/functions/send-fha-guide.mts';
