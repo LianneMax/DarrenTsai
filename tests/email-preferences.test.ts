@@ -8,6 +8,8 @@ vi.mock('@netlify/blobs', () => ({ getStore: vi.fn((_name, options) => {
     get: async (key: string) => { if (state.down) throw Error('Store unavailable'); return storage.get(key) ?? null; },
     set: async (key: string, value: unknown) => { storage.set(key, value); },
     setJSON: async (key: string, value: unknown) => { if (state.down) throw Error('Store unavailable'); storage.set(key, value); },
+    list: async ({ prefix }: { prefix: string }) => ({ blobs: [...storage.keys()].filter(key => key.startsWith(prefix)).map(key => ({ key })) }),
+    delete: async (key: string) => { storage.delete(key); },
   };
 }) }));
 import { stopEmail, unsubscribeLinkFor, isEmailSuppressed } from '../netlify/functions/email-preferences.mts';
@@ -36,6 +38,42 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('persistent email opt-out', () => {
+  it('keeps Sheet updates pending until acknowledged, without lifting suppression', async () => {
+    await stopEmail(email, 'link');
+    const api = (body: unknown) => stopEmailRequest(new Request('https://realdarrentsai.com/api/stop-email', {
+      method: 'POST', headers: { 'x-api-key': 'private-test' }, body: JSON.stringify(body),
+    }));
+    expect(await (await api({ operation: 'pending' })).json()).toEqual({ emails: [email] });
+    await api({ operation: 'acknowledge', email });
+    expect(await (await api({ operation: 'pending' })).json()).toEqual({ emails: [] });
+    expect(await isEmailSuppressed(email)).toBe(true);
+  });
+
+  it('marks all matching historical rows TRUE without moving headers or changing other leads', () => {
+    // Use the harness's actual Spreadsheet binding, keeping Range writes real.
+    const harness = loadGas<{ SpreadsheetApp: { openById: (id: string) => unknown }; markLeadEmailUnsubscribed: (ss: unknown, email: string) => void; leadEmailUnsubscribed: (ss: unknown, email: string) => boolean }>({
+      exports: ['SpreadsheetApp', 'markLeadEmailUnsubscribed', 'leadEmailUnsubscribed'],
+    });
+    harness.tabs.set('Leads', { name: 'Leads', rows: [['Email', 'Name'], [email, 'One'], ['another@example.com', 'Two'], [email.toUpperCase(), 'Three']] });
+    const spreadsheet = harness.gas.SpreadsheetApp.openById('test');
+    harness.gas.markLeadEmailUnsubscribed(spreadsheet, email);
+    harness.gas.markLeadEmailUnsubscribed(spreadsheet, email);
+    expect(harness.tabs.get('Leads')!.rows).toEqual([['Email', 'Name', 'Unsubscribe?'], [email, 'One', true], ['another@example.com', 'Two'], [email.toUpperCase(), 'Three', true]]);
+    expect(harness.gas.leadEmailUnsubscribed(spreadsheet, email)).toBe(true);
+    expect(harness.gas.leadEmailUnsubscribed(spreadsheet, 'another@example.com')).toBe(false);
+  });
+  it('a manual TRUE prevents guide delivery and records durable suppression', () => {
+    const calls: string[] = [];
+    const harness = loadGas<{ SpreadsheetApp: { openById: (id: string) => unknown }; postGuide: (...args: unknown[]) => { outcome: string } }>({
+      exports: ['SpreadsheetApp', 'postGuide'], props: {
+        NETLIFY_CONTACT_CONFIRM_URL: 'https://realdarrentsai.com/api/send-contact-confirmation', NETLIFY_CONTACT_CONFIRM_KEY: 'private-test',
+        URL: 'https://example.invalid/guide', KEY: 'guide-test',
+      }, fetch: url => { calls.push(url); return { getResponseCode: () => 200, getContentText: () => '{"suppressed":true}' }; },
+    });
+    harness.tabs.set('Leads', { name: 'Leads', rows: [['Email', 'Unsubscribe?'], [email, true]] });
+    expect(harness.gas.postGuide(harness.gas.SpreadsheetApp.openById('test'), 'guide', 'URL', 'KEY', { email }).outcome).toBe('skipped');
+    expect(calls).toEqual(['https://realdarrentsai.com/api/stop-email']);
+  });
   it('uses opaque stable links without email addresses and GET scanners cannot unsubscribe', async () => {
     const link = await unsubscribeLinkFor(email);
     expect(link).not.toContain(email); expect(await unsubscribeLinkFor(email)).toBe(link);
@@ -94,11 +132,11 @@ describe('persistent email opt-out', () => {
     expect(sent).toHaveLength(0);
   });
   it('Apps Script treats a suppressed send as skipped, not as a delivery failure or retry', () => {
-    const { gas } = loadGas<{ postGuide: (...args: unknown[]) => { outcome: string } }>({
-      exports: ['postGuide'], props: { URL: 'https://example.invalid/LOCAL', KEY: 'private-test' },
+    const { gas } = loadGas<{ postGuide: (...args: unknown[]) => { outcome: string }; SpreadsheetApp: { openById: (id: string) => unknown } }>({
+      exports: ['postGuide', 'SpreadsheetApp'], props: { URL: 'https://example.invalid/LOCAL', KEY: 'private-test' },
       fetch: () => ({ getResponseCode: () => 200, getContentText: () => '{"success":true,"suppressed":true}' }),
     });
-    expect(gas.postGuide({}, 'test', 'URL', 'KEY', {email}).outcome).toBe('skipped');
+    expect(gas.postGuide(gas.SpreadsheetApp.openById('test'), 'test', 'URL', 'KEY', {email}).outcome).toBe('skipped');
   });
   it('the operator helper records consent through the configured private endpoint', () => {
     let called = '';

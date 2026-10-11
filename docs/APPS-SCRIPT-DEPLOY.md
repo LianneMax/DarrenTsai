@@ -10,6 +10,8 @@ Publish the Netlify changes first, then update Apps Script in place. The proxy a
 
 The shared email sender checks persistent suppression before every send and supplies token-based unsubscribe links plus one-click headers. Deploying Netlify enables website suppression; updating Apps Script marks suppressed queued sends as skipped and enables `recordEmailOptOut(email)`. This does not connect an inbox or synchronize native Bonzo/HubSpot campaigns. Preserve all contacts and submission history. Previously sent mail retains its old footer.
 
+After deployment, run `initializeEmailOptOutColumns()` once to append `Unsubscribe?` to existing lead tabs without moving any columns. Confirmed link/manual opt-outs enter a durable outbox; the existing minute worker marks matching rows TRUE and acknowledges only successful updates. Google outages delay the display update but do not lift suppression. A manually entered TRUE is honored before queued guide delivery and copied to persistent suppression. Blank means no recorded opt-out; changing TRUE back to blank does not resubscribe someone. Reply-based requests require reading the inbox, then marking TRUE or calling `recordEmailOptOut(email)`; no inbox reading is performed by this feature.
+
 Preview origin checks use the configured `SITE_NAME`; verify the site's Netlify name when testing deploy previews. Production domain requests are allowed independently. Rate storage uses strong reads and conditional writes; storage failures/timeouts deliberately retain the existing fail-open lead policy. Browser CSP is report-only initially, so enforcement still requires a vendor-resource review.
 
 ## What @45 is

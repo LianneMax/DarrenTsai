@@ -1477,8 +1477,83 @@ function recordEmailOptOut(email) {
   return { suppressed: true };
 }
 
+/** Append-only display column on every existing lead tab, never on Debug or
+ * Follow-ups. Blank means no recorded opt-out; TRUE means stop website email.
+ * Match all submissions for the address, preserving every other cell. */
+function emailOptOutSheets(ss) {
+  const names = leadTabSchemas().map(function (schema) { return schema.tab; }).concat(['Newsletter', 'Qualify']);
+  return names.filter(function (name, index) { return names.indexOf(name) === index; })
+    .map(function (name) { return ss.getSheetByName(name); }).filter(Boolean);
+}
+function markLeadEmailUnsubscribed(ss, email) {
+  const address = String(email || '').trim().toLowerCase();
+  if (!address) return;
+  emailOptOutSheets(ss).forEach(function (sheet) {
+    const headers = liveHeaders(sheet);
+    const emailColumn = headers.indexOf('Email');
+    if (emailColumn < 0) return;
+    let unsubscribeColumn = headers.indexOf('Unsubscribe?');
+    if (unsubscribeColumn < 0) {
+      unsubscribeColumn = headers.length;
+      sheet.getRange(1, unsubscribeColumn + 1, 1, 1).setValues([['Unsubscribe?']]);
+      styleHeaderRange(sheet.getRange(1, unsubscribeColumn + 1, 1, 1));
+    }
+    if (sheet.getLastRow() < 2) return;
+    const emails = sheet.getRange(2, emailColumn + 1, sheet.getLastRow() - 1, 1).getValues();
+    emails.forEach(function (row, index) {
+      if (String(row[0] || '').trim().toLowerCase() === address) {
+        sheet.getRange(index + 2, unsubscribeColumn + 1, 1, 1).setValues([[true]]);
+      }
+    });
+  });
+}
+function initializeEmailOptOutColumns() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  withSheetLock(function () { markLeadEmailUnsubscribed(ss, '__column_setup__'); });
+}
+function leadEmailUnsubscribed(ss, email) {
+  const address = String(email || '').trim().toLowerCase();
+  return emailOptOutSheets(ss).some(function (sheet) {
+    const headers = liveHeaders(sheet);
+    const emailColumn = headers.indexOf('Email'), optOutColumn = headers.indexOf('Unsubscribe?');
+    if (emailColumn < 0 || optOutColumn < 0 || sheet.getLastRow() < 2) return false;
+    return sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues().some(function (row) {
+      return String(row[emailColumn] || '').trim().toLowerCase() === address &&
+        String(row[optOutColumn]).toLowerCase() === 'true';
+    });
+  });
+}
+function syncEmailOptOuts(ss) {
+  const props = PropertiesService.getScriptProperties();
+  const url = String(props.getProperty('NETLIFY_CONTACT_CONFIRM_URL') || '').replace('/send-contact-confirmation', '/stop-email');
+  const key = props.getProperty('NETLIFY_CONTACT_CONFIRM_KEY');
+  if (url !== 'https://realdarrentsai.com/api/stop-email' || !key) return;
+  function request(body) {
+    const response = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json',
+      headers: { 'x-api-key': key }, payload: JSON.stringify(body), muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) throw new Error('Email preference sync unavailable');
+    return JSON.parse(response.getContentText());
+  }
+  try {
+    withSheetLock(function () { markLeadEmailUnsubscribed(ss, '__column_setup__'); });
+    const pending = request({ operation: 'pending' }).emails || [];
+    pending.forEach(function (email) {
+      withSheetLock(function () { markLeadEmailUnsubscribed(ss, email); SpreadsheetApp.flush(); });
+      request({ operation: 'acknowledge', email: email });
+    });
+  } catch (err) {
+    // The opt-out is already enforced by Netlify. Retain the outbox and retry
+    // next minute; this display-sync failure must not email Darren or block leads.
+    Logger.log('Email preference Sheet sync deferred: ' + err.toString());
+  }
+}
+
 function postGuide(ss, name, urlProp, keyProp, body) {
   const props = PropertiesService.getScriptProperties();
+  if (leadEmailUnsubscribed(ss, body.email)) {
+    recordEmailOptOut(body.email);
+    return { outcome: 'skipped', detail: name + ': recipient opted out in Sheet' };
+  }
   const url = props.getProperty(urlProp);
   const key = props.getProperty(keyProp);
   if (!url || !key) {
@@ -1498,7 +1573,10 @@ function postGuide(ss, name, urlProp, keyProp, body) {
     logDebug(ss, name + ': url=' + url + ' response ' + code + ' ' + text, body.email);
     if (code >= 200 && code < 300) {
       try {
-        if (JSON.parse(text).suppressed === true) return { outcome: 'skipped', detail: name + ': recipient opted out' };
+        if (JSON.parse(text).suppressed === true) {
+          withSheetLock(function () { markLeadEmailUnsubscribed(ss, body.email); });
+          return { outcome: 'skipped', detail: name + ': recipient opted out' };
+        }
       } catch { /* Older senders return a plain success body; keep compatibility. */ }
     }
     return { outcome: classifyGuideResponse(code), detail: name + ' ' + code + ' ' + text };
@@ -2212,6 +2290,7 @@ function processFollowUps() {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(FOLLOWUP_TAB);
+    syncEmailOptOuts(ss);
     if (!sheet || sheet.getLastRow() < 2) return;
     const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FOLLOWUP_HEADERS.length).getValues();
 

@@ -19,6 +19,22 @@ export async function stopEmail(email: string, reason: 'link' | 'reply' | 'manua
   await preferences().setJSON(`stop/${emailKey(normalized)}`, {
     email: normalized, stoppedAt: new Date().toISOString(), reason,
   });
+  // Durable outbox: Sheet visibility can retry independently without ever
+  // lifting email suppression when Google is temporarily unavailable.
+  await preferences().setJSON(`pending/${emailKey(normalized)}`, { email: normalized });
+}
+export async function pendingSheetOptOuts(): Promise<string[]> {
+  const store = preferences();
+  const listed = await store.list({ prefix: 'pending/' });
+  const emails: string[] = [];
+  for (const blob of listed.blobs.slice(0, 100)) {
+    const record = await store.get(blob.key, { type: 'json' }) as { email?: string } | null;
+    if (record?.email) emails.push(record.email);
+  }
+  return emails;
+}
+export async function acknowledgeSheetOptOut(email: string) {
+  await preferences().delete(`pending/${emailKey(email)}`);
 }
 export async function unsubscribeLinkFor(email: string): Promise<string> {
   const store = preferences();
