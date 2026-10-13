@@ -37,6 +37,7 @@ const ATTR = [
   'First Click ID', 'First Click ID Type', 'First Touch At',
 ];
 const TRIAGE = ['Test?', 'Status', 'Contacted'];
+const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version'];
 
 /** source -> [tab, the funnel's own columns], as docs/lead-sheet-schema.md lists them. */
 const DETAILS: Record<string, [string, string[]]> = {
@@ -108,12 +109,12 @@ describe('every lead tab is the standard order', () => {
   it.each(Object.keys(DETAILS))('%s: who, then its own numbers, then where from, then triage', (source) => {
     const [tab, details] = DETAILS[source];
     expect(gas.SOURCE_SCHEMAS[source].tab).toBe(tab);
-    expect(gas.SOURCE_SCHEMAS[source].headers).toEqual([...PREFIX, ...details, ...ATTR, ...TRIAGE]);
+    expect(gas.SOURCE_SCHEMAS[source].headers).toEqual([...PREFIX, ...details, ...CONSENT, ...ATTR, ...TRIAGE]);
   });
 
   it('Leads, the catch-all, is the same shape', () => {
     expect(gas.LEADS_SCHEMA.tab).toBe('Leads');
-    expect(gas.LEADS_SCHEMA.headers).toEqual([...PREFIX, ...LEADS_DETAILS, ...ATTR, ...TRIAGE]);
+    expect(gas.LEADS_SCHEMA.headers).toEqual([...PREFIX, ...LEADS_DETAILS, ...CONSENT, ...ATTR, ...TRIAGE]);
     expect(gas.LEAD_HEADERS).toBe(gas.LEADS_SCHEMA.headers);
     expect(gas.DEBT_CONSOLIDATION_HEADERS).toBe(gas.SOURCE_SCHEMAS['DebtConsolidation'].headers);
   });

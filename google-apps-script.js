@@ -212,6 +212,8 @@ function effectiveClickIdType(d) {
  * migrateLeadTabs() carries whatever a person typed into them across by name.
  */
 const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
+// Preserve the triage and attribution blocks. Consent evidence is written by header name.
+const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version'];
 
 /**
  * The addresses used for testing, matched with any +tag stripped.
@@ -521,7 +523,7 @@ const LEADS_SCHEMA = {
  * header order.
  */
 function finishLeadSchema(schema) {
-  schema.headers = LEAD_PREFIX.concat(schema.details, ATTR_HEADERS, TRIAGE_HEADERS);
+  schema.headers = LEAD_PREFIX.concat(schema.details, SMS_CONSENT_HEADERS, ATTR_HEADERS, TRIAGE_HEADERS);
   schema.values = function (d) {
     const v = byHeader(LEAD_PREFIX, [
       d.timestamp || new Date().toISOString(),
@@ -535,6 +537,8 @@ function finishLeadSchema(schema) {
     ]);
     const own = schema.detailValues(d);
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
+    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '']);
+    SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
     const attr = byHeader(ATTR_HEADERS, attrRow(d));
     ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });
     const triage = byHeader(TRIAGE_HEADERS, triageRow(d));
@@ -684,7 +688,11 @@ function appendByHeader(ss, sheet, tabName, headers, values) {
   });
   sheet.appendRow(row);
 
-  const drift = describeSheetDrift(live.slice(0, live.length - missing.length), headers, missing);
+  // Consent fields intentionally append without a migration. Compare the original
+  // schema separately so this expected extension does not alert Darren per lead tab.
+  // All other missing, renamed, duplicated or reordered headers still alert.
+  const isBase = function (h) { return SMS_CONSENT_HEADERS.indexOf(h) === -1; };
+  const drift = describeSheetDrift(live.slice(0, live.length - missing.length).filter(isBase), headers.filter(isBase), missing.filter(isBase));
   if (drift) alertSheetDrift(ss, tabName, drift);
 }
 
