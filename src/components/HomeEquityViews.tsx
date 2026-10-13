@@ -229,7 +229,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
     <LeadContactStep
       v={v}
       title="Find out which equity options may fit."
-      caption="Darren will review your goal, requested amount and home snapshot, then discuss eligibility and lender terms. This request is not a loan application."
+      caption=""
       submitLabel="Send My Request to Darren"
       onBack={() => v.goStep(2)}
     />

@@ -1,3 +1,4 @@
+import ComplianceDisclosure from './ComplianceDisclosure';
 /**
  * Pieces shared by the revamp pages (/debt-consolidation/ since phase 2,
  * /home-equity/ since phase 3), so the two draw a row, a step button or the
@@ -279,7 +280,8 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }
         )}
       </div>
 
-      <p className="dcp-caption">{caption}</p>
+      {caption && <p className="dcp-caption">{caption}</p>}
+      <ComplianceDisclosure formId={typeof window !== "undefined" && window.location.pathname.startsWith("/adu") ? "adu-calculator" : "home-equity-calculator"} />
 
       <StepNav
         back="← Back" onBack={onBack}

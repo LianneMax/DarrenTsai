@@ -80,7 +80,7 @@ describe('/fha/ review button', () => {
   it('posts whichever form id opened it, and the modal\'s own by default', () => {
     expect(FHA_PAGE).toContain("var DEFAULT_FORM_ID = 'fha-contact-modal';");
     expect(FHA_PAGE).toContain('formIdNow = (opts && opts.formId) || DEFAULT_FORM_ID;');
-    expect(FHA_PAGE).toContain('{ formId: formIdNow })');
+    expect(FHA_PAGE).toContain('{ formId: formIdNow }, window.DTCompliance');
     expect(FHA_PAGE).toContain('form_id: formIdNow,');
   });
 

@@ -1,8 +1,9 @@
+import ComplianceDisclosure from './ComplianceDisclosure';
 import { useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import type { MortgageInputs } from '../types/mortgage';
-import { EMAIL, NMLS, DRE, LICENSED_STATES, isLicensedState } from '../config';
+import { EMAIL, LICENSED_STATES, isLicensedState } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openCalendly } from '../utils/calendly';
@@ -460,9 +461,7 @@ export default function LeadForm({
         )}
       </button>
 
-      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 14, textAlign: 'center', lineHeight: 1.6 }}>
-        Your info is never sold or shared. NMLS# {NMLS} · DRE# {DRE} · Equal Housing Opportunity.
-      </p>
+      <ComplianceDisclosure formId={formId} />
     </form>
   );
 }

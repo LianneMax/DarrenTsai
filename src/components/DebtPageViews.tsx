@@ -1,3 +1,4 @@
+import ComplianceDisclosure from './ComplianceDisclosure';
 /**
  * What /debt-consolidation/ looks like (frontend revamp, phase 2, 9 Oct 2026).
  *
@@ -628,6 +629,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
         )}
       </div>
 
+      <ComplianceDisclosure formId="debt-savings-calculator" />
       <StepNav
         back="← Back" onBack={() => v.goStep(3)}
         disabled={v.sending}

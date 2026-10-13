@@ -940,7 +940,7 @@
     .lf-row-2{grid-template-columns:1fr;}
   }
 </style>
-<link rel="stylesheet" href="/footer-compliance.css"></head>
+<link rel="stylesheet" href="/compliance.css"><script src="/compliance.js" defer></script><link rel="stylesheet" href="/footer-compliance.css"></head>
 <body>
 <!-- Google Tag Manager (noscript) -->
 <!-- End Google Tag Manager (noscript) -->
@@ -1180,7 +1180,7 @@
           <span class="field-error" id="mStateError"></span>
           <span class="lf-hint" id="mStateHint" hidden></span>
         </div>
-        <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send Me My Rate</button>
+        <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send Me My Rate</button><div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="dscr-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-form="dscr-magnet"> <span>I agree to mortgage marketing texts from Darren Tsai / Ren Marketing Group LLC, including automated texts.</span></label><p class="sms-details">Optional. Frequency varies. Message/data rates may apply. Reply STOP to unsubscribe or HELP for help.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
       </div>
     </div>
     <div class="modal-success" id="modalSuccess">
@@ -1723,6 +1723,7 @@
     };
 
     const btn = $('submitLead');
+    if (window.DTCompliance && !window.DTCompliance.ack('dscr-magnet')) return;
     btn.disabled = true;
     btn.textContent = 'Sending…';
     try {
@@ -1732,7 +1733,7 @@
       var res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'dscr-magnet' })),
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'dscr-magnet' }, window.DTCompliance ? window.DTCompliance.sms('dscr-magnet') : {})),
       });
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the
@@ -1945,7 +1946,7 @@
           </svg>
         </button>
 
-        <p class="lf-footnote">Your info is never sold or shared. NMLS# 2438102 · DRE# 02103705 · Equal Housing Opportunity.</p>
+        <div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="dscr-contact-modal"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-form="dscr-contact-modal"> <span>I agree to mortgage marketing texts from Darren Tsai / Ren Marketing Group LLC, including automated texts.</span></label><p class="sms-details">Optional. Frequency varies. Message/data rates may apply. Reply STOP to unsubscribe or HELP for help.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
       </div>
     </div>
 
@@ -2294,6 +2295,7 @@
     };
 
     var btn = el('submitContact');
+    if (window.DTCompliance && !window.DTCompliance.ack('dscr-contact-modal')) return;
     btn.disabled = true;
     btn.textContent = 'Sending…';
     try {
@@ -2306,7 +2308,7 @@
       var res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'dscr-contact-modal' })),
+        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'dscr-contact-modal' }, window.DTCompliance ? window.DTCompliance.sms('dscr-contact-modal') : {})),
       });
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the

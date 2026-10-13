@@ -62,6 +62,11 @@ export type LeadSubmitConfig = {
 
 export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmitConfig) {
   return async function submitLead(payload: LeadPayload): Promise<SubmitResult> {
+    const acknowledgment = document.querySelector<HTMLInputElement>('input[data-privacy-form="' + formId + '"]');
+    if (acknowledgment && !acknowledgment.checked) {
+      acknowledgment.reportValidity();
+      return { ok: false, kind: 'fieldError', field: 'privacyAcknowledged', message: 'Please acknowledge the Privacy Policy and Terms to continue.' };
+    }
     try {
       // Same-origin, so unlike the old no-cors post the status is readable and
       // a failure actually reaches the visitor instead of showing a checkmark.
@@ -70,7 +75,12 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
         headers: { 'Content-Type': 'application/json' },
         // formId goes in the body as well as the GA4 event below, because
         // HubSpot's rdt_form_id is filled server-side from what arrives here.
-        body: JSON.stringify({ ...payload, ...getAttribution(), formId }),
+        body: JSON.stringify({ ...payload, ...getAttribution(), formId,
+          smsConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
+          privacyAcknowledged: acknowledgment?.checked === true, privacyVersion: '2026-10-13-v1',
+          smsConsentVersion: '2026-10-13-v3', smsConsentText: 'I agree to mortgage marketing texts from Darren Tsai / Ren Marketing Group LLC, including automated texts.',
+          smsConsentAt: new Date().toISOString(),
+        }),
       });
 
       if (!res.ok) {

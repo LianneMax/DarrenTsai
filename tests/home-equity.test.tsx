@@ -192,7 +192,7 @@ describe('what the page says', () => {
   it('asks only for contact details on step 3', () => {
     const page = html(<StepEquityContact v={view({ step: 3 })} />);
     expect(page).not.toMatch(/Best Time|How did you hear/i);
-    expect(page).toContain('This request is not a loan application.');
+    expect(page).toContain('Not a loan application, approval or commitment to lend.');
   });
 
   it('confirms with the estimate and goal it sent, and promises no time', () => {
