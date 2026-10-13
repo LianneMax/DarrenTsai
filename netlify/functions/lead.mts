@@ -383,6 +383,14 @@ const RAW_MAX = 20_000;
  * Builds the alert. Pure and separate from the send, so the wording and the
  * field handling can be reasoned about (and tested) without a network call.
  */
+export function normalizeSmsConsent(payload: Record<string, unknown>) {
+  for (const key of ['smsConsent', 'smsInformationalConsent', 'smsMarketingConsent']) {
+    if (key in payload) payload[key] = payload[key] === true;
+  }
+  // The legacy field means marketing only, never either category combined.
+  if ('smsMarketingConsent' in payload) payload.smsConsent = payload.smsMarketingConsent;
+}
+
 export function buildRescueEmail(reason: string, payload: string, uncertain: boolean) {
   const rawShown =
     payload.length > RAW_MAX
@@ -610,6 +618,10 @@ export default async (req: Request, context: Context) => {
   } catch {
     return jsonResponse(400, { error: "invalid json body" });
   }
+
+  // Never let truthy strings (including "false") become permission to text.
+  // Keep older clients' absent fields absent; invalid evidence must not lose a lead.
+  normalizeSmsConsent(payload);
 
   // Honeypot: a hidden field no human fills in. Return 200 so bots learn
   // nothing from the response and do not retry with the field removed.

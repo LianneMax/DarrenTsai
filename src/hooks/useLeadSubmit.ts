@@ -78,7 +78,10 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
         body: JSON.stringify({ ...payload, ...getAttribution(), formId,
           smsConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
           privacyAcknowledged: acknowledgment?.checked === true, privacyVersion: '2026-10-13-v1',
-          smsConsentVersion: '2026-10-13-v3', smsConsentText: 'I agree to mortgage marketing texts from Darren Tsai / Ren Marketing Group LLC, including automated texts.',
+          smsInformationalConsent: document.querySelector<HTMLInputElement>('input[data-sms-info-form="' + formId + '"]')?.checked === true,
+          smsMarketingConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
+          smsInformationalConsentText: 'I agree to texts about my inquiry and appointment reminders from Darren Tsai (Ren Marketing Group LLC).',
+          smsConsentVersion: '2026-10-14-v4', smsConsentText: 'I agree to marketing texts from Darren Tsai (Ren Marketing Group LLC), including automated texts.',
           smsConsentAt: new Date().toISOString(),
         }),
       });
