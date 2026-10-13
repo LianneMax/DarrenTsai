@@ -1,0 +1,133 @@
+.footer {
+  background: var(--teal);
+  color: var(--white);
+  padding: 64px 0 52px;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-dots::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  animation: floatDots 8s ease-in-out infinite;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  padding-bottom: 48px;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.footer-brand svg { color: rgba(255,255,255,0.85); }
+
+.footer-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.footer-title {
+  font-size: 0.875rem;
+  color: var(--on-teal-muted);
+  margin-bottom: 14px;
+}
+
+.footer-meta {
+  font-size: 0.82rem;
+  color: var(--on-teal-muted);
+  margin-bottom: 4px;
+}
+
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.footer-contact-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.85);
+  font-weight: 400;
+  transition: color 0.2s ease;
+}
+
+.footer-contact-link:hover { color: var(--white); }
+.footer-contact-link svg { color: rgba(255,255,255,0.85); flex-shrink: 0; }
+
+.footer-linkedin { margin-top: 4px; }
+
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.18);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-compliance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+
+.footer-compliance a {
+  font-size: 0.72rem;
+  color: var(--on-teal-muted);
+  text-decoration: none;
+  /* 24px tall tap target (WCAG 2.5.8) without moving the text. */
+  display: inline-block;
+  padding: 5px 0;
+  transition: color 0.2s ease;
+}
+
+.footer-compliance a:hover {
+  color: var(--white);
+}
+
+/* The separator dot belongs to the link before it (audit L9, 5 Oct). As its own
+   flex item it could wrap onto the next line alone, so on a phone a row of
+   links started with a stray dot. Drawn as ::after, it wraps with its link: a
+   row may end on a dot but never start with one. The second content value
+   hides it from screen readers, as aria-hidden did. */
+.footer-compliance a:not(:last-child)::after {
+  content: '\00B7';
+  content: '\00B7' / '';
+  display: inline-block;
+  margin-left: 12px;
+  color: rgba(255,255,255,0.3);
+}
+
+.footer-copy {
+  font-size: 0.82rem;
+  color: var(--on-teal-muted);
+}
+
+.footer-disclaimer {
+  font-size: 0.75rem;
+  color: var(--on-teal-muted);
+  text-align: left;
+  line-height: 1.6;
+}
+
+
+.footer{--on-teal-muted:rgba(255,255,255,.75)}.footer .container{max-width:1080px;margin:auto;padding:0 24px}.footer p{margin:8px 0}.footer a{text-decoration:none}@media(max-width:768px){.footer-grid{grid-template-columns:1fr;gap:24px}.footer-right{align-items:flex-start}.footer-compliance{flex-wrap:wrap}}

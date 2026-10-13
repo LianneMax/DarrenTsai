@@ -25,6 +25,7 @@ export default function Footer() {
               Real Estate Broker, California Department of Real Estate. Loans made or arranged
               pursuant to California Department of Real Estate License.
             </p>
+            <p className="footer-meta" style={{ marginTop: 12 }}>Real Darren Tsai is operated by Ren Marketing Group LLC, an independent marketing entity affiliated with Saxton Mortgage, LLC (NMLS #1717191) and Dream Home Development Corporation dba Saxton Mortgage (NMLS #2525913 / CA DRE #02205650).</p>
           </div>
 
           <div className="footer-right">
@@ -74,21 +75,12 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <p className="footer-copy">&copy; 2026 Darren Tsai. All rights reserved.</p>
+          <p className="footer-copy">&copy; 2026 Darren Tsai / Ren Marketing Group LLC. All rights reserved.</p>
           <p className="footer-disclaimer">
             This is not a commitment to lend. All loans are subject to credit approval,
             underwriting, and property valuation. Equal Housing Opportunity.
           </p>
-          <div className="footer-compliance">
-            <a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
-            <a href={`https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/${NMLS}`} target="_blank" rel="noopener noreferrer">
-              Check my license at NMLS Consumer Access
-            </a>
-            <a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Legal</a>
-            <a href="https://www.saxtonmortgage.com/terms-of-use" target="_blank" rel="noopener noreferrer">Terms of Use</a>
-            <a href="https://www.saxtonmortgage.com/accessibility-statement" target="_blank" rel="noopener noreferrer">Accessibility</a>
-            <a href="https://www.saxtonmortgage.com/site-map" target="_blank" rel="noopener noreferrer">Site Map</a>
-          </div>
+          <div className="footer-compliance"><a href="/privacy-policy">Privacy Policy</a><a href="/legal">Terms & Legal Disclosures</a><a href="/legal#accessibility">Accessibility</a><a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Saxton disclosures</a><a href={`https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/${NMLS}`} target="_blank" rel="noopener noreferrer">Darren’s NMLS record</a><a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/1717191" target="_blank" rel="noopener noreferrer">Saxton’s NMLS record</a></div>
         </div>
       </div>
     </footer>

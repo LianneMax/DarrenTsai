@@ -35,9 +35,9 @@ function redirects() {
 describe('L1: every ad landing page carries the licence footer', () => {
   it.each(LANDING)('%s links the privacy policy and NMLS Consumer Access', (page) => {
     const html = read(page);
-    const footer = html.slice(html.indexOf('<footer class="site-footer">'), html.indexOf('</footer>'));
+    const footer = html.slice(html.indexOf('<footer '), html.indexOf('</footer>'));
     expect(footer.length).toBeGreaterThan(0);
-    expect(footer).toContain('https://www.saxtonmortgage.com/privacy-policy');
+    expect(footer).toContain('/privacy-policy');
     expect(footer).toContain('https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/2438102');
     expect(footer).toContain('NMLS #2438102');
     expect(footer).toContain('CA DRE Broker #02103705');
@@ -189,7 +189,7 @@ describe('L3: landmarks, headings and the closed drawer', () => {
     const html = read(page);
     expect(html.match(/<main\b/g)?.length).toBe(1);
     expect(html.indexOf('<main>')).toBeLessThan(html.indexOf('<header class="hero">'));
-    expect(html.indexOf('</main>')).toBeLessThan(html.indexOf('<footer class="site-footer">'));
+    expect(html.indexOf('</main>')).toBeLessThan(html.indexOf('<footer '));
   });
 
   it.each(['src/App.tsx', 'src/DebtConsolidationApp.tsx', 'src/MortgageCalculatorApp.tsx'])('%s wraps its content in <main>', (file) => {
