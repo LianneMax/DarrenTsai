@@ -73,6 +73,16 @@ afterEach(() => {
 const ctx = {} as never;
 
 describe('request guards', () => {
+  it('rejects omitted screening when enforcement is enabled, without saving or emailing', async () => {
+    vi.stubGlobal('Netlify', { env: { get: (k: string) => k === 'SERVICE_AREA_REQUIRED' ? 'true' : k === 'APPS_SCRIPT_WEBHOOK_URL' ? UPSTREAM : '' } });
+    const response = await handler(req(LEAD), ctx);
+    expect(response.status).toBe(422);
+    expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
+  it('ignores a forged supported result for an unsupported property state', async () => {
+    const response = await handler(req({ ...LEAD, propertyUse: 'primary', propertyState: 'NY', serviceAreaVersion: 'old', serviceAreaResult: 'supported' }), ctx);
+    expect(response.status).toBe(422); expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
   it('rejects GET with 405', async () => {
     const res = await handler(req(LEAD, { method: 'GET' }), ctx);
     expect(res.status).toBe(405);

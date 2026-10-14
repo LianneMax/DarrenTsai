@@ -507,13 +507,22 @@
     // CallRail has already rewritten the number. Closing on the way out means
     // the page is tidy when they come back from the call.
     var call = overlay.querySelector('.dt-book-call');
-    call.addEventListener('click', function () {
-      window.setTimeout(close, 0);
-    });
 
     var card = overlay.querySelector('.dt-book-card');
+    function screened() {
+      if (!window.DTServiceArea || !window.DTServiceArea.ready()) { card.querySelector('.dt-book-sub').textContent = 'The service-area check is loading. Please try again after it loads.'; return false; }
+      if (!card.querySelector('[data-service-area]')) card.insertBefore(window.DTServiceArea.fields('booking'), card.querySelector('.dt-book-opts'));
+      return window.DTServiceArea.validate('booking', true);
+    }
+    if (window.DTServiceArea && window.DTServiceArea.ready()) card.insertBefore(window.DTServiceArea.fields('booking'), card.querySelector('.dt-book-opts'));
+    // Keep the panel and its explanation visible for refused clicks. Stop the
+    // click reaching phone tracking too: no actual call has been attempted.
+    call.addEventListener('click', function(e) {
+      if (!screened()) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+      window.setTimeout(close, 0);
+    }, true);
     overlay.querySelector('.dt-book-sched').addEventListener('click', function () {
-      showCalendar(card, opts);
+      if (screened()) showCalendar(card, opts);
     });
 
     overlay.querySelector('.dt-book-close').addEventListener('click', close);

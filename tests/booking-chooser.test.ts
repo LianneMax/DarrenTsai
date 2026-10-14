@@ -74,6 +74,7 @@ beforeEach(() => {
   booking.close();
   booking.identify({ name: '', email: '' });
   document.body.innerHTML = '';
+  Object.assign(window, { DTServiceArea: { ready: () => true, validate: () => true, fields: () => { const field = document.createElement('fieldset'); field.setAttribute('data-service-area', 'booking'); return field; } } });
   track = vi.fn();
   (window as unknown as { DT: unknown }).DT = { track, attr: () => ({}) };
   initInline = vi.fn();
@@ -90,6 +91,31 @@ function widgetReady() {
 }
 
 describe('the chooser offers both ways to act', () => {
+  it.each(['schedule', 'call'])('shows missing-field feedback and keeps the panel open on %s', async (action) => {
+    const policy = JSON.parse(readFileSync(resolve(__dirname, '../public/service-area-policy.json'), 'utf8'));
+    new Function('window', 'document', 'fetch', readFileSync(resolve(__dirname, '../public/service-area.js'), 'utf8'))(window, document, async () => ({ok: true, json: async () => policy}));
+    await vi.waitFor(() => expect((window as unknown as {DTServiceArea: {ready: () => boolean}}).DTServiceArea.ready()).toBe(true));
+    vi.useFakeTimers();
+    widgetReady(); booking.open({});
+    if (action === 'schedule') schedBtn()!.click();
+    else {
+      const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+      callLink()!.dispatchEvent(event); expect(event.defaultPrevented).toBe(true);
+    }
+    vi.advanceTimersByTime(1);
+    expect(overlay()).not.toBeNull();
+    expect(overlay()!.querySelector('[role="status"]')!.textContent).toContain('Please select property use and property state');
+    expect(document.activeElement).toBe(overlay()!.querySelector('[data-property-use]'));
+    expect(initInline).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+  it('blocks calendar and call navigation for an unsupported property', () => {
+    Object.assign(window, { DTServiceArea: { ready: () => true, validate: () => false, fields: () => { const field = document.createElement('fieldset'); field.setAttribute('data-service-area', 'booking'); return field; } } });
+    widgetReady(); booking.open({}); schedBtn()!.click();
+    expect(initInline).not.toHaveBeenCalled();
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    callLink()!.dispatchEvent(event); expect(event.defaultPrevented).toBe(true);
+  });
   it('opens with a call option and a schedule option', () => {
     booking.open({});
     expect(overlay()).not.toBeNull();

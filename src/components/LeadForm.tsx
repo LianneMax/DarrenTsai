@@ -1,3 +1,5 @@
+import { calculateMortgage } from '../utils/mortgageCalc';
+import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
 import { useRef, useState } from 'react';
 import { z } from 'zod';
@@ -187,6 +189,7 @@ export default function LeadForm({
       message:  form.goals.trim(),
       target:   form.target,
       timeline: form.timeline,
+      ...(prefillNumbers ? (() => { const result = calculateMortgage(currentInputs); return { calculatorInputs: currentInputs, calculatorResults: { monthlyPrincipalAndInterest: result.monthlyPayment, totalInterest: result.totalInterest, totalPrincipalAndInterest: result.totalCost, payoffDate: result.payoffDate, estimateOnly: true, excludesTaxesInsuranceFees: true } }; })() : {}),
       source: leadSource,
       timestamp: new Date().toISOString(),
     };
@@ -237,6 +240,7 @@ export default function LeadForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
+      <ServiceAreaFields formId={formId} />
       {/* Note */}
       <p className="modal-note">
         <strong>* Required</strong>: name, email, phone and state. The rest is optional.
@@ -343,8 +347,7 @@ export default function LeadForm({
             been let down by a form that looked like it was listening. */}
         {form.state && !isLicensedState(form.state) && (
           <span className="email-hint">
-            Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and he
-            will point you to someone who can help where you are.
+            Darren is licensed in {LICENSED_STATES.join(' · ')}. The property-use and property-state check above determines whether a review is available.
           </span>
         )}
       </div>

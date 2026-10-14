@@ -24,7 +24,7 @@
        booking-chooser.js and email-suggest.js are deferred (audit L4): nothing
        reads them until a click or a field blur. -->
   <script src="/attribution.js" async fetchpriority="high"></script>
-  <script src="/booking-chooser.js" defer></script>
+  <script src="/service-area.js" defer></script><script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
 <!-- Calendly is injected on first click (see loadCalendly below). It used to
@@ -2087,7 +2087,7 @@
       magnetHint.hidden = known;
       if (!known) {
         magnetHint.textContent = 'Darren is licensed in ' + LICENSED_STATES.join(' · ') +
-          '. Send your details anyway and he will point you to someone who can help where you are.';
+          '. The property-use and property-state check determines whether a review is available.';
       }
     });
   })();
@@ -2099,7 +2099,7 @@
     hint.hidden = known;
     if (!known) {
       hint.textContent = 'Darren is licensed in ' + LICENSED_STATES.join(' · ') +
-        '. Send your details anyway and he will point you to someone who can help where you are.';
+        '. The property-use and property-state check determines whether a review is available.';
     }
   });
 

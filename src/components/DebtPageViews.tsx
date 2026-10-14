@@ -1,3 +1,4 @@
+import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
 /**
  * What /debt-consolidation/ looks like (frontend revamp, phase 2, 9 Oct 2026).
@@ -572,6 +573,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">I Want to See My Actual Numbers</h2>
+      <ServiceAreaFields formId="debt-savings-calculator" />
       <p className="dcp-lead">
         Your estimate is a starting point. A personal review helps you understand which options
         may fit your goals. No hard pull, no obligation.
@@ -623,8 +625,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
             refers it; what was missing was telling the visitor. */}
         {v.usState && !isLicensedState(v.usState) && (
           <span className="email-hint">
-            Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and he
-            will point you to someone who can help where you are.
+            Darren is licensed in {LICENSED_STATES.join(' · ')}. The property-use and property-state check above determines whether a review is available.
           </span>
         )}
       </div>

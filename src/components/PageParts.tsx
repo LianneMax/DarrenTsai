@@ -1,3 +1,4 @@
+import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
 /**
  * Pieces shared by the revamp pages (/debt-consolidation/ since phase 2,
@@ -7,10 +8,10 @@ import ComplianceDisclosure from './ComplianceDisclosure';
  */
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { AsYouType } from 'libphonenumber-js';
-import { LICENSED_STATES, NMLS, DRE, PHONE, isLicensedState } from '../config';
+import { LICENSED_STATES, NMLS, DRE, PHONE } from '../config';
 import { formatCurrency } from '../utils/formatters';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
-import StateSelect from './StateSelect';
+
 
 export const Arrow = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -228,6 +229,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">{title}</h2>
+      <ServiceAreaFields formId={typeof window !== "undefined" && window.location.pathname.startsWith("/adu") ? "adu-calculator" : "home-equity-calculator"} onStateChange={v.setUsState} />
       <p className="dcp-lead">
         {lead ?? 'Your estimate is a starting point. A personal review helps you understand which options may fit your goals. No hard pull, no obligation.'}
       </p>
@@ -269,18 +271,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }
         </div>
       </div>
 
-      <div className="dcp-field">
-        <label className="input-label" htmlFor="us-state">State</label>
-        <StateSelect id="us-state" value={v.usState} onChange={v.setUsState} placeholder="Select your state…" />
-        {v.usState && !isLicensedState(v.usState) && (
-          <span className="email-hint">
-            Darren is licensed in {LICENSED_STATES.join(' · ')}. Send your details anyway and he
-            will point you to someone who can help where you are.
-          </span>
-        )}
-      </div>
-
-      {caption && <p className="dcp-caption">{caption}</p>}
+{caption && <p className="dcp-caption">{caption}</p>}
       <ComplianceDisclosure formId={typeof window !== "undefined" && window.location.pathname.startsWith("/adu") ? "adu-calculator" : "home-equity-calculator"} />
 
       <StepNav

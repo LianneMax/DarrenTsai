@@ -1,3 +1,4 @@
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE } from '../utils/serviceArea';
 /**
  * The half of a lead submit that is the same on every form: post it, read the
  * status, and fire the two dataLayer events on success.
@@ -62,6 +63,15 @@ export type LeadSubmitConfig = {
 
 export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmitConfig) {
   return async function submitLead(payload: LeadPayload): Promise<SubmitResult> {
+    const screening = document.querySelector('[data-service-area="' + formId + '"]');
+    const propertyUse = document.querySelector<HTMLSelectElement>('[data-property-use="' + formId + '"]')?.value;
+    const propertyState = document.querySelector<HTMLSelectElement>('[data-property-state="' + formId + '"]')?.value;
+    const result = serviceArea(propertyUse, propertyState, formId);
+    if (screening && result !== 'supported') {
+      const message = result === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE;
+      const status = screening.querySelector('[role="status"]'); if (status) status.textContent = message;
+      return { ok: false, kind: 'fieldError', field: 'propertyState', message };
+    }
     const acknowledgment = document.querySelector<HTMLInputElement>('input[data-privacy-form="' + formId + '"]');
     if (acknowledgment && !acknowledgment.checked) {
       acknowledgment.reportValidity();
@@ -76,6 +86,8 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
         // formId goes in the body as well as the GA4 event below, because
         // HubSpot's rdt_form_id is filled server-side from what arrives here.
         body: JSON.stringify({ ...payload, ...getAttribution(), formId,
+          aprEstimates: Array.from(document.querySelectorAll<HTMLElement>('.apr-estimate[data-apr-principal]')).filter(el => Number(el.dataset.aprPrincipal) > 0).map(el => ({ principal: Number(el.dataset.aprPrincipal), noteRate: Number(el.dataset.aprRate), termYears: Number(el.dataset.aprYears), upfrontFinanceCharges: Number(el.dataset.aprFees), estimatedApr: el.dataset.aprResult ? Number(el.dataset.aprResult) : null, estimateOnly: true })),
+          ...(screening ? { propertyUse, propertyState, serviceAreaResult: result, serviceAreaVersion: SERVICE_AREA_VERSION } : {}),
           smsConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
           privacyAcknowledged: acknowledgment?.checked === true, privacyVersion: '2026-10-13-v1',
           smsInformationalConsent: document.querySelector<HTMLInputElement>('input[data-sms-info-form="' + formId + '"]')?.checked === true,
@@ -89,8 +101,8 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
       if (!res.ok) {
         if (res.status === 422) {
           const fix = await res.json().catch(() => null);
-          if (fix && fix.field === 'email' && fix.message) {
-            return { ok: false, kind: 'fieldError', field: 'email', message: String(fix.message) };
+          if (fix && (fix.field === 'email' || fix.field === 'propertyState') && fix.message) {
+            return { ok: false, kind: 'fieldError', field: fix.field, message: String(fix.message) };
           }
         }
         throw new Error(`lead-endpoint-${res.status}`);

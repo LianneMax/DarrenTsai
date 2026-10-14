@@ -1,3 +1,4 @@
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE } from '../../src/utils/serviceArea';
 // Netlify Function: lead
 //
 // The single server-side entry point for every lead on the site. All eight
@@ -622,6 +623,16 @@ export default async (req: Request, context: Context) => {
   // Never let truthy strings (including "false") become permission to text.
   // Keep older clients' absent fields absent; invalid evidence must not lose a lead.
   normalizeSmsConsent(payload);
+
+  // Rollout switch supports old open tabs until the new fields are deployed.
+  // Once enabled, omission cannot bypass screening. Never trust a client result.
+  if (payload.serviceAreaVersion || Netlify.env.get('SERVICE_AREA_REQUIRED') === 'true') {
+    const result = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || payload.formId || ''));
+    if (result !== 'supported') return jsonResponse(422, { field: 'propertyState', message: result === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
+    payload.propertyState = String(payload.propertyState).trim().toUpperCase();
+    payload.serviceAreaResult = result;
+    payload.serviceAreaVersion = SERVICE_AREA_VERSION;
+  }
 
   // Honeypot: a hidden field no human fills in. Return 200 so bots learn
   // nothing from the response and do not retry with the field removed.

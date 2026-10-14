@@ -2353,3 +2353,7 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 }
 
 .compliance-disclosure{font-size:12px;line-height:1.6;color:var(--text-muted);margin:18px 0}.compliance-disclosure p{margin:8px 0}.sms-choice{display:flex;align-items:flex-start;gap:10px;font-weight:400}.sms-choice input{width:16px!important;height:16px!important;flex-shrink:0;margin-top:3px}.compliance-disclosure summary{cursor:pointer;color:var(--teal)}.compliance-disclosure a{color:var(--teal)}
+
+[data-service-area]{border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}[data-service-area] label{display:block;margin:8px 0}[data-service-area] select{display:block;width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--text-dark)}[data-service-area] legend{font-weight:600;font-size:16px}
+
+[data-service-area] .service-area-warning{font-family:inherit;font-size:1rem;font-weight:500;line-height:1.6;color:#36596a;background:#f0f6f8;border-left:3px solid #8bb5c5;padding:12px 14px;border-radius:6px}

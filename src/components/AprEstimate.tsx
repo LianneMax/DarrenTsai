@@ -7,7 +7,7 @@ export default function AprEstimate({ principal, rate, years }: { principal: num
   const [fees, setFees] = useState('');
   const feeAmount = fees === '' ? 0 : Number(fees);
   const apr = estimateApr(principal, rate, years, feeAmount);
-  return <span className="apr-estimate">
+  return <span className="apr-estimate" data-apr-principal={principal} data-apr-rate={rate} data-apr-years={years} data-apr-fees={feeAmount} data-apr-result={apr ?? ""}>
     <span className="apr-number">{apr === null ? '—' : `${apr.toFixed(2)}%`}</span>
     <details className="apr-info">
       <summary aria-label="About this estimated APR">ⓘ</summary>

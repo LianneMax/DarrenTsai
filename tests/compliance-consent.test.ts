@@ -19,4 +19,13 @@ describe('SMS consent evidence', () => {
     expect(fake.DTCompliance.sms('fha-payment-review').smsConsent).toBe(true);
     expect(fake.DTCompliance.sms('missing').smsConsent).toBe(false);
   });
+  it('includes displayed FHA payment components but no hidden initial estimate', () => {
+    document.body.innerHTML = '<div id="fhaResult"><span id="fhaPI">$1,250</span><span id="fhaMip">$100</span></div>';
+    const fake = { DTCompliance: {calculatorResults: (): Record<string, unknown> => ({})} };
+    new Function('window', 'document', readFileSync('public/compliance.js', 'utf8'))(fake, document);
+    expect(fake.DTCompliance.calculatorResults()).toEqual({});
+    const result = document.getElementById('fhaResult')!;
+    Object.defineProperty(result, 'getClientRects', {value: () => [{width: 100, height: 100}]});
+    expect(fake.DTCompliance.calculatorResults()).toMatchObject({estimateOnly: true, fhaPI: '$1,250', fhaMip: '$100'});
+  });
 });
