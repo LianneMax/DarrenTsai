@@ -86,7 +86,10 @@ const CONTACT_SOURCES = {
   // /home-equity/, added with the page (revamp phase 3).
   'home-equity-contact':         'home-equity',
   // /adu/, added with the page (revamp phase 5).
-  'adu-contact':                 'adu'
+  'adu-contact':                 'adu',
+  // /book/ and any page with no modal of its own: the booking prequal
+  // (booking-chooser.js), added 15 Oct 2026.
+  'book-contact':                'book'
 };
 
 // Ad attribution, captured by public/attribution.js and sent with every form.
@@ -156,7 +159,10 @@ const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
 // Keep the original evidence columns readable. SMS Consent remains marketing
 // only; the two explicit categories describe this submission, not a CRM subscription
 // update or permission to undo a prior STOP. Header-aware writes preserve history.
-const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot'];
+const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot',
+  // The booking prequal's answers (15 Oct 2026), after everything that was
+  // already there: a new name is appended to a live tab, nothing moves.
+  'Property Type', 'Mortgage Current', 'Recent Bankruptcy/Foreclosure'];
 
 /**
  * The addresses used for testing, matched with any +tag stripped.
@@ -480,7 +486,7 @@ function finishLeadSchema(schema) {
     ]);
     const own = schema.detailValues(d);
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
-    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d))]);
+    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '']);
     SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
     const attr = byHeader(ATTR_HEADERS, attrRow(d));
     ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });

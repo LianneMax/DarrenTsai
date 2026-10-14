@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { openCalendly as openCalendlyPopup } from '../utils/calendly';
+import { openBooking as openBookingPanel } from '../utils/booking';
 
 // Was a third local copy of this helper. It bypassed the shared one, so it kept
 // assuming the widget had been eagerly loaded in <head>.
-function openCalendly(e: React.MouseEvent) {
+function openBooking(e: React.MouseEvent) {
   e.preventDefault();
-  openCalendlyPopup();
+  openBookingPanel();
 }
 
 interface Props {
@@ -98,9 +98,9 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
     onOpenContact();
   };
 
-  const handleCalendlyClick = (e: React.MouseEvent) => {
+  const handleBookClick = (e: React.MouseEvent) => {
     setMenuOpen(false);
-    openCalendly(e);
+    openBooking(e);
   };
 
   return (
@@ -158,7 +158,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
             </>}
             {/* The static pages' pair: Contact outlined, Book a Call solid slate. */}
             <button onClick={handleContactClick} className="btn btn-outline-teal btn-sm" data-early="nav-contact">Contact</button>
-            <button onClick={openCalendly} className="btn btn-teal btn-sm" data-early="nav-book">Book a Call</button>
+            <button onClick={openBooking} className="btn btn-teal btn-sm" data-early="nav-book">Book a Call</button>
           </div>
 
           {/* Hamburger button — mobile only */}
@@ -196,7 +196,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
           ))}
         </>}
         <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn" tabIndex={drawerTab}>Contact</button>
-        <button onClick={handleCalendlyClick} className="btn btn-teal btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
+        <button onClick={handleBookClick} className="btn btn-teal btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
       </div>
     </>
   );

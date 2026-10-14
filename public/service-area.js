@@ -1,6 +1,18 @@
 /* One policy file feeds browser and server. Screening does not establish loan eligibility. */
 (function () {
   var policy = null;
+  var failed = false;
+  var waiting = [];
+  // The booking prequal (booking-chooser.js) builds its own fields, so it waits
+  // on the policy here rather than fetching a second copy.
+  function whenReady(cb, onFail) {
+    if (policy) { cb(); return; }
+    if (failed) { if (onFail) onFail(); return; }
+    waiting.push({ ok: cb, fail: onFail });
+  }
+  function settle(ok) {
+    waiting.splice(0).forEach(function (w) { try { if (ok) w.ok(); else if (w.fail) w.fail(); } catch (e) { /* one caller must not break another */ } });
+  }
   if (!document.querySelector('link[href="/compliance.css"]')) { var css=document.createElement('link');css.rel='stylesheet';css.href='/compliance.css';document.head.appendChild(css); }
   function propertyUses(id) {
     var context = String(id) + ' ' + (window.location ? window.location.pathname : '');
@@ -42,10 +54,16 @@
     }
     return !!policy && data.serviceAreaResult==='supported';
   }
-  window.DTServiceArea={read:read,validate:validate,fields:fields,ready:function(){return !!policy;}};
+  window.DTServiceArea={read:read,validate:validate,fields:fields,ready:function(){return !!policy;},whenReady:whenReady,
+    check:function(use,state,id){return policy?result(use,state,id):'incomplete';},
+    uses:function(id){return policy?propertyUses(id):[];},
+    states:function(){return policy?policy.states.map(function(s){return [s,policy.labels[s]];}):[];},
+    version:function(){return policy?policy.version:'';}};
   document.addEventListener('click', function(e) {
     var anchor = e.target.closest && e.target.closest('a[href^="tel:"]');
-    if (!anchor || anchor.closest('.dt-book-overlay')) return;
+    // Only the booking flow's own Call button, shown after the prequal passes,
+    // dials straight through. Every other number on the site runs the prequal.
+    if (!anchor || anchor.closest('.dt-book-overlay, .dt-book-inline')) return;
     e.preventDefault();
     if (window.DTBooking) window.DTBooking.open();
   }, true);
@@ -54,5 +72,5 @@
     var disclosure=input.closest('.compliance-disclosure'); if(!disclosure) return;
     var loading=document.createElement('fieldset'); loading.setAttribute('data-service-area',id); loading.setAttribute('data-service-area-loading','true'); loading.innerHTML='<p role="status">Loading the property service-area check…</p>'; disclosure.parentNode.insertBefore(loading,disclosure);
   });
-  fetch('/service-area-policy.json').then(function(r){if(!r.ok)throw new Error('policy unavailable');return r.json();}).then(function(p){policy=p;document.querySelectorAll('[data-privacy-form]').forEach(function(input){var id=input.getAttribute('data-privacy-form');var existing=document.querySelector('[data-service-area="'+id+'"]');if(existing){if(existing.hasAttribute('data-service-area-loading'))existing.replaceWith(fields(id));return;}var disclosure=input.closest('.compliance-disclosure');if(disclosure)disclosure.parentNode.insertBefore(fields(id),disclosure);});}).catch(function(){ document.querySelectorAll('[data-service-area-loading] [role="status"]').forEach(function(status){status.textContent='The service-area check is unavailable. Please refresh the page; your request has not been submitted.';}); });
+  fetch('/service-area-policy.json').then(function(r){if(!r.ok)throw new Error('policy unavailable');return r.json();}).then(function(p){policy=p;settle(true);document.querySelectorAll('[data-privacy-form]').forEach(function(input){var id=input.getAttribute('data-privacy-form');var existing=document.querySelector('[data-service-area="'+id+'"]');if(existing){if(existing.hasAttribute('data-service-area-loading'))existing.replaceWith(fields(id));return;}var disclosure=input.closest('.compliance-disclosure');if(disclosure)disclosure.parentNode.insertBefore(fields(id),disclosure);});}).catch(function(){ failed=true; settle(false); document.querySelectorAll('[data-service-area-loading] [role="status"]').forEach(function(status){status.textContent='The service-area check is unavailable. Please refresh the page; your request has not been submitted.';}); });
 })();

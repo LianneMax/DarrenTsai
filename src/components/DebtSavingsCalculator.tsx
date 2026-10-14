@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { RATES_ENDPOINT, EMAIL } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
-import { openCalendly as openCalendlyPopup } from '../utils/calendly';
+import { openBooking as openBookingPanel } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import DebtPage, { type DebtPageView } from './DebtPageViews';
 import { type DebtOption } from './debtOptions';
@@ -35,7 +35,7 @@ function calcPmt(principal: number, annualRate: number, years: number): number {
 // Was a second local copy of the shared helper, which assumed the widget had
 // been eagerly loaded in <head>. Re-exported here so the call sites below are
 // untouched.
-const openCalendly = openCalendlyPopup;
+const openBooking = openBookingPanel;
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -519,7 +519,7 @@ export default function DebtSavingsCalculator() {
     chosen, setChosen,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, usState, setUsState,
-    sending, submitted, submitLead, openCalendly,
+    sending, submitted, submitLead, openBooking,
     rateBadge, disclosure,
   };
   return <DebtPage v={view} overlays={overlays} />;

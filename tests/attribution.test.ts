@@ -215,16 +215,9 @@ describe('link clicks', () => {
     expect(ev?.phone_number).toBe('+17148875432');
   });
 
-  /**
-   * Note what this does NOT prove. It builds an anchor, and the site has none:
-   * every booking CTA is a button that opens the chooser, which fires
-   * calendly_open itself. That gap is why the event sat dead while this test
-   * stayed green. The live path is covered in booking-chooser.test.ts; this
-   * only pins the fallback, should a Calendly link ever ship.
-   */
-  it('tracks a Calendly link as its own event, if one is ever added', () => {
+  it('fires no calendar event for a link: booking-chooser.js owns booking events', () => {
     load({ url: 'https://realdarrentsai.com/' });
-    expect(clickLink('https://calendly.com/realdarrentsai/15min')?.event).toBe('calendly_open');
+    expect(clickLink('https://calendly.com/realdarrentsai/15min')?.event).not.toBe('calendly_open');
   });
 
   it('carries the attribution snapshot, so the click is still attributable', () => {

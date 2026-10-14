@@ -127,7 +127,7 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
       // has just typed their name and email into this form should not be asked
       // for both again by the calendar; that retype is where a booking gets
       // abandoned. Held in memory by booking-chooser.js for this page view only,
-      // and only ever used to prefill Calendly's own form.
+      // and only ever used to prefill the booking prequal and its calendar.
       try {
         const booking = (window as BookingWindow).DTBooking;
         if (booking && typeof booking.identify === 'function') {

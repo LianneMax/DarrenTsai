@@ -221,14 +221,9 @@
       track('phone_click', { phone_number: href.slice(4), page_path: window.location.pathname });
       return;
     }
-    // Kept as a safety net for a Calendly link, but no page currently has one:
-    // every booking CTA on the site is a button that opens the chooser, and the
-    // chooser's schedule option fires calendly_open itself. This branch went
-    // unnoticed for a long time precisely because its test builds an anchor by
-    // hand, so it passed while production never reached it.
-    if (href.indexOf('calendly.com') !== -1) {
-      track('calendly_open', { page_path: window.location.pathname });
-    }
+    // No calendar link branch: Calendly is gone (15 Oct 2026), and the HubSpot
+    // calendar is never linked to, only drawn by booking-chooser.js after its
+    // prequal, which fires booking_page_shown and meeting_booked itself.
   }, true);
 
   function startGTM() {

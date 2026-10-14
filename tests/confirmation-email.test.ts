@@ -32,10 +32,12 @@ describe('the email being sent today is untouched', () => {
   it('renders byte for byte what it did before the contexts existed', () => {
     // Hashes of the handler's output captured from the commit before this
     // change, for a lead with a message that needs escaping and one without.
+    // Re-captured 15 Oct 2026 when the calendar link moved from Calendly to
+    // /book/; a diff of the two renders showed that href as the only change.
     expect(sha(buildEmailHtml({ firstName: 'Sam', email: 's@example.com', message: 'Want to clear two <cards> & a loan' })))
-      .toBe('be7400d3e79723de2910803e20cb7b88380289f63f3cbfa4e5094f984b53958e');
+      .toBe('24ec58409f95754fa270c3a9abaf68d0008b7ea51d6165264a49e7425341d827');
     expect(sha(buildEmailHtml({ email: 's@example.com' })))
-      .toBe('c1a571b115bd3ed0d3e0fc0f8663fe1197eb68c31d1e9dee7cb5329f08a6bef8');
+      .toBe('364b10c540d831a750746b797ac7322a0426869093da0e4c70516c4eb7ce4365');
   });
 
   it('is what a lead with no context, or one it has never heard of, gets', () => {
@@ -107,7 +109,8 @@ describe.each(DRAFTS)('the %s draft', (context) => {
   });
 
   it('tags its calendar link with its own campaign', () => {
-    const link = /href="(https:\/\/calendly\.com[^"]+)"/.exec(html)![1];
+    // /book/, never the calendar itself: the prequal runs first (15 Oct 2026).
+    const link = /href="(https:\/\/realdarrentsai\.com\/book\/[^"]+)"/.exec(html)![1];
     expect(link).toContain('utm_source=email&utm_medium=confirmation');
     expect(link).toContain('utm_campaign=' + copyFor(lead).campaign);
     expect(link).not.toContain('contact-modal');

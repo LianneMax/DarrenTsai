@@ -38,7 +38,7 @@ function view(over: Partial<DebtPageView> = {}): DebtPageView {
     chosen: '', setChosen: noop,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop, usState: '', setUsState: noop,
-    sending: false, submitted: false, submitLead: noop, openCalendly: noop,
+    sending: false, submitted: false, submitLead: noop, openBooking: noop,
     rateBadge: null, disclosure: null,
     ...over,
   };

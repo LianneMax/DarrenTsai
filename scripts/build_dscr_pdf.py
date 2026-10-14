@@ -41,7 +41,7 @@ COMPANY_NAME = "Darren Tsai"
 NMLS = "DRE #02103705 | NMLS #2438102 | Saxton Mortgage, NMLS #1717191"
 PHONE = "714-887-5432"
 EMAIL = "darren@realdarrentsai.com"
-BOOKING = "https://calendly.com/realdarrentsai/15min"
+BOOKING = "https://realdarrentsai.com/book/"
 
 # Cover-page brand (matches the real site's :root vars in public/dscr/index.html —
 # separate from the ink/brass palette the interior lever pages use).

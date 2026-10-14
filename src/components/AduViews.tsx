@@ -44,7 +44,7 @@ export interface AduPageView {
   sending: boolean;
   submitted: boolean;
   submitLead: () => void;
-  openCalendly: () => void;
+  openBooking: () => void;
 }
 
 const STEPS = ['Your Project', 'Talk to Darren'];
@@ -216,7 +216,7 @@ export function AduRecap({ v }: { v: AduPageView }) {
       </div>
 
       <div className="dcp-recap-actions">
-        <button type="button" className="btn btn-teal" onClick={v.openCalendly}>Schedule a Time</button>
+        <button type="button" className="btn btn-teal" onClick={v.openBooking}>Schedule a Time</button>
         <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="btn dcp-back">Call Darren {PHONE}</a>
       </div>
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>

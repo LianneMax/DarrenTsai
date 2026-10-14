@@ -8,7 +8,7 @@ import type { MortgageInputs } from '../types/mortgage';
 import { EMAIL, LICENSED_STATES, isLicensedState } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
-import { openCalendly } from '../utils/calendly';
+import { openBooking } from '../utils/booking';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 
@@ -222,7 +222,7 @@ export default function LeadForm({
             : 'Darren will be in touch.'}
         </p>
         <button
-          onClick={openCalendly}
+          onClick={openBooking}
           className="btn btn-outline-navy btn-full success-cta"
         >
           Book a Free Strategy Call

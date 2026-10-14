@@ -30,10 +30,9 @@
     <script src="/email-suggest.js" defer></script>
 
 
-    <!-- Calendly is loaded on first click by src/utils/calendly.ts. It used to
-         be an eager stylesheet plus script in here, which put a render-blocking
-         third-party request in front of first paint on every page view, for a
-         widget nobody sees until they click "Book a call". -->
+    <!-- No booking widget loads here. The HubSpot calendar is drawn by
+         public/booking-chooser.js only after its prequal passes, so nothing
+         third-party sits in front of first paint for it. -->
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->

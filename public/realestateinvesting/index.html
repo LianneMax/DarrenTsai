@@ -25,9 +25,6 @@
   <script src="/service-area.js" defer></script><script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
-<!-- Calendly is injected on first click (see loadCalendly below). It used to
-     load eagerly here, putting a render-blocking third-party stylesheet in
-     front of first paint for a widget nobody sees until they click. -->
 <style>
   /* Outfit, self-hosted (audit L4, 30 Sep). The Google Fonts stylesheet was
      the largest render-blocking request on every page (~0.8s in Lighthouse
@@ -801,7 +798,7 @@
     </a>
     <div class="site-nav-actions">
       <button type="button" id="openContactBtn" class="cta outline" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Contact</button>
-      <button type="button" id="openCalendlyBtn" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Book a Call</button>
+      <button type="button" id="openBookingBtn" class="cta solid-teal" style="width:104px;padding:6px 10px;font-size:0.82rem;border-radius:5px;">Book a Call</button>
     </div>
     <button type="button" class="nav-hamburger" id="navHamburgerBtn" aria-label="Menu" aria-expanded="false" aria-controls="navMobileMenu">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -809,7 +806,7 @@
   </div>
   <div class="nav-mobile-menu" id="navMobileMenu">
     <button type="button" id="navMobileContactBtn" class="cta outline" style="width:100%;">Contact</button>
-    <button type="button" id="navMobileCalendlyBtn" class="cta solid-teal" style="width:100%;">Book a Call</button>
+    <button type="button" id="navMobileBookingBtn" class="cta solid-teal" style="width:100%;">Book a Call</button>
   </div>
 </header>
 
@@ -963,7 +960,7 @@
           <div class="check">✓</div>
           <h3>Check your inbox</h3>
           <p class="form-sub">Your case study PDF is on its way. If you want to talk through your own numbers, book a free 15-minute call any time.</p>
-          <button type="button" class="cta outline" style="width:100%;" id="openLeadCalendlyBtn">Book a Free Strategy Call</button>
+          <button type="button" class="cta outline" style="width:100%;" id="openLeadBookingBtn">Book a Free Strategy Call</button>
         </div>
       </div>
     </div>
@@ -980,7 +977,7 @@
           <p class="section-label">This is the playbook I use for the investors I work with</p>
           <h3>The BRRRR you just read about wasn't a one-off.</h3>
           <p>It's how I analyze deals whether it be mine or a client's: what's the real number, what's the real risk, and how do we structure the financing so the deal actually cash flows. That's what I help investors do:</p>
-          <button type="button" id="openBridgeCalendlyBtn" class="cta">
+          <button type="button" id="openBridgeBookingBtn" class="cta">
             Book a free 15-minute call
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
@@ -1355,7 +1352,7 @@
         window.DT.track('virtual_page_view', { page_path: '/thank-you/rei', page_title: 'Thank You — REI Case Study' });
       }
       // R6-2. The success card's next step is a booking, and this form has just
-      // asked for the two fields Calendly's own form asks for. Handing them over
+      // asked for the two fields the booking form asks for. Handing them over
       // is what stops the retype where a booking gets abandoned. Same call the
       // Contact modal already made; the guide forms never made it, so anyone who
       // booked after asking for a guide met an empty calendar form.
@@ -1391,7 +1388,7 @@
   // Mobile nav hamburger (≤900px) — collapses Contact/Book a Call into a
   // dropdown menu that reuses the canonical contact modal (exposed as
   // window.openContactModal by the contact-modal script at the bottom of
-  // this file) and the same openCalendly handler.
+  // this file) and the same openBooking handler.
   // ---------------------------------------------------------
   const navHamburgerBtn = $('navHamburgerBtn');
   const navMobileMenu = $('navMobileMenu');
@@ -1411,54 +1408,25 @@
   }
 
   // ---------------------------------------------------------
-  // Calendly — official popup widget (same as main-site Nav.tsx),
-  // opens an in-page overlay instead of a new tab.
+  // Every booking CTA lands here: the shared prequal in
+  // public/booking-chooser.js, or the /book/ page if that script has not
+  // loaded. The calendar is only ever shown after the prequal passes
+  // (decided with Darren, 15 Oct 2026), so there is no direct link to it.
   // ---------------------------------------------------------
-  const CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
-  var calendlyLoading = false;
-  function loadCalendly() {
-    if (calendlyLoading) return;
-    calendlyLoading = true;
-    var css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'https://assets.calendly.com/assets/external/widget.css';
-    document.head.appendChild(css);
-    var js = document.createElement('script');
-    js.src = 'https://assets.calendly.com/assets/external/widget.js';
-    js.async = true;
-    document.head.appendChild(js);
-  }
-  // Last resort, used only if booking-chooser.js did not load. Neither the
-  // popup nor a new tab is observable, which is why the chooser renders the
-  // calendar inline instead. Does not fire calendly_open: that file owns the
-  // event so it fires exactly once whichever path is taken.
-  function openCalendlyDirect() {
-    if (window.Calendly) {
-      window.Calendly.initPopupWidget({ url: CALENDLY_URL });
-    } else {
-      loadCalendly();
-      window.open(CALENDLY_URL, '_blank', 'noopener');
-    }
-  }
-
-  // Every booking CTA lands here. The chooser offers the call alongside the
-  // schedule, so someone ready to talk now is not pushed into booking a future
-  // slot, and it renders the calendar inline so a completed booking can be
-  // counted. See public/booking-chooser.js.
-  function openCalendly() {
+  function openBooking() {
     if (window.DTBooking) {
-      window.DTBooking.open({ onSchedule: openCalendlyDirect });
+      window.DTBooking.open();
       return;
     }
-    openCalendlyDirect();
+    window.location.assign('/book/');
   }
-  ['openCalendlyBtn', 'openBridgeCalendlyBtn', 'openLeadCalendlyBtn', 'navMobileCalendlyBtn'].forEach((id) => {
+  ['openBookingBtn', 'openBridgeBookingBtn', 'openLeadBookingBtn', 'navMobileBookingBtn'].forEach((id) => {
     const btn = $(id);
-    if (btn) btn.addEventListener('click', openCalendly);
+    if (btn) btn.addEventListener('click', openBooking);
   });
-  const navMobileCalendlyBtn = $('navMobileCalendlyBtn');
-  if (navMobileCalendlyBtn && navMobileMenu) {
-    navMobileCalendlyBtn.addEventListener('click', () => {
+  const navMobileBookingBtn = $('navMobileBookingBtn');
+  if (navMobileBookingBtn && navMobileMenu) {
+    navMobileBookingBtn.addEventListener('click', () => {
       navMobileMenu.classList.remove('open');
       if (navHamburgerBtn) navHamburgerBtn.setAttribute('aria-expanded', 'false');
     });
@@ -1592,7 +1560,7 @@
         <div class="lf-success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="lf-success-heading" id="contactSuccessHeading">You're all set!</h3>
         <p class="lf-success-body" id="contactSuccessBody">Darren will be in touch.</p>
-        <button type="button" class="lf-success-cta" id="contactSuccessCalendly">Book a Free Strategy Call</button>
+        <button type="button" class="lf-success-cta" id="contactSuccessBooking">Book a Free Strategy Call</button>
         <button type="button" class="lf-success-close" id="closeContactSuccess">Close</button>
       </div>
     </div>
@@ -1879,9 +1847,9 @@
 
   el('closeContactModal').addEventListener('click', closeContact);
   el('closeContactSuccess').addEventListener('click', closeContact);
-  el('contactSuccessCalendly').addEventListener('click', function () {
-    if (typeof openCalendly === 'function') openCalendly();
-    else window.open('https://calendly.com/realdarrentsai/15min', '_blank', 'noopener');
+  el('contactSuccessBooking').addEventListener('click', function () {
+    if (typeof openBooking === 'function') openBooking();
+    else window.location.assign('/book/');
   });
   overlay.addEventListener('click', function (e) { if (e.target === overlay) closeContact(); });
   window.addEventListener('keydown', function (e) {
@@ -1983,7 +1951,7 @@
           : 'Darren will be in touch.';
       }
       // The success state's next button is "Book a Free Strategy Call". Hand the
-      // chooser the two fields Calendly would otherwise ask for again, which is
+      // chooser the two fields the booking form would otherwise ask for again, which is
       // where a booking gets abandoned. In memory for this page view only.
       try {
         if (window.DTBooking && window.DTBooking.identify) {

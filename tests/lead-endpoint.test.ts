@@ -83,6 +83,55 @@ describe('request guards', () => {
     const response = await handler(req({ ...LEAD, propertyUse: 'primary', propertyState: 'NY', serviceAreaVersion: 'old', serviceAreaResult: 'supported' }), ctx);
     expect(response.status).toBe(422); expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
   });
+  /**
+   * The booking prequal shows Darren's calendar only to a lead that passes
+   * (15 Oct 2026). A hand-built post must not get around it, whatever the
+   * SERVICE_AREA_REQUIRED rollout switch says.
+   */
+  describe('booking-prequal', () => {
+    const PREQUAL = {
+      ...LEAD, formId: 'booking-prequal', source: 'home-contact',
+      propertyUse: 'primary', propertyState: 'CA', serviceAreaVersion: 'v',
+      propertyType: 'single-family-condo', mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no',
+    };
+
+    it('forwards a lead that passes', async () => {
+      const response = await handler(req(PREQUAL), ctx);
+      expect(response.status).toBe(200);
+      expect(upstreamCalled()).toBe(true);
+    });
+
+    it('lets a buyer with no mortgage yet through', async () => {
+      const response = await handler(req({ ...PREQUAL, mortgageCurrent: 'no-mortgage' }), ctx);
+      expect(response.status).toBe(200);
+    });
+
+    it('refuses an unsupported state even with screening fields stripped', async () => {
+      const { serviceAreaVersion: _omit, ...noVersion } = PREQUAL;
+      const response = await handler(req({ ...noVersion, propertyState: 'NY' }), ctx);
+      expect(response.status).toBe(422);
+      expect((await response.json()).field).toBe('propertyState');
+      expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+    });
+
+    it.each([
+      ['a mobile home or land', { propertyType: 'mobile-land' }],
+      ['a mortgage that is not current', { mortgageCurrent: 'no' }],
+      ['a recent bankruptcy or foreclosure', { recentBankruptcyForeclosure: 'yes' }],
+      ['missing knockout answers', { mortgageCurrent: undefined, recentBankruptcyForeclosure: undefined }],
+    ])('refuses %s without saving or emailing', async (_label, over) => {
+      const response = await handler(req({ ...PREQUAL, ...over }), ctx);
+      expect(response.status).toBe(422);
+      expect((await response.json()).field).toBe('prequal');
+      expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+    });
+
+    it('leaves every other form alone', async () => {
+      const response = await handler(req({ ...LEAD, mortgageCurrent: 'no' }), ctx);
+      expect(response.status).toBe(200);
+    });
+  });
+
   it('rejects GET with 405', async () => {
     const res = await handler(req(LEAD, { method: 'GET' }), ctx);
     expect(res.status).toBe(405);

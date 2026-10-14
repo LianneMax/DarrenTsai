@@ -19,7 +19,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NMLS, DRE, COMPANY, LICENSED_STATES } from '../config';
-import { openCalendly } from '../utils/calendly';
+import { openBooking } from '../utils/booking';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
 const STATES = LICENSED_STATES.join(' · ');
@@ -232,7 +232,7 @@ export function HomeAbout() {
             or a new mortgage, I start with the numbers and help you understand the tradeoffs.
           </p>
           <p className="hub-licenses">NMLS #{NMLS} · CA DRE Broker #{DRE}<br />Licensed in {STATES}</p>
-          <button type="button" className="btn btn-teal" onClick={() => openCalendly()}>Talk to Darren</button>
+          <button type="button" className="btn btn-teal" onClick={() => openBooking()}>Talk to Darren</button>
         </div>
       </div>
     </section>
@@ -282,7 +282,7 @@ export function HomeEducation() {
         <aside>
           <h3>Prefer to talk it through?</h3>
           <p>Bring your questions. Darren can help you understand the numbers and decide what to explore next.</p>
-          <button type="button" className="btn btn-accent" onClick={() => openCalendly()}>Book a Call</button>
+          <button type="button" className="btn btn-accent" onClick={() => openBooking()}>Book a Call</button>
         </aside>
       </div>
     </section>

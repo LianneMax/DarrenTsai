@@ -140,7 +140,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#219ebc" style="border-radius:8px;">
-            <a href="https://calendly.com/realdarrentsai/15min" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Book a 15-minute FHA strategy session</a>
+            <a href="https://realdarrentsai.com/book/?utm_source=email&amp;utm_medium=guide&amp;utm_campaign=fha-guide" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Book a 15-minute FHA strategy session</a>
           </td>
         </tr>
       </table>
@@ -148,7 +148,7 @@ function buildEmailHtml(lead: { firstName?: string }) {
   </tr>
   <tr>
     <td class="pad" style="padding:12px 40px 0 40px;font-family:${FONT};font-size:13px;line-height:20px;mso-line-height-rule:exactly;color:#6b7280;">
-      Or use this link: calendly.com/realdarrentsai/15min
+      Or use this link: realdarrentsai.com/book/
     </td>
   </tr>
 

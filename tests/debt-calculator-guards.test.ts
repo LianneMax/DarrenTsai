@@ -303,8 +303,8 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
     // book a call and never create a Sheet row. Booking lives on the success
     // card, where the lead is already saved.
     const step4 = VIEWS.slice(VIEWS.indexOf('export function StepContact('), VIEWS.indexOf('export function DebtRecap('));
-    expect(step4).not.toContain('openCalendly');
-    expect(VIEWS.slice(VIEWS.indexOf('export function DebtRecap('))).toContain('onClick={v.openCalendly}');
+    expect(step4).not.toContain('openBooking');
+    expect(VIEWS.slice(VIEWS.indexOf('export function DebtRecap('))).toContain('onClick={v.openBooking}');
   });
 
   it('does not offer a text nobody answers', () => {
@@ -348,10 +348,11 @@ describe('a waiting page does not describe what it is waiting for', () => {
     expect(DSCR).toContain('Check your email for the DSCR guide.');
   });
 
-  it('R5-6: carries the visitor and the ad into the new-tab fallback', () => {
+  it('R5-6: carries the visitor and the ad into the booking lead', () => {
+    // The new-tab calendar fallback went with Calendly (15 Oct 2026). The
+    // prequal posts the attribution snapshot with the lead instead.
     const CHOOSER = read('public/booking-chooser.js');
-    expect(CHOOSER).toContain("calendlyUrlFor(knownLead, utmFromAttribution())");
-    expect(CHOOSER).toContain("utmSource: 'utm_source'");
+    expect(CHOOSER).toContain('window.DT.attr()');
   });
 
   it('R5-7: asks to review numbers only where the form carries them', () => {

@@ -1,34 +1,31 @@
 /**
- * The "Book a Call" chooser: one CTA, two ways to act, and the calendar itself.
+ * Booking: one short prequal in front of Darren's calendar and his phone.
  *
- * WHY THIS EXISTS. Every booking CTA on the site used to go straight to
- * Calendly. That pushed the hottest lead there is, someone ready to talk right
- * now, into scheduling a future appointment, while the CallRail number sat in
- * the footer where nobody looks. So the one conversion path that is already
- * fully instrumented (CallRail: website pool, >60s, an Ads conversion) had
- * almost nothing to attribute, and the path that is not carried everything.
+ * WHY THIS EXISTS. Decided with Darren on 15 Oct 2026: only licensed-state
+ * leads can book, and the site does the qualifying. Calendly's free plan could
+ * not screen anyone, and its public link let a New York visitor book around the
+ * state check the site already had. So booking moved to HubSpot Meetings, and
+ * the calendar is only ever drawn here, after this prequal passes and the lead
+ * has been saved. Nothing else on the site links to the calendar.
  *
- * The call option is a real <a href="tel:">, deliberately. That is what makes
- * it cheap: CallRail's swap.js rewrites the number and the href on every page,
- * and the existing listener in attribution.js already fires phone_click for any
- * tel: anchor. No new tracking code exists anywhere for the call path.
+ * The same flow serves every "Book a Call", "Schedule" and "Call" button, the
+ * phone numbers in the footer and nav (service-area.js routes any tel: click
+ * here), and the /book/ page, which mounts it inline instead of in a panel.
+ * There are two runtimes to serve, the React bundle and the three hand-written
+ * landing pages, so it lives here once rather than in each. Same reasoning as
+ * attribution.js and email-suggest.js.
  *
- * WHY THE CALENDAR IS INLINE. Booking used to happen in Calendly's own popup,
- * or, on the first click of any page, in a new browser tab because the widget
- * had not loaded yet. A new tab is not observable: Calendly announces a booking
- * by posting a message to its parent window, and a tab we opened is not our
- * parent. That is why completed bookings went uncounted and why a webhook
- * looked like the only answer.
- *
- * Rendered inline, the calendar is an iframe inside this page, so the parent it
- * posts to is us. Every booking is visible, with no webhook and no plan
- * upgrade. The popup and new-tab paths remain only as fallbacks for when the
- * widget cannot load at all.
- *
- * All of the Calendly plumbing lives here rather than in each caller. There are
- * two runtimes to serve, the React bundle and the three hand-written landing
- * pages, and they each used to carry their own copy of the loader. Same
- * reasoning as attribution.js and email-suggest.js.
+ * ORDER, which is the point of the file:
+ *   1. property use, property state (service-area policy v2), property type
+ *   2. Darren's two knockouts: mortgage current, and no bankruptcy or
+ *      foreclosure in the last 4 years
+ *   3. contact details, the required privacy box and the two optional SMS boxes
+ *   4. POST /api/lead. Only after a confirmed receipt: the calendar, prefilled,
+ *      plus a Call button.
+ * An unsupported state goes to /out-of-market-primary/ or /out-of-market-dscr/.
+ * A knockout gets a short, kind decline. A fail shows no calendar and no phone
+ * number, and nothing is posted: lead.mts refuses a failing booking-prequal
+ * lead too, so a hand-built request cannot book around this either.
  *
  * ES5 on purpose: this is served verbatim to the browser with no transpile.
  */
@@ -40,47 +37,69 @@
   var PHONE_DISPLAY = '(714) 887-5432';
   var PHONE_HREF = 'tel:+17148875432';
 
-  var CALENDLY_URL = 'https://calendly.com/realdarrentsai/15min';
-  var CALENDLY_ORIGIN = 'https://calendly.com';
-  var WIDGET_CSS = 'https://assets.calendly.com/assets/external/widget.css';
-  var WIDGET_JS = 'https://assets.calendly.com/assets/external/widget.js';
-
-  var STYLE_ID = 'dt-booking-style';
-  var HINT_ID = 'dt-booking-hints';
-  var overlay = null;
-  var lastFocus = null;
-  var widgetLoading = false;
+  /**
+   * The one place the calendar address lives. PLACEHOLDER until Darren sends
+   * his HubSpot meetings link (darren@ or team@, open decision). While it is a
+   * placeholder the flow still saves the lead and offers the Call button, but
+   * draws no calendar, so nothing ships that books into a page that does not
+   * exist.
+   */
+  var BOOKING_URL = 'https://meetings.hubspot.com/PLACEHOLDER';
+  var BOOKING_READY = BOOKING_URL.indexOf('PLACEHOLDER') === -1;
+  var MEETINGS_SCRIPT = 'https://static.hsappstatic.net/MeetingsEmbed/ex/MeetingsEmbedCode.js';
 
   /**
-   * How long the calendar gets before we offer a way out.
-   *
-   * In the Claude app's browser it sat on Calendly's own spinner for over
-   * twenty seconds, twice, with no escape and no Call option left on screen,
-   * because the options are replaced by the calendar. In Chrome the same embed
-   * was up in three to five seconds. Eight is well clear of a slow-but-working
-   * load and well inside the point where someone gives up on a page.
+   * Who may tell us a meeting was booked. The embed is served from
+   * meetings.hubspot.com, or a regional host such as meetings-na2.hubspot.com.
+   * Exact host match, not a substring: indexOf('hubspot.com') also accepts
+   * https://hubspot.com.attacker.example, which could post a forged booking.
    */
-  var STALL_MS = 8000;
+  var MEETINGS_ORIGIN = /^https:\/\/meetings(?:-[a-z0-9]+)?\.hubspot\.com$/;
+
+  var FORM_ID = 'booking-prequal';
+  var STYLE_ID = 'dt-booking-style';
+
+  /**
+   * source per page, so a booking lead lands under the same label as that
+   * page's contact modal: the Apps Script already routes every one of these to
+   * the Leads tab (CONTACT_SOURCES), and the service-area policy reads the
+   * source for its home-equity and FHA/DSCR context. /book/ and any page not
+   * listed post 'book-contact'.
+   */
+  var PAGE_SOURCES = {
+    '/': 'home-contact',
+    '/debt-consolidation/': 'debt-consolidation-contact',
+    '/home-equity/': 'home-equity-contact',
+    '/adu/': 'adu-contact',
+    '/mortgage-calculator/': 'mortgage-calculator-contact',
+    '/dscr/': 'dscr-contact',
+    '/fha/': 'fha-contact',
+    '/realestateinvesting/': 'rei-contact'
+  };
+
+  // Release 0 wording (CallRail's 10DLC template), word for word with
+  // compliance.js, so the evidence recorded matches what the visitor ticked.
+  var PRIVACY_VERSION = '2026-10-13-v1';
+  var SMS_CONSENT_VERSION = '2026-10-15-v5';
+  var SMS_INFO_TEXT = 'By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.';
+  var SMS_MARKETING_TEXT = 'By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.';
+  var SMS_LINKS = ' View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a>';
+
+  var overlay = null;
+  var lastFocus = null;
+  var bookedSent = false; // meeting_booked fires once per page view
 
   /**
    * Who is booking, when we happen to know.
    *
-   * Set by the lead forms after a successful submit. Somebody who filled in
-   * seven fields thirty seconds ago should not be asked for their name and
-   * email again by the calendar; that retype is where a booking gets abandoned.
-   * Nothing is guessed: if no form ran, the calendar asks as it always did.
-   *
-   * Kept in sessionStorage as well as in memory, which is the R6-2 change. In
-   * memory alone it died on a reload and on every move to another page of the
-   * site, so somebody who filled in a guide form and then went looking for the
-   * booking button arrived at the calendar as a stranger. sessionStorage is per
-   * tab and goes when the tab does. Name and email only, the two fields
-   * Calendly's own form was going to ask for anyway; it is read back only to
-   * hand to that form and is sent nowhere else.
+   * Set by the lead forms after a successful submit, so somebody who filled in
+   * a form thirty seconds ago is not asked for their name and email again.
+   * Kept in sessionStorage as well as in memory, per tab: in memory alone it
+   * died on every move to another page of the site. Read back only to prefill
+   * this flow's own contact step and the calendar; sent nowhere else.
    */
   var LEAD_KEY = 'dt_known_lead';
 
-  /** Whatever a previous page view in this tab already knew. */
   function readLead() {
     try {
       var raw = window.sessionStorage.getItem(LEAD_KEY);
@@ -93,8 +112,6 @@
       return lead;
     } catch (e) {
       // Private mode, blocked storage, or something else's value under our key.
-      // A forgotten name is a small cost; a throw here would take the whole
-      // booking panel down with it.
       return null;
     }
   }
@@ -108,162 +125,343 @@
 
   var knownLead = readLead();
 
-  /**
-   * Set by watchForStall while a calendar is loading, called by the message
-   * listener when Calendly says it has rendered. Null the rest of the time, so
-   * a stray message from a closed panel does nothing.
-   */
-  var onCalendlyRender = null;
-
-  /**
-   * The frame holding the calendar that is open now, and the one pending re-send.
-   *
-   * Both exist so that a message can be answered by posting back into *this*
-   * panel's iframe and nothing else: an origin check says a message came from
-   * Calendly, it does not say which frame, and a page can hold more than one.
-   */
-  var activeFrame = null;
-  var prefillTimer = null;
-
-  /**
-   * How long after a time is picked to send the prefill again.
-   *
-   * calendly.date_and_time_selected arrives as the click is handled, and the
-   * details form is drawn just after it, so one send on the event alone can
-   * still land before the fields exist. Sending twice costs nothing: the second
-   * message is ignored if the first one landed.
-   */
-  var PREFILL_REDRAW_MS = 500;
-
   function track(event, params) {
     try {
       if (window.DT && window.DT.track) window.DT.track(event, params);
     } catch (e) { /* analytics must never break a booking */ }
   }
 
-  /**
-   * DNS and TLS to Calendly, started while the visitor reads the two options.
-   *
-   * The iframe is the slow part of an inline embed, not the script, and it is
-   * not requested until they pick "Schedule". Warming the connection here buys
-   * back most of that wait without costing anything on a page view where nobody
-   * clicks, because these are only hints.
-   */
-  function injectHints() {
-    if (document.getElementById(HINT_ID)) return;
-    var frag = document.createDocumentFragment();
-    var hosts = ['https://assets.calendly.com', 'https://calendly.com'];
-    for (var i = 0; i < hosts.length; i++) {
-      var link = document.createElement('link');
-      link.rel = 'preconnect';
-      link.href = hosts[i];
-      link.crossOrigin = '';
-      if (i === 0) link.id = HINT_ID;
-      frag.appendChild(link);
-    }
-    document.head.appendChild(frag);
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
   }
 
-  /** Fetch the widget once. Idempotent; safe to call on every chooser open. */
-  function loadWidget() {
-    if (widgetLoading) return;
-    widgetLoading = true;
-    var css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = WIDGET_CSS;
-    document.head.appendChild(css);
-    var js = document.createElement('script');
-    js.src = WIDGET_JS;
-    js.async = true;
-    // A blocked or failed script must be retryable rather than permanent:
-    // widgetLoading stays true otherwise and every later open falls straight
-    // through to the new tab for the rest of the session.
-    js.onerror = function () { widgetLoading = false; };
-    document.head.appendChild(js);
+  function pageSource() {
+    var path = window.location.pathname || '/';
+    if (path.charAt(path.length - 1) !== '/') path += '/';
+    return Object.prototype.hasOwnProperty.call(PAGE_SOURCES, path) ? PAGE_SOURCES[path] : 'book-contact';
   }
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     var css =
       '.dt-book-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;' +
-      'justify-content:center;padding:20px;background:rgba(15,32,45,.55);opacity:0;transition:opacity .15s ease;' +
+      'justify-content:center;padding:20px 16px;background:rgba(15,32,45,.55);opacity:0;transition:opacity .15s ease;' +
       'overflow-y:auto;}' +
       '.dt-book-overlay.dt-open{opacity:1;}' +
-      '.dt-book-card{background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;' +
+      '.dt-book-card{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-sizing:border-box;' +
       'box-shadow:0 20px 60px rgba(15,32,45,.28);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;' +
-      'transform:translateY(8px);transition:transform .15s ease;margin:auto;}' +
+      'transform:translateY(8px);transition:transform .15s ease;margin:auto;color:#0f202d;}' +
       '.dt-book-overlay.dt-open .dt-book-card{transform:none;}' +
-      // Wider once the calendar is in, which needs the room to lay out a month.
-      // 520px gets Calendly's narrow layout, which pushes the date grid below
-      // the fold on a desktop screen. Wider once there is room for it.
-      '.dt-book-card.dt-cal{max-width:520px;padding:18px;}' +
-      '@media(min-width:780px){.dt-book-card.dt-cal{max-width:720px;}}' +
-      // R6-1. Calendly picks its layout from the width of the element it is
-      // handed, not from the viewport: 1100px and up gives the side-by-side
-      // layout (Darren's details left, month grid and times right), 650 to
-      // 1099px gives the stacked one, under 650px the phone one. At 720px every
-      // desktop visitor got stacked, which puts the avatar and description
-      // first and a tall blank band above the card, so the first date was below
-      // the fold and had to be scrolled to inside the panel.
-      //
-      // 1160px of card less 18px of padding each side leaves the frame 1124px,
-      // clear of the 1100px threshold with room for a scrollbar. The taller
-      // frame is what makes the times column reachable without scrolling; it is
-      // scoped to the wide breakpoint so short laptops keep the 72vh cap below.
-      '@media(min-width:1200px){.dt-book-card.dt-cal{max-width:1160px;}' +
-      '.dt-book-card.dt-cal .dt-book-frame{height:700px;max-height:85vh;}}' +
+      '.dt-book-inline .dt-book-card{box-shadow:none;border:1px solid #e6ebf0;transform:none;margin:0 auto;}' +
+      '.dt-book-card.dt-cal{max-width:760px;}' +
       '.dt-book-title{margin:0 0 4px;font-size:19px;line-height:26px;font-weight:700;color:#0f202d;}' +
-      '.dt-book-sub{margin:0 0 18px;font-size:14px;line-height:21px;color:#6b7280;}' +
-      '.dt-book-opts{display:flex;flex-direction:column;gap:10px;}' +
-      '.dt-book-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;' +
-      'padding:14px 16px;border-radius:12px;border:1.5px solid #e6ebf0;background:#fff;text-decoration:none;' +
-      'font-family:inherit;transition:border-color .12s ease,background-color .12s ease;}' +
-      '.dt-book-opt:hover,.dt-book-opt:focus-visible{border-color:#c0334d;background:#fff7f8;outline:none;}' +
-      '.dt-book-ico{flex:0 0 40px;height:40px;border-radius:10px;display:flex;align-items:center;' +
-      'justify-content:center;background:#f1f5f8;color:#223d55;}' +
-      // Both are block: as inline spans they ran together into
-      // "Call (714) 942-4217Straight through, no waiting".
-      '.dt-book-opt-t{display:block;font-size:15px;font-weight:700;color:#0f202d;line-height:20px;}' +
-      '.dt-book-opt-s{display:block;font-size:13px;color:#6b7280;line-height:18px;margin-top:1px;}' +
-      '.dt-book-close{margin:16px auto 0;display:block;background:none;border:0;cursor:pointer;' +
-      'font-family:inherit;font-size:13px;color:#6b7280;text-decoration:underline;padding:4px;}' +
-      '.dt-book-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}' +
-      '.dt-book-back{background:none;border:0;cursor:pointer;font-family:inherit;font-size:13px;' +
-      'color:#517686;padding:4px 0;}' +
-      '.dt-book-back:hover{text-decoration:underline;}' +
-      // Height is capped against the viewport so the calendar never runs off a
-      // short laptop screen; the overlay scrolls if it still does not fit.
-      '.dt-book-frame{min-width:280px;height:680px;max-height:72vh;}' +
-      '.dt-book-wait{font-size:13px;color:#6b7280;text-align:center;padding:28px 0;}' +
-      '.dt-book-stall{padding:18px 4px 4px;font-family:inherit;}' +
-      '.dt-book-stall p{margin:0 0 14px;font-size:14px;line-height:21px;color:#6b7280;}' +
-      // Call first on a phone, where tapping a number is the native action and
-      // Calendly is a multi-step form. Schedule first on desktop, where a number
-      // is only something to write down. One markup, ordered by CSS.
-      '.dt-book-call{order:1;}.dt-book-sched{order:2;}' +
-      '@media(min-width:640px){.dt-book-call{order:2;}.dt-book-sched{order:1;}}';
+      '.dt-book-sub{margin:0 0 16px;font-size:14px;line-height:21px;color:#6b7280;}' +
+      '.dt-book-step{margin:0 0 6px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#517686;font-weight:600;}' +
+      '.dt-book-q{margin:16px 0 8px;font-size:15px;font-weight:600;line-height:21px;}' +
+      '.dt-book-choices{display:flex;flex-wrap:wrap;gap:8px;}' +
+      '.dt-book-choice{flex:1 1 140px;min-height:44px;padding:10px 12px;border-radius:10px;border:1.5px solid #e6ebf0;' +
+      'background:#fff;font:inherit;font-size:15px;color:#0f202d;cursor:pointer;text-align:center;}' +
+      '.dt-book-choice[aria-pressed="true"]{border-color:#223d55;background:#f1f5f8;font-weight:600;}' +
+      '.dt-book-choice:focus-visible{outline:2px solid #517686;outline-offset:2px;}' +
+      '.dt-book-field{display:block;margin:12px 0 0;font-size:14px;font-weight:600;}' +
+      '.dt-book-field input,.dt-book-field select{display:block;width:100%;box-sizing:border-box;margin-top:6px;' +
+      'padding:11px 12px;border:1px solid #cfd8e0;border-radius:8px;font:inherit;font-size:16px;font-weight:400;background:#fff;color:#0f202d;}' +
+      '.dt-book-row{display:flex;gap:10px;}.dt-book-row .dt-book-field{flex:1;min-width:0;}' +
+      '.dt-book-check{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;font-size:13px;line-height:19px;color:#374151;}' +
+      '.dt-book-check input{flex-shrink:0;margin-top:3px;width:18px;height:18px;}' +
+      '.dt-book-check a{color:#2b6b80;}' +
+      '.dt-book-note{margin:12px 0 0;font-size:12px;line-height:18px;color:#6b7280;}' +
+      '.dt-book-err{margin:12px 0 0;font-size:14px;line-height:20px;color:#b42318;}' +
+      '.dt-book-err:empty{display:none;}' +
+      '.dt-book-next{display:block;width:100%;margin-top:18px;min-height:48px;padding:12px 16px;border:0;border-radius:10px;' +
+      'background:#223d55;color:#fff;font:inherit;font-size:16px;font-weight:600;cursor:pointer;}' +
+      '.dt-book-next[disabled]{opacity:.6;cursor:default;}' +
+      '.dt-book-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;}' +
+      '.dt-book-link{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:#517686;padding:4px 0;text-decoration:underline;}' +
+      '.dt-book-call{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;min-height:48px;' +
+      'border-radius:10px;border:1.5px solid #e6ebf0;text-decoration:none;color:#0f202d;font-weight:600;}' +
+      '.dt-book-frame{min-height:620px;}' +
+      '.dt-book-frame iframe{width:100%!important;}' +
+      '.dt-book-done{padding:8px 0 0;font-size:15px;line-height:22px;}';
     var style = document.createElement('style');
     style.id = STYLE_ID;
     style.appendChild(document.createTextNode(css));
     document.head.appendChild(style);
   }
 
-  var PHONE_ICON =
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-    '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" ' +
-    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  /**
+   * One visitor's answers, for the life of one open flow. Never stored: only
+   * the name and email go to sessionStorage, through identify().
+   */
+  function newAnswers() {
+    return { propertyUse: '', propertyState: '', propertyType: '', mortgageCurrent: '', recentBankruptcyForeclosure: '' };
+  }
 
-  var CAL_ICON =
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-    '<rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>' +
-    '<path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  function choiceGroup(name, options, value) {
+    var html = '<div class="dt-book-choices" role="group" data-q="' + name + '">';
+    for (var i = 0; i < options.length; i++) {
+      html += '<button type="button" class="dt-book-choice" data-value="' + options[i][0] + '" aria-pressed="' +
+        (value === options[i][0] ? 'true' : 'false') + '">' + esc(options[i][1]) + '</button>';
+    }
+    return html + '</div>';
+  }
+
+  function wireChoices(root, answers, onPick) {
+    var groups = root.querySelectorAll('[data-q]');
+    for (var g = 0; g < groups.length; g++) {
+      (function (group) {
+        group.addEventListener('click', function (e) {
+          var btn = e.target.closest ? e.target.closest('.dt-book-choice') : null;
+          if (!btn) return;
+          answers[group.getAttribute('data-q')] = btn.getAttribute('data-value');
+          var all = group.querySelectorAll('.dt-book-choice');
+          for (var i = 0; i < all.length; i++) all[i].setAttribute('aria-pressed', all[i] === btn ? 'true' : 'false');
+          if (onPick) onPick();
+        });
+      })(groups[g]);
+    }
+  }
+
+  /**
+   * Renders the flow into `card`. `host` is the overlay or the inline mount,
+   * and only decides what Close means.
+   */
+  function start(card, inline) {
+    var answers = newAnswers();
+    var source = pageSource();
+    var ctx = source + ' ' + FORM_ID;
+
+    function setErr(msg) { var el = card.querySelector('.dt-book-err'); if (el) el.textContent = msg || ''; }
+    function closeLink() { return inline ? '' : '<button type="button" class="dt-book-link dt-book-close">Close</button>'; }
+    function wireClose() { var c = card.querySelector('.dt-book-close'); if (c) c.addEventListener('click', close); }
+
+    function stepProperty() {
+      card.classList.remove('dt-cal');
+      var uses = window.DTServiceArea.uses(ctx);
+      var useOpts = [];
+      if (uses.indexOf('primary') !== -1) useOpts.push(['primary', 'Primary home']);
+      if (uses.indexOf('investment') !== -1) useOpts.push(['investment', 'Rental / investment']);
+      if (useOpts.length === 1) answers.propertyUse = useOpts[0][0];
+      var states = window.DTServiceArea.states();
+      var stateOpts = '<option value="">Choose a state</option>';
+      for (var i = 0; i < states.length; i++) {
+        stateOpts += '<option value="' + states[i][0] + '"' + (answers.propertyState === states[i][0] ? ' selected' : '') + '>' + esc(states[i][1]) + '</option>';
+      }
+      card.innerHTML =
+        '<p class="dt-book-step">Step 1 of 3</p>' +
+        '<h2 class="dt-book-title">Talk to Darren</h2>' +
+        '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property before you pick a time.</p>' +
+        '<p class="dt-book-q">How is the property used?</p>' + choiceGroup('propertyUse', useOpts, answers.propertyUse) +
+        '<label class="dt-book-field">Where is the property?<select data-book="state">' + stateOpts + '</select></label>' +
+        '<p class="dt-book-q">What type of property is it?</p>' +
+        choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType) +
+        '<p class="dt-book-err" role="alert"></p>' +
+        '<button type="button" class="dt-book-next">Continue</button>' +
+        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+      wireChoices(card, answers, function () { setErr(''); });
+      card.querySelector('[data-book="state"]').addEventListener('change', function (e) { answers.propertyState = e.target.value; setErr(''); });
+      wireClose();
+      card.querySelector('.dt-book-next').addEventListener('click', function () {
+        if (!answers.propertyUse || !answers.propertyState || !answers.propertyType) {
+          setErr('Please answer all three to continue.');
+          return;
+        }
+        var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx);
+        if (area === 'out-of-market') {
+          // Darren's redirect pages: plain words, NMLS lookup, the calculators,
+          // and no booking or contact buttons.
+          window.location.assign(answers.propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/');
+          return;
+        }
+        if (area !== 'supported') { setErr('Please choose the property use and state.'); return; }
+        if (answers.propertyType === 'mobile-land') { decline('property-type'); return; }
+        stepHistory();
+      });
+    }
+
+    function stepHistory() {
+      card.innerHTML =
+        '<p class="dt-book-step">Step 2 of 3</p>' +
+        '<h2 class="dt-book-title">Two quick questions</h2>' +
+        '<p class="dt-book-q">Is your mortgage current?</p>' +
+        choiceGroup('mortgageCurrent', [['yes', 'Yes'], ['no', 'No'], ['no-mortgage', 'No mortgage yet']], answers.mortgageCurrent) +
+        '<p class="dt-book-q">Any bankruptcy or foreclosure in the last 4 years?</p>' +
+        choiceGroup('recentBankruptcyForeclosure', [['no', 'No'], ['yes', 'Yes']], answers.recentBankruptcyForeclosure) +
+        '<p class="dt-book-err" role="alert"></p>' +
+        '<button type="button" class="dt-book-next">Continue</button>' +
+        '<div class="dt-book-bar"><button type="button" class="dt-book-link dt-book-back">&#8592; Back</button>' + closeLink() + '</div>';
+      wireChoices(card, answers, function () { setErr(''); });
+      wireClose();
+      card.querySelector('.dt-book-back').addEventListener('click', stepProperty);
+      card.querySelector('.dt-book-next').addEventListener('click', function () {
+        if (!answers.mortgageCurrent || !answers.recentBankruptcyForeclosure) { setErr('Please answer both to continue.'); return; }
+        if (answers.mortgageCurrent === 'no') { decline('mortgage'); return; }
+        if (answers.recentBankruptcyForeclosure === 'yes') { decline('bankruptcy-foreclosure'); return; }
+        stepContact();
+      });
+    }
+
+    function stepContact() {
+      var first = '';
+      var last = '';
+      if (knownLead && knownLead.name) {
+        var parts = knownLead.name.split(/\s+/);
+        first = parts.shift() || '';
+        last = parts.join(' ');
+      }
+      card.innerHTML =
+        '<p class="dt-book-step">Step 3 of 3</p>' +
+        '<h2 class="dt-book-title">Where should Darren reach you?</h2>' +
+        '<form novalidate>' +
+        '<div class="dt-book-row">' +
+        '<label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(first) + '"></label>' +
+        '<label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(last) + '"></label>' +
+        '</div>' +
+        '<label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(knownLead && knownLead.email) + '"></label>' +
+        '<label class="dt-book-field">Phone<input name="phone" type="tel" autocomplete="tel" required></label>' +
+        '<label class="dt-book-check"><input type="checkbox" name="privacy" required> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
+        '<label class="dt-book-check"><input type="checkbox" name="smsInfo"> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
+        '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
+        '<p class="dt-book-note">Text messages are optional and not a condition of purchase or of submitting this form. Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>' +
+        '<p class="dt-book-err" role="alert"></p>' +
+        '<button type="submit" class="dt-book-next">See Darren\'s calendar</button>' +
+        '</form>' +
+        '<div class="dt-book-bar"><button type="button" class="dt-book-link dt-book-back">&#8592; Back</button>' + closeLink() + '</div>';
+      wireClose();
+      card.querySelector('.dt-book-back').addEventListener('click', stepHistory);
+      var form = card.querySelector('form');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        submit(form);
+      });
+    }
+
+    function submit(form) {
+      var f = form.elements;
+      var val = function (n) { return String(f[n].value || '').trim(); };
+      if (!val('firstName') || !val('lastName') || !val('email') || !val('phone')) { setErr('Please fill in your name, email and phone.'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('email'))) { setErr('Please check your email address.'); return; }
+      if (!f.privacy.checked) { setErr('Please acknowledge the Privacy Policy and Terms to continue.'); f.privacy.focus(); return; }
+      setErr('');
+      var btn = form.querySelector('.dt-book-next');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      var lead = {
+        firstName: val('firstName'), lastName: val('lastName'), email: val('email'), phone: val('phone'),
+        state: answers.propertyState,
+        source: source, formId: FORM_ID, magnet: 'Booking prequal',
+        propertyUse: answers.propertyUse, propertyState: answers.propertyState,
+        serviceAreaResult: 'supported', serviceAreaVersion: window.DTServiceArea.version(),
+        propertyType: answers.propertyType, mortgageCurrent: answers.mortgageCurrent,
+        recentBankruptcyForeclosure: answers.recentBankruptcyForeclosure,
+        privacyAcknowledged: true, privacyVersion: PRIVACY_VERSION,
+        smsInformationalConsent: !!f.smsInfo.checked, smsInformationalConsentText: SMS_INFO_TEXT,
+        smsMarketingConsent: !!f.smsMarketing.checked, smsConsent: !!f.smsMarketing.checked,
+        smsConsentText: SMS_MARKETING_TEXT, smsConsentVersion: SMS_CONSENT_VERSION,
+        smsConsentAt: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+      };
+      var attr = {};
+      try { attr = window.DT && window.DT.attr ? window.DT.attr() : {}; } catch (e2) { attr = {}; }
+      var body = {};
+      var k;
+      for (k in attr) if (Object.prototype.hasOwnProperty.call(attr, k)) body[k] = attr[k];
+      for (k in lead) if (Object.prototype.hasOwnProperty.call(lead, k)) body[k] = lead[k];
+
+      var fail = function (message) {
+        btn.disabled = false;
+        btn.textContent = 'See Darren\'s calendar';
+        setErr(message);
+      };
+      window.fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (res) {
+          if (res.ok) return { ok: true };
+          return res.json().then(function (j) { return { ok: false, status: res.status, body: j }; }, function () { return { ok: false, status: res.status, body: null }; });
+        })
+        .then(function (r) {
+          if (r.ok) {
+            identify({ name: lead.firstName + ' ' + lead.lastName, email: lead.email });
+            // The one website form conversion. Once, and only for a qualified
+            // lead the server confirmed. No PII: not even the nested user_data
+            // the other forms carry.
+            track('generate_lead', { lead_source: source, form_id: FORM_ID, page_path: window.location.pathname });
+            showCalendar(lead);
+            return;
+          }
+          // The server's own screening said no. Same outcome as on the page.
+          if (r.status === 422 && r.body && r.body.field === 'propertyState') {
+            window.location.assign(answers.propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/');
+            return;
+          }
+          if (r.status === 422 && r.body && r.body.field === 'prequal') { decline('server'); return; }
+          if ((r.status === 422 || r.status === 429) && r.body && r.body.message) { fail(r.body.message); return; }
+          // Anything else was rescued by email server-side, so the visitor must
+          // not be pushed to resubmit. But a receipt we cannot confirm is not a
+          // qualified booking either, so no calendar.
+          card.innerHTML = '<h2 class="dt-book-title">Thanks, your details reached Darren</h2>' +
+            '<p class="dt-book-sub">We could not confirm the booking step, so Darren will reach out to set a time. No need to submit again.</p>' +
+            '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+          wireClose();
+        }, function () {
+          fail('We could not reach our server. Check your connection and try again.');
+        });
+    }
+
+    function showCalendar(lead) {
+      var call = '<a class="dt-book-call" href="' + PHONE_HREF + '">Prefer to talk now? Call ' + PHONE_DISPLAY + '</a>';
+      if (!BOOKING_READY) {
+        card.innerHTML = '<h2 class="dt-book-title">You\'re all set, ' + esc(lead.firstName) + '</h2>' +
+          '<p class="dt-book-sub">Darren has your details and will reach out to set a time.</p>' + call +
+          '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+        wireClose();
+        return;
+      }
+      var src = BOOKING_URL + (BOOKING_URL.indexOf('?') === -1 ? '?' : '&') + 'embed=true' +
+        '&firstname=' + encodeURIComponent(lead.firstName) +
+        '&lastname=' + encodeURIComponent(lead.lastName) +
+        '&email=' + encodeURIComponent(lead.email);
+      // Wider only once there is a calendar to lay out.
+      card.classList.add('dt-cal');
+      card.innerHTML = '<h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' +
+        '<p class="dt-book-sub">Free 15 minute call with Darren.</p>' +
+        '<div class="dt-book-frame"><div class="meetings-iframe-container" data-src="' + esc(src) + '"></div></div>' + call +
+        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+      wireClose();
+      // HubSpot's embed script scans for containers once, when it runs, so it
+      // is added after the container rather than preloaded.
+      var js = document.createElement('script');
+      js.src = MEETINGS_SCRIPT;
+      js.async = true;
+      card.appendChild(js);
+      track('booking_page_shown', { page_path: window.location.pathname });
+    }
+
+    function decline(reason) {
+      card.classList.remove('dt-cal');
+      var why = reason === 'property-type'
+        ? 'Darren does not finance mobile homes or land, so a call would not be the best use of your time.'
+        : 'Based on your answers, a call with Darren is not the right next step just yet.';
+      // No calendar and no phone number, on purpose.
+      card.innerHTML = '<h2 class="dt-book-title">Thanks for checking</h2>' +
+        '<p class="dt-book-sub">' + why + ' You are welcome to keep exploring your numbers with the free calculators.</p>' +
+        '<a class="dt-book-call" href="/">Explore the calculators</a>' +
+        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+      wireClose();
+      track('booking_prequal_declined', { reason: reason, page_path: window.location.pathname });
+    }
+
+    window.DTServiceArea.whenReady(stepProperty, function () {
+      card.innerHTML = '<h2 class="dt-book-title">Talk to Darren</h2>' +
+        '<p class="dt-book-sub">The property check could not load. Please refresh the page and try again.</p>' +
+        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+      wireClose();
+    });
+  }
 
   function close() {
     if (!overlay) return;
-    onCalendlyRender = null; // nothing left to render into
-    activeFrame = null;
-    window.clearTimeout(prefillTimer);
-    prefillTimer = null;
     var node = overlay;
     overlay = null;
     node.classList.remove('dt-open');
@@ -278,385 +476,67 @@
     if (e.key === 'Escape') close();
   }
 
-  /** The width at which the card is wide enough for Calendly's two columns. */
-  var SIDE_BY_SIDE_MIN = 1200;
-
-  /**
-   * The URL the inline widget is given. Embed options only, no visitor data.
-   *
-   * Name and email used to go on here as well as through `config.prefill`, and
-   * R6-2 removed them on the theory that widget.js serialises `prefill` into
-   * this same src, so each field arrived twice. That was wrong, and the 28 Sep
-   * check with a visible browser settled it: the current widget.js puts no
-   * prefill in the src at all, with or without `utm`. It posts the values into
-   * the frame instead, which is why nothing ever appeared and why the URL
-   * version failed too. See the message listener at the bottom of this file.
-   *
-   * The URL is still the wrong place for them, so they stay off it: on this path
-   * Calendly ignores them, and the embed src is the one thing here a visitor can
-   * read out of devtools.
-   *
-   * hide_event_type_details is decided here rather than in CSS because it is
-   * Calendly's own content: at any width below SIDE_BY_SIDE_MIN the panel gets
-   * a stacked layout whatever we do, so the avatar and description block is
-   * only pushing the calendar down. It was hidden from 780px up at first, which
-   * left it in place on exactly the screen with least room for it: on a phone
-   * the block takes about 350px of a 585px panel, so the visitor scrolled
-   * inside the panel to reach a day. Above SIDE_BY_SIDE_MIN that same block IS
-   * the left column, so there it stays.
-   *
-   * hide_gdpr_banner: the banner covers the top of the frame for EU visitors,
-   * on an embed they have already chosen to open.
-   */
-  function embedUrl() {
-    var parts = ['hide_gdpr_banner=1'];
-    var w = window.innerWidth || 0;
-    if (w < SIDE_BY_SIDE_MIN) parts.push('hide_event_type_details=1');
-    return CALENDLY_URL + '?' + parts.join('&');
+  function loadingCard(card) {
+    card.innerHTML = '<h2 class="dt-book-title">Talk to Darren</h2><p class="dt-book-sub">Loading the property check...</p>';
   }
 
-  /**
-   * The booking URL for the new-tab fallback, carrying the visitor's name and
-   * email when we know them.
-   *
-   * A plain link has no widget, so no `prefill` option and no `utm` option,
-   * which is why the query string is still the only route here. The embed
-   * options above are deliberately not added: they describe an iframe this link
-   * does not open.
-   */
-  function calendlyUrlFor(lead, utm) {
-    var parts = [];
-    if (lead && lead.name) parts.push('name=' + encodeURIComponent(lead.name));
-    if (lead && lead.email) parts.push('email=' + encodeURIComponent(lead.email));
-    // The inline widget takes UTMs through initInlineWidget's own `utm` option,
-    // so it does not need them here. A plain link has no such option, and the
-    // new-tab fallback was dropping the ad that produced the booking along with
-    // the visitor's name.
-    if (utm) {
-      var map = {
-        utmSource: 'utm_source', utmMedium: 'utm_medium', utmCampaign: 'utm_campaign',
-        utmContent: 'utm_content', utmTerm: 'utm_term'
-      };
-      for (var key in map) {
-        if (Object.prototype.hasOwnProperty.call(utm, key) && utm[key]) {
-          parts.push(map[key] + '=' + encodeURIComponent(utm[key]));
-        }
-      }
-    }
-    if (!parts.length) return CALENDLY_URL;
-    return CALENDLY_URL + (CALENDLY_URL.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
-  }
-
-  /** Attribution carried into Calendly's own record of the booking. */
-  function utmFromAttribution() {
-    var a = null;
-    try { a = window.DT && window.DT.attr ? window.DT.attr() : null; } catch (e) { a = null; }
-    if (!a) return null;
-    var utm = {};
-    if (a.utm_source) utm.utmSource = a.utm_source;
-    if (a.utm_medium) utm.utmMedium = a.utm_medium;
-    if (a.utm_campaign) utm.utmCampaign = a.utm_campaign;
-    if (a.utm_content) utm.utmContent = a.utm_content;
-    if (a.utm_term) utm.utmTerm = a.utm_term;
-    return utm;
-  }
-
-  /**
-   * Swap the two options for the calendar itself.
-   *
-   * Falls back to whatever the caller supplied (popup, else a new tab) when the
-   * widget has not arrived. That path is untrackable, which is the whole reason
-   * the inline one exists, but a booking we cannot count still beats a dead
-   * button.
-   */
-  function showCalendar(card, opts) {
-    track('calendly_open', { page_path: window.location.pathname });
-
-    var cal = window.Calendly;
-    if (!cal || typeof cal.initInlineWidget !== 'function') {
-      close();
-      if (typeof opts.onSchedule === 'function') opts.onSchedule();
-      return;
-    }
-
-    card.classList.add('dt-cal');
-    card.innerHTML =
-      '<div class="dt-book-bar">' +
-      '<button type="button" class="dt-book-back">&#8592; Back</button>' +
-      '<button type="button" class="dt-book-close" style="margin:0;">Close</button>' +
-      '</div>' +
-      '<div class="dt-book-frame"></div>';
-
-    card.querySelector('.dt-book-back').addEventListener('click', function () {
-      close();
-      open(opts);
-    });
-    card.querySelector('.dt-book-close').addEventListener('click', close);
-
-    var frame = card.querySelector('.dt-book-frame');
-    var config = { url: embedUrl(), parentElement: frame };
-    var utm = utmFromAttribution();
-    if (utm) config.utm = utm;
-    if (knownLead) config.prefill = knownLead;
-    activeFrame = frame;
-    cal.initInlineWidget(config);
-    watchForStall(card, frame);
-  }
-
-  /**
-   * Give the visitor a way out if the calendar never arrives.
-   *
-   * Calendly renders its own spinner and has no failure state of its own, so a
-   * blocked or very slow iframe looks identical to one that is about to appear,
-   * forever. Worse, by this point the two options have been replaced, so the
-   * Call route is off screen as well.
-   *
-   * WHY NOT THE IFRAME'S LOAD EVENT. That was the first attempt and it never
-   * fired the fallback once, because it is the wrong signal: `load` means the
-   * iframe document arrived, which happened about two seconds in, while
-   * Calendly's own content then sat blank for fifteen to twenty seconds. The
-   * watcher had already settled and there was nothing left to fire.
-   *
-   * Calendly says so itself. The widget posts `calendly.event_type_viewed`
-   * when the booking page is up and `calendly.page_height` when it has laid
-   * out, both from https://calendly.com. Either one means a visitor is looking
-   * at a calendar. Waiting for those means the fallback fires on exactly the
-   * case it was written for: the iframe is there, and nothing is in it.
-   */
-  function watchForStall(card, frame) {
-    var settled = false;
-    var timer = window.setTimeout(function () {
-      if (settled || !card.parentNode) return;
-      settled = true;
-      onCalendlyRender = null;
-      showStall(card, frame);
-    }, STALL_MS);
-
-    function settle() {
-      settled = true;
-      onCalendlyRender = null;
-      window.clearTimeout(timer);
-    }
-
-    onCalendlyRender = settle;
-  }
-
-  /** The two routes that still work when the embed does not. */
-  function showStall(card, frame) {
-    var out = document.createElement('div');
-    out.className = 'dt-book-stall';
-    out.innerHTML =
-      '<p>The calendar is taking longer than it should. These both still work:</p>' +
-      '<div class="dt-book-opts">' +
-      '<a class="dt-book-opt dt-book-call" href="' + PHONE_HREF + '">' +
-      '<span class="dt-book-ico">' + PHONE_ICON + '</span>' +
-      '<span><span class="dt-book-opt-t">Call ' + PHONE_DISPLAY + '</span>' +
-      '<span class="dt-book-opt-s">Call Darren directly</span></span></a>' +
-      '<a class="dt-book-opt dt-book-sched" href="' + calendlyUrlFor(knownLead, utmFromAttribution()) + '" target="_blank" rel="noopener">' +
-      '<span class="dt-book-ico">' + CAL_ICON + '</span>' +
-      '<span><span class="dt-book-opt-t">Open the calendar in a new tab</span>' +
-      '<span class="dt-book-opt-s">Free 15 minute call</span></span></a>' +
-      '</div>';
-    // Left above the frame rather than replacing it: the embed may still arrive,
-    // and pulling it out would throw away a booking that was one second away.
-    card.insertBefore(out, frame);
-    // A booking made in that new tab cannot be counted, for the same reason the
-    // inline embed exists. Recorded so a run of stalls is visible in GA4 rather
-    // than looking like people simply not booking.
-    track('calendly_stalled', { page_path: window.location.pathname });
-  }
-
-  /**
-   * options.onSchedule - fallback opener, used only when the inline widget is
-   *                      unavailable. Should not fire calendly_open itself:
-   *                      this file owns that, so it fires exactly once either
-   *                      way.
-   */
-  function open(options) {
-    var opts = options || {};
+  /** Opens the flow in a panel. Every booking and Call button lands here. */
+  function open() {
     if (overlay) return;
+    if (!window.DTServiceArea) { window.location.assign('/book/'); return; }
     injectStyles();
-    injectHints();
     lastFocus = document.activeElement;
-
     overlay = document.createElement('div');
     overlay.className = 'dt-book-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Talk to Darren');
-
-    overlay.innerHTML =
-      '<div class="dt-book-card">' +
-      '<h2 class="dt-book-title">Talk to Darren</h2>' +
-      '<p class="dt-book-sub">Call now, or pick a time that suits you.</p>' +
-      '<div class="dt-book-opts">' +
-      '<a class="dt-book-opt dt-book-call" href="' + PHONE_HREF + '">' +
-      '<span class="dt-book-ico">' + PHONE_ICON + '</span>' +
-      '<span><span class="dt-book-opt-t">Call ' + PHONE_DISPLAY + '</span>' +
-      '<span class="dt-book-opt-s">Call Darren directly</span></span></a>' +
-      '<button type="button" class="dt-book-opt dt-book-sched">' +
-      '<span class="dt-book-ico">' + CAL_ICON + '</span>' +
-      '<span><span class="dt-book-opt-t">Schedule a time</span>' +
-      '<span class="dt-book-opt-s">Free 15 minute call</span></span></button>' +
-      '</div>' +
-      '<button type="button" class="dt-book-close">Never mind</button>' +
-      '</div>';
-
-    // The tel: anchor is left entirely alone: no preventDefault, no handler.
-    // attribution.js sees the click on the way down and fires phone_click, and
-    // CallRail has already rewritten the number. Closing on the way out means
-    // the page is tidy when they come back from the call.
-    var call = overlay.querySelector('.dt-book-call');
-
+    overlay.innerHTML = '<div class="dt-book-card"></div>';
     var card = overlay.querySelector('.dt-book-card');
-    function screened() {
-      if (!window.DTServiceArea || !window.DTServiceArea.ready()) { card.querySelector('.dt-book-sub').textContent = 'The service-area check is loading. Please try again after it loads.'; return false; }
-      if (!card.querySelector('[data-service-area]')) card.insertBefore(window.DTServiceArea.fields('booking'), card.querySelector('.dt-book-opts'));
-      return window.DTServiceArea.validate('booking', true);
-    }
-    if (window.DTServiceArea && window.DTServiceArea.ready()) card.insertBefore(window.DTServiceArea.fields('booking'), card.querySelector('.dt-book-opts'));
-    // Keep the panel and its explanation visible for refused clicks. Stop the
-    // click reaching phone tracking too: no actual call has been attempted.
-    call.addEventListener('click', function(e) {
-      if (!screened()) { e.preventDefault(); e.stopImmediatePropagation(); return; }
-      window.setTimeout(close, 0);
-    }, true);
-    overlay.querySelector('.dt-book-sched').addEventListener('click', function () {
-      if (screened()) showCalendar(card, opts);
-    });
-
-    overlay.querySelector('.dt-book-close').addEventListener('click', close);
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) close();
-    });
-
+    loadingCard(card);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     document.addEventListener('keydown', onKey);
     document.body.appendChild(overlay);
-
-    // Fetch the widget now rather than on the click, so the calendar is ready
-    // by the time they pick "Schedule".
-    loadWidget();
-    if (typeof opts.onOpen === 'function') opts.onOpen();
-
-    // Next frame, so the opacity transition has a starting value to run from.
+    start(card, false);
     window.setTimeout(function () {
       if (overlay) overlay.classList.add('dt-open');
-      if (call && call.focus) call.focus();
+      var first = card.querySelector('button, select, input');
+      if (first && first.focus) first.focus();
     }, 10);
   }
 
-  /**
-   * Calendly announces a completed booking by posting to its parent window,
-   * which is this page now the calendar is rendered inline.
-   *
-   * The origin check is the security boundary, not a nicety: without it any
-   * page or embed could post a forged booking and inflate the count.
-   *
-   * Kocah imports calendly_booking into Google Ads (decided 8 Oct 2026,
-   * probably as Primary during launch, with HubSpot as their source of truth).
-   * Until then it was an observation event kept out of Ads on purpose, because
-   * generate_lead is the website form conversion and CallRail owns paid calls,
-   * so a form lead who then books is now counted twice there. That is accepted
-   * on their side. The site side is unchanged: one event per booking, behind
-   * the origin check, with page_path only.
-   */
-  /**
-   * The window of the calendar in the panel that is open right now, or null.
-   *
-   * Read fresh each time rather than kept: widget.js creates the iframe, and it
-   * is gone the moment the panel closes.
-   */
-  function calendarWindow() {
-    if (!activeFrame || !activeFrame.parentNode) return null;
-    var iframe = activeFrame.querySelector('iframe');
-    return iframe ? iframe.contentWindow : null;
+  /** Renders the flow inline, for /book/. */
+  function mount(el) {
+    if (!el || !window.DTServiceArea) return;
+    injectStyles();
+    el.classList.add('dt-book-inline');
+    el.innerHTML = '<div class="dt-book-card"></div>';
+    var card = el.querySelector('.dt-book-card');
+    loadingCard(card);
+    start(card, true);
   }
 
   /**
-   * Hand Calendly the name and email at a moment its page is listening.
-   *
-   * WHY THIS IS NEEDED AT ALL. `config.prefill` is the documented route and is
-   * still passed. It does not arrive: the current widget.js posts a
-   * `calendly.prefill` message into the frame as the frame loads, before the
-   * booking page has a listener up, so it is dropped and the details step opens
-   * empty. Nothing about the call looks wrong, which is why this survived three
-   * rounds of checking, including a URL version Calendly also ignores.
-   *
-   * Proven by hand on 28 Sep: posting exactly this message from the parent page
-   * with the empty details step on screen filled both fields at once.
-   *
-   * Name and email only, which are the two fields the form already asked for.
-   * The phone field cannot be prefilled through the embed at all.
+   * HubSpot's embed announces a booking by posting to this page. The origin
+   * check is the security boundary: without it any page could post a forged
+   * booking and inflate the count. meeting_booked replaces calendly_booking,
+   * which Kocah imports into Google Ads; their import has to be repointed.
+   * page_path only.
    */
-  function sendPrefill(target) {
-    if (!knownLead || !target) return;
-    var payload = {};
-    if (knownLead.name) payload.name = knownLead.name;
-    if (knownLead.email) payload.email = knownLead.email;
-    try {
-      // Named origin, never '*': this carries the visitor's name and email, and
-      // a wildcard would hand them to whatever happens to be in the frame.
-      target.postMessage({ event: 'calendly.prefill', payload: payload }, CALENDLY_ORIGIN);
-    } catch (e) { /* a saved retype is a convenience; never break a booking */ }
-  }
-
   window.addEventListener('message', function (e) {
-    // Exact match, not a substring: indexOf('calendly.com') also accepts
-    // https://calendly.com.attacker.example, a domain anyone can register and
-    // serve a forged booking from.
-    if (e.origin !== CALENDLY_ORIGIN) return;
+    if (!MEETINGS_ORIGIN.test(String(e.origin || ''))) return;
     var d = e.data;
-    if (!d || typeof d.event !== 'string') return;
-
-    // Re-send the prefill at the two moments Calendly announces a page that can
-    // take it: the booking page coming up, and a time being picked, which is
-    // when the details form is drawn.
-    //
-    // e.source is checked here and not for the events below it because this is
-    // the branch that posts something back. The origin says the message came
-    // from Calendly; it does not say which frame, and replying into a frame we
-    // did not open would send a visitor's name somewhere we never chose.
-    if (knownLead) {
-      var win = calendarWindow();
-      if (win && e.source === win) {
-        if (d.event === 'calendly.event_type_viewed') sendPrefill(win);
-        if (d.event === 'calendly.date_and_time_selected') {
-          sendPrefill(win);
-          window.clearTimeout(prefillTimer);
-          prefillTimer = window.setTimeout(function () {
-            prefillTimer = null;
-            // Re-read rather than close over `win`: the panel may have been
-            // closed in the half second since, and close() nulls activeFrame.
-            sendPrefill(calendarWindow());
-          }, PREFILL_REDRAW_MS);
-        }
-      }
-    }
-
-    // Proof that a calendar is actually on screen, which is what the stall
-    // watcher is waiting for. Handled here because this is the one listener
-    // that has already checked the origin, and a forged "it rendered" would
-    // suppress the fallback exactly when it is needed.
-    if (d.event === 'calendly.event_type_viewed' || d.event === 'calendly.page_height') {
-      if (typeof onCalendlyRender === 'function') onCalendlyRender();
-    }
-
-    if (d.event !== 'calendly.event_scheduled') return;
-    track('calendly_booking', { page_path: window.location.pathname });
+    if (!d || d.meetingBookSucceeded !== true || bookedSent) return;
+    bookedSent = true;
+    track('meeting_booked', { page_path: window.location.pathname });
   });
 
   /**
-   * Tell the chooser who this visitor is, after a form has already asked them.
-   *
-   * Called from every lead submit path, the three guide forms included since
-   * R6-2. Held for this tab only, in memory and in sessionStorage: never sent
-   * anywhere, and only ever handed to Calendly's own booking form, which was
-   * going to ask for the same two fields anyway.
+   * Tell the flow who this visitor is, after a form has already asked them.
+   * An empty call clears it, storage included, so one visitor's name cannot sit
+   * in the next one's contact step.
    */
   function identify(lead) {
-    // An empty call clears it, storage included. A form that submits with
-    // nothing in those fields should not leave a previous visitor's name sitting
-    // in the calendar, and that now outlives the page view.
     if (!lead || (!lead.email && !lead.name)) { knownLead = null; writeLead(null); return; }
     knownLead = {};
     if (lead.name) knownLead.name = String(lead.name).trim();
@@ -664,5 +544,7 @@
     writeLead(knownLead);
   }
 
-  window.DTBooking = { open: open, close: close, preload: loadWidget, identify: identify };
+  // preload is kept so existing callers do not break; nothing is worth
+  // fetching before the prequal passes.
+  window.DTBooking = { open: open, close: close, mount: mount, preload: function () {}, identify: identify };
 })();

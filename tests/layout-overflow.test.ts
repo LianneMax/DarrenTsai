@@ -82,7 +82,7 @@ describe('the header buttons fit the narrowest common phone', () => {
   // each by an inline style, which no media query can reach.
   it.each([DSCR, FHA])('%s sizes them from their text, not a fixed inline width', (page) => {
     const html = read(page);
-    for (const id of ['openContactBtn', 'openCalendlyBtn']) {
+    for (const id of ['openContactBtn', 'openBookingBtn']) {
       const tag = new RegExp('<button[^>]*id="' + id + '"[^>]*>').exec(html);
       expect(tag, id + ' moved').not.toBeNull();
       expect(tag![0], id + ' still carries an inline width').not.toMatch(/width:\s*\d/);
@@ -116,19 +116,5 @@ describe('no focusable field is small enough to make iOS zoom', () => {
       if (px < 16) small.push(selector.trim().replace(/\s+/g, ' ') + ' -> ' + px + 'px');
     }
     expect(small).toEqual([]);
-  });
-});
-
-describe('the calendar opens on the dates, not on a photo', () => {
-  // R8-6. Calendly's own details block takes ~350px of a 585px phone panel, so
-  // the visitor scrolls inside the panel to find a day. R6-1 hid it between 780
-  // and 1199px; below 780 it was left in.
-  it('hides the details block at every width except the two-column layout', () => {
-    const source = read('public/booking-chooser.js');
-    const guard = /if \(([^)]*)\) parts\.push\('hide_event_type_details=1'\);/.exec(source);
-    expect(guard, 'the guard moved').not.toBeNull();
-    expect(guard![1]).toContain('w < SIDE_BY_SIDE_MIN');
-    // The lower bound is what R8-6 removes: a phone got the block too.
-    expect(guard![1]).not.toContain('DETAILS_HIDE_MIN');
   });
 });

@@ -48,7 +48,7 @@ export interface EquityPageView {
   sending: boolean;
   submitted: boolean;
   submitLead: () => void;
-  openCalendly: () => void;
+  openBooking: () => void;
 }
 
 const STEPS = ['Your Home', 'Your Options', 'Talk to Darren'];
@@ -264,7 +264,7 @@ export function EquityRecap({ v }: { v: EquityPageView }) {
       {/* Booking after the save, so every booked call arrives with its numbers.
           The call link is a real tel: anchor, so CallRail swaps the number. */}
       <div className="dcp-recap-actions">
-        <button type="button" className="btn btn-teal" onClick={v.openCalendly}>Schedule a Time</button>
+        <button type="button" className="btn btn-teal" onClick={v.openBooking}>Schedule a Time</button>
         <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="btn dcp-back">Call Darren {PHONE}</a>
       </div>
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>

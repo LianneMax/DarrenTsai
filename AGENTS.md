@@ -102,9 +102,10 @@ constrain code:
   `generate_lead` is the only website form conversion for Google Ads. CallRail
   owns paid phone calls (website pool, >60s filter). GA4 `phone_click` stays an
   observation event, never imported as a conversion. One exception, decided by
-  Kocah on 8 Oct 2026 and theirs to make: `calendly_booking` is imported into
-  Ads as well, so a form lead who then books counts twice there (see the
-  booking notes under Known state).
+  Kocah on 8 Oct 2026 and theirs to make: the booking event is imported into
+  Ads as well. It was `calendly_booking`; since 15 Oct 2026 it is
+  `meeting_booked`, so Kocah's import must be repointed (see the booking notes
+  under Known state).
 - **No PII into GA4.** The `generate_lead` dataLayer payload carries nested
   `user_data` for internal use. Do not map names, emails, phones or messages into
   GA4 event parameters.
@@ -290,39 +291,37 @@ or the lead lands on the generic tab with its fields dropped:
   Loan-field mapping and CRM acceptance remain pending. Max has read access
   but cannot obtain settings-edit permissions; Niko / Kocah owns the admin
   work in `.local-notes/SITE-AUDIT.md#nikos-short-checklist`. Preserve the existing lead flow.
-- Every "Book a Call" CTA opens a chooser (`public/booking-chooser.js`): call
-  now, or schedule. The call half is a real `tel:` anchor, so CallRail swaps the
-  number and `phone_click` fires with no extra code, which puts urgent leads on
-  the one path that is already an Ads conversion. The schedule half renders the
-  calendar **inline, in the same panel**, and fires `calendly_open`.
-- Inline is what makes `calendly_booking` possible. Calendly announces a booking
-  by posting a message to its parent window; in its own popup, and especially in
-  the new tab the old first-click fallback opened, we were not the parent, so
-  completed bookings could not be counted and a paid-plan webhook looked like
-  the only answer. Rendered inline the iframe is ours, so every booking is
-  visible. The listener checks `e.origin` against calendly.com, which is the
-  security boundary and not a nicety: without it any page could post a forged
-  booking. `calendly_booking` was an observation event that must never be
-  imported into Ads, for the same reason as `phone_click`, until 8 Oct 2026.
-  Kocah runs the Google Ads account and has decided to import it, probably as
-  Primary during launch for the extra bidding signal, with HubSpot as their
-  source of truth, so a visitor who submits a form and then books is counted
-  twice in Ads and that is accepted on their side. It is their call, not a
-  tracking bug to fix here. The site side does not change: the event fires
-  once per booking, behind the origin check, with `page_path` only.
+- **Booking is a prequal in front of HubSpot Meetings (15 Oct 2026, decided
+  with Darren).** Calendly is gone: its free plan could not screen anyone and
+  its public link let out-of-state visitors book around the site's state check.
+  Every "Book a Call", "Schedule" and "Call" button, and every `tel:` link
+  (`service-area.js` routes them), opens the one flow in
+  `public/booking-chooser.js`; `/book/` mounts the same flow inline, and every
+  email booking link points there with UTMs. Order: property use, state
+  (policy v2) and type; the two knockouts (mortgage current, no bankruptcy or
+  foreclosure in 4 years); contact and consent; `POST /api/lead` as
+  `formId: booking-prequal` with the page's contact source. Only after a
+  confirmed receipt does the HubSpot calendar render, prefilled with
+  firstname, lastname and email, next to a Call button. An unsupported state
+  goes to `/out-of-market-primary/` or `/out-of-market-dscr/`; a knockout gets
+  a decline with no calendar and no phone number. `lead.mts` refuses a failing
+  booking-prequal lead whatever `SERVICE_AREA_REQUIRED` says
+  (`prequalPasses` in `src/utils/serviceArea.ts`).
+- `BOOKING_URL` in `booking-chooser.js` is the only place the meetings link
+  lives. While it is the placeholder, a passing lead is saved and sees a Call
+  button but no calendar.
+- Events: `generate_lead` once, on confirmed receipt of a qualified lead, with
+  no PII; `booking_page_shown` when the calendar is drawn; `meeting_booked`
+  once, when the embed posts `meetingBookSucceeded` from a
+  `meetings*.hubspot.com` origin (exact host match; that message name comes
+  from community reports, not HubSpot docs, so confirm it on the first live
+  booking); `booking_prequal_declined` with a reason. `page_path` only.
 - Tests count as passing only with the whole suite: `tests/booking-chooser.test.ts`
   loads the source once per file rather than per test, because the message
   listener is registered at evaluation and re-evaluating stacks listeners.
-- The booking panel offers a way out after 8s (`STALL_MS`): Calendly has no
-  failure state of its own, so a blocked iframe looks exactly like one about to
-  appear, forever, and by then the Call option has been replaced by the
-  calendar. The fallback is added **above** the frame rather than instead of it,
-  because the embed may still be one second away. `calendly_stalled` is tracked
-  so a run of stalls looks different from people simply not booking.
-- `DTBooking.identify({name, email})` prefills the calendar after a form has
-  already asked. In memory for the page view only: never stored, never sent
-  anywhere, only ever reaches Calendly's own form. An empty call clears it, so
-  one visitor's name cannot sit in the next one's calendar.
+- `DTBooking.identify({name, email})` prefills the prequal's contact step after
+  a form has already asked. Per tab, in memory and sessionStorage, never sent
+  anywhere. An empty call clears it.
 - **A returning lead is not a failure.** HubSpot dedupes by email and updates
   the one contact. Bonzo answered 422 "already exists" instead, which was mailed
   to Darren as a LEAD PIPELINE FAILURE until 26 Sep 2026: the fastest way to

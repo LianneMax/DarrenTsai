@@ -102,7 +102,7 @@ export interface DebtPageView {
   sending: boolean;
   submitted: boolean;
   submitLead: () => void;
-  openCalendly: () => void;
+  openBooking: () => void;
 
   /** The rate-source line and the full disclosure, the same elements the homepage shows. */
   rateBadge: ReactNode;
@@ -694,7 +694,7 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
           which is what makes a completed booking countable. The call link is a
           real tel: anchor, so CallRail swaps the number and phone_click fires. */}
       <div className="dcp-recap-actions">
-        <button type="button" className="btn btn-teal" onClick={v.openCalendly}>Schedule a Time</button>
+        <button type="button" className="btn btn-teal" onClick={v.openBooking}>Schedule a Time</button>
         <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="btn dcp-back">Call Darren {PHONE}</a>
       </div>
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>

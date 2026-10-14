@@ -24,7 +24,7 @@
  *
  * WHY THIRD PARTIES ARE BLOCKED. Every request that is not localhost is aborted,
  * so a run means the same thing on every machine and on a bad connection. With
- * Calendly, CallRail and Google Fonts left in, a failure could be theirs and a
+ * HubSpot, CallRail and Google Fonts left in, a failure could be theirs and a
  * pass could depend on their being up. The cost is that text is laid out in
  * fallback fonts, so this measures the page's own structure rather than its exact
  * line breaks; that is the right trade for a check whose job is to find an
@@ -35,13 +35,12 @@ import { spawn } from 'node:child_process';
 
 const PORT = 4173;
 const BASE = `http://localhost:${PORT}`;
-const PAGES = ['/', '/debt-consolidation/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/'];
+const PAGES = ['/', '/debt-consolidation/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/book/'];
 
 /**
  * 320 to 414 are phones, 320 and 360 being where R8-4 was found (360px is the
  * most common Android width). 850 is the middle of the band where the FHA form
- * and the licensed strip overflowed, and 1440 is where Calendly switches to its
- * two-column layout.
+ * and the licensed strip overflowed, and 1440 is a common laptop width.
  */
 const WIDTHS = [320, 360, 375, 414, 768, 850, 1024, 1280, 1440];
 const PHONE_MAX = 768;

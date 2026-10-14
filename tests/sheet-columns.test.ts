@@ -37,7 +37,7 @@ const ATTR = [
   'First Click ID', 'First Click ID Type', 'First Touch At',
 ];
 const TRIAGE = ['Test?', 'Status', 'Contacted'];
-const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot'];
+const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot', 'Property Type', 'Mortgage Current', 'Recent Bankruptcy/Foreclosure'];
 
 /** source -> [tab, the funnel's own columns], as docs/lead-sheet-schema.md lists them. */
 const DETAILS: Record<string, [string, string[]]> = {

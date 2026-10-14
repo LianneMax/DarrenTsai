@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { EMAIL } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
-import { openCalendly } from '../utils/calendly';
+import { openBooking } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
 import EquityPage, { type EquityPageView } from './HomeEquityViews';
@@ -137,7 +137,7 @@ export default function HomeEquityCalculator() {
     goal, setGoal, preference, setPreference,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, usState, setUsState,
-    sending, submitted, submitLead: () => { void submitLead(); }, openCalendly,
+    sending, submitted, submitLead: () => { void submitLead(); }, openBooking,
   };
 
   const disclosure = (

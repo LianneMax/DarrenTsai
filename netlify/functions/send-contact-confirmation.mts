@@ -12,8 +12,9 @@
 //
 // There is no attachment. The one thing worth putting in front of someone who
 // has just asked to be contacted is the calendar, so they can pick a time
-// instead of waiting. The link carries UTMs, which the guide emails' Calendly
-// links still do not, so a booking that starts in this email is attributable.
+// instead of waiting. Since 15 Oct 2026 every booking link goes to /book/,
+// where the prequal runs before any calendar is shown (decided with Darren);
+// the link carries UTMs, so a booking that starts in this email is attributable.
 //
 // SETUP:
 // 1. Netlify → Site settings → Environment variables:
@@ -32,8 +33,8 @@
 import type { Config } from "@netlify/functions";
 import { escapeHtml, guideSender } from "./guide-shared.mts";
 
-const CALENDLY_BASE =
-  "https://calendly.com/realdarrentsai/15min?utm_source=email&utm_medium=confirmation&utm_campaign=";
+const BOOK_BASE =
+  "https://realdarrentsai.com/book/?utm_source=email&utm_medium=confirmation&utm_campaign=";
 
 // ── Contexts ────────────────────────────────────────────────────────────────
 //
@@ -199,7 +200,7 @@ export function buildEmailHtml(lead: Lead) {
   const firstName = escapeHtml(lead.firstName || "there");
   const FONT = "Arial,Helvetica,sans-serif";
   const copy = copyFor(lead);
-  const calendly = CALENDLY_BASE + copy.campaign;
+  const booking = BOOK_BASE + copy.campaign;
   const paragraph = (text: string) => `
   <tr>
     <td class="pad" style="padding:16px 40px 0 40px;font-family:${FONT};font-size:16px;line-height:26px;mso-line-height-rule:exactly;color:#6b7280;">
@@ -272,7 +273,7 @@ ${goalLine(lead)}${copy.body.map(paragraph).join("")}
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#219ebc" style="border-radius:8px;">
-            <a href="${calendly}" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Pick a time</a>
+            <a href="${booking}" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Pick a time</a>
           </td>
         </tr>
       </table>

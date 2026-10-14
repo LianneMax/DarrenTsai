@@ -281,271 +281,35 @@ What changed is that the visitor is told before they submit rather than finding
 out afterwards. Check this on a magnet form and a contact modal: they are
 separate implementations.
 
-### Case 1.7 - Book a Call offers both options
+### Case 1.7 - Book a Call runs the prequal first
 
-1. On any page, click **"Book a Call"**.
+Stub nothing: this case sends one real lead, so use a `zztest+` address and a
+555-01xx phone.
+
+1. On any page, click **"Book a Call"** (or tap any phone number).
 
 | Check | Expect |
 | --- | --- |
-| A small panel opens | Two options: call, and schedule a time |
-| On a phone | **Call is listed first.** On a desktop, Schedule is first |
-| The number shown | A **CallRail pool number**, not (714) 887-5432. If it reads the real number, CallRail's swap did not run |
-| Tapping the call option on a phone | Opens the dialler. After a real >60s call, it appears in CallRail within a few minutes |
-| Picking "Schedule a time" | The **calendar appears in the same panel**, not a popup and not a new tab. `calendly_open` fires in Tag Assistant |
-| The calendar | Loads within a couple of seconds. A "Back" link returns to the two options |
-| On a desktop | The panel widens to ~720px and the **date grid is visible without scrolling**. At 520px Calendly falls back to its narrow layout and the dates sit below the fold |
-| The two option lines | On their own lines. They used to run together as "Call (714) 942-4217Straight through, no waiting" |
-| The call option's sub-line | Reads "Call Darren directly". It used to promise "Straight through, no waiting", which a forwarded cell cannot always keep |
+| A small panel opens | Step 1 of 3: property use, property state, property type. No phone number, no calendar |
+| Property in NY, primary home | Goes to `/out-of-market-primary/`. Nothing reaches the Sheet |
+| Property in NY, rental | Goes to `/out-of-market-dscr/` |
+| Mobile home or land | A short decline, no calendar and no phone number |
+| Mortgage not current, or a bankruptcy/foreclosure in 4 years | A short decline, no calendar and no phone number. `booking_prequal_declined` fires |
+| CA primary, single family, current, no bankruptcy | Step 3 asks name, email, phone, the required privacy box and two optional SMS boxes |
+| Submit | Sheet `Leads` row, `Form ID` `booking-prequal`, with `Property Type`, `Mortgage Current`, `Recent Bankruptcy/Foreclosure` filled. `generate_lead` fires once |
+| After the save | The HubSpot calendar, prefilled with your name and email, plus a "Call" button showing a **CallRail pool number**. `booking_page_shown` fires |
+| `/book/` | The same three steps inline on the page |
 | Escape, or clicking outside | Closes the panel |
 
-**The stall fallback.** In DevTools, block `calendly.com` (Network > right-click
-> Block request domain), then pick "Schedule a time". After **8 seconds** a
-block should appear **above** the frame offering the phone number and "Open the
-calendar in a new tab", and `calendly_stalled` should fire. The calendar frame
-stays where it is on purpose: the embed may still be one second away. Unblock
-and confirm the fallback does not appear on a normal load.
-
-**The prefill.** Submit any lead form first, then open the chooser from that
-same success card and pick "Schedule a time". Calendly's own form should already
-hold the name and email you just typed. Reload the page and open the chooser
-without submitting: it should ask for them as before.
-
-**Then book a real slot**, using a `zztest+` address. `calendly_booking` should
-fire in Tag Assistant the moment Calendly confirms. That event is the whole
-reason the calendar is inline rather than in a popup, so it is the one to check
-most carefully. Cancel the booking in Calendly afterwards.
-
-If the calendar opens in a **new browser tab** instead of in the panel, the
-widget script did not load in time and the page fell back. `calendly_booking`
-cannot fire on that path, so report it rather than treating the booking as
-tracked.
-
-Check this on at least the homepage and one landing page, since they run separate
-copies of the page code.
-
-### Case 1.8 - The FHA calculator is on the FHA page
-
-The page has been titled "FHA Mortgage Calculator" since it shipped while the
-calculator was a spreadsheet emailed after an opt-in, which most of this page's
-traffic (YouTube, on a phone) cannot open at all.
-
-1. Open `/fha/` and use the hero button, which should now read **"Work out my
-   payment"** and jump to the estimator rather than the opt-in form.
-
-| Check | Expect |
-| --- | --- |
-| On load | Every input **empty**, with `e.g. ...` placeholders, and no result: "Enter a purchase price and an interest rate" |
-| Price `400000`, down `5`, rate `7` | Base loan **$380,000**, upfront MIP **$6,650**, total financed **$386,650** |
-| Monthly MIP | **$161**, labelled `(0.50%)`. These are the same figures as the worked example in the explainer above, which is the point |
-| Down payment `3` | A line appears saying FHA needs at least 3.5%. It must **not** refuse the input |
-| Down payment `3.5` | The MIP label switches to `(0.55%)`, because LTV is now above 95% |
-| On a phone | The two cards stack and everything stays readable |
-
-The opt-in still sends the spreadsheet. The success copy should now say the
-spreadsheet is what arrives, not "your FHA payment breakdown", which was a
-breakdown of numbers the form never asked for.
-
-### Case 1.9 - A returning lead is not a failure
-
-1. Submit a **second** lead using an email address HubSpot already holds, e.g.
-   repeat an earlier test address rather than a fresh `+tag`.
-
-| Check | Expect |
-| --- | --- |
-| Alert inbox | **No** "LEAD PIPELINE FAILURE" email |
-| Sheet tab `Debug` | A row reading "returning lead, already a prospect, not re-enrolled", with the email |
-| The guide | **Still sent.** Coming back for a second guide is the whole point |
-| `Follow-ups` row | `done` |
-
-HubSpot updates the one existing contact with the new submission.
-
-### Case 1.10 - Home Equity
-
-Ship order: the Apps Script version with the `home-equity` route first, then
-the site. Until then the lead lands on `Leads`, saved but without its columns.
-
-1. Go to `/home-equity/`. Try to continue with nothing filled in: it should
-   stop you and ask for the home value and balance.
-2. Home value `650000`, balance `350000`. Pick a goal, an amount (e.g.
-   `75000`) and a preference. Fill the contact step, State **CA**. Submit.
-
-| Check | Expect |
-| --- | --- |
-| Site | Success card, "Darren will be in touch." and no response time |
-| Sheet tab `Home Equity` | Created on this first lead, in the standard order. `Source` `home-equity`, `Form ID` `home-equity-calculator`, `Page` `/home-equity/` |
-| Sheet `Estimated Home Equity` / `Current LTV` / `Illustrative CLTV` | `300000` / `53.8` / `65.4` with the amounts above |
-| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
-| Email | The home-equity confirmation, with the calendar link |
-
-Run it once more with balance `0`: the row must say `0` under `Mortgage
-Balance`, not blank. A paid-off home is an answer.
-
-### Case 1.11 - ADU
-
-Same ship order as 1.10, with the `adu` route.
-
-1. Go to `/adu/`. All four numbers and a purpose are required before the
-   contact step: try to skip each.
-2. Home value `650000`, balance `350000`, project cost `175000`, amount to
-   finance `75000`, purpose **Rental ADU**. Contact step, State **CA**. Submit.
-
-| Check | Expect |
-| --- | --- |
-| Site | Success card. The page says plainly that financing does not confirm an ADU can be permitted, built or rented |
-| Sheet tab `ADU` | Created on this first lead. `Source` `adu`, `Form ID` `adu-calculator`, `Page` `/adu/`, `Project Purpose` `Rental ADU` |
-| Sheet `Estimated Home Equity` / `Current LTV` / `Illustrative CLTV` | `300000` / `53.8` / `65.4` |
-| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
-| Email | The ADU confirmation, with the calendar link |
-
----
-
-## 2. Attribution and Google Ads
-
-This is the part that must not move. Google Ads is live and spending, and these
-tags are how a lead is matched back to the ad that produced it.
-
-Use a fresh private window for each case, so a stored click from a previous case
-does not leak into the next one.
-
-### Case 2.1 - A click ID reaches the Sheet and HubSpot
-
-1. Open `https://realdarrentsai.com/dscr/?gclid=ZZTEST123`
-2. Submit the form.
-
-| Check | Expect |
-| --- | --- |
-| Sheet `Click ID` | `ZZTEST123` |
-| Sheet `Click ID Type` | `gclid` |
-| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
-
-### Case 2.2 - The click ID survives moving around the site
-
-1. Open `https://realdarrentsai.com/?gclid=ZZTEST456`
-2. **Navigate to another page by clicking a link**, for example to `/dscr/`.
-3. Submit there.
-
-| Check | Expect |
-| --- | --- |
-| Sheet `Click ID` | still `ZZTEST456` |
-
-If this is blank, tracking is broken in the specific way that produces "Google Ads
-reports conversions but the Sheet has no click IDs". Stop and report it.
-
-### Case 2.3 - A returning visitor is credited to the ad that first found them
-
-1. Open `https://realdarrentsai.com/dscr/?gclid=ZZTEST789&utm_source=google&utm_campaign=zztest-camp`
-2. Close the tab. **Do not clear browser storage.**
-3. Open `https://realdarrentsai.com/dscr/?utm_source=youtube.com&utm_medium=referral`
-4. Submit.
-
-| Check | Expect |
-| --- | --- |
-| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
-| Sheet `First Click ID` | `ZZTEST789` |
-
-The point of this case: source and campaign must **both** come from the first
-touch. If you see `ads:google` sitting next to `utm:youtube-com`, the lead has
-been tagged with two different origins at once. Report it.
-
-### Case 2.4 - An untracked visit says so
-
-1. Fresh private window. Go straight to `https://realdarrentsai.com/dscr/` with no
-   query string at all. Submit.
-
-| Check | Expect |
-| --- | --- |
-| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
-| Sheet attribution columns | empty |
-
-`attr:none` is deliberate. It makes broken tracking look different from a
-genuinely quiet week.
-
-### Case 2.5 - One Google tag, not two
-
-1. Open any page with Google Tag Assistant connected.
-2. Submit a form.
-
-| Check | Expect |
-| --- | --- |
-| Containers | Exactly one: `GTM-N7Z8Q4QF` |
-| On submit | `generate_lead` fires **once**, with the right `form_id` |
-| Anywhere | **No** second Google tag. No `gtag/js`, no `AW-` conversion snippet |
-
-A second Google tag double counts every conversion, which corrupts the bidding
-signal Darren's ad spend is steered by. If you find one, report it before anything
-else in this document.
-
----
-
-## 3. Failure paths a visitor can see
-
-### Case 3.1 - An email domain that does not exist
-
-1. Any form. Use email `zztest@zzz-not-a-real-domain-xyz.com`. Submit.
-
-| Check | Expect |
-| --- | --- |
-| Site | Stays on the form. Message near the email field: "We couldn't find a mail server for ..." |
-| Sheet | **No row.** Nothing was saved, which is correct |
-| Then | Correcting the email and resubmitting should work |
-
-This is the one failure a visitor can fix themselves, which is why it behaves
-differently from every other error.
-
-### Case 3.2 - What a server failure looks like
-
-You cannot trigger this on purpose without breaking something. Just recognise it:
-
-> "We couldn't confirm your request, but your details were passed to Darren and
-> he'll be in touch. No need to submit again."
-
-If you ever see that, **tell Darren and ask him to check his inbox for a rescue
-email.** One should always arrive now. If the copy appeared and no email did,
-that is a real fault worth reporting.
-
----
-
-## 4. Timing, and things that look like bugs but are not
-
-**The guide email is not instant.** The site replies as soon as the Sheet row is
-written. HubSpot and the guide email run on a separate pass up to a minute later. A
-success message with no email yet is normal. Wait a minute.
-
-**The Follow-ups tab is the progress bar.** Find your row and watch the `Status`
-column:
-
-| Status | Meaning |
-| --- | --- |
-| `pending` | queued, not picked up yet |
-| `processing:0` | being worked on right now |
-| `done` | HubSpot submitted (or skipped) and guide sent |
-| `guide-retry:1` and up | the guide failed; a retry is scheduled at 1, 5, 20, 60 then 180 minutes |
-| `error` | something threw. Check the `Debug` tab |
-
-**The Debug tab is the real log.** Apps Script's own cloud logging is unreliable
-for this. The `Debug` tab is trustworthy. It is trimmed to 2000 rows daily.
-
-**A new column shows up at the far right of a tab.** That is where the script
-adds a column the tab does not have yet. It moves into place the next time
-`migrateLeadTabs` is run. Do not drag it: rows are written under their header by
-name, so nothing is misfiled while it sits there, and a column moved by hand is
-what the "Sheet columns out of order" email is about.
-
-**A negative number under a Savings header is not an error.** It means that
-option raises the monthly payment by that much. The site says so in words.
-
-**The phone number in tracking is not Darren's number.** CallRail swaps phone
-numbers on the page so it can attribute calls, so tracking shows a pool number.
-Expected.
-
-**Your own test traffic shows up in GA4 Realtime.** The internal traffic filter is
-still in testing mode, so it does not exclude you yet. **Do not read your own test
-submissions as ad performance.**
-
-### Previously known issues, now fixed
-
-These were live until recently. If you see any of them again, it is a regression
-and worth reporting:
+**Then book a real slot.** `meeting_booked` should fire in Tag Assistant the
+moment HubSpot confirms. The message name it listens for is
+`meetingBookSucceeded`; if the event does not fire, record what the embed
+posted (DevTools > Console, `window.addEventListener('message', e => console.log(e.origin, e.data))`)
+and report it. Cancel the meeting in HubSpot afterwards.
+
+Until Darren's meetings link replaces the placeholder in
+`public/booking-chooser.js`, a passing lead sees "Darren has your details" and
+the Call button instead of a calendar.
 
 1. **Double submit.** The savings calculator's submit button now greys out and
    reads "Sending…" while it works. Try double-clicking it: you should get one

@@ -378,6 +378,22 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     });
   });
 
+  it('a booking-prequal lead lands on Leads with its three answers in their own columns', () => {
+    // public/booking-chooser.js, 15 Oct 2026. The columns are appended after
+    // everything already on the tab, so nothing on a live sheet moves.
+    post(h, {
+      source: 'book-contact', formId: 'booking-prequal',
+      firstName: 'Ada', email: 'ada@example.com', phone: '7145550123', state: 'CA',
+      propertyUse: 'primary', propertyState: 'CA', propertyType: 'single-family-condo',
+      mortgageCurrent: 'no-mortgage', recentBankruptcyForeclosure: 'no', ...ATTR,
+    });
+    expect(h.rowOf('Leads')).toMatchObject({
+      Source: 'book-contact', 'Form ID': 'booking-prequal', 'Licensed?': 'Yes',
+      'Property Type': 'single-family-condo', 'Mortgage Current': 'no-mortgage',
+      'Recent Bankruptcy/Foreclosure': 'no',
+    });
+  });
+
   it('an unknown source still lands, rather than being lost', () => {
     // A future landing page that forgets its route. The lead must survive; the
     // alignment test is what makes the missing route visible.
