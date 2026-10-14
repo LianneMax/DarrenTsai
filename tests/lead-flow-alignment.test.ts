@@ -100,9 +100,10 @@ describe('every lead the site sends has somewhere to land', () => {
    *
    * There is one entry per page the modal lives on. Until 26 Sep 2026 there was
    * a single 'MortgageCalculator' for all five, which is why the Sheet's Source
-   * column, the Bonzo tags and the GA4 event could not tell a DSCR investor from
-   * a homeowner after equity. Each of these has a tag branch in pushToBonzo,
-   * asserted below, so falling through here costs nothing but the tab.
+   * column, the CRM tags and the GA4 event could not tell a DSCR investor from
+   * a homeowner after equity. Each of these has an entry in the Apps Script's
+   * CONTACT_SOURCES, asserted below, so falling through here costs nothing but
+   * the tab.
    */
   const CONTACT_SOURCES = [
     'adu-contact',
@@ -120,12 +121,13 @@ describe('every lead the site sends has somewhere to land', () => {
     expect(unrouted).toEqual(CONTACT_SOURCES);
   });
 
-  it('gives every contact source its own Bonzo tag branch', () => {
-    // Without this they land on the `else` and are all tagged
-    // 'mortgage-calculator' again, which is the defect this replaced.
-    const table = GAS.slice(GAS.indexOf('const CONTACT_SOURCES'), GAS.indexOf('const FUNNEL_CAMPAIGNS'));
+  it('gives every contact source an entry in CONTACT_SOURCES', () => {
+    // Without one, confirmationContext does not recognise the modal and its
+    // visitor gets no confirmation email.
+    const start = GAS.indexOf('const CONTACT_SOURCES');
+    const table = GAS.slice(start, GAS.indexOf('\n};', start));
     for (const source of CONTACT_SOURCES) {
-      expect(table, `no Bonzo tag for ${source}`).toContain(`'${source}'`);
+      expect(table, `no CONTACT_SOURCES entry for ${source}`).toContain(`'${source}'`);
     }
   });
 
@@ -159,12 +161,6 @@ describe('every lead the site sends has somewhere to land', () => {
     const code = GAS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(code).not.toContain("'heloc-hei'");
     expect(code).not.toContain('HELOC vs HEI');
-  });
-
-  it('still tags the debt-consolidation funnel with the equity intent', () => {
-    // This is what heloc-hei's 'equity' / 'loan:cash-out' tags collapsed into.
-    // Without it the removal would quietly drop the signal rather than move it.
-    expect(GAS).toContain("tags.push('debt-consolidation', 'HELOC/cash-out interest')");
   });
 });
 
@@ -277,11 +273,10 @@ describe('audit fixes stay fixed', () => {
   it('Debt Consolidation records licensed state, like every other funnel', () => {
     // It collects State but was neither a LANDING_SOURCE nor tagged
     // mortgage-calculator, so an out-of-area lead there looked identical to a
-    // workable one in both the Sheet and Bonzo.
+    // workable one in the Sheet.
     // Through the columns every lead tab shares now, rather than a column of
     // this tab's own.
     expect(GAS).toContain("'Licensed?', 'Source', 'Magnet/Goal', 'Form ID', 'Page'");
-    expect(GAS).toContain("data.source === 'DebtConsolidation' ||");
   });
 
   it('never runs the positional header helper on a lead tab', () => {

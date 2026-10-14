@@ -27,10 +27,8 @@ type Gas = {
   DEBT_CONSOLIDATION_HEADERS: string[];
   SOURCE_SCHEMAS: Record<string, { tab: string; headers: string[]; row: (d: Record<string, unknown>) => unknown[] }>;
   ensureHeaders: (sheet: unknown, headers: string[]) => void;
-  bonzoTag: (value: string) => string;
   isLicensedState: (s: string) => boolean;
-  addMortgageFields: (body: Record<string, unknown>, d: Record<string, unknown>) => void;
-  attributionTags: (d: Record<string, unknown>) => string[];
+  plainNumber: (value: unknown) => string;
   FOLLOWUP_HEADERS: string[];
   classifyGuideResponse: (code: number) => string;
   nextGuideStatus: (outcome: string, attempt: number) => { status: string; alert: boolean };
@@ -44,7 +42,6 @@ type Gas = {
   formatGuideDigest: (items: Array<Record<string, unknown>>) => string;
   FOLLOWUP_COL: Record<string, number>;
   DEBUG_HEADERS: string[];
-  effectiveTouch: (d: Record<string, unknown>) => { fromFirst: boolean; source: string; campaign: string; content: string };
   effectiveClickId: (d: Record<string, unknown>) => string;
   effectiveClickIdType: (d: Record<string, unknown>) => string;
 };
@@ -64,7 +61,7 @@ function loadGas(): Gas {
     exports: [
       'ATTR_HEADERS', 'attrRow', 'LEAD_HEADERS', 'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS',
       'DEBT_CONSOLIDATION_HEADERS', 'SOURCE_SCHEMAS', 'ensureHeaders',
-      'bonzoTag', 'isLicensedState', 'addMortgageFields', 'attributionTags', 'effectiveTouch',
+      'isLicensedState', 'plainNumber',
       'FOLLOWUP_HEADERS', 'effectiveClickId', 'effectiveClickIdType',
       'classifyGuideResponse', 'nextGuideStatus', 'guideAttemptsFromStatus', 'GUIDE_MAX_ATTEMPTS',
       'GUIDE_BACKOFF_MIN', 'FOLLOWUP_ORPHAN_MS', 'guideBackoffMs', 'claimDecision',
@@ -248,23 +245,6 @@ describe('ensureHeaders', () => {
   });
 });
 
-describe('bonzo tag sanitisation', () => {
-  it.each([
-    ['HELOC Q4', 'heloc-q4'],
-    ['brand & equity', 'brand-equity'],
-    ['a+b', 'a-b'],
-    ['UPPER_Case', 'upper-case'],
-    ['  padded  ', 'padded'],
-    ['dscr', 'dscr'],
-  ])('sanitises %s to %s', (input, expected) => {
-    expect(gas.bonzoTag(input)).toBe(expected);
-  });
-
-  it('produces only [a-z0-9-]', () => {
-    expect(gas.bonzoTag('Ünïcødé 🎉 Ads!')).toMatch(/^[a-z0-9-]*$/);
-  });
-});
-
 /**
  * The case this guards: someone clicks a Google ad, leaves, then comes back
  * weeks later through organic YouTube or search and converts. Their last touch
@@ -291,34 +271,6 @@ describe('first-touch fallback for returning visitors', () => {
     expect(gas.effectiveClickId(returningVisitor)).toBe('GCLID_FROM_THE_AD');
   });
 
-  it('still tags it ads:google, not just organic youtube', () => {
-    const tags = gas.attributionTags(returningVisitor);
-    expect(tags).toContain('ads:google');
-    expect(tags).not.toContain('attr:none');
-  });
-
-  it('takes source and campaign from the same touch as the click, so tags never name two origins', () => {
-    const tags = gas.attributionTags(returningVisitor);
-    expect(tags).toContain('utm:google');
-    expect(tags).toContain('campaign:heloc-q4');
-    expect(tags).not.toContain('utm:youtube-com');
-  });
-
-  it('keeps the latest visit under its own last: prefix', () => {
-    expect(gas.attributionTags(returningVisitor)).toContain('last:youtube-com');
-  });
-
-  it('uses the latest touch, with no last: tag, when the latest visit has the click', () => {
-    const clickedAgain = { ...returningVisitor, clickId: 'NEWER_GCLID', clickIdType: 'gclid', utm_source: 'google', utm_campaign: 'dscr' };
-    const tags = gas.attributionTags(clickedAgain);
-    expect(tags).toContain('campaign:dscr');
-    expect(tags.some((t) => t.startsWith('last:'))).toBe(false);
-  });
-
-  it('credits the first-touch campaign in current_step too', () => {
-    expect(gas.effectiveTouch(returningVisitor)).toMatchObject({ fromFirst: true, campaign: 'heloc-q4' });
-  });
-
   it('prefers the most recent click id when there is one', () => {
     const clickedAgain = { ...returningVisitor, clickId: 'NEWER_GCLID', clickIdType: 'gclid' };
     expect(gas.effectiveClickId(clickedAgain)).toBe('NEWER_GCLID');
@@ -327,12 +279,10 @@ describe('first-touch fallback for returning visitors', () => {
   it('respects the network of the newer click when they differ', () => {
     const switchedNetwork = { ...returningVisitor, clickId: 'BING_ID', clickIdType: 'msclkid' };
     expect(gas.effectiveClickIdType(switchedNetwork)).toBe('msclkid');
-    expect(gas.attributionTags(switchedNetwork)).toContain('ads:bing');
   });
 
   it('yields nothing for a lead that never had a click id', () => {
     expect(gas.effectiveClickId({ utm_source: 'youtube.com' })).toBe('');
-    expect(gas.attributionTags({})).toEqual(['attr:none']);
   });
 
   it('records every first-touch field attribution.js sends', () => {
@@ -351,56 +301,13 @@ describe('first-touch fallback for returning visitors', () => {
   });
 });
 
-describe('attribution tags', () => {
-  it('tags a Google ad click', () => {
-    const tags = gas.attributionTags({ clickIdType: 'gclid', utm_source: 'google', utm_campaign: 'HELOC Q4' });
-    expect(tags).toContain('ads:google');
-    expect(tags).toContain('utm:google');
-    expect(tags).toContain('campaign:heloc-q4');
-  });
-
-  it.each([
-    ['gbraid', 'ads:google'],
-    ['wbraid', 'ads:google'],
-    ['msclkid', 'ads:bing'],
-    ['fbclid', 'ads:meta'],
-  ])('maps %s to %s', (type, tag) => {
-    expect(gas.attributionTags({ clickIdType: type })).toContain(tag);
-  });
-
-  it('tags the unattributed set so broken tracking is visible', () => {
-    expect(gas.attributionTags({})).toEqual(['attr:none']);
-  });
-
-  it('does not emit attr:none when there is real attribution', () => {
-    expect(gas.attributionTags({ utm_source: 'youtube' })).not.toContain('attr:none');
-  });
-});
-
 describe('existing behaviour preserved', () => {
-  it('still maps DSCR mortgage fields to the values verified in production', () => {
-    const body: Record<string, unknown> = {};
-    gas.addMortgageFields(body, {
-      source: 'dscr', state: 'AZ', magnet: 'DSCR Rate & Cash Flow Guide',
-      dscr: '1.14', downPayment: '25%', rate: '7.00%', loanAmount: '$240,000',
-      downPaymentAmount: 80000, purchasePrice: 320000,
-      monthlyRent: 2400, monthlyPitia: 2047,
-    });
-    expect(body.loan_amount).toBe('240000');
-    expect(body.down_payment).toBe('80000');
-    expect(body.purchase_price).toBe('320000');
-    expect(body.interest_rate).toBe('7.00');
-    expect(body.monthly_payment).toBe('2047');
-    expect(body.monthly_income).toBe('2400');
-    expect(body.loan_program).toBe('DSCR 1.14');
-    expect(body.property_state).toBe('AZ');
-  });
-
-  it('still derives down payment from the percent when exact values are absent', () => {
-    const body: Record<string, unknown> = {};
-    gas.addMortgageFields(body, { source: 'dscr', loanAmount: '$300,000', downPayment: '25%' });
-    expect(body.down_payment).toBe('100000');
-    expect(body.purchase_price).toBe('400000');
+  it('turns a display string into the bare number HubSpot loan_amount needs', () => {
+    expect(gas.plainNumber('$240,000')).toBe('240000');
+    expect(gas.plainNumber('7.00%')).toBe('7.00');
+    expect(gas.plainNumber('')).toBe('');
+    expect(gas.plainNumber(null)).toBe('');
+    expect(gas.plainNumber('n/a')).toBe('');
   });
 
   it('keeps the licensed-state list intact', () => {
@@ -412,7 +319,7 @@ describe('existing behaviour preserved', () => {
 });
 
 /**
- * doPost must not make any HTTP call. Bonzo plus the guide senders (one renders
+ * doPost must not make any HTTP call. The CRM push plus the guide senders (one renders
  * a PDF) ran past the proxy's 8s budget in production on 16 Sep: the lead saved,
  * but the visitor saw an error and Darren got a false NOT SAVED alert.
  */
@@ -426,9 +333,9 @@ describe('doPost replies before the slow follow-ups', () => {
     return SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
   };
 
-  it('does not call Bonzo or any guide sender inline', () => {
+  it('does not call HubSpot or any guide sender inline', () => {
     const src = body();
-    for (const fn of ['pushToBonzo(', 'sendDscrGuide(', 'sendReiGuide(', 'sendFhaGuide(', 'UrlFetchApp.fetch(']) {
+    for (const fn of ['pushToHubSpot(', 'sendDscrGuide(', 'sendReiGuide(', 'sendFhaGuide(', 'UrlFetchApp.fetch(']) {
       expect(src, `${fn} runs inside doPost and will blow the proxy timeout`).not.toContain(fn);
     }
   });
@@ -441,7 +348,7 @@ describe('doPost replies before the slow follow-ups', () => {
 
   it('processFollowUps still runs every step the old inline path did', () => {
     const src = processFollowUps();
-    expect(src).toContain('pushToBonzo(');
+    expect(src).toContain('pushToHubSpot(');
     expect(src).toContain('sendGuideFor(');
     const start = SOURCE.indexOf('function sendGuideFor');
     const guideFor = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
@@ -452,7 +359,7 @@ describe('doPost replies before the slow follow-ups', () => {
 
   it('claims a row before doing HTTP, so a crashed run cannot send twice', () => {
     const src = processFollowUps();
-    expect(src.indexOf("'processing'")).toBeLessThan(src.indexOf('pushToBonzo('));
+    expect(src.indexOf("'processing'")).toBeLessThan(src.indexOf('pushToHubSpot('));
   });
 
   /**
@@ -517,10 +424,9 @@ describe('guide email outcomes', () => {
     expect(gas.guideAttemptsFromStatus('')).toBe(0);
   });
 
-  it('a retry pass re-sends the guide but never pushes to Bonzo again', () => {
+  it('marks a row done only through nextGuideStatus', () => {
     const start = SOURCE.indexOf('function processFollowUps');
     const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
-    expect(src).toMatch(/if \(priorAttempts === 0\) pushToBonzo\(/);
     expect(src).not.toMatch(/setValues\(\[\['done'/); // done only via nextGuideStatus
   });
 
@@ -724,5 +630,17 @@ describe('Debug tab', () => {
     const logs = src.match(/logDebug\([^;]*\);/g) ?? [];
     expect(logs.length).toBe(3);
     for (const call of logs) expect(call, call).toContain('body.email');
+  });
+});
+
+/**
+ * Bonzo was retired on 15 Oct 2026. Nothing in the script may reach it again,
+ * including for Follow-ups rows queued before the deploy: those finish their
+ * HubSpot and guide work and nothing else.
+ */
+describe('Bonzo is retired', () => {
+  it('has no Bonzo endpoint, push or campaign routing left in the script', () => {
+    expect(SOURCE).not.toContain('getbonzo.com');
+    expect(SOURCE).not.toMatch(/pushToBonzo|BONZO_[A-Z_]+/);
   });
 });

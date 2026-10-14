@@ -3,10 +3,10 @@
 **Current status and retention:** use the local `.local-notes/SITE-AUDIT.md` for the live audit and pending work. Max explicitly retains the eight 10 October viewer TEST leads until he requests deletion. Cleanup steps in this runbook are procedures, not authorization to remove those records.
 
 How to verify by hand that a lead travels the whole way: from the form on the
-site, into the Google Sheet, into Bonzo, and out as a guide email, with its ad
+site, into the Google Sheet, into HubSpot, and out as a guide email, with its ad
 attribution intact.
 
-You need: the live site, edit access to the leads Google Sheet, and a Bonzo
+You need: the live site, edit access to the leads Google Sheet, and a HubSpot
 login. Allow about 45 minutes for a full pass, most of it waiting.
 
 Run this after any change to the forms, the Apps Script, or the lead endpoint.
@@ -29,9 +29,8 @@ section 5 quick.
 
 ### Every case needs a different email
 
-Bonzo answers `422 "A prospect with this information already exists"` if you
-reuse one. **That is the integration working, not a failure.** It means Bonzo
-recognised the person. Change the `+case` part for each test and it will not
+HubSpot dedupes by email, so a reused address updates one contact rather
+than creating another. Change the `+case` part for each test and it will not
 happen.
 
 The plus-sign trick works in Gmail: `zztest+dscr@gmail.com` and
@@ -48,7 +47,8 @@ interfere with what you are really testing.
   `Debt Consolidation`, `Leads`, and `Home Equity` and `ADU` once each has had
   its first lead, plus `Follow-ups` and `Debug` which you will use for
   diagnosis.
-- **Bonzo:** the prospect record, its Tags, and its Mortgage fields.
+- **HubSpot:** the contact, its `rdt_*` properties and the submission snapshot.
+  Test leads (555-01xx phones) are skipped unless `HUBSPOT_SEND_TESTS` is `true`.
 
 ---
 
@@ -131,7 +131,7 @@ again, so rename each "(old ...)" tab back over its new one first.
 ## 1. The five funnels
 
 One case each. For every case: fill the form, submit, then check the three places
-in order. Give the Sheet a few seconds and Bonzo up to a minute.
+in order. Give the Sheet a few seconds and HubSpot up to a minute.
 
 ### Case 1.1 - DSCR
 
@@ -143,13 +143,11 @@ in order. Give the Sheet a few seconds and Bonzo up to a minute.
 | --- | --- |
 | Site | The form is replaced by the success panel |
 | Sheet tab `DSCR` | A new row. `First Name` = ZZTest, `Licensed?` = **Yes**, and the `DSCR`, `Down Payment`, `Loan Amount`, `Rate` columns match what the calculator showed |
-| Bonzo prospect | Exists, enrolled in campaign **258025** |
-| Bonzo tags | `dscr`, `investor`, `priority:p2`, `licensed-state`, `state:CA` |
-| Bonzo note | A **pinned** note with the full scenario, including `Annual property tax`, `Annual insurance` and `Monthly HOA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email | The DSCR guide PDF arrives, cover personalised. **Up to a minute later.** |
 
-The pinned note matters. Those three figures have no Bonzo field of their own, so
-the note is the only place they survive.
+Those three figures (tax, insurance, HOA) are in the `DSCR` tab's own columns
+and in the Submission Snapshot.
 
 ### Case 1.2 - FHA
 
@@ -158,8 +156,7 @@ the note is the only place they survive.
 | Check | Expect |
 | --- | --- |
 | Sheet tab `FHA` | New row, `Credit Score` populated, `Licensed?` = Yes |
-| Bonzo | Campaign **145797** |
-| Bonzo tags | `fha`, `fha-calculator`, `newsletter`, `priority:p4`, `credit:<the score you picked>`, `licensed-state`, `state:CA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email | The FHA calculator `.xlsx`, greeting you by first name |
 
 The `newsletter` tag on an FHA lead is deliberate, not a bug.
@@ -171,8 +168,7 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 | Check | Expect |
 | --- | --- |
 | Sheet tab `Real Estate Investing` | New row |
-| Bonzo | Campaign **261737** |
-| Bonzo tags | `real-estate-investing`, `case-study`, `priority:p5`, `licensed-state`, `state:CA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email | The case study PDF |
 
 ### Case 1.4 - Debt Consolidation
@@ -195,7 +191,7 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 | Sheet `Test?` | **`TEST`**, because you used a `zztest+` address on a listed test account. A real lead's cell is blank |
 | Sheet `Mortgage Rate` / `Mortgage Term` | The values you typed in step 2, straight after `Mortgage Payment`. Blank, not 0, if you skipped them |
 | The oldest row | Still reads correctly: the same `Total Debt Balance` as in the "(old ...)" tab, with the new cells blank |
-| Bonzo tags | `debt-consolidation`, `HELOC/cash-out interest`, `licensed-state`, `state:CA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email | **None.** This funnel has no guide |
 
 The homepage no longer has the calculator (revamp phase 4); its debt card
@@ -207,11 +203,7 @@ links here. Also check:
 | View source | The heading is in the HTML as an `<h1>`, and the CSS is a `<style>` block, not a stylesheet `<link>` |
 | Phone number in the footer | Swapped by CallRail on a paid click, as on every other page |
 | GA4 `generate_lead` | `lead_source` `DebtConsolidation`, `form_id` `debt-savings-calculator`, **`page_path` `/debt-consolidation/`**. That last one is the only way to tell the two pages apart |
-| Nav "Contact", then submit the modal | Leads tab, `Source` **`debt-consolidation-contact`**; Bonzo tags `contact`, `debt-consolidation` |
-
-If the modal row says `Source` `debt-consolidation-contact` but Bonzo tags it
-`mortgage-calculator`, the Apps Script deployment is older than the page:
-update the existing deployment in place.
+| Nav "Contact", then submit the modal | Leads tab, `Source` **`debt-consolidation-contact`** |
 
 The page shows **your own computed numbers** only, never a dollar range, and
 there is no sticky savings bar.
@@ -251,16 +243,10 @@ report it.
 | Site | "You're all set, ZZTest!" |
 | Sheet tab `Leads` | New row, not a funnel tab |
 | Sheet `Source` | **`home-contact`**, not `MortgageCalculator` |
-| Bonzo tags | `contact`, `home`, `licensed-state`, `state:CA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email to the visitor | See below |
 
-**Repeat on `/dscr/`** and check `Source` reads `dscr-contact` and Bonzo tags
-read `contact` + `dscr`, **without** `investor` or `priority:p2`, which belong
-to the DSCR magnet and not to someone who used the contact form on that page.
-The same holds for `/fha/` (`fha-contact`), `/realestateinvesting/`
-(`rei-contact`) and `/mortgage-calculator/` (`mortgage-calculator-contact`).
-On `/mortgage-calculator/` the loan numbers **should** be pre-filled: there
-they are the visitor's own.
+**Repeat on `/dscr/`** and check `Source` reads `dscr-contact`.
 
 **The confirmation email.** The modal now sends an instant reply carrying
 Darren's calendar. It stays silent until all three of these exist, and the Apps
@@ -285,8 +271,7 @@ they are set, expect **no email**, no alert, and a `done` row in `Follow-ups`.
 | Check | Expect |
 | --- | --- |
 | Sheet | Row saved as normal, `Licensed?` = **No** |
-| Bonzo | Prospect still created and still enrolled |
-| Bonzo tags | `unlicensed-state` and `state:NY` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 
 | The form itself | On picking NY, a grey line appears under the State field naming the eight states. It must **not** block the submit |
 
@@ -362,7 +347,7 @@ breakdown of numbers the form never asked for.
 
 ### Case 1.9 - A returning lead is not a failure
 
-1. Submit a **second** lead using an email address Bonzo already holds, e.g.
+1. Submit a **second** lead using an email address HubSpot already holds, e.g.
    repeat an earlier test address rather than a fresh `+tag`.
 
 | Check | Expect |
@@ -372,10 +357,7 @@ breakdown of numbers the form never asked for.
 | The guide | **Still sent.** Coming back for a second guide is the whole point |
 | `Follow-ups` row | `done` |
 
-Known and not fixed here: the returning prospect is **not** enrolled in the new
-funnel's campaign and their Bonzo tags are not updated. A DSCR lead who returns
-for the FHA guide stays tagged as they were. That needs an update-by-email call
-and belongs with the HubSpot work.
+HubSpot updates the one existing contact with the new submission.
 
 ### Case 1.10 - Home Equity
 
@@ -392,7 +374,7 @@ the site. Until then the lead lands on `Leads`, saved but without its columns.
 | Site | Success card, "Darren will be in touch." and no response time |
 | Sheet tab `Home Equity` | Created on this first lead, in the standard order. `Source` `home-equity`, `Form ID` `home-equity-calculator`, `Page` `/home-equity/` |
 | Sheet `Estimated Home Equity` / `Current LTV` / `Illustrative CLTV` | `300000` / `53.8` / `65.4` with the amounts above |
-| Bonzo tags | `home-equity`, `HELOC/cash-out interest`, `goal:...`, `preference:...`, `licensed-state`, `state:CA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email | The home-equity confirmation, with the calendar link |
 
 Run it once more with balance `0`: the row must say `0` under `Mortgage
@@ -412,7 +394,7 @@ Same ship order as 1.10, with the `adu` route.
 | Site | Success card. The page says plainly that financing does not confirm an ADU can be permitted, built or rented |
 | Sheet tab `ADU` | Created on this first lead. `Source` `adu`, `Form ID` `adu-calculator`, `Page` `/adu/`, `Project Purpose` `Rental ADU` |
 | Sheet `Estimated Home Equity` / `Current LTV` / `Illustrative CLTV` | `300000` / `53.8` / `65.4` |
-| Bonzo tags | `adu`, `HELOC/cash-out interest`, `purpose:...`, `licensed-state`, `state:CA` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Email | The ADU confirmation, with the calendar link |
 
 ---
@@ -425,7 +407,7 @@ tags are how a lead is matched back to the ad that produced it.
 Use a fresh private window for each case, so a stored click from a previous case
 does not leak into the next one.
 
-### Case 2.1 - A click ID reaches the Sheet and Bonzo
+### Case 2.1 - A click ID reaches the Sheet and HubSpot
 
 1. Open `https://realdarrentsai.com/dscr/?gclid=ZZTEST123`
 2. Submit the form.
@@ -434,8 +416,7 @@ does not leak into the next one.
 | --- | --- |
 | Sheet `Click ID` | `ZZTEST123` |
 | Sheet `Click ID Type` | `gclid` |
-| Bonzo tag | `ads:google` |
-| Bonzo field `lead_id` | `ZZTEST123` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 
 ### Case 2.2 - The click ID survives moving around the site
 
@@ -459,8 +440,7 @@ reports conversions but the Sheet has no click IDs". Stop and report it.
 
 | Check | Expect |
 | --- | --- |
-| Bonzo tags | `ads:google` **and** `campaign:zztest-camp` **and** `last:youtube-com` |
-| Bonzo `lead_id` | `ZZTEST789` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Sheet `First Click ID` | `ZZTEST789` |
 
 The point of this case: source and campaign must **both** come from the first
@@ -474,7 +454,7 @@ been tagged with two different origins at once. Report it.
 
 | Check | Expect |
 | --- | --- |
-| Bonzo tag | `attr:none` |
+| Bonzo | **Nothing.** Retired 15 Oct 2026; no prospect, tag or note is created |
 | Sheet attribution columns | empty |
 
 `attr:none` is deliberate. It makes broken tracking look different from a
@@ -528,7 +508,7 @@ that is a real fault worth reporting.
 ## 4. Timing, and things that look like bugs but are not
 
 **The guide email is not instant.** The site replies as soon as the Sheet row is
-written. Bonzo and the guide email run on a separate pass up to a minute later. A
+written. HubSpot and the guide email run on a separate pass up to a minute later. A
 success message with no email yet is normal. Wait a minute.
 
 **The Follow-ups tab is the progress bar.** Find your row and watch the `Status`
@@ -538,7 +518,7 @@ column:
 | --- | --- |
 | `pending` | queued, not picked up yet |
 | `processing:0` | being worked on right now |
-| `done` | Bonzo pushed and guide sent |
+| `done` | HubSpot submitted (or skipped) and guide sent |
 | `guide-retry:1` and up | the guide failed; a retry is scheduled at 1, 5, 20, 60 then 180 minutes |
 | `error` | something threw. Check the `Debug` tab |
 
@@ -561,9 +541,6 @@ Expected.
 **Your own test traffic shows up in GA4 Realtime.** The internal traffic filter is
 still in testing mode, so it does not exclude you yet. **Do not read your own test
 submissions as ad performance.**
-
-**Bonzo 422 "already exists"** on a repeat email means Bonzo matched the person.
-Use a new `+case` email.
 
 ### Previously known issues, now fixed
 
@@ -608,8 +585,9 @@ and worth reporting:
    `Debt Consolidation`, `Leads`), filter by First Name, find `ZZTest`, delete
    those rows.
 2. In `Follow-ups`, delete the matching rows.
-3. In Bonzo, find the `ZZTest` prospects and archive or delete them, so they do
-   not sit in a live nurture campaign receiving real emails.
+3. In HubSpot, find any `ZZTest` contacts (only if `HUBSPOT_SEND_TESTS` was on)
+   and ask the HubSpot admin to delete them. Retain TEST rows in the Sheet until
+   Max authorises deletion.
 4. Note anything that did not match this document, with the case number.
 
 Step 3 matters. A test prospect left in a campaign will keep being emailed.

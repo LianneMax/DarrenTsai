@@ -4,10 +4,10 @@
  *
  * This is the part of the pipeline that can lose something a visitor was
  * promised. doPost only writes a row; everything the lead actually receives —
- * the Bonzo enrollment and the guide email — happens here, minutes later, with
+ * the HubSpot contact and the guide email — happens here, minutes later, with
  * no browser attached and nobody watching. The failure modes are all quiet
- * ones: a guide retried into oblivion, a Bonzo prospect created twice, a row
- * left 'processing' forever because the run that claimed it died.
+ * ones: a guide retried into oblivion, a guide mailed twice, a row left
+ * 'processing' forever because the run that claimed it died.
  *
  * So these tests drive the real function and assert on the Status cell it
  * leaves behind, plus which HTTP calls it made.
@@ -23,9 +23,8 @@ type Harness = {
   fetches: FetchCall[];
   /**
    * Response code per URL fragment, e.g. `reply('send-dscr-guide', 503)`.
-   * Keyed rather than queued on purpose: one DSCR lead makes two Bonzo calls
-   * (create the prospect, then pin the scenario note), so a positional queue
-   * silently hands the guide's response to the note instead.
+   * Keyed rather than queued on purpose: one lead can make more than one
+   * call, so a positional queue could hand one call's response to another.
    */
   reply: (urlFragment: string, code: number, body?: string) => void;
   props: Record<string, string>;
@@ -44,6 +43,8 @@ function load(): Harness {
     NETLIFY_REI_PDF_KEY: 'test-key',
     NETLIFY_FHA_PDF_URL: 'https://realdarrentsai.com/api/send-fha-guide',
     NETLIFY_FHA_PDF_KEY: 'test-key',
+    // Left in Script Properties after Bonzo was retired (15 Oct 2026), as
+    // they are live until someone deletes them. Nothing may read them.
     BONZO_API_KEY: 'bonzo-token',
     BONZO_CAMPAIGN_ID: '100',
   };
@@ -82,15 +83,12 @@ const DSCR_LEAD = {
 const guideCalls = (h: Harness) => h.fetches.filter((f) => f.url.includes('/api/send-'));
 const bonzoCalls = (h: Harness) => h.fetches.filter((f) => f.url.includes('getbonzo.com'));
 
-describe('the happy path: Bonzo once, guide once, row done', () => {
-  it('pushes to Bonzo and sends the DSCR guide, then marks the row done', () => {
+describe('the happy path: guide once, row done, no Bonzo', () => {
+  it('sends the DSCR guide and marks the row done without calling Bonzo', () => {
     h.queue(DSCR_LEAD);
     h.processFollowUps();
 
-    // Two Bonzo calls by design: create the prospect, then pin the scenario note.
-    expect(bonzoCalls(h)).toHaveLength(2);
-    expect(bonzoCalls(h)[0].url).toContain('/prospects/campaign/');
-    expect(bonzoCalls(h)[1].url).toContain('/notes');
+    expect(bonzoCalls(h)).toHaveLength(0);
     expect(guideCalls(h)).toHaveLength(1);
     expect(guideCalls(h)[0].url).toContain('send-dscr-guide');
     expect(h.statusOf().status).toBe('done');
@@ -138,7 +136,7 @@ describe('the happy path: Bonzo once, guide once, row done', () => {
   });
 });
 
-describe('a guide that fails is retried, but Bonzo never is', () => {
+describe('a guide that fails is retried', () => {
   it('marks a 503 as a retry and says why, without alerting yet', () => {
     h.reply('send-dscr-guide', 503, 'Resend unavailable');
     h.queue(DSCR_LEAD);
@@ -149,7 +147,7 @@ describe('a guide that fails is retried, but Bonzo never is', () => {
     expect(h.mail).toHaveLength(0); // a retry is not worth an email
   });
 
-  it('does not re-push Bonzo on a retry pass, so no duplicate prospect is created', () => {
+  it('re-sends only the guide on a retry pass', () => {
     // A row already retried once, with its backoff long expired.
     h.queue(DSCR_LEAD, 'guide-retry:1', new Date(Date.now() - 60 * 60 * 1000).toISOString());
     h.processFollowUps();
@@ -383,61 +381,32 @@ describe('the contact confirmation', () => {
 });
 
 /**
- * A lead who comes back.
- *
- * Bonzo answers 422 "already exists" for an email it already holds, which is
- * exactly what happens when someone who downloaded one guide returns for
- * another. Until 26 Sep 2026 that was reported to Darren as a LEAD PIPELINE
- * FAILURE, so he was being paged about his own returning leads: the fastest way
- * to teach someone to ignore an alert that matters.
+ * Bonzo was retired on 15 Oct 2026. Rows queued before that deploy still say
+ * 'pending' or 'processing:0', which is exactly when the old code pushed to
+ * Bonzo. They must finish their HubSpot and guide work and never reach Bonzo,
+ * whatever the leftover BONZO_* Script Properties say.
  */
-describe('a returning lead is not a failure', () => {
-  const DUPLICATE = '{"message":"The email has already been taken."}';
-
-  it('does not alert when Bonzo says the prospect already exists', () => {
-    h.reply('getbonzo.com', 422, DUPLICATE);
-    h.queue(DSCR_LEAD);
+describe('rows queued before Bonzo was retired', () => {
+  it('finishes a pending row without a Bonzo call', () => {
+    h.queue(DSCR_LEAD, 'pending');
     h.processFollowUps();
-
-    expect(h.mail.map((m) => m.subject).join(' ')).not.toContain('FAILURE');
-  });
-
-  it('records it where a lead is traced, rather than silently', () => {
-    h.reply('getbonzo.com', 422, DUPLICATE);
-    h.queue(DSCR_LEAD);
-    h.processFollowUps();
-
-    const debug = h.tabs.get('Debug');
-    const text = JSON.stringify(debug ? debug.rows : []);
-    expect(text).toContain('returning lead');
-    expect(text).toContain('jane@example.com');
-  });
-
-  it('still sends the guide they came back for', () => {
-    // The whole point of the visit. Bonzo's answer must not stop it.
-    h.reply('getbonzo.com', 422, DUPLICATE);
-    h.queue(DSCR_LEAD);
-    h.processFollowUps();
-
-    expect(guideCalls(h).map((f) => f.url).join(' ')).toContain('send-dscr-guide');
+    expect(bonzoCalls(h)).toHaveLength(0);
+    expect(guideCalls(h)).toHaveLength(1);
     expect(h.statusOf().status).toBe('done');
   });
 
-  it('still alerts on a 422 that is a real rejection', () => {
-    // Narrow on purpose: 422 is also how a malformed body comes back, and
-    // silencing that would hide a genuine break.
-    h.reply('getbonzo.com', 422, '{"message":"The phone field is invalid."}');
-    h.queue(DSCR_LEAD);
+  it('finishes an orphaned first-pass row without a Bonzo call', () => {
+    h.queue(DSCR_LEAD, 'processing:0', new Date(Date.now() - 60 * 60 * 1000).toISOString());
     h.processFollowUps();
-
-    expect(h.mail.map((m) => m.subject).join(' ')).toContain('FAILURE');
+    expect(bonzoCalls(h)).toHaveLength(0);
+    expect(h.statusOf().status).toBe('done');
   });
 
-  it('still alerts on a 500', () => {
-    h.reply('getbonzo.com', 500, 'upstream exploded');
-    h.queue(DSCR_LEAD);
+  it('never creates a Bonzo job for any funnel', () => {
+    for (const source of ['dscr', 'fha', 'real-estate-investing', 'home-equity', 'adu', 'DebtConsolidation', 'home-contact']) {
+      h.queue({ source, email: source + '@example.com', state: 'CA' });
+    }
     h.processFollowUps();
-
-    expect(h.mail.map((m) => m.subject).join(' ')).toContain('FAILURE');
+    expect(bonzoCalls(h)).toHaveLength(0);
   });
 });

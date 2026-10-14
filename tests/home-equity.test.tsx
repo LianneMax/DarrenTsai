@@ -2,8 +2,8 @@
  * /home-equity/ (revamp phase 3), end to end on both sides of the wall.
  *
  * What the page sends (buildEquityLead), where it lands (the 'home-equity'
- * schema in the real google-apps-script.js), how Bonzo files it, and what the
- * page says. The page itself is drawn from props, like the debt page, so each
+ * schema in the real google-apps-script.js), that it reaches no Bonzo, and what
+ * the page says. The page itself is drawn from props, like the debt page, so each
  * step renders here on its own, including the ones behind the gates.
  */
 import { describe, it, expect } from 'vitest';
@@ -100,37 +100,20 @@ describe('where it lands: the Home Equity tab', () => {
   });
 });
 
-describe('how Bonzo files it', () => {
-  function push(props: Record<string, string>) {
+describe('after Bonzo was retired (15 Oct 2026)', () => {
+  it('is not sent to Bonzo, even with the old Script Properties still set', () => {
     const fetches: FetchCall[] = [];
     const { gas, queue } = loadGas<{ processFollowUps: () => void }>({
-      exports: ['processFollowUps'], props, fetch: recordingFetch(fetches, [], '{"data":{"id":1}}'),
+      exports: ['processFollowUps'],
+      props: { BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999', BONZO_HOME_EQUITY_CAMPAIGN_ID: '4321' },
+      fetch: recordingFetch(fetches, []),
     });
     queue(buildEquityLead({
       ...CONTACT, homeValue: 650000, mortgageBalance: 350000,
       goal: 'Renovation / ADU', amountExploring: 75000, preference: 'Keeping my current mortgage',
     }));
     gas.processFollowUps();
-    const call = fetches.find((f) => f.url.includes('getbonzo.com'))!;
-    return { url: call.url, tags: JSON.parse(String(call.options.payload)).tags as string[] };
-  }
-
-  it('tags the intent, the goal and the preference, and says whether the state is workable', () => {
-    const { tags } = push({ BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999' });
-    expect(tags).toEqual(expect.arrayContaining([
-      'home-equity', 'HELOC/cash-out interest',
-      'goal:renovation-adu', 'preference:keeping-my-current-mortgage',
-      'licensed-state', 'state:CA',
-    ]));
-  });
-
-  it('enrolls into the default campaign until it has one of its own', () => {
-    expect(push({ BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999' }).url).toMatch(/\/prospects\/campaign\/999$/);
-  });
-
-  it('moves to its own campaign when the Script Property is set, with no deploy', () => {
-    const { url } = push({ BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999', BONZO_HOME_EQUITY_CAMPAIGN_ID: '4321' });
-    expect(url).toMatch(/\/prospects\/campaign\/4321$/);
+    expect(fetches.filter((f) => f.url.includes('getbonzo.com'))).toHaveLength(0);
   });
 });
 

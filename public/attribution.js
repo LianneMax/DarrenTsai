@@ -145,8 +145,8 @@
   var state = record();
 
   /**
-   * Flat payload. Flat because Apps Script writes flat sheet columns and Bonzo
-   * only accepts flat top-level keys — nesting here means unwrapping twice.
+   * Flat payload. Flat because Apps Script writes flat sheet columns and HubSpot
+   * form fields are flat too — nesting here means unwrapping twice.
    */
   function attr() {
     var last = state.last || {};

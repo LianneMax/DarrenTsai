@@ -21,53 +21,25 @@
  *    VITE_ prefix is what inlined this URL into the public client bundle; the
  *    forms now post to /api/lead and the function holds the URL instead.
  *
- * BONZO SETUP (pushes every lead straight into Bonzo, no Zapier/manual step needed):
- * 1. In this Apps Script editor: Project Settings (gear icon) → Script Properties
- * 2. Add property: BONZO_API_KEY = <your Bonzo bearer token>
- * 3. Add property: BONZO_CAMPAIGN_ID = <default campaign id leads should land in — ask Bonzo
- *    support or check dashboard if unsure, default campaign works if blank>
- * 4. Add property: BONZO_DSCR_CAMPAIGN_ID = <the "DSCR Campaign" id in Bonzo — DSCR leads
- *    route here instead of the default campaign. Falls back to BONZO_CAMPAIGN_ID if blank.>
- * 5. Add property: BONZO_REI_CAMPAIGN_ID = <the "Real Estate Investing" campaign id in
- *    Bonzo (platform.getbonzo.com/campaigns/261737) — REI leads route here instead of
- *    the default campaign. Falls back to REI_CAMPAIGN_ID constant below if blank.>
- * 6. Never paste tokens/ids directly in this file — Script Properties keeps them out
- *    of source control and off Netlify entirely.
- *
  * DSCR PDF EMAIL SETUP (sends the personalized DSCR guide via the Netlify function):
  * 1. Add property: NETLIFY_DSCR_PDF_URL = https://realdarrentsai.com/api/send-dscr-guide
  * 2. Add property: NETLIFY_DSCR_PDF_KEY = <same random string set as DSCR_GUIDE_API_KEY
  *    in Netlify's environment variables>
- * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
+ * 3. If either is blank, the guide email is skipped (Sheets and HubSpot still run normally).
  *
  * REAL ESTATE INVESTING PDF EMAIL SETUP (sends the static case-study PDF via the
  * Netlify function):
  * 1. Add property: NETLIFY_REI_PDF_URL = https://realdarrentsai.com/api/send-rei-guide
  * 2. Add property: NETLIFY_REI_PDF_KEY = <same random string set as REI_GUIDE_API_KEY
  *    in Netlify's environment variables>
- * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
- *
- * BONZO MORTGAGE FIELDS (how the calculator numbers reach Bonzo) — verified live
- * against the v3 API on 2026-09-04, so don't re-derive this from the docs:
- * - Send them as FLAT TOP-LEVEL KEYS on the same POST /prospects/campaign/{id}.
- *   Confirmed 201 with every field populated, tags and enrollment intact.
- * - A nested `mortgage: {...}` object returns 201 and is SILENTLY DROPPED. So is
- *   `custom_fields`, `mortgage_fields`, and any invented key (`dscr`, `dscr_ratio`).
- *   POST /prospects/{id}/mortgage does not exist (404).
- * - The official v3 spec (https://d11n2cytbq62hx.cloudfront.net/v3.json) documents
- *   `mortgage` only on the RESPONSE and lists no request schema for it — the request
- *   schemas there are incomplete (they omit `tags` too, which demonstrably works).
- * - loan_amount / down_payment / interest_rate are NUMERIC fields: they need bare
- *   numbers, not the "$300,000" / "7.50%" display strings the landing pages send.
- * - This Bonzo account has NO custom fields defined, so anything without a native
- *   Mortgage field (e.g. the DSCR ratio) has to ride in a text field.
+ * 3. If either is blank, the guide email is skipped (Sheets and HubSpot still run normally).
  *
  * FHA CALCULATOR EMAIL SETUP (sends the static fha-affordability-calculator.xlsx via
  * the Netlify function):
  * 1. Add property: NETLIFY_FHA_PDF_URL = https://realdarrentsai.com/api/send-fha-guide
  * 2. Add property: NETLIFY_FHA_PDF_KEY = <same random string set as FHA_GUIDE_API_KEY
  *    in Netlify's environment variables>
- * 3. If either is blank, the guide email is skipped (Sheets + Bonzo still run normally).
+ * 3. If either is blank, the guide email is skipped (Sheets and HubSpot still run normally).
  *
  * HUBSPOT SETUP (every lead is also submitted to a HubSpot form; see pushToHubSpot):
  * 1. Add property: HUBSPOT_PORTAL_ID = 247401197
@@ -82,39 +54,21 @@
  */
 
 const SPREADSHEET_ID = '1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI';
-const BONZO_BASE_URL = 'https://app.getbonzo.com/api/v3';
 
-// States Darren is licensed in. A lead outside these is logged in the sheet
-// but NOT added to the Bonzo campaign (he can't serve them).
+// States Darren is licensed in. Every lead is logged in the sheet; this only
+// fills its Licensed State cell and HubSpot's rdt_licensed_state.
 const LICENSED_STATES = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'];
-
-// Landing leads in a licensed state route into these specific Bonzo campaigns.
-// "FHA Calculator Campaign: Licensed" — platform.getbonzo.com/campaigns/145797
-const FHA_CAMPAIGN_ID = '145797';
-// "DSCR" campaign — platform.getbonzo.com/campaigns/258025
-const DSCR_CAMPAIGN_ID = '258025';
-// "Real Estate Investing" campaign — platform.getbonzo.com/campaigns/261737
-const REI_CAMPAIGN_ID = '261737';
 
 function isLicensedState(state) {
   if (!state) return false;
   return LICENSED_STATES.indexOf(String(state).trim().toUpperCase()) !== -1;
 }
 
-// Which Bonzo campaign each funnel enrolls into. A Script Property always wins
-// over the id above, so a campaign can be re-pointed without a deploy.
-//
-// This was three near-identical if/else branches, of which only FHA had a
-// helper. The asymmetry was the tell: adding a funnel meant copying a branch and
-// remembering which of the two shapes to copy. A funnel's campaign is one row
-// here now. Anything absent from this table falls back to BONZO_CAMPAIGN_ID, and
-// a lead with no campaign configured at all posts to bare /prospects rather than
-// to /prospects/campaign/undefined.
 /**
  * The contact modal, per page.
  *
  * Every copy of it posted source:'MortgageCalculator' from every page until
- * 26 Sep 2026, so the Sheet's Source column, the Bonzo tags and the GA4 event
+ * 26 Sep 2026, so the Sheet's Source column, the CRM tags and the GA4 event
  * all said the same thing wherever the lead came from. These sources have no
  * funnel-specific columns, so they still fall through doPost to the generic
  * Leads tab, which holds every field they send; only the label changes.
@@ -133,20 +87,6 @@ const CONTACT_SOURCES = {
   'home-equity-contact':         'home-equity',
   // /adu/, added with the page (revamp phase 5).
   'adu-contact':                 'adu'
-};
-
-// /home-equity/ has no campaign of its own yet, so its fallback is null and it
-// enrolls into the default BONZO_CAMPAIGN_ID, exactly as before its route
-// existed. Setting BONZO_HOME_EQUITY_CAMPAIGN_ID moves it to a dedicated
-// campaign without a deploy.
-const FUNNEL_CAMPAIGNS = {
-  'dscr':                  { prop: 'BONZO_DSCR_CAMPAIGN_ID', fallback: DSCR_CAMPAIGN_ID },
-  'fha':                   { prop: 'BONZO_FHA_CAMPAIGN_ID',  fallback: FHA_CAMPAIGN_ID },
-  'real-estate-investing': { prop: 'BONZO_REI_CAMPAIGN_ID',  fallback: REI_CAMPAIGN_ID },
-  'home-equity':           { prop: 'BONZO_HOME_EQUITY_CAMPAIGN_ID', fallback: null },
-  // /adu/ (phase 5): the same arrangement, default campaign until
-  // BONZO_ADU_CAMPAIGN_ID is set.
-  'adu':                   { prop: 'BONZO_ADU_CAMPAIGN_ID', fallback: null }
 };
 
 // Ad attribution, captured by public/attribution.js and sent with every form.
@@ -768,397 +708,20 @@ function writeLead(ss, schema, data) {
   appendByHeader(ss, openLeadSheet(ss, schema), schema.tab, schema.headers, schema.values(data));
 }
 
-// Bonzo's Mortgage-group field keys, with the types the API reports:
-//   loan_amount, down_payment, interest_rate, property_value, cash_out_amount,
-//   household_income, requested_apr  -> numeric (bare numbers only)
-//   purchase_price, credit_score, loan_type, loan_program, loan_purpose,
-//   lead_source, current_step, monthly_payment, lender, ...            -> text
-//   property_state, bankruptcy, foreclosure, working_with_agent        -> select
-// There are NO custom fields defined on this Bonzo account, so anything without a
-// native field here has to ride in one of the text fields above.
-const BONZO_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA',
-  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM',
-  'NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA',
-  'WV','WI','WY','PR'
-];
-
-// Bonzo tags are free text, but unsanitised campaign names make them miserable
-// to filter on, and Bonzo HTML-escapes "&" and "+" (verified: they come back as
-// &amp; and &#43;). Reduce to [a-z0-9-] so a tag always reads cleanly.
-function bonzoTag(value) {
-  return String(value == null ? '' : value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-// Which ad network a lead came from, plus the campaign, as filterable tags.
-// 'attr:none' is deliberate: explicitly tagging the unattributed set is how a
-// break in tracking becomes visible instead of just looking like quiet weeks.
-const CLICK_ID_NETWORKS = {
-  gclid: 'ads:google', gbraid: 'ads:google', wbraid: 'ads:google',
-  msclkid: 'ads:bing', fbclid: 'ads:meta'
-};
-/**
- * The touch a lead is credited to. Normally the latest visit; but when the
- * credit falls back to a first-touch ad click, source and campaign must come
- * from that SAME first touch. Mixing them tagged a paid lead as both
- * ads:google and utm:youtube-com, i.e. two origins at once.
- */
-function effectiveTouch(data) {
-  const fromFirst = !data.clickIdType && !data.clickId && !!(data.firstClickId || data.firstClickIdType);
-  if (fromFirst) {
-    return {
-      fromFirst: true,
-      source: data.firstUtmSource || '',
-      campaign: data.firstUtmCampaign || '',
-      content: '', // attribution.js does not send first-touch utm_content
-    };
-  }
-  return {
-    fromFirst: false,
-    source: data.utm_source || '',
-    campaign: data.utm_campaign || '',
-    content: data.utm_content || '',
-  };
-}
-
-function attributionTags(data) {
-  const tags = [];
-  const touch = effectiveTouch(data);
-  const network = CLICK_ID_NETWORKS[effectiveClickIdType(data)];
-  if (network) tags.push(network);
-  if (touch.source) tags.push('utm:' + bonzoTag(touch.source));
-  if (touch.campaign) tags.push('campaign:' + bonzoTag(touch.campaign));
-  // The latest visit is still worth knowing when it differs from the credited
-  // touch, but under its own prefix so it can't be read as the origin.
-  if (touch.fromFirst && data.utm_source && bonzoTag(data.utm_source) !== bonzoTag(touch.source)) {
-    tags.push('last:' + bonzoTag(data.utm_source));
-  }
-  if (!tags.length) tags.push('attr:none');
-  return tags;
-}
-
-// The landing pages send display strings ("$300,000", "7.50%", "25%"); Bonzo's
-// numeric fields need bare numbers. Returns '' when there's nothing usable.
-function bonzoNumber(value) {
+// The landing pages send display strings ("$300,000", "7.50%", "25%");
+// HubSpot's numeric loan_amount needs a bare number. Returns '' when there's
+// nothing usable.
+function plainNumber(value) {
   if (value === null || value === undefined) return '';
   const cleaned = String(value).replace(/[^0-9.]/g, '');
   return cleaned && !isNaN(parseFloat(cleaned)) ? cleaned : '';
 }
 
-function addMortgageFields(body, data) {
-  function set(key, value) { if (value !== '' && value !== undefined && value !== null) body[key] = value; }
-
-  set('lead_source', data.magnet || '');
-  set('credit_score', bonzoNumber(data.creditScore));
-
-  const state = String(data.state || '').trim().toUpperCase();
-  if (BONZO_STATES.indexOf(state) !== -1) set('property_state', state); // select — an unlisted value would 422 the whole push
-
-  if (data.source !== 'dscr') return;
-
-  const loanAmount = bonzoNumber(data.loanAmount);
-  set('loan_amount', loanAmount);
-  set('interest_rate', bonzoNumber(data.rate));
-  set('loan_type', 'DSCR');
-  // Calculator inputs/outputs that have a native Bonzo home. Annual tax,
-  // annual insurance and monthly HOA have none, so they ride in the pinned
-  // scenario note instead — see dscrScenarioNote().
-  set('monthly_payment', bonzoNumber(data.monthlyPitia)); // Bonzo: "Estimated Monthly Payment"
-  set('monthly_income', bonzoNumber(data.monthlyRent));   // the property's market rent
-  // No DSCR field exists in Bonzo; loan_program is free text and reads sensibly
-  // in the UI ("DSCR 1.14"), so campaign copy can merge it.
-  if (data.dscr) set('loan_program', 'DSCR ' + String(data.dscr).trim());
-
-  // The DSCR page sends the exact dollar figures as downPaymentAmount/purchasePrice
-  // (data.downPayment is a PERCENT like "25%", which Bonzo's numeric down_payment
-  // field can't use). Older payloads predate those two fields, so fall back to
-  // recovering them from the loan amount and the percent: price = loan/(1 - pct/100).
-  const exactDown = bonzoNumber(data.downPaymentAmount);
-  const exactPrice = bonzoNumber(data.purchasePrice);
-  if (exactDown || exactPrice) {
-    set('down_payment', exactDown);
-    set('purchase_price', exactPrice);
-  } else {
-    const loanNum = parseFloat(loanAmount) || 0;
-    const downPct = parseFloat(bonzoNumber(data.downPayment)) || 0;
-    if (loanNum > 0 && downPct > 0 && downPct < 100) {
-      const price = loanNum / (1 - downPct / 100);
-      set('purchase_price', String(Math.round(price)));
-      set('down_payment', String(Math.round(price - loanNum)));
-    }
-  }
-}
-
-// The full DSCR scenario as a pinned note. Bonzo has no fields for annual tax,
-// annual insurance or monthly HOA, and those three are exactly what decides
-// whether a deal pencils — so rather than drop them, they go on the record as
-// text Darren reads before the call. Returns '' when there's nothing to say.
-function dscrScenarioNote(data) {
-  if (data.source !== 'dscr') return '';
-  const money = function (v) {
-    const n = parseFloat(bonzoNumber(v));
-    return isNaN(n) ? null : '$' + Math.round(n).toLocaleString('en-US');
-  };
-  const lines = [];
-  const rent = money(data.monthlyRent);
-  const price = money(data.purchasePrice);
-  const tax = money(data.annualTax);
-  const ins = money(data.annualInsurance);
-  const hoa = money(data.monthlyHoa);
-  const pi = money(data.monthlyPI);
-  const pitia = money(data.monthlyPitia);
-
-  if (rent) lines.push('Monthly market rent: ' + rent);
-  if (price) lines.push('Purchase price: ' + price);
-  if (data.downPayment) lines.push('Down payment: ' + data.downPayment + (money(data.downPaymentAmount) ? ' (' + money(data.downPaymentAmount) + ')' : ''));
-  if (tax) lines.push('Annual property tax: ' + tax);
-  if (ins) lines.push('Annual insurance: ' + ins);
-  if (hoa) lines.push('Monthly HOA: ' + hoa);
-  // Plain words only — Bonzo HTML-escapes note content, and it escapes more than
-  // the obvious: "&" became "&amp;" and "+" became "&#43;", both verified live.
-  // Stick to letters, digits, "$", "%", ":" and "." here.
-  if (pi) lines.push('Monthly principal and interest: ' + pi);
-  if (pitia) lines.push('Monthly PITIA: ' + pitia);
-  if (!lines.length) return '';
-
-  return 'DSCR calculator scenario (self-reported by the lead, not verified):\n\n'
-    + lines.join('\n')
-    + (data.dscr ? '\n\nResulting DSCR: ' + String(data.dscr).trim() : '');
-}
-
-// Posts the scenario note onto a freshly created prospect. Never throws — the
-// lead is already in Sheets and Bonzo by this point, so a failed note must not
-// surface as an error.
-function postBonzoNote(prospectId, content, token) {
-  if (!prospectId || !content) return;
-  try {
-    const resp = UrlFetchApp.fetch(BONZO_BASE_URL + '/prospects/' + prospectId + '/notes', {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + token },
-      payload: JSON.stringify({ content: content, is_pinned: true }),
-      muteHttpExceptions: true,
-    });
-    Logger.log('postBonzoNote: response ' + resp.getResponseCode());
-  } catch (err) {
-    Logger.log('postBonzoNote: threw ' + err.toString());
-  }
-}
-
-/**
- * Bonzo's "this email is already a prospect" answer, told apart from a genuine
- * failure.
- *
- * Deliberately narrow: a 422 alone is not enough, because 422 is also how a
- * malformed body comes back, and silencing that would hide a real break. Both
- * the status and the wording have to match.
- */
-function isReturningProspect(code, text) {
-  if (code !== 422) return false;
-  return /already\s+(exists|been\s+taken)|has\s+already\s+been\s+taken|duplicate/i.test(String(text || ''));
-}
-
-function pushToBonzo(data) {
-  // A test lead is not a prospect.
-  //
-  // The Sheet has flagged them since @37, but they were still enrolled in live
-  // campaigns: three `TEST R4 ...` prospects sat Active in DSCR Campaign, FHA
-  // Calculator Campaign and Real Estate Investing, where they receive the real
-  // nurture sequence and pollute every campaign metric Darren reads. The row
-  // is still written and the guide is still sent, so a test run still proves
-  // the whole path; only the CRM is spared.
-  if (isTestLead(data)) {
-    logDebug(SpreadsheetApp.openById(SPREADSHEET_ID), 'pushToBonzo: test lead, not enrolled', data.email);
-    return;
-  }
-
-  const props = PropertiesService.getScriptProperties();
-  const token = props.getProperty('BONZO_API_KEY');
-  if (!token) { Logger.log('pushToBonzo: no BONZO_API_KEY set, skipping'); return; } // Bonzo not configured yet — skip silently, Sheets still logs the lead
-
-  // Every landing lead pushes to Bonzo regardless of state — licensed vs.
-  // unlicensed is surfaced via the licensed-state/unlicensed-state tag below,
-  // not by gating the push. (Previously out-of-area leads were skipped
-  // entirely; still logged in Sheets either way.)
-
-  // Campaign routing per source; everything else falls back to the default campaign.
-  // hasOwnProperty, not a bare lookup: data.source arrives from the posted form
-  // body, and a source of 'constructor' or '__proto__' would otherwise find an
-  // inherited property, read as a configured funnel, and send the lead to bare
-  // /prospects instead of the default campaign.
-  const funnelCampaign = Object.prototype.hasOwnProperty.call(FUNNEL_CAMPAIGNS, data.source)
-    ? FUNNEL_CAMPAIGNS[data.source]
-    : null;
-  const campaignId = funnelCampaign
-    ? (props.getProperty(funnelCampaign.prop) || funnelCampaign.fallback || props.getProperty('BONZO_CAMPAIGN_ID'))
-    : props.getProperty('BONZO_CAMPAIGN_ID');
-  const path = campaignId ? `/prospects/campaign/${campaignId}` : '/prospects';
-
-  const tags = [];
-  if (Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, data.source)) {
-    // The contact modal, one entry per page it lives on. Every copy used to post
-    // 'MortgageCalculator', so a DSCR investor and a homeowner after equity
-    // arrived in Bonzo tagged identically and Darren had no way to open the
-    // right conversation. hasOwnProperty, not a bare lookup: data.source comes
-    // from the posted body and '__proto__' would otherwise find an inherited
-    // property.
-    tags.push('contact', CONTACT_SOURCES[data.source]);
-    // What they said they want, as a filter. 'access-equity' in particular
-    // was the only place home-equity intent was legible before /home-equity/
-    // existed, and it still marks it on every other page's modal.
-    if (data.target) tags.push('target:' + bonzoTag(data.target));
-    if (data.timeline) tags.push('timeline:' + bonzoTag(data.timeline));
-  }
-  else if (data.source === 'DebtConsolidation') tags.push('debt-consolidation', 'HELOC/cash-out interest');
-  else if (data.source === 'newsletter') tags.push('newsletter');
-  else if (data.source === 'QualifyForm') {
-    tags.push('qualify-form');
-    // Qualification answers as tags so they're filterable in Bonzo
-    if (data.loanType)   tags.push('loan:' + data.loanType);
-    if (data.timeline)   tags.push('timeline:' + data.timeline);
-    if (data.priceRange) tags.push('price:' + data.priceRange);
-    if (data.creditRange) tags.push('credit:' + data.creditRange);
-    if (data.employment) tags.push('employment:' + data.employment);
-  }
-  // Landing pages — each source routes to its own Bonzo campaign via tags.
-  // No 'heloc-hei' branch: that funnel is the debt-consolidation form above,
-  // which already carries the 'HELOC/cash-out interest' tag.
-  else if (data.source === 'dscr') tags.push('dscr', 'investor', 'priority:p2');
-  else if (data.source === 'self-employed') tags.push('self-employed', 'bank-statement', 'purchase', 'priority:p3');
-  else if (data.source === 'fha') {
-    tags.push('fha', 'fha-calculator', 'newsletter', 'priority:p4');
-    if (data.creditScore) tags.push('credit:' + data.creditScore);
-  }
-  else if (data.source === 'real-estate-investing') tags.push('real-estate-investing', 'case-study', 'priority:p5');
-  else if (data.source === 'home-equity') {
-    // 'HELOC/cash-out interest' is the tag the debt funnel has always given
-    // this intent, so one filter in Bonzo still finds both.
-    tags.push('home-equity', 'HELOC/cash-out interest');
-    if (data.goal) tags.push('goal:' + bonzoTag(data.goal));
-    if (data.preference) tags.push('preference:' + bonzoTag(data.preference));
-  }
-  else if (data.source === 'adu') {
-    // Every funding path the page describes draws on equity, so the equity
-    // tag rides along: one Bonzo filter still finds all of that intent.
-    tags.push('adu', 'HELOC/cash-out interest');
-    if (data.projectPurpose) tags.push('purpose:' + bonzoTag(data.projectPurpose));
-  }
-  else tags.push('mortgage-calculator');
-
-  // Every landing lead gets a licensed-state / unlicensed-state tag so Darren
-  // can filter workable leads from out-of-area ones in Bonzo. Covers the named
-  // landing pages plus the plain mortgage-calculator fallback (LeadForm.tsx on
-  // the main site) — anything with a state on it.
-  // Debt Consolidation is named explicitly: it collects a state like the others
-  // but is not a LANDING_SOURCE, so it used to be the one funnel where an
-  // out-of-area lead looked identical to a workable one in both Bonzo and the
-  // Sheet.
-  if (
-    LANDING_SOURCES.indexOf(data.source) !== -1 ||
-    data.source === 'DebtConsolidation' ||
-    tags.indexOf('contact') !== -1 ||
-    tags.indexOf('mortgage-calculator') !== -1
-  ) {
-    tags.push(isLicensedState(data.state) ? 'licensed-state' : 'unlicensed-state');
-    if (data.state) tags.push('state:' + String(data.state).trim().toUpperCase());
-  }
-
-  // Which ad (if any) produced this lead, as filterable tags.
-  attributionTags(data).forEach(function (t) { tags.push(t); });
-
-  const body = {
-    first_name: data.firstName || '',
-    last_name: data.lastName || '',
-    email: data.email || '',
-    phone: data.phone || '',
-    source: data.source || 'website',
-    tags: tags,
-  };
-
-  // Calculator output → Bonzo's Mortgage fields (the "Mortgage" tab on a prospect),
-  // so campaign copy can merge the lead's real numbers.
-  //
-  // Verified live against the v3 API (see BONZO MORTGAGE FIELDS note at the top of
-  // this file): these must be sent as FLAT TOP-LEVEL KEYS on the same campaign-
-  // enrollment POST. A nested `mortgage: {...}` object is accepted with a 201 and
-  // then silently dropped, as is any invented key like `custom_fields`. Tags and
-  // campaign enrollment are unaffected by sending these alongside.
-  addMortgageFields(body, data);
-
-  // Ad attribution into Bonzo's own fields. This account has NO custom fields
-  // and they can't be created via the API, so these ride in existing free-text
-  // Mortgage fields. `lead_id` is unused and semantically right for a click id;
-  // `current_step` gives Darren something readable on the prospect screen.
-  // Do NOT reuse lead_source (holds the magnet) or loan_program (DSCR ratio).
-  const clickId = effectiveClickId(data);
-  if (clickId) body.lead_id = clickId;
-  const credited = effectiveTouch(data);
-  const campaignLabel = [credited.campaign, credited.content].filter(function (v) { return !!v; }).join(' / ');
-  if (campaignLabel) body.current_step = campaignLabel;
-
-  try {
-    Logger.log('pushToBonzo: POST ' + BONZO_BASE_URL + path + ' body=' + JSON.stringify(body));
-    const resp = UrlFetchApp.fetch(BONZO_BASE_URL + path, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + token },
-      payload: JSON.stringify(body),
-      muteHttpExceptions: true, // don't let a Bonzo error break the Sheets write
-    });
-    Logger.log('pushToBonzo: response ' + resp.getResponseCode() + ' ' + resp.getContentText());
-
-    // The lead is already safe in Sheets, so a Bonzo failure is not fatal — but
-    // it does mean nobody gets nurtured, which is invisible without an alert.
-    const code = resp.getResponseCode();
-    if (isReturningProspect(code, resp.getContentText())) {
-      // Not a failure. Bonzo answers 422 "already exists" when the email is
-      // already a prospect, which is precisely what happens when someone who
-      // downloaded one guide comes back for another — a good event, reported as
-      // a LEAD PIPELINE FAILURE until 26 Sep 2026. Darren was being paged about
-      // his own returning leads, which is the fastest way to teach someone to
-      // ignore an alert that matters.
-      //
-      // What it does mean is real and worth being plain about: the prospect is
-      // NOT enrolled in this funnel's campaign and their tags are NOT updated,
-      // so a DSCR lead who returns for the FHA guide stays tagged as they were.
-      // Fixing that needs an update-by-email call, and this account's v3
-      // behaviour has to be verified live before anything here relies on it,
-      // the way the Mortgage fields were. It is a HubSpot-era job.
-      //
-      // The row still goes to the Debug tab, which is the trustworthy record of
-      // what happened to a lead, so a returning lead is visible when looked for
-      // rather than announced.
-      logDebug(SpreadsheetApp.openById(SPREADSHEET_ID), 'pushToBonzo: returning lead, already a prospect, not re-enrolled', data.email);
-    } else if (code < 200 || code >= 300) {
-      alertFailure(
-        'Bonzo push failed with HTTP ' + code + ' (lead IS in the sheet, but was not enrolled):\n' +
-        resp.getContentText().slice(0, 500),
-        JSON.stringify(body)
-      );
-    }
-
-    // Attach the full scenario as a pinned note (DSCR only). Best-effort: the
-    // prospect is already created, so a missing id or a failed note is logged
-    // and ignored rather than retried.
-    const note = dscrScenarioNote(data);
-    if (note) {
-      let prospectId = null;
-      try { prospectId = JSON.parse(resp.getContentText()).data.id; } catch (e) {}
-      postBonzoNote(prospectId, note, token);
-    }
-  } catch (err) {
-    Logger.log('pushToBonzo: threw ' + err.toString());
-    // swallow — lead is already safe in Sheets even if Bonzo push fails
-  }
-}
-
 // ── HubSpot ─────────────────────────────────────────────────────────────────
 //
-// A second destination next to Bonzo, not a replacement: the Sheet stays the
-// record and Bonzo keeps nurturing until HubSpot has been tested end to end.
+// The CRM. The Sheet stays the record of every lead; HubSpot is where Darren
+// works them. Bonzo was retired on 15 Oct 2026 (meeting with Darren), so
+// nothing else receives the lead.
 // Agreed with Kocah on 29 Sep: keep our forms, submit each lead to a HubSpot
 // form built only as an API target, with the click id attached.
 //
@@ -1265,7 +828,7 @@ function hubspotFields(data) {
   Object.keys(mapping).forEach(function (key) {
     const name = mapping[key];
     if (typeof name !== 'string' || (!/^rdt_[a-z0-9_]+$/.test(name) && ['loan_amount', 'loan_type', 'property_use', 'lead_source_detail'].indexOf(name) < 0)) return;
-    const value = key === 'submissionSnapshot' ? leadSnapshot(data) : key === 'loanAmount' ? bonzoNumber(data.loanAmount) : data[key];
+    const value = key === 'submissionSnapshot' ? leadSnapshot(data) : key === 'loanAmount' ? plainNumber(data.loanAmount) : data[key];
     if (/^sms.*Consent$/.test(key) && value !== true) return; // no new opt-in is not a subscription revocation
     add(name, typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
   });
@@ -1344,8 +907,7 @@ function alertHubSpotDroppedFields(dropped, code) {
  * vocabulary, so the follow-up queue retries and alerts on it the same way:
  *   skipped  - not configured, a test lead, or no email to make a contact from
  *   sent     - 2xx. A returning lead is a 2xx too: HubSpot dedupes by email and
- *              updates the one contact, so unlike Bonzo's 422 there is nothing
- *              to tell apart
+ *              updates the one contact, so there is nothing to tell apart
  *   retry    - 429, 5xx, or the call threw
  *   rejected - any other 4xx: wrong form GUID, a form that demands a field we
  *              do not have, a bad value. Retrying cannot fix those
@@ -1363,7 +925,8 @@ function pushToHubSpot(ss, data) {
     logDebug(ss, 'pushToHubSpot: skipped, HUBSPOT_PORTAL_ID/HUBSPOT_FORM_GUID not set', data.email);
     return { outcome: 'skipped' };
   }
-  // A test lead is not a contact, for the reason pushToBonzo gives. The override
+  // A test lead is not a contact: test prospects once sat Active in Bonzo's live
+  // campaigns and polluted every metric Darren read. The override
   // exists so the whole path can be proved end to end before it matters; those
   // contacts still carry rdt_test_lead = Yes, so they can be filtered or deleted.
   if (isTestLead(data) && String(props.getProperty('HUBSPOT_SEND_TESTS') || '').trim().toLowerCase() !== 'true') {
@@ -1371,8 +934,8 @@ function pushToHubSpot(ss, data) {
     return { outcome: 'skipped' };
   }
   if (!String(data.email || '').trim()) {
-    // Phone-only leads are allowed by /api/lead. They are in the Sheet and in
-    // Bonzo; HubSpot identifies contacts by email and would record nobody.
+    // Phone-only leads are allowed by /api/lead. They are in the Sheet;
+    // HubSpot identifies contacts by email and would record nobody.
     logDebug(ss, 'pushToHubSpot: skipped, no email', '');
     return { outcome: 'skipped' };
   }
@@ -1496,7 +1059,7 @@ function classifyGuideResponse(code) {
  * Records an explicit unsubscribe request before any more site email sends.
  * Called by an operator now; an inbox integration can call this once Darren
  * connects the inbox receiving replies. It does not claim to read that inbox
- * or change Bonzo/HubSpot's separate campaign subscription settings.
+ * or change HubSpot's separate subscription settings.
  */
 function recordEmailOptOut(email) {
   const props = PropertiesService.getScriptProperties();
@@ -1835,7 +1398,7 @@ function doPost(e) {
       writeLead(ss, schema, data);
     }
 
-    // Queue the slow work instead of doing it here. pushToBonzo plus the guide
+    // Queue the slow work instead of doing it here. The CRM push plus the guide
     // calls (one of which renders a PDF) routinely ran past the /api/lead
     // proxy's 8s budget: the lead saved, but the visitor was told it failed and
     // Darren got a false "LEAD NOT SAVED" alert. Replying as soon as the row is
@@ -1857,7 +1420,7 @@ function doPost(e) {
   } catch (err) {
     // The lead is the product; losing one silently is the worst outcome here.
     // The alert carries the raw payload so it can be recovered by hand even if
-    // both the sheet write and the Bonzo push failed.
+    // the sheet write failed.
     alertFailure('doPost threw: ' + err.toString(), raw);
     return ContentService
       .createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
@@ -2145,7 +1708,7 @@ function migrateLeadTabs() {
 }
 
 // ---------------------------------------------------------------------------
-// Follow-up queue: Bonzo push and guide emails, run by a time-driven trigger.
+// Follow-up queue: HubSpot submit and guide emails, run by a time-driven trigger.
 // Setup (once): run installFollowUpTrigger() from the Apps Script editor.
 // ---------------------------------------------------------------------------
 const FOLLOWUP_TAB = 'Follow-ups';
@@ -2305,8 +1868,7 @@ function withSheetLock(fn) {
  * 180 minutes), and a row stuck in 'processing:N' once it is old enough to be
  * an orphan from a run that died.
  *
- * Bonzo is pushed exactly once per lead. The guide email reports its own
- * outcome: sent -> 'done'; Resend busy/down -> 'guide-retry:N', retried up to
+ * HubSpot and the guide email each report their own outcome. The guide: sent -> 'done'; Resend busy/down -> 'guide-retry:N', retried up to
  * GUIDE_MAX_ATTEMPTS, then 'guide-failed'; a permanent rejection (invalid
  * address, missing config) -> 'guide-rejected' with no retry. Both terminal
  * failures alert Darren, and the daily digest catches anything the 5 minute
@@ -2359,9 +1921,9 @@ function processFollowUps() {
       try {
         const data = JSON.parse(raw);
         // No lock held here: this is seconds of HTTP, including a PDF render.
-        // Bonzo runs on the first pass only. A retry re-sends just the guide,
-        // so it can never create a duplicate prospect.
-        if (priorAttempts === 0) pushToBonzo(data);
+        // There is no Bonzo job any more (retired 15 Oct 2026). A row queued
+        // before that deploy still owes only what its status names, so it
+        // finishes its HubSpot and guide work and is never sent to Bonzo.
         // HubSpot and the guide each report an outcome, and each runs only
         // while it is still owed (see nextFollowUpStatus).
         const outcomes = {};
@@ -2386,11 +1948,11 @@ function processFollowUps() {
           };
           if (endedBadly('guide')) {
             lines.push('guide email NOT delivered to ' + (data.email || '(no email)') + '. ' +
-              'The lead IS saved in the Sheet and Bonzo; send the guide by hand. Detail: ' + (results.guide.detail || ''));
+              'The lead IS saved in the Sheet; send the guide by hand. Detail: ' + (results.guide.detail || ''));
           }
           if (endedBadly('hubspot')) {
             lines.push('HubSpot did NOT receive ' + (data.email || '(no email)') + '. ' +
-              'The lead IS saved in the Sheet and Bonzo; add it to HubSpot by hand if it matters before this is fixed. Detail: ' +
+              'The lead IS saved in the Sheet; add it to HubSpot by hand if it matters before this is fixed. Detail: ' +
               (results.hubspot.detail || ''));
           }
           alertFailure(lines.join('\n\n') + ' [' + next.status + ']', raw);
@@ -2399,7 +1961,7 @@ function processFollowUps() {
         withSheetLock(function () {
           sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['error', new Date().toISOString(), err.toString()]]);
         });
-        alertFailure('follow-up threw (Sheet row IS saved; Bonzo/guide may not have run): ' + err.toString(), raw);
+        alertFailure('follow-up threw (Sheet row IS saved; HubSpot/guide may not have run): ' + err.toString(), raw);
       }
     }
     if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {

@@ -1,8 +1,8 @@
 /**
  * /adu/ (revamp phase 5), end to end on both sides of the wall: what the page
  * sends (buildAduLead), where it lands (the 'adu' schema in the real
- * google-apps-script.js), how Bonzo files it, and what the page says, with
- * each step rendered from props.
+ * google-apps-script.js), that it reaches no Bonzo, and what the page says,
+ * with each step rendered from props.
  */
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -69,27 +69,17 @@ describe('where it lands: the ADU tab', () => {
   });
 });
 
-describe('how Bonzo files it', () => {
-  function push(props: Record<string, string>) {
+describe('after Bonzo was retired (15 Oct 2026)', () => {
+  it('is not sent to Bonzo, even with the old Script Properties still set', () => {
     const fetches: FetchCall[] = [];
     const { gas, queue } = loadGas<{ processFollowUps: () => void }>({
-      exports: ['processFollowUps'], props, fetch: recordingFetch(fetches, [], '{"data":{"id":1}}'),
+      exports: ['processFollowUps'],
+      props: { BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999', BONZO_ADU_CAMPAIGN_ID: '777' },
+      fetch: recordingFetch(fetches, []),
     });
     queue(buildAduLead({ ...CONTACT, ...PROJECT }));
     gas.processFollowUps();
-    const call = fetches.find((f) => f.url.includes('getbonzo.com'))!;
-    return { url: call.url, tags: JSON.parse(String(call.options.payload)).tags as string[] };
-  }
-
-  it('tags the project, its purpose and the state', () => {
-    expect(push({ BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999' }).tags).toEqual(expect.arrayContaining([
-      'adu', 'HELOC/cash-out interest', 'purpose:rental-adu', 'licensed-state', 'state:CA',
-    ]));
-  });
-
-  it('enrolls into the default campaign until BONZO_ADU_CAMPAIGN_ID is set', () => {
-    expect(push({ BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999' }).url).toMatch(/\/campaign\/999$/);
-    expect(push({ BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999', BONZO_ADU_CAMPAIGN_ID: '777' }).url).toMatch(/\/campaign\/777$/);
+    expect(fetches.filter((f) => f.url.includes('getbonzo.com'))).toHaveLength(0);
   });
 });
 

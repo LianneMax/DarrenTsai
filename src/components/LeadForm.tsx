@@ -80,7 +80,7 @@ const TARGET_OPTIONS = [
   // /yt/heloc and /yt/equity send real traffic here, and until 26 Sep 2026 a
   // viewer who had just watched a HELOC video had no option that matched what
   // they came for. Until a dedicated page exists, this is how that intent is
-  // recorded: it reaches Bonzo as target:access-equity and is filterable.
+  // recorded: it reaches the Sheet and HubSpot as target access-equity and is filterable.
   { value: 'access-equity', label: 'Access my home equity' },
   { value: 'buy-home', label: 'Purchase a home' },
   { value: 'refinance', label: 'Refinance my existing mortgage' },

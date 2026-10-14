@@ -1,7 +1,7 @@
 // Netlify Function: send-fha-guide
 //
 // Called server-side by the Apps Script webhook (google-apps-script.js) right
-// after an FHA Calculator lead is logged to Sheets + pushed to Bonzo.
+// after an FHA Calculator lead is logged to Sheets.
 // Like send-rei-guide.mts, the magnet is a static file with no per-lead
 // numbers to redraw — the function just fetches the published spreadsheet
 // (already at /magnets/fha-affordability-calculator.xlsx) and emails it

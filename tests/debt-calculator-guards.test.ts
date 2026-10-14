@@ -130,7 +130,7 @@ describe('the DSCR calculator does not arrive pre-filled either', () => {
   it('sends nothing from the calculator when the calculator was not used', () => {
     // R3-3. The opt-in sits below the calculator and can be submitted without
     // it. Blank is honest and stays blank the whole way down: addMortgageFields
-    // skips empty values, so Bonzo gets no loan_amount or interest_rate.
+    // skips empty values, so the CRM gets no loan amount or rate.
     for (const field of ['dscr:', 'downPayment:', 'rate:', 'loanAmount:', 'monthlyRent:', 'annualTax:']) {
       const line = DSCR.split(/\r?\n/).find((l) => l.trim().startsWith(field));
       expect(line, `payload field ${field} not found`).toBeDefined();

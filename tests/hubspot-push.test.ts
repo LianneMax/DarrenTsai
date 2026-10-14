@@ -1,7 +1,7 @@
 /**
  * pushToHubSpot and the follow-up queue's handling of it (audit H3).
  *
- * HubSpot is a second destination next to Bonzo and it ships dark: it must do
+ * HubSpot is the CRM (Bonzo was retired 15 Oct 2026) and it ships dark: it must do
  * nothing until its Script Properties are set, must never cost a lead its
  * guide email, and must never make a retry mail the same guide twice. These
  * run the real google-apps-script.js against the shared fake runtime and assert
@@ -102,7 +102,7 @@ const LEAD = {
 
 const hubspotCalls = (h: Harness) => h.fetches.filter((f) => f.url.includes('hsforms.com'));
 const guideCalls = (h: Harness) => h.fetches.filter((f) => f.url.includes('send-dscr-guide'));
-const bonzoCalls = (h: Harness) => h.fetches.filter((f) => f.url.includes('getbonzo.com') && !f.url.includes('/notes'));
+const bonzoCalls = (h: Harness) => h.fetches.filter((f) => f.url.includes('getbonzo.com'));
 const bodyOf = (call: FetchCall) => JSON.parse(String(call.options.payload));
 const fieldMap = (fields: Field[]) => Object.fromEntries(fields.map((f) => [f.name, f.value]));
 const debugMessages = (h: Harness) => (h.tabs.get('Debug')?.rows ?? []).slice(1).map((r) => String(r[1]));
@@ -116,7 +116,7 @@ describe('ships dark', () => {
       expect(hubspotCalls(h)).toHaveLength(0);
       expect(h.statusOf().status).toBe('done'); // nothing else about the lead changes
       expect(guideCalls(h)).toHaveLength(1);
-      expect(bonzoCalls(h)).toHaveLength(1);
+      expect(bonzoCalls(h)).toHaveLength(0);
       expect(debugMessages(h).some((m) => /pushToHubSpot: skipped/.test(m))).toBe(true);
       expect(h.mail).toHaveLength(0);
     }
@@ -321,7 +321,7 @@ describe('failures go to the retry queue and the alert', () => {
     h.processFollowUps();
     expect(hubspotCalls(h)).toHaveLength(2);
     expect(guideCalls(h)).toHaveLength(1);
-    expect(bonzoCalls(h)).toHaveLength(1);
+    expect(bonzoCalls(h)).toHaveLength(0);
     expect(h.statusOf().status).toBe('done');
   });
 

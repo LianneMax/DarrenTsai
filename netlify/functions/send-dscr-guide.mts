@@ -1,7 +1,7 @@
 // Netlify Function: send-dscr-guide
 //
 // Called server-side by the Apps Script webhook (google-apps-script.js) right
-// after a DSCR lead is logged to Sheets + pushed to Bonzo. Takes that lead's
+// after a DSCR lead is logged to Sheets. Takes that lead's
 // data, personalizes the cover page of the static DSCR guide PDF (already
 // published at /magnets/dscr-rate-cashflow-guide.pdf), and emails it from
 // darren@realdarrentsai.com via Resend.

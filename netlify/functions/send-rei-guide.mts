@@ -1,7 +1,7 @@
 // Netlify Function: send-rei-guide
 //
 // Called server-side by the Apps Script webhook (google-apps-script.js) right
-// after a Real Estate Investing lead is logged to Sheets + pushed to Bonzo.
+// after a Real Estate Investing lead is logged to Sheets.
 // Unlike send-dscr-guide.mts, this PDF is a static case study with no
 // per-lead numbers to redraw — the function just fetches the published PDF
 // (already at /magnets/real-estate-investing-case-study.pdf) and emails it

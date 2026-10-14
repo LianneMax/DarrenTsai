@@ -234,7 +234,7 @@ describe('configuration', () => {
   /**
    * The worst failure this endpoint has, and the one it used to handle worst.
    * A missing or renamed webhook variable takes every form on the site down at
-   * once: nothing reaches the Sheet, nothing reaches Bonzo, and the visitor is
+   * once: nothing reaches the Sheet, nothing reaches HubSpot, and the visitor is
    * told not to submit again. Without this alert that can run for days unnoticed.
    */
   it('mails the lead when the webhook is unset, since nothing downstream has it', async () => {

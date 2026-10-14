@@ -13,8 +13,8 @@
  * The differences between the four callers are real and deliberate, so they are
  * parameters here rather than being flattened away. The one that matters most is
  * `fetch`: apps-script wants an inert 200, dopost wants one that records the URL
- * and then throws, followups wants keyed replies so a DSCR lead's two Bonzo calls
- * can be answered separately, and bonzo-push wants a fixed prospect id back.
+ * and then throws, and followups wants keyed replies so a lead's calls can be
+ * answered separately.
  *
  * Stubs that were identical everywhere (Logger, LockService) are unconditional.
  * Three stubs were a superset in three files and a subset in apps-script only:
@@ -284,9 +284,9 @@ export function loadGas<T = Record<string, unknown>>(options: GasOptions): GasHa
 /**
  * A UrlFetchApp.fetch that records every call and answers by URL fragment.
  *
- * Keyed rather than queued on purpose: one DSCR lead makes two Bonzo calls
- * (create the prospect, then pin the scenario note), so a positional queue
- * silently hands the guide's response to the note instead.
+ * Keyed rather than queued on purpose: one lead can make several calls
+ * (HubSpot, then the guide), so a positional queue could hand one call's
+ * response to another.
  */
 export function recordingFetch(
   calls: FetchCall[],

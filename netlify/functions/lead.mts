@@ -56,7 +56,7 @@ const ALLOWED_HOSTS = ["realdarrentsai.com", "www.realdarrentsai.com"];
 // ── Rate limit ──────────────────────────────────────────────────────────────
 //
 // WHY. Nothing limited how often this endpoint could be called (security pass,
-// 10 Oct). Every accepted post writes a Sheet row, creates a Bonzo and a HubSpot
+// 10 Oct). Every accepted post writes a Sheet row, creates a HubSpot
 // contact, and since R2 makes the site email whatever address it was given
 // from Darren's domain. A script posting fake leads would do all of that at
 // once, and the email part is the one that costs the sending reputation every
@@ -427,9 +427,9 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
 
   const explanationHtml = uncertain
     ? "This lead timed out before Apps Script confirmed it. Apps Script keeps running after we stop waiting, so it is <strong>probably saved already</strong>."
-    : "This lead could not be written to Sheets or Bonzo. Nothing downstream has it.";
+    : "This lead could not be written to Sheets. Nothing downstream has it.";
   const action = uncertain
-    ? "Search the Sheet for this email first. Only enter it by hand if it is genuinely missing, otherwise you will create a duplicate in Bonzo."
+    ? "Search the Sheet for this email first. Only enter it by hand if it is genuinely missing, otherwise you will create a duplicate in the Sheet and HubSpot."
     : "Enter this lead by hand, then send whatever guide the form promised.";
 
   // Anything the form sent that is not already shown above, so a new field on a
@@ -522,7 +522,7 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
     (uncertain
       ? "A lead submitted on realdarrentsai.com timed out before Apps Script confirmed it.\n" +
         "It is probably saved: check the Sheet for this email before entering it by hand, to avoid a duplicate.\n"
-      : "A lead submitted on realdarrentsai.com could not be written to Sheets or Bonzo.\n") +
+      : "A lead submitted on realdarrentsai.com could not be written to Sheets.\n") +
     (name ? `\nName:  ${name}` : "") +
     (email ? `\nEmail: ${email}` : "") +
     (phone ? `\nPhone: ${phone}` : "") +

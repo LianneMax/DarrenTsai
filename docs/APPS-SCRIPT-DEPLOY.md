@@ -8,7 +8,7 @@ The one rule: **update the existing deployment in place.** Never `clasp deploy` 
 
 Publish the Netlify changes first, then update Apps Script in place. The proxy adds a server-only `_proxyKey`; the old script ignores that extra field, so mixed versions preserve lead delivery. The updated script validates `LEAD_PROXY_KEY`, falling back to the existing `NETLIFY_CONTACT_CONFIRM_KEY`; Netlify uses the matching `LEAD_PROXY_KEY`, falling back to `CONTACT_CONFIRM_API_KEY`. Verify the private values match without printing them. Prefer a dedicated matching `LEAD_PROXY_KEY` for independent rotation. Without either configured property the script remains in compatibility mode; do not claim protection until the configured deployment rejects unsigned submissions. Check a controlled TEST through the proxy before retiring the old deployment version.
 
-The shared email sender checks persistent suppression before every send and supplies token-based unsubscribe links plus one-click headers. Deploying Netlify enables website suppression; updating Apps Script marks suppressed queued sends as skipped and enables `recordEmailOptOut(email)`. This does not connect an inbox or synchronize native Bonzo/HubSpot campaigns. Preserve all contacts and submission history. Previously sent mail retains its old footer.
+The shared email sender checks persistent suppression before every send and supplies token-based unsubscribe links plus one-click headers. Deploying Netlify enables website suppression; updating Apps Script marks suppressed queued sends as skipped and enables `recordEmailOptOut(email)`. This does not connect an inbox or synchronize native HubSpot subscriptions. Preserve all contacts and submission history. Previously sent mail retains its old footer.
 
 After deployment, run `initializeEmailOptOutColumns()` once to append `Unsubscribe?` to existing lead tabs without moving any columns. Confirmed link/manual opt-outs enter a durable outbox; the existing minute worker marks matching rows TRUE and acknowledges only successful updates. Google outages delay the display update but do not lift suppression. A manually entered TRUE is honored before queued guide delivery and copied to persistent suppression. Blank means no recorded opt-out; changing TRUE back to blank does not resubscribe someone. Reply-based requests require reading the inbox, then marking TRUE or calling `recordEmailOptOut(email)`; no inbox reading is performed by this feature.
 
@@ -102,7 +102,7 @@ Replace `<REPO>` with your clone (`C:\Users\Lmbal\OneDrive\Documents\GitHub\Darr
 
 ## The live test
 
-One lead proves the guard works. Use a 555-01xx phone number, which the script treats as a test lead, so Bonzo and HubSpot skip it. The contact confirmation email still goes out, to your own address, greeting you by the formula as plain text.
+One lead proves the guard works. Use a 555-01xx phone number, which the script treats as a test lead, so HubSpot skips it. The contact confirmation email still goes out, to your own address, greeting you by the formula as plain text.
 
 1. Open `https://realdarrentsai.com/realestateinvesting/`, then the Contact button.
 2. First name: `=UPPER("guard")`. Last name: `TEST45`. Email: your own `+guard` address. Phone: `(714) 555-0145`. Any state.

@@ -164,7 +164,7 @@ describe('resilience', () => {
 });
 
 describe('payload shape', () => {
-  it('returns flat string values only — Bonzo and Sheets both need flat keys', () => {
+  it('returns flat string values only — HubSpot and Sheets both need flat keys', () => {
     const dt = load({ url: 'https://realdarrentsai.com/?gclid=A&utm_source=google' });
     const a = dt.attr();
     for (const [key, value] of Object.entries(a)) {

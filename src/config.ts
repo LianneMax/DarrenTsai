@@ -21,7 +21,7 @@ export const COMPANY_NMLS = "1717191";
 // The eight states Darren is licensed in.
 //
 // The forms accept every state and always will: an out-of-area lead is still
-// worth having, Apps Script tags it `unlicensed-state` in Bonzo, and Darren
+// worth having, Apps Script marks it Licensed? = No in the Sheet, and Darren
 // refers it. What was missing was telling the visitor. Someone in New York
 // filled in seven fields, got a green checkmark, and found out later, which is
 // a worse first impression than a sentence would have been.

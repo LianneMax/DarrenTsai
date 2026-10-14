@@ -63,7 +63,7 @@ New columns the site already sends but the Sheet does not store: Form ID, Page, 
 ## Findings from the repo (8 Oct), before building
 - The weighted average rate is balance-weighted (`wtRate` in `DebtSavingsCalculator.tsx`), so the label is allowed.
 - Savings are clamped in three places: `monthlySavings` and `heloanMonthlySavings` are sent only when positive, and `bestSave` floors each option at 0. `refiMonthlySavings` is already signed. The same-payoff refi is computed and never sent.
-- Best Time to Call and Lead Source are read only by the calculator, the Debt Consolidation row builder, the rescue email's labels in `lead.mts`, and tests. Not by Bonzo, HubSpot or any email to the visitor.
+- Best Time to Call and Lead Source are read only by the calculator, the Debt Consolidation row builder, the rescue email's labels in `lead.mts`, and tests. Not by HubSpot or any email to the visitor.
 - The debt `debts` array is sent and stored nowhere; "Debts" becomes a one-cell summary.
 
 ## Site wording (revamp spec sections 6 and 12, with Max's override)

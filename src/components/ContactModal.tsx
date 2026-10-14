@@ -4,7 +4,7 @@ import LeadForm from './LeadForm';
 interface Props {
   currentInputs: MortgageInputs;
   onClose: () => void;
-  /** One lead_source per page, so the Sheet and Bonzo can tell the pages apart. */
+  /** One lead_source per page, so the Sheet and HubSpot can tell the pages apart. */
   leadSource: string;
   /**
    * The heading, per page.

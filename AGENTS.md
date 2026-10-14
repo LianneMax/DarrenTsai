@@ -18,8 +18,9 @@ is a response to a specific way that happened once.
 ## Goal
 
 Keep the working lead flow intact while making attribution and lead-quality
-reporting reliable across Google Ads, GA4, CallRail, Bonzo and (eventually)
-HubSpot.
+reporting reliable across Google Ads, GA4, CallRail and HubSpot. Bonzo was
+retired on 15 Oct 2026 (meeting with Darren): the site no longer sends it
+anything.
 
 ## The lead flow
 
@@ -31,7 +32,7 @@ Visitor (paid click / YouTube link / organic)
      -> writes the row to the Google Sheet, replies {success:true}   [fast path]
      -> enqueues a Follow-ups row
   -> processFollowUps(), every minute
-     -> pushes the prospect to Bonzo (once)
+     -> submits the lead to HubSpot's Forms API
      -> calls the matching Netlify guide function, which emails via Resend
   -> GA4 generate_lead / phone_click via GTM; CallRail owns paid calls
 ```
@@ -43,11 +44,11 @@ landing-page magnet forms, and the contact modal on every page.
 **Every copy of the contact modal posts its own `source`**, one per page:
 `home-contact`, `debt-consolidation-contact`, `home-equity-contact`, `adu-contact`,
 `mortgage-calculator-contact`, `dscr-contact`, `fha-contact`, `rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
-Sheet's Source column, the Bonzo tags and the GA4 event said the same thing
+Sheet's Source column, the CRM tags and the GA4 event said the same thing
 wherever the lead came from. They have no funnel-specific columns, so they still
 fall through `doPost` to the generic Leads tab; what they must each have is a
-branch in `CONTACT_SOURCES` (Apps Script) or they are all tagged
-`mortgage-calculator` again. `tests/lead-flow-alignment.test.ts` reads the
+entry in `CONTACT_SOURCES` (Apps Script) or their visitors get no
+confirmation email. `tests/lead-flow-alignment.test.ts` reads the
 `leadSource` prop as well as `source:` literals, so a page that mounts the modal
 with an unrouted source fails there.
 
@@ -60,7 +61,7 @@ with an unrouted source fails there.
 | Landing pages | Hand-written static HTML in `public/dscr/`, `public/fha/`, `public/realestateinvesting/`. No build step, ~2000 lines each, inline `<script>` |
 | Server | Netlify Functions (`.mts`, `Netlify.env.get`), routes declared via `export const config.path` |
 | Storage of record | Google Sheet `1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI`, driven by `google-apps-script.js` |
-| CRM | Bonzo v3 API (`app.getbonzo.com/api/v3`), campaign-routed per source |
+| CRM | HubSpot Forms API (`pushToHubSpot`); Bonzo retired 15 Oct 2026 |
 | Email | Resend, from `darren@realdarrentsai.com` |
 | Rates | FRED (Freddie Mac PMMS), cached in Netlify Blobs, refreshed hourly |
 | Tests | Vitest + jsdom, Vitest suites, checked with the full run |
@@ -112,20 +113,17 @@ constrain code:
   click; that bug is the usual cause of "Ads reports conversions but the Sheet
   has no gclids". `readTouch()` returns null when there is no signal, on purpose.
 - **Credit is attributed to one touch.** When a lead falls back to a first-touch
-  click id, its source and campaign tags must come from that same first touch
-  (`effectiveTouch()`), or a paid lead gets tagged with two origins at once.
-- **`attr:none` is tagged deliberately** so a break in tracking looks different
-  from a quiet week.
+  click id (`effectiveClickId()`), the Sheet keeps the first touch in its own
+  columns so the credited click and its origin read together.
 - **HELOC and home equity have their own page, `/home-equity/` (revamp phase
-  3, 9 Oct; live, verified 10 Oct).** Source `home-equity`, its own "Home Equity" tab, Bonzo
-  tags `home-equity` and `HELOC/cash-out interest` (the debt funnel's tag, so
-  one filter finds both) plus `goal:` and `preference:`. `/yt/heloc` and
+  3, 9 Oct; live, verified 10 Oct).** Source `home-equity`, its own "Home Equity" tab, with its
+  goal and preference in their own columns. `/yt/heloc` and
   `/yt/equity` point there. It is a new source, not a revival of the old
   `heloc-hei` route, which stays removed. Until the page existed that intent was
   served by the debt-consolidation funnel.
 - **Renovation and ADU have their own page, `/adu/` (revamp phase 5, 9 Oct;
-  live, verified 10 Oct).** Source `adu`, its own "ADU" tab, Bonzo tags `adu` and
-  `HELOC/cash-out interest` plus `purpose:`. `/yt/adu` and `/yt/adu-c` point
+  live, verified 10 Oct).** Source `adu`, its own "ADU" tab, with the project purpose
+  in its own column. `/yt/adu` and `/yt/adu-c` point
   there. Deploy the Apps Script `adu` route before the site.
 - The `/yt/*` routes in `netlify/functions/youtube-redirect.mts` are `302` on purpose: a `301` is cached
   permanently, so the destination could never be changed afterwards. One link per
@@ -136,7 +134,7 @@ constrain code:
 
 **Comments explain why, at length.** Most non-obvious code carries a block
 comment naming the failure it prevents, often with a date and measured numbers
-(FRED latency, timeout budgets, verified Bonzo API behaviour). Match this. A
+(FRED latency, timeout budgets, verified API behaviour). Match this. A
 change that removes a guard should say why the guard is no longer needed; a
 change that adds one should say what went wrong without it.
 
@@ -193,7 +191,7 @@ header name.
 
 **Fail open on uncertainty, fail loudly on certainty.** The DNS email check
 refuses a lead only on a definitive NXDOMAIN; a timeout or SERVFAIL lets it
-through. A failed Bonzo push alerts but does not fail the Sheet write. A failed
+through. A failed HubSpot submit alerts but does not fail the Sheet write. A failed
 rates refresh is a no-op that keeps the last good value.
 
 **Never show a success state you cannot stand behind.** The whole reason
@@ -203,16 +201,17 @@ shown inline. A 422 with `field:"email"` is the one failure the visitor can fix,
 so it keeps them on the form instead of showing the generic error.
 
 **Slow work goes in the queue, not in the request.** `doPost` writes the row and
-replies. Bonzo and the guide email run in `processFollowUps` a minute later, with
+replies. HubSpot and the guide email run in `processFollowUps` a minute later, with
 retry backoff at 1, 5, 20, 60 then 180 minutes, orphan recovery for rows whose
 run died, and a daily digest for anything the 5-minute alert throttle swallowed.
-Bonzo is pushed on the first pass only, so a guide retry can never create a
-duplicate prospect.
+The Status cell names which job is still owed, so a HubSpot retry never mails a
+delivered guide twice. There is no Bonzo job: rows queued before its retirement
+finish their HubSpot and guide work only.
 
 **Secrets are server-side only.** A `VITE_` prefix puts a value in the public
 client bundle, which is how the FRED key and the Apps Script URL leaked before.
-Netlify env vars for the functions; Apps Script Script Properties for Bonzo
-tokens and campaign ids. Never hardcode either in source.
+Netlify env vars for the functions; Apps Script Script Properties for the
+HubSpot ids and the guide-sender keys. Never hardcode either in source.
 
 **Tests read the real source.** The Apps Script and attribution tests evaluate
 the actual deployed file with the runtime stubbed, rather than a reimplementation.
@@ -232,8 +231,8 @@ or the lead lands on the generic tab with its fields dropped:
    (the funnel's own columns) and `detailValues`. The shared columns, the
    attribution block and the triage columns are added for it. Pin the new tab in
    `tests/sheet-columns.test.ts`.
-3. Campaign routing in `pushToBonzo()` plus a `BONZO_<SOURCE>_CAMPAIGN_ID` Script
-   Property, and a tag branch.
+3. Nothing CRM-specific: `pushToHubSpot()` sends every lead, with the full
+   submission in `rdt_submission_snapshot`.
 4. If it has a magnet: a `netlify/functions/send-<slug>-guide.mts`, a
    `<SLUG>_GUIDE_API_KEY` Netlify env var, `NETLIFY_<SLUG>_PDF_URL` and `_KEY`
    Script Properties, and a `send<Slug>Guide` in `sendGuideFor()`.
@@ -287,7 +286,7 @@ or the lead lands on the generic tab with its fields dropped:
   Ads**: code, accounts and decisions, each with an owner. When an item is done,
   update its status and evidence there and add a line to its change log.
   The current work is on `main`; do not infer the remote branch inventory from old notes.
-- HubSpot's Forms API handoff exists and is live alongside Sheets and Bonzo.
+- HubSpot's Forms API handoff exists and is live alongside Sheets (Bonzo retired 15 Oct 2026).
   Loan-field mapping and CRM acceptance remain pending. Max has read access
   but cannot obtain settings-edit permissions; Niko / Kocah owns the admin
   work in `.local-notes/SITE-AUDIT.md#nikos-short-checklist`. Preserve the existing lead flow.
@@ -324,16 +323,11 @@ or the lead lands on the generic tab with its fields dropped:
   already asked. In memory for the page view only: never stored, never sent
   anywhere, only ever reaches Calendly's own form. An empty call clears it, so
   one visitor's name cannot sit in the next one's calendar.
-- **A returning lead is not a failure.** Bonzo answers 422 "already exists" for
-  an email it already holds, which is what happens when someone who downloaded
-  one guide comes back for another. That was mailed to Darren as a LEAD PIPELINE
-  FAILURE until 26 Sep 2026, which is the fastest way to teach someone to ignore
-  the one alert standing between a lost lead and silence. It goes to the Debug
-  tab now. `isReturningProspect` matches on the status AND the wording, narrowly,
-  because 422 is also how a malformed body comes back. What it does not fix: a
-  returning prospect is still not enrolled in the new campaign and their tags are
-  not updated. That needs an update-by-email call whose v3 behaviour must be
-  verified live first, the way the Mortgage fields were.
+- **A returning lead is not a failure.** HubSpot dedupes by email and updates
+  the one contact. Bonzo answered 422 "already exists" instead, which was mailed
+  to Darren as a LEAD PIPELINE FAILURE until 26 Sep 2026: the fastest way to
+  teach someone to ignore the one alert standing between a lost lead and
+  silence. Keep any new destination's "already have them" answer out of alerts.
 - **The contact modal's confirmation email is live** (its properties are set;
   see the local audit). It was built dark first. Since 10 Oct the same
   sender has four more live contexts, named by `confirmationContext` in the
@@ -365,8 +359,8 @@ or the lead lands on the generic tab with its fields dropped:
 
   Worth knowing for the next audit that raises it, because grepping this repo
   cannot settle the question either way: an automation subscribes to the Sheet
-  on Google's side and leaves no trace here. The live integrations are Bonzo
-  (from `pushToBonzo`), Resend (via the Netlify guide senders), CallRail
+  on Google's side and leaves no trace here. The live integrations are HubSpot
+  (from `pushToHubSpot`), Resend (via the Netlify guide senders), CallRail
   (client-side number swap) and GTM/GA4. That is the whole list.
 
 ## Approved refinements (10 October 2026)
