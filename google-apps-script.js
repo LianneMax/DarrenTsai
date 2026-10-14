@@ -216,7 +216,7 @@ const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
 // Keep the original evidence columns readable. SMS Consent remains marketing
 // only; the two explicit categories describe this submission, not a CRM subscription
 // update or permission to undo a prior STOP. Header-aware writes preserve history.
-const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text'];
+const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot'];
 
 /**
  * The addresses used for testing, matched with any +tag stripped.
@@ -540,7 +540,7 @@ function finishLeadSchema(schema) {
     ]);
     const own = schema.detailValues(d);
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
-    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '']);
+    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d))]);
     SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
     const attr = byHeader(ATTR_HEADERS, attrRow(d));
     ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });
@@ -1197,6 +1197,15 @@ function urlPath(uri) {
  * truth and overwrites what the contact already had, so sending '' or 0 for a
  * field this form did not ask would erase a real answer from an earlier one.
  */
+function leadSnapshot(data) {
+  const out = {};
+  Object.keys(data).forEach(function (key) {
+    if (key.charAt(0) === '_' || /token|secret|password|api.?key|hutk/i.test(key)) return;
+    out[key] = data[key];
+  });
+  return out;
+}
+
 function hubspotFields(data) {
   const fields = [];
   function add(name, value) {
@@ -1246,6 +1255,20 @@ function hubspotFields(data) {
   // are would read as "out of area", which is a claim nobody made.
   if (data.state) add('rdt_licensed_state', isLicensedState(data.state) ? 'Yes' : 'No');
   add('rdt_test_lead', isTestLead(data) ? 'Yes' : 'No');
+
+  // Admin-approved API form fields only. Adding properties is not SMS enrollment.
+  // Blank omission preserves existing contact answers; the snapshot keeps history.
+  let mapping = {};
+  try { mapping = JSON.parse(PropertiesService.getScriptProperties().getProperty('HUBSPOT_DETAIL_FIELD_MAP') || '{}'); }
+  catch (err) { Logger.log('Invalid HubSpot detail mapping; existing fields preserved'); }
+  if (!mapping || Array.isArray(mapping) || typeof mapping !== 'object') mapping = {};
+  Object.keys(mapping).forEach(function (key) {
+    const name = mapping[key];
+    if (typeof name !== 'string' || (!/^rdt_[a-z0-9_]+$/.test(name) && ['loan_amount', 'loan_type', 'property_use', 'lead_source_detail'].indexOf(name) < 0)) return;
+    const value = key === 'submissionSnapshot' ? leadSnapshot(data) : key === 'loanAmount' ? bonzoNumber(data.loanAmount) : data[key];
+    if (/^sms.*Consent$/.test(key) && value !== true) return; // no new opt-in is not a subscription revocation
+    add(name, typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
+  });
 
   return fields;
 }
@@ -1822,8 +1845,10 @@ function doPost(e) {
     // Re-serialised so the queued payload carries the Submission ID the row was
     // just given. `raw` stays as received for the failure alert below.
     enqueueFollowUp(ss, data, JSON.stringify(data));
-
     lock.releaseLock();
+    // Acquire the optional queue's lock only after the primary write releases
+    // its own. Nested lock ownership must not shorten the primary critical section.
+    try { enqueueCallRailSync(ss, data); } catch (err) { logDebug(ss, 'CallRail sync enqueue needs review: ' + err.toString(), data.email); }
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true }))
@@ -2377,8 +2402,70 @@ function processFollowUps() {
         alertFailure('follow-up threw (Sheet row IS saved; Bonzo/guide may not have run): ' + err.toString(), raw);
       }
     }
+    if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {
+      try { processCallRailSync(ss); }
+      catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
+    }
   } finally {
     try { cache.remove(FOLLOWUP_RUNNING_KEY); } catch (e) { /* TTL will clear it */ }
+  }
+}
+
+// Additional CRM visibility is deliberately dark until account configuration
+// and duplicate-conversion checks are verified. A POST with an uncertain result
+// is never blindly retried: CallRail documents no submission idempotency key.
+const CALLRAIL_SYNC_HEADERS = ['Submission ID', 'Payload', 'Status', 'CallRail ID', 'Detail'];
+function enqueueCallRailSync(ss, data) {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('CALLRAIL_SYNC_ENABLED') !== 'true' || (isTestLead(data) && props.getProperty('CALLRAIL_SEND_TESTS') !== 'true')) return;
+  withSheetLock(function () {
+    let sheet = ss.getSheetByName('CallRail Sync');
+    if (!sheet) { sheet = ss.insertSheet('CallRail Sync'); appendSafeRow(sheet, CALLRAIL_SYNC_HEADERS); }
+    if (sheet.getLastRow() > 1 && sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().some(function (row) { return row[0] === data.submissionId; })) return;
+    appendSafeRow(sheet, [data.submissionId, JSON.stringify(leadSnapshot(data)), 'pending', '', '']);
+  });
+}
+function callRailSubmission(data, companyId) {
+  return { form_submission: {
+    company_id: companyId,
+    referrer: data.utm_source || 'direct',
+    referring_url: data.referrer || '',
+    landing_page_url: data.landingPage || data.pageUri || '',
+    form_url: data.pageUri || '',
+    form_data: Object.assign({}, leadSnapshot(data), {
+      phone_number: data.phone, email: data.email,
+      website_submission_id: data.submissionId,
+      calculator_snapshot: JSON.stringify(leadSnapshot(data))
+    })
+  } };
+}
+function processCallRailSync(ss) {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('CALLRAIL_SYNC_ENABLED') !== 'true') return;
+  const token = props.getProperty('CALLRAIL_API_TOKEN');
+  const account = props.getProperty('CALLRAIL_ACCOUNT_ID');
+  const company = props.getProperty('CALLRAIL_COMPANY_ID');
+  if (!token || !/^\d+$/.test(account || '') || !company) return;
+  const sheet = ss.getSheetByName('CallRail Sync');
+  if (!sheet || sheet.getLastRow() < 2) return;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][2] !== 'pending') continue;
+    const row = i + 2;
+    sheet.getRange(row, 3, 1, 1).setValues([['sending']]); // a crash is reviewable, not duplicate delivery
+    try {
+      const data = JSON.parse(rows[i][1]);
+      const response = UrlFetchApp.fetch('https://api.callrail.com/v3/a/' + account + '/form_submissions.json', {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Token token=' + token },
+        payload: JSON.stringify(callRailSubmission(data, company)), muteHttpExceptions: true
+      });
+      const status = response.getResponseCode();
+      const body = JSON.parse(response.getContentText());
+      if (status === 201 && body.id) sheet.getRange(row, 3, 1, 3).setValues([['sent', body.id, '']]);
+      else sheet.getRange(row, 3, 1, 3).setValues([['needs-review', '', 'HTTP ' + status]]);
+    } catch (err) { sheet.getRange(row, 3, 1, 3).setValues([['needs-review', '', 'Delivery result uncertain; reconcile before retry']]); }
+    break; // one optional POST per worker, preserving time for the existing pipeline
   }
 }
 

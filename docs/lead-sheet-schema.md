@@ -1,5 +1,20 @@
 # Lead Sheet schema (proposal, 8 Oct 2026, revised)
 
+## Additive evidence extensions
+
+The header-aware writer also records privacy acknowledgment, separate informational
+and marketing SMS consent (wording, version and timestamp), Property State,
+Property Use, Service Area Result, Service Area Version and Submission Snapshot.
+The snapshot preserves submitted calculator details and attribution while excluding
+server secrets and tracking-cookie tokens. These fields do not grant CRM messaging
+permission. Existing `State` and `Licensed?` columns retain their original meaning.
+Missing extension headers are appended by name on the next submission; this release
+does not reorder columns or run a migration. `Unsubscribe?` remains unchanged.
+
+Optional CallRail synchronization has a separate queue and is disabled unless its
+server-side configuration is explicitly enabled. HubSpot detail mappings require
+administrator-approved properties and API-form fields; they are not inferred.
+
 Decision (Max, 8 Oct): new columns go beside the columns they belong with, not at the end. This replaces the repo's append-only rule, so it must be done as one planned migration, never by editing headers in place (the 27 Sep @38 incident: inserting mid-array without migrating the sheet put TEST flags under Contacted).
 
 Decision (Max, 8 Oct): keep the word "Savings" (site and Sheet) because it reads better for visitors. This overrides the revamp spec's "Monthly Difference" wording and the preview's "$X/mo lower payment" card text. Guardrail: when an option raises the payment, don't show a negative "savings"; show it as a payment increase (e.g. "Payment goes up $X/mo") or "No monthly savings". Store the signed value in the Sheet so increases are visible.
