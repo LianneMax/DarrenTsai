@@ -45,7 +45,7 @@
     try {
       window.localStorage.removeItem('dt_attr');
       Object.keys(window.localStorage).forEach(function (key) {
-        if (/^(calltrk|__hstc|hubspot)/i.test(key)) window.localStorage.removeItem(key);
+        if (/^(calltrk|__hstc|hubspot|_gcl)/i.test(key)) window.localStorage.removeItem(key);
       });
     } catch (e) { /* Storage denial must never disable a form. */ }
     var domains = ['', window.location.hostname, '.' + window.location.hostname, '.realdarrentsai.com'];
@@ -90,7 +90,7 @@
     panel = document.createElement('section');
     panel.className = 'dt-cookie-panel'; panel.hidden = true;
     panel.setAttribute('aria-label', 'Cookie preferences');
-    panel.innerHTML = '<h2>Cookie preferences</h2><p>Optional cookies help us measure visits, ads and calls through Google, HubSpot and CallRail. Calculators and forms work without them.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Accept</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on. Switching optional tracking off reloads this page; submit any completed form first.</p><button type="button" data-choice="save">Save preferences</button></div><a href="https://www.saxtonmortgage.com/privacy-policy" target="_blank" rel="noopener">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
+    panel.innerHTML = '<h2>Cookie preferences</h2><p>Optional cookies help us measure visits, ads and calls through Google, HubSpot and CallRail. Calculators and forms work without them.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Accept</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on. Switching optional tracking off reloads this page; submit any completed form first.</p><button type="button" data-choice="save">Save preferences</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
     document.body.appendChild(panel);
     manage = panel.querySelector('.dt-cookie-manage'); toggle = manage.querySelector('input');
     toggle.checked = allowed(); toggle.disabled = gpc;
