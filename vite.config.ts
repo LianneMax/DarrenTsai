@@ -9,14 +9,9 @@ const EMPTY_ROOT = '<div id="root"></div>'
  * work from this list, so a page is either pre-rendered with its CSS inlined
  * or neither: inlining alone would save a request nobody is waiting on, and
  * pre-rendering alone would paint the shell unstyled.
- *
- * /debt-consolidation/ joined the homepage on 8 Oct (revamp phase 0). It is an
- * ad destination from its first day, so it gets what the homepage needed
- * three audit rounds to reach.
  */
 const PRERENDERED: Record<string, string> = {
   '/index.html': 'renderHomeShell',
-  '/debt-consolidation/index.html': 'renderDebtShell',
   '/home-equity/index.html': 'renderEquityShell',
   '/adu/index.html': 'renderAduShell',
   '/mortgage-calculator/index.html': 'renderMortgageShell',
@@ -146,19 +141,16 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 600,
-    // Three real pages, no client router: the homepage sells one CTA (debt
-    // consolidation), the amortization calculator has its own URL at
-    // /mortgage-calculator/, and /debt-consolidation/ serves the homepage's
-    // calculator on a URL that will outlive the homepage revamp. Each gets its
-    // own HTML entry, so an unknown path still 404s instead of being rewritten
-    // to the homepage.
+    // Real pages, no client router: each gets its own HTML entry, so an
+    // unknown path still 404s instead of being rewritten to the homepage.
+    // /debt-consolidation/ was retired on 15 Oct 2026; its comparison is
+    // /home-equity/?goal=payoff and a function redirects the old URL there.
     rollupOptions: {
       input: {
         // Relative to the Vite root; @types/node is not installed, so no
         // path.resolve/__dirname here.
         main: 'index.html',
         mortgageCalculator: 'mortgage-calculator/index.html',
-        debtConsolidation: 'debt-consolidation/index.html',
         homeEquity: 'home-equity/index.html',
         adu: 'adu/index.html',
       },

@@ -18,7 +18,7 @@ const FHA = 'public/fha/index.html';
 const REI = 'public/realestateinvesting/index.html';
 const LANDING = [DSCR, FHA, REI];
 /** The pages Vite builds from an HTML entry of their own. */
-const BUILT = ['index.html', 'debt-consolidation/index.html', 'mortgage-calculator/index.html'];
+const BUILT = ['index.html', 'mortgage-calculator/index.html'];
 
 /** Every [[redirects]] block in netlify.toml, in file order. */
 function redirects() {
@@ -59,18 +59,18 @@ describe('L2: old site URLs are permanently redirected', () => {
     expect(rules.find((r) => r.from === from)).toEqual({ from, to, status: 301 });
   });
 
-  it('leaves the /yt short links as 302s', () => {
+  it('leaves the /yt short links as 302s, except /yt/debt (301 at Max\'s request, 15 Oct 2026)', () => {
     const yt = rules.filter((r) => r.from?.startsWith('/yt/'));
     expect(yt.length).toBe(0); // Static target queries must not shadow the query-preserving function.
     for (const bucket of Object.keys(SHORTLINKS)) {
-      for (const suffix of ['', '-c']) expect(youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${bucket}${suffix}`)).status).toBe(302);
+      for (const suffix of ['', '-c']) expect(youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${bucket}${suffix}`)).status).toBe(bucket === 'debt' ? 301 : 302);
     }
   });
 
-  it.each([['debt', '/debt-consolidation/'], ['mortgage', '/mortgage-calculator/'], ['home', '/']])('tracks %s description and comment clicks separately', (slug, destination) => {
+  it.each([['debt', '/home-equity/'], ['mortgage', '/mortgage-calculator/'], ['home', '/']])('tracks %s description and comment clicks separately', (slug, destination) => {
     for (const [suffix, content] of [['', 'description'], ['-c', 'pinned-comment']]) {
       const response = youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${slug}${suffix}`));
-      expect(response.status).toBe(302);
+      expect(response.status).toBe(slug === 'debt' ? 301 : 302);
       const url = new URL(response.headers.get('Location')!);
       expect(url.pathname).toBe(destination);
       expect(url.searchParams.get('utm_source')).toBe('youtube');
@@ -107,15 +107,12 @@ describe('L10: nothing of ours or CallRail\'s holds the first paint', () => {
     expect(config).toContain("order: 'post'");
   });
 
-  it('/debt-consolidation/ gets the same two build steps, from one list', () => {
-    // It is an ad destination, so it must not ship with the empty #root and the
-    // render-blocking stylesheet the homepage took until L10 to lose. One list
-    // drives both plugins, so a page cannot get one step without the other.
+  it('/debt-consolidation/ is retired: no entry, no shell, a redirect function instead', () => {
     const config = read('vite.config.ts');
-    expect(config).toContain("'/debt-consolidation/index.html': 'renderDebtShell'");
+    expect(config).not.toContain("'/debt-consolidation/index.html'");
+    expect(config).not.toContain("debtConsolidation:");
     expect(config).toContain('const render = PRERENDERED[ctx.path]');
-    expect(config).toContain('if (!PRERENDERED[ctx.path] || !ctx.bundle) return html');
-    expect(config).toContain("debtConsolidation: 'debt-consolidation/index.html'");
+    expect(read('netlify/functions/debt-redirect.mts')).toContain("path: ['/debt-consolidation', '/debt-consolidation/', '/debt-consolidation/*']");
   });
 });
 
@@ -192,7 +189,7 @@ describe('L3: landmarks, headings and the closed drawer', () => {
     expect(html.indexOf('</main>')).toBeLessThan(html.indexOf('<footer '));
   });
 
-  it.each(['src/App.tsx', 'src/DebtConsolidationApp.tsx', 'src/MortgageCalculatorApp.tsx'])('%s wraps its content in <main>', (file) => {
+  it.each(['src/App.tsx', 'src/HomeEquityApp.tsx', 'src/MortgageCalculatorApp.tsx'])('%s wraps its content in <main>', (file) => {
     expect(read(file)).toMatch(/<main>[\s\S]*<\/main>\s*<Footer \/>/);
   });
 

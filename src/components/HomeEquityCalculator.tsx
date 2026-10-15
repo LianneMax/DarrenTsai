@@ -7,7 +7,8 @@ import { type EmailSuggestion } from '../utils/emailSuggest';
 import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
 import { serviceArea, prequalPasses, outOfMarketPage } from '../utils/serviceArea';
 import { stateForZip } from '../utils/zipState';
-import EquityPage, { EQUITY_FORM_ID, type EquityPageView } from './HomeEquityViews';
+import EquityPage, { EQUITY_FORM_ID, type EquityPageView, type EquityPath } from './HomeEquityViews';
+import DebtSavingsCalculator from './DebtSavingsCalculator';
 import { ErrorDialog } from './PageParts';
 
 const emailSchema = z.string().email();
@@ -31,8 +32,39 @@ const emailSchema = z.string().email();
  *  - a double submit is stopped by a ref as well as by state;
  *  - success is shown only once /api/lead has confirmed the save.
  */
+/** ?goal=payoff opens the debt comparison; /debt-consolidation/ and /yt/debt redirect there. */
+function initialPath(): EquityPath {
+  if (typeof window === 'undefined') return 'equity';
+  return new URLSearchParams(window.location.search).get('goal') === 'payoff' ? 'payoff' : 'equity';
+}
+
+const TITLES: Record<EquityPath, string> = {
+  equity: 'Home Equity Estimate: HELOC vs Home Equity Loan | Darren Tsai',
+  payoff: 'Compare Paying Off High-Interest Debt With Home Equity | Darren Tsai',
+};
+
 export default function HomeEquityCalculator() {
+  const [path, setPathState] = useState<EquityPath>(initialPath);
   const [step, setStep] = useState(1);
+
+  // The URL, the hero (html.goal-payoff) and the title follow the path, so a
+  // shared or reloaded link opens where the visitor was. UTMs and click ids in
+  // the query are left as they are.
+  const setPath = (next: EquityPath) => {
+    setPathState(next);
+    try {
+      const url = new URL(window.location.href);
+      if (next === 'payoff') url.searchParams.set('goal', 'payoff'); else url.searchParams.delete('goal');
+      window.history.replaceState(window.history.state, '', url.toString());
+      document.documentElement.classList.toggle('goal-payoff', next === 'payoff');
+      document.title = TITLES[next];
+    } catch { /* the path still switches */ }
+  };
+  useEffect(() => {
+    if (path === 'payoff') document.title = TITLES.payoff;
+    // Set once for the path the page opened on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [homeValue, setHomeValue] = useState('');
   const [mtgBalance, setMtgBalance] = useState('');
@@ -219,5 +251,9 @@ export default function HomeEquityCalculator() {
 
   const overlays = <ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} id="he-error-title" />;
 
-  return <EquityPage v={view} overlays={overlays} disclosure={disclosure} />;
+  return (
+    <EquityPage v={view} overlays={overlays} disclosure={disclosure}
+      path={path} onPath={setPath}
+      payoff={path === 'payoff' ? <DebtSavingsCalculator flowId="equity" /> : null} />
+  );
 }

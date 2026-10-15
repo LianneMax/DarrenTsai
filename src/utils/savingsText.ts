@@ -18,16 +18,38 @@ function money(n: number): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
+/**
+ * THE ONE SETTING (15 Oct 2026). "Savings" reads as a promise and risks ad
+ * disapproval, so results say "Estimated payment difference" until Saxton
+ * confirms whether "Savings" may stay. Flip to 'savings' for the old wording;
+ * nothing else changes.
+ */
+export const RESULT_WORDING = 'payment-difference' as 'payment-difference' | 'savings';
+
+/** The breakdown row's label, beside the figure. */
+export const RESULT_ROW_LABEL: string = RESULT_WORDING === 'savings' ? 'Monthly Savings vs. Today' : 'Estimated payment difference vs. today';
+export const BLENDED_ROW_LABEL: string = RESULT_WORDING === 'savings' ? 'Blended Monthly Savings vs. Today' : 'Estimated payment difference vs. today, combined';
+
 export function savingsText(save: number): string {
   const rounded = Math.round(save);
-  if (rounded > 0) return `Save ${money(rounded)}/mo`;
-  if (rounded < 0) return `Payment goes up ${money(-rounded)}/mo`;
-  return 'No monthly savings';
+  if (RESULT_WORDING === 'savings') {
+    if (rounded > 0) return `Save ${money(rounded)}/mo`;
+    if (rounded < 0) return `Payment goes up ${money(-rounded)}/mo`;
+    return 'No monthly savings';
+  }
+  if (rounded > 0) return `Estimated payment difference: ${money(rounded)}/mo lower`;
+  if (rounded < 0) return `Estimated payment difference: ${money(-rounded)}/mo higher`;
+  return 'Estimated payment difference: none';
 }
 
-/** The same verdict for a breakdown row, where the label already says "Savings". */
+/** The same verdict for a breakdown row, where the label already names it. */
 export function savingsRowText(save: number): string {
   const rounded = Math.round(save);
-  if (rounded > 0) return `${money(rounded)}/mo`;
-  return savingsText(save);
+  if (RESULT_WORDING === 'savings') {
+    if (rounded > 0) return `${money(rounded)}/mo`;
+    return savingsText(save);
+  }
+  if (rounded > 0) return `${money(rounded)}/mo lower`;
+  if (rounded < 0) return `${money(-rounded)}/mo higher`;
+  return 'None';
 }

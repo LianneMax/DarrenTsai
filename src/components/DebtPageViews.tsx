@@ -1,7 +1,8 @@
 import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
 /**
- * What /debt-consolidation/ looks like (frontend revamp, phase 2, 9 Oct 2026).
+ * The "Pay off high-interest debt" comparison on /home-equity/ (moved from the
+ * retired /debt-consolidation/ on 15 Oct 2026; first drawn in revamp phase 2).
  *
  * PRESENTATION ONLY. Every number on this page is computed in
  * DebtSavingsCalculator.tsx, which also owns the gates, the validation and the
@@ -24,13 +25,13 @@ import { AsYouType } from 'libphonenumber-js';
 import type { ReactNode } from 'react';
 import { LICENSED_STATES, PHONE, isLicensedState } from '../config';
 import { formatCurrency, formatRate } from '../utils/formatters';
-import { savingsText, savingsRowText } from '../utils/savingsText';
+import { savingsText, savingsRowText, RESULT_ROW_LABEL, BLENDED_ROW_LABEL } from '../utils/savingsText';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 import CustomSelect from './CustomSelect';
 import AprEstimate from './AprEstimate';
 import StateSelect from './StateSelect';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
-import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot } from './PageParts';
 
 export interface DebtRow {
   id: number;
@@ -113,69 +114,6 @@ export interface DebtPageView {
 const CASH_OUT_LIMIT = 80;
 
 const STEPS = ['Your Debts', 'Your Home', 'Comparison', 'Talk to Darren'];
-
-// ─── Hero ─────────────────────────────────────────────────────────────────────
-
-/**
- * The top of the page: the <h1>, what the tool does, and how to read it.
- *
- * Static on purpose. It is pre-rendered into the HTML at build time
- * (src/prerender.tsx), so it paints with the first frame and is the page's LCP
- * element; nothing in it may wait for JavaScript, fade in, or carry a phone
- * number for CallRail to swap. The main button is a real anchor to the
- * calculator for the same reason: it works before React has loaded.
- *
- * The HELOC line ends in a plain link to /home-equity/ (revamp phase 3).
- * Someone who wants a revolving line of credit is not served by a tool that
- * prices the two fixed alternatives, and before that page existed the HELOC
- * short links landed on the homepage's copy of this calculator. A real
- * anchor, like the main button, so it works before React.
- */
-export function DebtPageHero() {
-  return (
-    <>
-      <div className="dcp-hero">
-        <div className="dcp-hero-inner">
-          <div>
-            <span className="dcp-eyebrow">Monthly Reset · Debt Consolidation</span>
-            <h1 className="dcp-h1">Boost Your Monthly <em>Cashflow</em></h1>
-            <p className="dcp-hero-sub">
-              You have a low mortgage rate but expensive credit card and other debt. Compare a
-              fixed home equity loan with cash-out refinancing to understand your monthly payment
-              and the tradeoffs.
-            </p>
-            <a href="#savings" className="btn dcp-hero-btn">
-              See My Comparison
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </a>
-            <p className="dcp-hero-note">No cost to see your numbers. Results before contact.</p>
-          </div>
-
-          <div className="dcp-how">
-            <span className="dcp-eyebrow">How the comparison works</span>
-            <dl>
-              <div><dt>Today</dt><dd>Mortgage P&amp;I + your debts</dd></div>
-              <div><dt>Cash-out refinance</dt><dd>Replaces your mortgage</dd></div>
-              <div><dt>Fixed HELOAN</dt><dd>Keeps your mortgage</dd></div>
-            </dl>
-            {/* Said plainly. A HELOC is a revolving line and this prices the two
-                fixed alternatives; /yt/heloc and /yt/equity viewers land on this
-                funnel and need to know that within a second. */}
-            <p>
-              Looking at a HELOC? This compares the two fixed alternatives, not a revolving
-              line of credit.{' '}
-              <a href="/home-equity/" className="dcp-hero-link">See the home equity options →</a>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <LicensedStrip />
-    </>
-  );
-}
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
 
@@ -450,6 +388,19 @@ export function StepCompare({ v }: { v: DebtPageView }) {
           </div>
         </div>
 
+        {/* HELOC (15 Oct 2026): part of the comparison, but described rather
+            than priced. Its payment depends on the draw and a variable rate,
+            and the site has no HELOC rate source, so no figure is invented. */}
+        <div className="dcp-option dcp-option-heloc">
+          <span className="dcp-option-title">HELOC</span>
+          <span className="dcp-option-pay dcp-option-pay-text">Not estimated here</span>
+          <span className="dcp-option-scope">Keeps your mortgage · usually a variable rate</span>
+          <div className="dcp-option-body">
+            A credit line against your home that you draw on to pay off the debts. The payment
+            depends on how much you draw and on a rate that can change, so Darren prices it with you.
+          </div>
+        </div>
+
         <OptionCard id="refi" title="Est. Cash-Out Refi" v={v}
           payment={v.refiPmt > 0 ? v.refiPmt : null}
           scope="Estimated P&I · new 30YR fixed" save={v.refiSave}>
@@ -532,7 +483,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <Row label="Rate (30YR fixed)" value={formatRate(v.rate30)} />
         <Row label="Estimated APR" value={<AprEstimate principal={v.newLoan} rate={v.rate30} years={30} />} />
         <Row label="Monthly P&I Payment" value={v.refiPmt > 0 ? formatCurrency(v.refiPmt) : '—'} />
-        <Row strong label="Monthly Savings vs. Today" value={v.newLoan > 0 ? savingsRowText(v.refiSave) : '—'} />
+        <Row strong label={RESULT_ROW_LABEL} value={v.newLoan > 0 ? savingsRowText(v.refiSave) : '—'} />
       </details>
 
       <details className="dcp-details">
@@ -545,7 +496,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <Row label="Existing Mortgage Payment" value={v.mp > 0 ? formatCurrency(v.mp) : '—'} />
         <Row label="Illustrative CLTV" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
         {/* A verdict needs a rate: nothing is said until a tier and a term are chosen. */}
-        <Row strong label="Blended Monthly Savings vs. Today"
+        <Row strong label={BLENDED_ROW_LABEL}
           value={v.heloanPriced && v.heloanPmt > 0 ? savingsRowText(v.heloanSave) : '—'} />
       </details>
 
@@ -555,8 +506,8 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         using the info icon. Actual costs and APR require a lender's Loan Estimate.
       </p>
       <p className="dcp-caption">
-        Lower monthly payments do not necessarily mean lower total borrowing costs. Consolidating
-        debt into a loan secured by your home can put your home at risk.
+        Lower monthly payments do not necessarily mean lower total borrowing costs. Paying off
+        unsecured debt with a loan secured by your home can put your home at risk.
       </p>
 
       <StepNav
@@ -702,18 +653,18 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
   );
 }
 
-// ─── The page ─────────────────────────────────────────────────────────────────
+// ─── The flow ─────────────────────────────────────────────────────────────────
 
 /**
- * Hero, then the calculator. `id="savings"` stays on the calculator itself:
- * the nav's "Monthly Reset" link and the step buttons both scroll to it.
+ * The comparison itself, without a hero: /home-equity/ hosts it as the "Pay
+ * off high-interest debt" path (15 Oct 2026), under its own hero and heading.
+ * /debt-consolidation/ is retired and redirects there. `flowId` is what the
+ * hero button and the step buttons scroll to.
  */
-export default function DebtPage({ v, overlays }: { v: DebtPageView; overlays: ReactNode }) {
+export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtPageView; overlays: ReactNode; flowId?: string }) {
   return (
-    <section className="dcp">
-      <DebtPageHero />
-
-      <div id="savings" className="dcp-flow">
+    <div className="dcp-payoff">
+      <div id={flowId} className="dcp-flow">
         <ul className="dcp-trust">
           <li><Check /> No cost to see your numbers</li>
           <li><Check /> Educational estimates</li>
@@ -747,6 +698,6 @@ export default function DebtPage({ v, overlays }: { v: DebtPageView; overlays: R
       </div>
 
       {overlays}
-    </section>
+    </div>
   );
 }

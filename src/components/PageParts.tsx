@@ -142,7 +142,7 @@ export function LicensedStrip() {
  * phone_click fires with no extra code, as on every other call link. It is
  * never in the pre-rendered HTML: the bar mounts after the shell.
  */
-export function MobileActionBar({ target, label }: { target: string; label: string }) {
+export function MobileActionBar({ target, label }: { target: string; label: ReactNode }) {
   const [toolInView, setToolInView] = useState(false);
   useEffect(() => {
     const el = document.getElementById(target);

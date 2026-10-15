@@ -77,7 +77,7 @@ function formatRateDate(iso: string): string {
 }
 
 /**
- * The debt consolidation calculator on /debt-consolidation/: its state, rates,
+ * The debt payoff comparison on /home-equity/ (?goal=payoff): its state, rates,
  * gates and lead. DebtPageViews.tsx draws it from the `view` built below and
  * computes nothing, so the layout cannot disagree with the numbers.
  *
@@ -86,7 +86,7 @@ function formatRateDate(iso: string): string {
  * hub and that layout was removed on 10 Oct; the lead is unchanged (source
  * DebtConsolidation, form id debt-savings-calculator).
  */
-export default function DebtSavingsCalculator() {
+export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?: string } = {}) {
   const [step, setStep] = useState(1);
 
   // Current rates, fetched on mount. No deploy is involved: a new weekly PMMS
@@ -317,7 +317,7 @@ export default function DebtSavingsCalculator() {
     }
     setStep(n);
     setTimeout(() => {
-      document.getElementById('savings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById(flowId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
   };
 
@@ -503,7 +503,7 @@ export default function DebtSavingsCalculator() {
     </>
   );
 
-  // ── Render: /debt-consolidation/ ────────────────────────────────────────────
+  // ── Render: /home-equity/'s "Pay off high-interest debt" path ─────────────
 
   const view: DebtPageView = {
     step, goStep,
@@ -522,7 +522,7 @@ export default function DebtSavingsCalculator() {
     sending, submitted, submitLead, openBooking,
     rateBadge, disclosure,
   };
-  return <DebtPage v={view} overlays={overlays} />;
+  return <DebtPage v={view} overlays={overlays} flowId={flowId} />;
 
 
 }

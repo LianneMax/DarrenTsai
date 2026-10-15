@@ -107,7 +107,6 @@ describe('every lead the site sends has somewhere to land', () => {
    */
   const CONTACT_SOURCES = [
     'adu-contact',
-    'debt-consolidation-contact',
     'dscr-contact',
     'fha-contact',
     'home-contact',

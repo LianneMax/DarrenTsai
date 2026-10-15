@@ -49,7 +49,7 @@ describe('optional tracking waits for a real consent choice', () => {
     expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull();
   });
   it('places the consent gate before attribution and makes raw CallRail inert on every entry', () => {
-    for (const path of ['index.html','debt-consolidation/index.html','home-equity/index.html','adu/index.html','mortgage-calculator/index.html','public/dscr/index.html','public/fha/index.html','public/realestateinvesting/index.html']) {
+    for (const path of ['index.html','home-equity/index.html','adu/index.html','mortgage-calculator/index.html','public/dscr/index.html','public/fha/index.html','public/realestateinvesting/index.html']) {
       const html = readFileSync(resolve(__dirname, '..', path), 'utf8');
       expect(html.indexOf('/cookie-preferences.js')).toBeLessThan(html.indexOf('/attribution.js'));
       expect(html).toContain('type="application/x-dt-consent"');

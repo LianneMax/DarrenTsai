@@ -15,7 +15,10 @@ export const SHORTLINKS = {
   dscr: { path: '/dscr/', campaign: 'yt-dscr' },
   rei: { path: '/realestateinvesting/', campaign: 'yt-rei' },
   buyer: { path: '/fha/', campaign: 'yt-buyer' },
-  debt: { path: '/debt-consolidation/', campaign: 'yt-debt' },
+  // /debt-consolidation/ was retired on 15 Oct 2026; its comparison is the
+  // payoff path of /home-equity/. 301 at Max's request (no-store below keeps
+  // it changeable); every other short link stays 302.
+  debt: { path: '/home-equity/', campaign: 'yt-debt', goal: 'payoff', status: 301 },
   mortgage: { path: '/mortgage-calculator/', campaign: 'yt-mortgage' },
   home: { path: '/', campaign: 'yt-home' },
 } as const;
@@ -30,10 +33,12 @@ export default function youtubeRedirect(request: Request): Response {
   const destination = SHORTLINKS[bucket as keyof typeof SHORTLINKS];
   const target = new URL(destination.path, incoming.origin);
   target.search = incoming.search;
+  if ('goal' in destination) target.searchParams.set('goal', destination.goal);
   for (const [key, value] of Object.entries({ utm_source: 'youtube', utm_medium: 'social', utm_campaign: destination.campaign, utm_content: comment ? 'pinned-comment' : 'description' })) {
     if (!target.searchParams.has(key)) target.searchParams.set(key, value);
   }
-  return new Response(null, { status: 302, headers: { Location: target.toString(), 'Cache-Control': 'no-store' } });
+  const status = 'status' in destination ? destination.status : 302;
+  return new Response(null, { status, headers: { Location: target.toString(), 'Cache-Control': 'no-store' } });
 }
 
 export const config: Config = { path: ['/yt/:bucket', '/yt/:bucket/'] };

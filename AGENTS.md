@@ -127,6 +127,21 @@ constrain code:
   `/yt/equity` point there. It is a new source, not a revival of the old
   `heloc-hei` route, which stays removed. Until the page existed that intent was
   served by the debt-consolidation funnel.
+- **"Debt consolidation" is retired as a product name (15 Oct 2026).** Darren's
+  loans are home equity loans used to pay off debt, and the old framing risked
+  ad disapproval and read as a savings promise. The comparison is the "Pay off
+  high-interest debt" path of `/home-equity/` (`?goal=payoff`): today's debt
+  payments against a HELOC (described, not priced: no HELOC rate exists here),
+  the fixed home equity loan and cash-out refinance, with the existing
+  calculations and the equity-loan state rules. `/debt-consolidation/` and
+  `/yt/debt` 301 there (`debt-redirect.mts`, `youtube-redirect.mts`, no-store,
+  every query param kept). The lead keeps source `DebtConsolidation` and form
+  id `debt-savings-calculator`, so the Sheet's "Debt Consolidation" tab and
+  the HubSpot fields are unchanged. Results read "Estimated payment
+  difference" (`RESULT_WORDING` in `src/utils/savingsText.ts` is the one switch
+  back to "Savings" if Saxton allows it). `tests/home-prerender.test.tsx` fails
+  if "debt consolidation", "Monthly Reset" or "Boost Your Monthly Cashflow"
+  appears anywhere on the site.
 - **Home equity is the site's main focus (15 Oct 2026, with Darren).** The
   homepage hero and first goal card lead with "Access your home equity" and go
   to `/home-equity/`; every other page and goal stays (101 YouTube

@@ -48,7 +48,7 @@ export default function HomeEquityApp() {
         <HomeEquityCalculator />
       </main>
       <Footer />
-      <MobileActionBar target="equity" label="Check My Home Equity" />
+      <MobileActionBar target="equity" label={<><span className="hv-equity">Check My Home Equity</span><span className="hv-payoff">See My Comparison</span></>} />
 
       {contactOpen && <ContactModal
           currentInputs={inputs}

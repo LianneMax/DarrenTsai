@@ -77,7 +77,7 @@ describe('stays quiet when unsure — a wrong guess must not stop a real address
 });
 
 describe('wiring', () => {
-  const pages = ['../index.html', '../debt-consolidation/index.html', '../home-equity/index.html', '../adu/index.html',
+  const pages = ['../index.html', '../home-equity/index.html', '../adu/index.html',
     '../mortgage-calculator/index.html', '../public/dscr/index.html', '../public/fha/index.html', '../public/realestateinvesting/index.html'];
 
   it.each(pages)('%s loads the shared checker', (page) => {

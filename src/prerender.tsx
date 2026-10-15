@@ -25,7 +25,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import Nav from './components/Nav';
 import { HomeHero } from './components/HomeHub';
-import { DebtPageHero } from './components/DebtPageViews';
 import { EquityPageHero } from './components/HomeEquityViews';
 import { AduPageHero } from './components/AduViews';
 import Calculator from './components/Calculator';
@@ -49,32 +48,6 @@ export function renderMortgageShell(): string {
       <main>
         <Calculator inputs={defaultInputs} setInputs={noop}
           summary={calculateMortgage(defaultInputs)} onOpenContact={noop} preview />
-      </main>
-    </>,
-  );
-}
-
-/**
- * The same thing for /debt-consolidation/ (revamp phase 0, 8 Oct): the nav and
- * the top of the page, whose <h1> is the page's LCP element.
- *
- * Since phase 2 (9 Oct) that top is DebtPageHero, the hero, licensed strip
- * included, that DebtPageViews.tsx draws above the calculator. It stops there on
- * purpose. The steps under it are the lead path, and pre-rendering inputs that
- * do nothing until React arrives is the mismatch the homepage shell was kept
- * clear of. The wrapper mirrors DebtConsolidationApp and DebtPage down to the
- * hero, so React draws the same DOM in the same place and the steps appear
- * beneath it without moving it.
- */
-export function renderDebtShell(): string {
-  return renderToStaticMarkup(
-    <>
-      <Nav onOpenContact={noop} alwaysSolid landing />
-      <div className="page-top-spacer" />
-      <main>
-        <section className="dcp">
-          <DebtPageHero />
-        </section>
       </main>
     </>,
   );

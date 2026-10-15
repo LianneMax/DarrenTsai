@@ -6,7 +6,7 @@
  * homepage. These tests are where it fails loudly instead.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
@@ -34,9 +34,8 @@ describe('the pre-rendered homepage shell', () => {
   it('marks every button that needs JavaScript, so an early click is queued', async () => {
     const { renderHomeShell } = await import('../src/prerender');
     const shell = renderHomeShell();
-    // Since revamp phase 4 the hero's only call to action is an anchor (#goals)
-    // and Monthly Reset is a plain link to /debt-consolidation/, so neither
-    // needs a key: a link works before React does.
+    // The hero's calls to action are anchors, so neither needs a key: a link
+    // works before React does.
     for (const key of ['nav-book', 'nav-contact', 'nav-calc', 'nav-menu', 'nav-about', 'nav-reviews']) {
       expect(shell, key).toContain(`data-early="${key}"`);
     }
@@ -58,88 +57,100 @@ describe('the pre-rendered homepage shell', () => {
 });
 
 /**
- * /debt-consolidation/ (revamp phase 0, 8 Oct). The same pre-render, for the
- * page the debt ads land on. Its shell stops at the page's hero (DebtPageHero,
- * phase 2): the steps under it are the lead path and are drawn by React alone.
+ * /debt-consolidation/ was retired on 15 Oct 2026: its comparison is the "Pay
+ * off high-interest debt" path of /home-equity/ (?goal=payoff), and the old URL
+ * and /yt/debt redirect there with every UTM and click id kept.
  */
-describe('the pre-rendered /debt-consolidation/ shell', () => {
-  /** Closes the hero's two wrappers, which the app goes on to fill. */
-  const TAIL = '</section></main>';
+describe('/debt-consolidation/ retired into /home-equity/?goal=payoff', () => {
+  const QUERY = 'utm_source=google&utm_medium=cpc&utm_campaign=debt-q4&utm_content=ad-a&utm_term=pay+off+cards&gclid=G1&gbraid=GB&wbraid=WB&msclkid=MS&fbclid=FB';
 
-  it('holds the nav and the hero, whose heading is the page <h1>', async () => {
-    const { renderDebtShell } = await import('../src/prerender');
-    const shell = renderDebtShell();
-    expect(shell.startsWith('<nav')).toBe(true);
-    // The accent word is an <em>, as on the static pages' headlines (10 Oct).
-    expect(shell).toMatch(/<h1[^>]*>Boost Your Monthly <em>Cashflow<\/em><\/h1>/);
-    expect(shell.match(/<h1\b/g)).toHaveLength(1);
+  it('301s the old URL, with or without a slash, keeping every UTM and click id', async () => {
+    const { default: debtRedirect } = await import('../netlify/functions/debt-redirect.mts');
+    for (const path of ['/debt-consolidation', '/debt-consolidation/', '/debt-consolidation/index.html']) {
+      const res = debtRedirect(new Request(`https://realdarrentsai.com${path}?${QUERY}`));
+      expect(res.status, path).toBe(301);
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      const to = new URL(res.headers.get('Location')!);
+      expect(to.origin + to.pathname).toBe('https://realdarrentsai.com/home-equity/');
+      expect(to.searchParams.get('goal')).toBe('payoff');
+      for (const [k, v] of new URLSearchParams(QUERY)) expect(to.searchParams.get(k), k).toBe(v);
+    }
   });
 
-  it('is exactly the start of what the app renders, so nothing moves when React swaps in', async () => {
+  it('301s /yt/debt and /yt/debt-c to the payoff path, keeping the visitor query', async () => {
+    const { default: yt } = await import('../netlify/functions/youtube-redirect.mts');
+    for (const [path, content] of [['/yt/debt', 'description'], ['/yt/debt-c', 'pinned-comment']]) {
+      const res = yt(new Request(`https://realdarrentsai.com${path}?gclid=G1&utm_term=t`));
+      expect(res.status).toBe(301);
+      const to = new URL(res.headers.get('Location')!);
+      expect(to.pathname).toBe('/home-equity/');
+      expect(to.searchParams.get('goal')).toBe('payoff');
+      expect(to.searchParams.get('gclid')).toBe('G1');
+      expect(to.searchParams.get('utm_term')).toBe('t');
+      expect(to.searchParams.get('utm_campaign')).toBe('yt-debt');
+      expect(to.searchParams.get('utm_content')).toBe(content);
+    }
+  });
+
+  it('has no page, entry, shell or sitemap listing of its own any more', () => {
+    expect(existsSync(resolve(__dirname, '../debt-consolidation/index.html'))).toBe(false);
+    expect(existsSync(resolve(__dirname, '../src/DebtConsolidationApp.tsx'))).toBe(false);
+    expect(read('src/prerender.tsx')).not.toContain('renderDebtShell');
+    expect(read('public/sitemap.xml')).not.toContain('debt-consolidation');
+  });
+
+  it('picks the payoff hero before first paint, so nothing moves', () => {
+    const page = read('home-equity/index.html');
+    expect(page).toMatch(/goal=payoff[\s\S]*classList\.add\('goal-payoff'\)/);
+    expect(page.indexOf("classList.add('goal-payoff')")).toBeLessThan(page.indexOf('</head>'));
+  });
+
+  it('posts the payoff comparison with the same source and form id, so Sheet and HubSpot fields hold', () => {
+    const calc = read('src/components/DebtSavingsCalculator.tsx');
+    expect(calc).toContain("formId: 'debt-savings-calculator'");
+    expect(calc).toContain("source: 'DebtConsolidation'");
+    expect(read('src/components/HomeEquityCalculator.tsx')).toContain('<DebtSavingsCalculator flowId="equity" />');
+  });
+
+  it('renders the comparison on /home-equity/?goal=payoff, under the payoff heading', async () => {
+    window.history.replaceState({}, '', '/home-equity/?goal=payoff&gclid=G1');
     const { renderToStaticMarkup } = await import('react-dom/server');
-    const { renderDebtShell } = await import('../src/prerender');
-    const { default: DebtConsolidationApp } = await import('../src/DebtConsolidationApp');
-    const app = renderToStaticMarkup(<DebtConsolidationApp />);
-    const shell = renderDebtShell();
-    expect(shell.endsWith(TAIL)).toBe(true);
-    expect(app.startsWith(shell.slice(0, -TAIL.length))).toBe(true);
+    const { default: HomeEquityApp } = await import('../src/HomeEquityApp');
+    const html = renderToStaticMarkup(<HomeEquityApp />);
+    window.history.replaceState({}, '', '/');
+    expect(html).toContain('Compare paying off high-interest debt with home <em>equity</em>');
+    expect(html).toContain('aria-pressed="true">Pay off high-interest debt</button>');
+    expect(html).toContain('id="equity"');
+    expect(html).toContain('Your Current Monthly Debts'); // the comparison's first step
   });
+});
 
-  it('fades nothing in: no element starts at opacity 0', async () => {
-    // `.reveal` is opacity 0 until an IntersectionObserver adds `revealed`. In
-    // pre-rendered HTML there is no observer yet, so a reveal class here would
-    // hide the heading until React ran, and LCP does not count a hidden element.
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { renderDebtShell } = await import('../src/prerender');
-    const { default: DebtConsolidationApp } = await import('../src/DebtConsolidationApp');
-    expect(renderDebtShell()).not.toMatch(/class="[^"]*\breveal\b/);
-    // The steps and the first card are on the first screen too.
-    expect(renderToStaticMarkup(<DebtConsolidationApp />)).not.toMatch(/class="[^"]*\breveal\b/);
-  });
+/**
+ * The retired product name and its old slogans (15 Oct 2026): not in any
+ * title, heading, meta or other copy the site serves. The Sheet's tab keeps
+ * its "Debt Consolidation" name for old leads; that is the Apps Script, not
+ * the site, and the source value DebtConsolidation has no space.
+ */
+describe('no retired phrase on the site', () => {
+  const PHRASES = [/debt[\s-]consolidation(?!-contact)/i, /monthly reset/i, /boost your monthly cash ?flow/i];
+  const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  function files(dir: string, ext: RegExp): string[] {
+    return readdirSync(resolve(__dirname, '..', dir), { withFileTypes: true }).flatMap((d) => {
+      const rel = `${dir}/${d.name}`;
+      if (d.isDirectory()) return files(rel, ext);
+      return ext.test(d.name) ? [rel] : [];
+    });
+  }
+  const SITE = [
+    'index.html', 'home-equity/index.html', 'adu/index.html', 'mortgage-calculator/index.html',
+    ...files('public', /\.(html|js|xml|json|txt)$/),
+    ...files('src', /\.(tsx?|css)$/),
+    ...files('netlify/functions', /\.mts$/).filter((f) => !f.endsWith('debt-redirect.mts') && !f.endsWith('youtube-redirect.mts')),
+  ];
 
-  it('marks every button that needs JavaScript, and carries no phone number', async () => {
-    const { renderDebtShell } = await import('../src/prerender');
-    const shell = renderDebtShell();
-    const buttons = shell.match(/<button\b[^>]*>/g) ?? [];
-    const visible = buttons.filter((b) => !/tabindex="-1"/.test(b));
-    expect(visible.length).toBeGreaterThan(0);
-    for (const b of visible) expect(b).toContain('data-early=');
-    expect(shell).not.toMatch(/tel:/);
-  });
-
-  it('has the empty #root the build fills, and the same early-click script as the homepage', () => {
-    const page = read('debt-consolidation/index.html');
-    expect(page).toContain('<div id="root"></div>');
-    const script = (html: string) =>
-      /<script>\s*(\(function \(\) \{[\s\S]*?__dtEarlyClick[\s\S]*?\}\)\(\);)\s*<\/script>/.exec(html)?.[1];
-    expect(script(page)).toBeDefined();
-    // Two copies, because a static HTML entry cannot import. Held identical so
-    // a fix to one is a fix to both; the behaviour is tested below, once.
-    // Windows checkouts may mix CRLF and LF between these two entries. Compare
-    // the code after newline normalization, so Git's checkout format cannot
-    // fail this guard while a real difference in the early-click logic still does.
-    expect(script(page)?.replace(/\r\n/g, '\n'))
-      .toBe(script(read('index.html'))?.replace(/\r\n/g, '\n'));
-  });
-
-  it('replays the queued click, as the homepage does', () => {
-    const app = read('src/DebtConsolidationApp.tsx');
-    expect(app).toMatch(/querySelector<HTMLElement>\(`\[data-early="\$\{CSS\.escape\(key\)\}"\]`\)\?\.click\(\)/);
-  });
-
-  it('sends the calculator\'s lead, from a contact modal of its own', () => {
-    const app = read('src/DebtConsolidationApp.tsx');
-    // The calculator's source and form id live in the shared component, so the
-    // page cannot fork them. The modal is the one thing that is this page's own.
-    expect(app).toContain('<DebtSavingsCalculator />');
-    expect(app).toContain('leadSource="debt-consolidation-contact"');
-    expect(app).toContain('formId="debt-consolidation-contact-modal"');
-  });
-
-  it('is canonical to itself and listed in the sitemap', () => {
-    expect(read('debt-consolidation/index.html'))
-      .toContain('<link rel="canonical" href="https://realdarrentsai.com/debt-consolidation/" />');
-    expect(read('public/sitemap.xml')).toContain('<loc>https://realdarrentsai.com/debt-consolidation/</loc>');
+  it.each(SITE)('%s', (file) => {
+    const text = strip(read(file));
+    for (const phrase of PHRASES) expect(text, String(phrase)).not.toMatch(phrase);
   });
 });
 

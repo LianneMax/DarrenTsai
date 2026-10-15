@@ -258,7 +258,6 @@ describe('Google Tag Manager is installed exactly once', () => {
   /** Every page a visitor can land on. */
   const PAGES = [
     'index.html',
-    'debt-consolidation/index.html',
     'mortgage-calculator/index.html',
     'public/dscr/index.html',
     'public/fha/index.html',

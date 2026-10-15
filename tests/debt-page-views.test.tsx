@@ -14,9 +14,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import DebtPage, {
-  DebtPageHero, StepDebts, StepHome, StepCompare, StepContact, DebtRecap, type DebtPageView,
+  StepDebts, StepHome, StepCompare, StepContact, DebtRecap, type DebtPageView,
 } from '../src/components/DebtPageViews';
-import { savingsText, savingsRowText } from '../src/utils/savingsText';
+import { savingsText, savingsRowText, RESULT_WORDING, RESULT_ROW_LABEL } from '../src/utils/savingsText';
 
 const noop = () => {};
 
@@ -57,19 +57,6 @@ const filled = view({
 
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
 
-describe('the hero', () => {
-  it('is the only <h1>, carries no phone number and needs no JavaScript', () => {
-    const hero = html(<DebtPageHero />);
-    expect(hero.match(/<h1\b/g)).toHaveLength(1);
-    expect(hero).not.toMatch(/tel:|<button\b/);
-    expect(hero).toContain('href="#savings"');
-  });
-
-  it('sends a HELOC visitor to /home-equity/, since this page prices the fixed options', () => {
-    expect(html(<DebtPageHero />)).toContain('href="/home-equity/"');
-  });
-});
-
 describe('an untouched page shows no figures', () => {
   it('step 1 shows its totals only once there is a debt row, as the homepage does', () => {
     const page = html(<StepDebts v={view({ debts: [] })} />);
@@ -90,7 +77,7 @@ describe('an untouched page shows no figures', () => {
 describe('the comparison says what each option does to the payment', () => {
   it('a payment that goes up is said in those words, never as a negative saving', () => {
     const page = html(<StepCompare v={{ ...filled, refiPmt: 3940, refiSave: -140 }} />);
-    expect(page).toContain('Payment goes up $140/mo');
+    expect(page).toContain('Estimated payment difference: $140/mo higher');
     expect(page).not.toMatch(/Save -/);
   });
 
@@ -167,19 +154,25 @@ describe('the sticky savings bar', () => {
   });
 });
 
-describe('savingsText', () => {
+describe('savingsText (RESULT_WORDING = payment-difference until Saxton confirms)', () => {
   it.each([
-    [1139.4, 'Save $1,139/mo'],
-    [-140.2, 'Payment goes up $140/mo'],
-    [0.3, 'No monthly savings'],
-    [-0.4, 'No monthly savings'],
+    [1139.4, 'Estimated payment difference: $1,139/mo lower'],
+    [-140.2, 'Estimated payment difference: $140/mo higher'],
+    [0.3, 'Estimated payment difference: none'],
+    [-0.4, 'Estimated payment difference: none'],
   ])('%s reads "%s"', (n, text) => {
     expect(savingsText(n)).toBe(text);
   });
 
-  it('drops the verb in a breakdown row, whose label already says Savings', () => {
-    expect(savingsRowText(1139)).toBe('$1,139/mo');
-    expect(savingsRowText(-140)).toBe('Payment goes up $140/mo');
+  it('a breakdown row says lower or higher, its label naming the difference', () => {
+    expect(savingsRowText(1139)).toBe('$1,139/mo lower');
+    expect(savingsRowText(-140)).toBe('$140/mo higher');
+    expect(RESULT_WORDING).toBe('payment-difference');
+    expect(RESULT_ROW_LABEL).toBe('Estimated payment difference vs. today');
+  });
+
+  it('never says Save or Savings while the setting is payment-difference', () => {
+    for (const n of [1139, -140, 0]) expect(savingsText(n) + savingsRowText(n)).not.toMatch(/sav/i);
   });
 });
 
@@ -220,5 +213,38 @@ describe('the comparison is honest at the edges', () => {
     expect(page).toContain('With no mortgage there is no payoff date to keep');
     expect(page).not.toContain('Mortgage: replaced');
     expect(page).not.toContain('current mortgage');
+  });
+});
+
+/**
+ * The payoff path on /home-equity/ (15 Oct 2026) keeps every disclosure the
+ * old page carried, next to the figures, and adds HELOC to the comparison
+ * without inventing a price for it.
+ */
+describe('the payoff comparison keeps its disclosures', () => {
+  const page = html(<StepCompare v={filled} />);
+
+  it('says the total cost is not the monthly difference, next to the figures', () => {
+    expect(page).toContain('A lower monthly payment is not a calculation of total savings.');
+    expect(page).toContain('Lower monthly payments do not necessarily mean lower total borrowing costs.');
+  });
+
+  it('warns that unsecured debt becomes secured by the home', () => {
+    expect(page).toContain('Debt previously unsecured becomes secured by your home.');
+    expect(page).toContain('a loan secured by your home can put your home at risk');
+  });
+
+  it('keeps the APR assumptions', () => {
+    expect(page).toContain('Estimated APR');
+    expect(page).toContain('Actual costs and APR require a lender');
+  });
+
+  it('shows HELOC beside today, the fixed loan and cash-out, unpriced', () => {
+    const heloc = page.slice(page.indexOf('dcp-option-heloc'), page.indexOf('Est. Cash-Out Refi'));
+    expect(heloc).toContain('HELOC');
+    expect(heloc).toContain('Not estimated here');
+    expect(heloc).not.toMatch(/\$\d/);
+    const order = ['Today', 'HELOC', 'Est. Cash-Out Refi', 'Est. Fixed HELOAN'].map((t) => page.indexOf(t));
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 });

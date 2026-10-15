@@ -2359,3 +2359,12 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 [data-service-area]{border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}[data-service-area] label{display:block;margin:8px 0}[data-service-area] select{display:block;width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--text-dark)}[data-service-area] legend{font-weight:600;font-size:16px}
 
 [data-service-area] .service-area-warning{font-family:inherit;font-size:1rem;font-weight:500;line-height:1.6;color:#36596a;background:#f0f6f8;border-left:3px solid #8bb5c5;padding:12px 14px;border-radius:6px}
+
+/* /home-equity/'s two paths (15 Oct 2026). The hero holds both; html.goal-payoff
+   (inline script in home-equity/index.html, then the path switch) picks one. */
+.hv-payoff { display: none; }
+html.goal-payoff .hv-equity { display: none; }
+html.goal-payoff .hv-payoff { display: inline; }
+html.goal-payoff dl.hv-payoff { display: block; }
+.dcp-path { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 28px auto 0; padding: 0 16px; max-width: 1080px; }
+.dcp-option-pay-text { font-size: 18px; }

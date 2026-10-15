@@ -15,7 +15,7 @@ interface Props {
   // Pages that open on a light background (e.g. /mortgage-calculator/) would
   // render it invisible until the first scroll, so they pin the solid style on.
   alwaysSolid?: boolean;
-  // The ad landing pages (/debt-consolidation/, /home-equity/, /adu/) show
+  // The ad landing pages (/home-equity/, /adu/) show
   // only Contact and Book a Call (revamp phase 6, preview v4). A paid visitor
   // who came for one calculator should meet that calculator and the two ways
   // to reach Darren, not five exits to other pages. The logo still goes home.
@@ -28,8 +28,8 @@ interface Props {
  * neither listed /home-equity/ or /adu/).
  */
 const CALCULATORS = [
-  { href: '/debt-consolidation/', label: 'Debt Consolidation' },
   { href: '/home-equity/', label: 'Home Equity' },
+  { href: '/home-equity/?goal=payoff', label: 'Pay Off Debt With Equity' },
   { href: '/adu/', label: 'ADU & Renovation' },
   { href: '/mortgage-calculator/', label: 'Mortgage Calculator' },
   { href: '/dscr/', label: 'DSCR' },

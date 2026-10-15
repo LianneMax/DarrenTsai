@@ -126,7 +126,7 @@ export function HomeHero() {
 
 const GOALS: Array<{ name: string; desc: string; href: string; icon: ReactNode }> = [
   { name: 'Access Your Home Equity', desc: 'Estimate your equity and explore a HELOC and your other options.', href: '/home-equity/', icon: ICONS.house },
-  { name: 'Pay Off Debt', desc: 'Compare ways to consolidate higher-interest debt.', href: '/debt-consolidation/', icon: ICONS.wallet },
+  { name: 'Pay off high-interest debt with your equity', desc: 'Compare today’s debt payments with a HELOC, a fixed home equity loan and a cash-out refinance.', href: '/home-equity/?goal=payoff', icon: ICONS.wallet },
   { name: 'Renovate / Build an ADU', desc: 'Explore funding for your next home project.', href: '/adu/', icon: ICONS.hammer },
 ];
 

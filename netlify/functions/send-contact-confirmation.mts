@@ -111,7 +111,7 @@ const CONTEXTS: Record<string, Copy> = {
       "If you would rather not wait for me to reach you, pick any 15 minutes that suits you. No credit pull, no obligation.",
   },
   debt: {
-    campaign: "debt-consolidation",
+    campaign: "debt-payoff",
     subject: "Got your debt comparison request, here is my calendar",
     preheader: "Your request has been received. The comparison you ran is a starting point.",
     headline: "Your request has been received",

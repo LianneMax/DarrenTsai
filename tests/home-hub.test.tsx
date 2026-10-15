@@ -21,7 +21,7 @@ const read = (p: string) => readFileSync(join(root, p), 'utf8');
 
 /** A same-site path the build serves: a Vite entry or a static page in public/. */
 function served(path: string): boolean {
-  const dir = path.replace(/^\//, '').replace(/#.*$/, '');
+  const dir = path.replace(/^\//, '').replace(/[?#].*$/, '');
   if (dir === '') return true;
   return existsSync(join(root, dir, 'index.html')) || existsSync(join(root, 'public', dir, 'index.html'));
 }
@@ -36,7 +36,8 @@ describe('the homepage', () => {
 
   it('links only to pages that exist', () => {
     const hrefs = [...page.matchAll(/href="(\/[^"]*)"/g)].map((m) => m[1]);
-    expect(hrefs).toEqual(expect.arrayContaining(['/debt-consolidation/', '/home-equity/', '/adu/', '/fha/']));
+    expect(hrefs).toEqual(expect.arrayContaining(['/home-equity/?goal=payoff', '/home-equity/', '/adu/', '/fha/']));
+    expect(hrefs).not.toContain('/debt-consolidation/');
     for (const h of hrefs) expect(served(h), h).toBe(true);
   });
 
@@ -94,7 +95,7 @@ describe('the nav (revamp phase 6)', () => {
 
   it('lists every calculator, the new pages included, in the dropdown and the drawer alike', async () => {
     const nav = await navOf(false);
-    for (const href of ['/debt-consolidation/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/']) {
+    for (const href of ['/home-equity/?goal=payoff', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/']) {
       expect(nav.split(`href="${href}"`).length - 1, href).toBe(2);
     }
     expect(nav).toContain('href="/#about"');
@@ -107,8 +108,8 @@ describe('the nav (revamp phase 6)', () => {
     expect(nav).toContain('Book a Call');
   });
 
-  it('is the landing nav on exactly the three ad pages', () => {
-    for (const f of ['src/DebtConsolidationApp.tsx', 'src/HomeEquityApp.tsx', 'src/AduApp.tsx']) {
+  it('is the landing nav on exactly the two ad pages', () => {
+    for (const f of ['src/HomeEquityApp.tsx', 'src/AduApp.tsx']) {
       expect(read(f), f).toContain('<Nav onOpenContact={openContact} alwaysSolid landing />');
     }
     for (const f of ['src/App.tsx', 'src/MortgageCalculatorApp.tsx']) expect(read(f), f).not.toMatch(/<Nav[^>]*landing/);
