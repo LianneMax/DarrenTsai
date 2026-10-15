@@ -1900,10 +1900,10 @@ p {
 button.email-hint { text-decoration: underline; cursor: pointer; }
 
 /* ============================================================
-   /debt-consolidation/ PAGE (revamp phase 2, 9 Oct), and /home-equity/
+   The equity pages (revamp phase 2, 9 Oct): /home-equity/
    (phase 3) and /adu/ (phase 5), which share these classes.
    Drawn by DebtPageViews.tsx, HomeEquityViews.tsx and AduViews.tsx. Layout, spacing and colours follow Max's design
-   preview v4 (darren-frontend-preview-v4.html, Debt Consolidation page). The
+   preview v4 (darren-frontend-preview-v4.html, the debt payoff page). The
    No font-family here: everything inherits body's stack, which carries
    'Outfit Fallback' (tests/font-fallback.test.ts).
    ============================================================ */

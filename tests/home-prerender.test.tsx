@@ -148,8 +148,12 @@ describe('no retired phrase on the site', () => {
     ...files('netlify/functions', /\.mts$/).filter((f) => !f.endsWith('debt-redirect.mts') && !f.endsWith('youtube-redirect.mts')),
   ];
 
+  // HTML entries and public/ are served exactly as written, so their comments
+  // are visible to anyone viewing source and are checked too. Bundled source
+  // loses its comments in the build.
+  const servedAsIs = (f: string) => f.endsWith('.html') || f.startsWith('public/');
   it.each(SITE)('%s', (file) => {
-    const text = strip(read(file));
+    const text = servedAsIs(file) ? read(file) : strip(read(file));
     for (const phrase of PHRASES) expect(text, String(phrase)).not.toMatch(phrase);
   });
 });
