@@ -1,6 +1,16 @@
 {
-  "version": "2026-10-14-v2",
-  "propertyUses": { "fha": ["primary"], "dscr": ["investment"] },
+  "version": "2026-10-15-v3",
+  "propertyUses": { "fha": ["primary"], "dscr": ["investment"], "default": ["primary", "second-home", "investment"] },
+  "secondHome": [
+    "AZ",
+    "CA",
+    "FL",
+    "HI",
+    "OR",
+    "PA",
+    "TN",
+    "TX"
+  ],
   "consumer": [
     "AZ",
     "CA",

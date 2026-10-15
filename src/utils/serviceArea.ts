@@ -7,13 +7,15 @@ export function propertyUses(source = ''): string[] {
   const funnel = source.toLowerCase();
   if (funnel.includes('fha')) return policy.propertyUses.fha;
   if (funnel.includes('dscr')) return policy.propertyUses.dscr;
-  return ['primary', 'investment'];
+  return policy.propertyUses.default;
 }
 export function serviceArea(propertyUse: unknown, propertyState: unknown, source = '') {
   const state = typeof propertyState === 'string' ? propertyState.trim().toUpperCase() : '';
   // The DSCR footprint is not evidence of HELOC/HELOAN product coverage.
   const equity = source.toLowerCase().includes('home-equity');
-  const list = propertyUse === 'primary' ? policy.consumer : propertyUse === 'investment' ? (equity ? policy.consumer : policy.investment) : [];
+  // Second homes (policy v3, 15 Oct 2026, Darren): the same 8 licensed states
+  // as a primary home, on every page.
+  const list = propertyUse === 'primary' ? policy.consumer : propertyUse === 'second-home' ? policy.secondHome : propertyUse === 'investment' ? (equity ? policy.consumer : policy.investment) : [];
   if (!list.length || !policy.states.includes(state)) return 'incomplete';
   if (!propertyUses(source).includes(String(propertyUse))) return 'out-of-market';
   return list.includes(state) ? 'supported' : 'out-of-market';

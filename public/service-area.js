@@ -18,18 +18,18 @@
     var context = String(id) + ' ' + (window.location ? window.location.pathname : '');
     if (context.indexOf('fha') >= 0) return policy.propertyUses.fha;
     if (context.indexOf('dscr') >= 0) return policy.propertyUses.dscr;
-    return ['primary', 'investment'];
+    return policy.propertyUses['default'];
   }
   function result(use, state, id) {
     var equity = String(id).indexOf('home-equity') >= 0 || (window.location && window.location.pathname.indexOf('/home-equity') === 0);
-    var list = policy && (use === 'primary' ? policy.consumer : use === 'investment' ? (equity ? policy.consumer : policy.investment) : []);
+    var list = policy && (use === 'primary' ? policy.consumer : use === 'second-home' ? policy.secondHome : use === 'investment' ? (equity ? policy.consumer : policy.investment) : []);
     if (!list || !list.length || policy.states.indexOf(state) < 0) return 'incomplete';
     if (propertyUses(id).indexOf(use) < 0) return 'out-of-market';
     return list.indexOf(state) >= 0 ? 'supported' : 'out-of-market';
   }
   function fields(id) {
     var root = document.createElement('fieldset'); root.className = 'compliance-disclosure'; root.setAttribute('data-service-area', id);
-    root.innerHTML = '<legend>Where is the property?</legend><label for="'+id+'-use">Property use</label><select id="'+id+'-use" required data-property-use="'+id+'"><option value="">Choose property use</option><option value="primary">Primary home / owner-occupied</option><option value="investment">Investment / rental</option></select><label for="'+id+'-state">Property state (not your current residence)</label><select id="'+id+'-state" required data-property-state="'+id+'"><option value="">Choose property state</option>'+policy.states.map(function(s){return '<option value="'+s+'">'+policy.labels[s]+'</option>';}).join('')+'</select><p role="status">This checks service area only, not loan approval.</p>';
+    root.innerHTML = '<legend>Where is the property?</legend><label for="'+id+'-use">Property use</label><select id="'+id+'-use" required data-property-use="'+id+'"><option value="">Choose property use</option><option value="primary">Primary home / owner-occupied</option><option value="second-home">Second home</option><option value="investment">Investment / rental</option></select><label for="'+id+'-state">Property state (not your current residence)</label><select id="'+id+'-state" required data-property-state="'+id+'"><option value="">Choose property state</option>'+policy.states.map(function(s){return '<option value="'+s+'">'+policy.labels[s]+'</option>';}).join('')+'</select><p role="status">This checks service area only, not loan approval.</p>';
     root.querySelectorAll('[data-property-use] option').forEach(function(option) {
       if (option.value && propertyUses(id).indexOf(option.value) < 0) option.remove();
     });

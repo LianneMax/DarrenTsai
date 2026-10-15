@@ -33,6 +33,7 @@ export const PROPERTY_TYPES = [
 
 export const PROPERTY_USES = [
   ['primary', 'Primary home'],
+  ['second-home', 'Second home'],
   ['investment', 'Rental'],
 ] as const;
 

@@ -126,6 +126,13 @@ describe('request guards', () => {
       expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
     });
 
+    it('takes a second home in a licensed state and refuses one anywhere else (policy v3)', async () => {
+      expect((await handler(req({ ...PREQUAL, propertyUse: 'second-home', propertyState: 'FL' }), ctx)).status).toBe(200);
+      const refused = await handler(req({ ...PREQUAL, propertyUse: 'second-home', propertyState: 'NV' }), ctx);
+      expect(refused.status).toBe(422);
+      expect((await refused.json()).field).toBe('propertyState');
+    });
+
     it('holds /home-equity/ to the same rules', async () => {
       const equity = { ...PREQUAL, formId: 'home-equity-calculator', source: 'home-equity' };
       expect((await handler(req(equity), ctx)).status).toBe(200);

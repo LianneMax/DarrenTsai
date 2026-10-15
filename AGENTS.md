@@ -313,7 +313,8 @@ or the lead lands on the generic tab with its fields dropped:
   (`service-area.js` routes them), opens the one flow in
   `public/booking-chooser.js`; `/book/` mounts the same flow inline, and every
   email booking link points there with UTMs. Order: property use, state
-  (policy v2) and type; the two knockouts (mortgage current, no bankruptcy or
+  (policy v3: primary, second home or rental; a second home is served in the
+  same 8 states as a primary home) and type; the two knockouts (mortgage current, no bankruptcy or
   foreclosure in 4 years); contact and consent; `POST /api/lead` as
   `formId: booking-prequal` with the page's contact source. Only after a
   confirmed receipt does the HubSpot calendar render, prefilled with

@@ -16,7 +16,8 @@
  * attribution.js and email-suggest.js.
  *
  * ORDER, which is the point of the file:
- *   1. property use, property state (service-area policy v2), property type
+ *   1. property use (primary, second home, rental), property state (service-area
+ *      policy v3), property type
  *   2. Darren's two knockouts: mortgage current, and no bankruptcy or
  *      foreclosure in the last 4 years
  *   3. contact details, the required privacy box and the two optional SMS boxes
@@ -242,6 +243,7 @@
       var uses = window.DTServiceArea.uses(ctx);
       var useOpts = [];
       if (uses.indexOf('primary') !== -1) useOpts.push(['primary', 'Primary home']);
+      if (uses.indexOf('second-home') !== -1) useOpts.push(['second-home', 'Second home']);
       if (uses.indexOf('investment') !== -1) useOpts.push(['investment', 'Rental / investment']);
       if (useOpts.length === 1) answers.propertyUse = useOpts[0][0];
       var states = window.DTServiceArea.states();

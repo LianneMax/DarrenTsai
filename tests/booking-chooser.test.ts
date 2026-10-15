@@ -166,10 +166,29 @@ describe('step 1: property', () => {
     expect(leadFetch).not.toHaveBeenCalled();
   });
 
-  it('offers no second-home option until Darren decides', () => {
+  it('offers primary, second home and rental (policy v3)', () => {
     booking.open();
     const values = [...card().querySelectorAll('[data-q="propertyUse"] [data-value]')].map((b) => b.getAttribute('data-value'));
-    expect(values).toEqual(['primary', 'investment']);
+    expect(values).toEqual(['primary', 'second-home', 'investment']);
+  });
+
+  it('lets a second home in a licensed state through to the knockouts', () => {
+    booking.open();
+    tap('propertyUse', 'second-home');
+    pickState('HI');
+    tap('propertyType', 'single-family-condo');
+    next();
+    expect(card().querySelector('[data-q="mortgageCurrent"]')).not.toBeNull();
+  });
+
+  it('sends a second home anywhere else to /out-of-market-primary/', () => {
+    booking.open();
+    tap('propertyUse', 'second-home');
+    pickState('NV');
+    tap('propertyType', 'single-family-condo');
+    next();
+    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
+    expect(leadFetch).not.toHaveBeenCalled();
   });
 });
 

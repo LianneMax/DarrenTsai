@@ -61,3 +61,34 @@ describe('property service-area routing', () => {
     expect(JSON.parse(fields.find(f => f.name === 'rdt_submission_snapshot')!.value)).toMatchObject({homeValue: 500000});
   });
 });
+
+/**
+ * Policy v3 (15 Oct 2026, Darren): a second home is served in the same 8
+ * licensed states as a primary home, and nowhere else. FHA stays primary-only
+ * and DSCR investment-only.
+ */
+describe('second homes (policy v3)', () => {
+  const POLICY = JSON.parse(readFileSync(__dirname + '/../public/service-area-policy.json', 'utf8'));
+  const LICENSED = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'];
+
+  it('is version v3 and lists exactly the 8 licensed states', () => {
+    expect(POLICY.version).toBe('2026-10-15-v3');
+    expect([...POLICY.secondHome].sort()).toEqual(LICENSED);
+    expect(POLICY.secondHome).toEqual(POLICY.consumer);
+  });
+
+  it.each(['home-contact', 'home-equity', 'booking-prequal', 'debt-savings-calculator', 'adu-calculator'])('serves the 8 states and refuses the rest for %s', (source) => {
+    for (const s of LICENSED) expect(serviceArea('second-home', s, source), s).toBe('supported');
+    for (const s of ['NV', 'NY', 'WA', 'CO', 'AL']) expect(serviceArea('second-home', s, source), s).toBe('out-of-market');
+  });
+
+  it('keeps FHA primary-only and DSCR investment-only', () => {
+    expect(serviceArea('second-home', 'CA', 'fha-magnet')).toBe('out-of-market');
+    expect(serviceArea('second-home', 'CA', 'dscr-magnet')).toBe('out-of-market');
+  });
+
+  it('offers Second home in the shared select pair, but not on FHA or DSCR', () => {
+    expect(renderToStaticMarkup(<ServiceAreaFields formId="home-equity-calculator" />)).toContain('value="second-home"');
+    expect(renderToStaticMarkup(<ServiceAreaFields formId="fha-magnet" />)).not.toContain('value="second-home"');
+  });
+});
