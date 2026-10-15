@@ -8,7 +8,7 @@ describe('YouTube redirects preserve a visitor’s original tracking query', () 
       const query = new URLSearchParams({ gclid:'TEST+/= ID', gbraid:'BRAID', wbraid:'WBRAID', msclkid:'MSCLICK', fbclid:'FBCLICK', utm_term:'video-specific terms', extra:'preserve me' });
       const response = redirect(new Request(`https://realdarrentsai.com/yt/${bucket}${suffix}?${query}`));
       const target = new URL(response.headers.get('Location')!);
-      expect(response.status).toBe(bucket === 'debt' ? 301 : 302);
+      expect(response.status).toBe(302);
       expect(target.pathname).toBe(destination.path);
       if ('goal' in destination) expect(target.searchParams.get('goal')).toBe(destination.goal);
       expect(target.origin).toBe('https://realdarrentsai.com');
@@ -28,7 +28,7 @@ describe('YouTube redirects preserve a visitor’s original tracking query', () 
   });
   it('supports HEAD checks without writing or contacting other services', () => {
     expect(redirect(new Request('https://realdarrentsai.com/yt/home/', { method:'HEAD' })).status).toBe(302);
-    expect(redirect(new Request('https://realdarrentsai.com/yt/debt/', { method:'HEAD' })).status).toBe(301);
+    expect(redirect(new Request('https://realdarrentsai.com/yt/debt/', { method:'HEAD' })).status).toBe(302);
   });
   it.each(['unknown','constructor','__proto__','toString','home-c-c'])('returns a real 404 for %s', bucket => {
     expect(redirect(new Request(`https://realdarrentsai.com/yt/${bucket}`)).status).toBe(404);

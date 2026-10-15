@@ -134,8 +134,8 @@ constrain code:
   payments against a HELOC (described, not priced: no HELOC rate exists here),
   the fixed home equity loan and cash-out refinance, with the existing
   calculations and the equity-loan state rules. `/debt-consolidation/` and
-  `/yt/debt` 301 there (`debt-redirect.mts`, `youtube-redirect.mts`, no-store,
-  every query param kept). The lead keeps source `DebtConsolidation` and form
+  `/yt/debt` redirect there (`debt-redirect.mts` 301; `youtube-redirect.mts` 302
+  like every short link; no-store, every query param kept). The lead keeps source `DebtConsolidation` and form
   id `debt-savings-calculator`, so the Sheet's "Debt Consolidation" tab and
   the HubSpot fields are unchanged. Results read "Estimated payment
   difference" (`RESULT_WORDING` in `src/utils/savingsText.ts` is the one switch

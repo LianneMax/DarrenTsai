@@ -59,18 +59,18 @@ describe('L2: old site URLs are permanently redirected', () => {
     expect(rules.find((r) => r.from === from)).toEqual({ from, to, status: 301 });
   });
 
-  it('leaves the /yt short links as 302s, except /yt/debt (301 at Max\'s request, 15 Oct 2026)', () => {
+  it('leaves the /yt short links as 302s', () => {
     const yt = rules.filter((r) => r.from?.startsWith('/yt/'));
     expect(yt.length).toBe(0); // Static target queries must not shadow the query-preserving function.
     for (const bucket of Object.keys(SHORTLINKS)) {
-      for (const suffix of ['', '-c']) expect(youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${bucket}${suffix}`)).status).toBe(bucket === 'debt' ? 301 : 302);
+      for (const suffix of ['', '-c']) expect(youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${bucket}${suffix}`)).status).toBe(302);
     }
   });
 
   it.each([['debt', '/home-equity/'], ['mortgage', '/mortgage-calculator/'], ['home', '/']])('tracks %s description and comment clicks separately', (slug, destination) => {
     for (const [suffix, content] of [['', 'description'], ['-c', 'pinned-comment']]) {
       const response = youtubeRedirect(new Request(`https://realdarrentsai.com/yt/${slug}${suffix}`));
-      expect(response.status).toBe(slug === 'debt' ? 301 : 302);
+      expect(response.status).toBe(302);
       const url = new URL(response.headers.get('Location')!);
       expect(url.pathname).toBe(destination);
       expect(url.searchParams.get('utm_source')).toBe('youtube');

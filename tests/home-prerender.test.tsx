@@ -77,11 +77,11 @@ describe('/debt-consolidation/ retired into /home-equity/?goal=payoff', () => {
     }
   });
 
-  it('301s /yt/debt and /yt/debt-c to the payoff path, keeping the visitor query', async () => {
+  it('302s /yt/debt and /yt/debt-c to the payoff path, like every short link, keeping the visitor query', async () => {
     const { default: yt } = await import('../netlify/functions/youtube-redirect.mts');
     for (const [path, content] of [['/yt/debt', 'description'], ['/yt/debt-c', 'pinned-comment']]) {
       const res = yt(new Request(`https://realdarrentsai.com${path}?gclid=G1&utm_term=t`));
-      expect(res.status).toBe(301);
+      expect(res.status).toBe(302);
       const to = new URL(res.headers.get('Location')!);
       expect(to.pathname).toBe('/home-equity/');
       expect(to.searchParams.get('goal')).toBe('payoff');
