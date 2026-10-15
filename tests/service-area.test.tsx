@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { serviceArea } from '../src/utils/serviceArea';
+import { serviceArea, serviceAreaWording, outOfMarketPage, INVESTMENT_STATES, BOOKING_GOALS } from '../src/utils/serviceArea';
 import ServiceAreaFields from '../src/components/ServiceAreaFields';
 import { useLeadSubmit } from '../src/hooks/useLeadSubmit';
 import { loadGas } from './helpers/gas-harness';
@@ -12,12 +12,13 @@ describe('property service-area routing', () => {
     expect(serviceArea('primary', 'CA', source)).toBe(source.includes('dscr') ? 'out-of-market' : 'supported');
     expect(serviceArea('primary', 'NY', source)).toBe('out-of-market');
     expect(serviceArea('investment', 'NY', source)).toBe('out-of-market');
-    expect(serviceArea('investment', 'AL', source)).toBe(source.includes('home-equity') || source.includes('fha') ? 'out-of-market' : 'supported');
+    expect(serviceArea('investment', 'AL', source)).toBe(source.includes('fha') ? 'out-of-market' : 'supported');
   });
-  it('does not extend DSCR coverage to home-equity inquiries', () => {
-    expect(serviceArea('investment', 'AL', 'home-equity-calculator')).toBe('out-of-market');
+  it('checks the home being borrowed against: a rental used as collateral passes on either list', () => {
+    expect(serviceArea('investment', 'AL', 'home-equity-calculator')).toBe('supported');
     expect(serviceArea('investment', 'OR', 'home-equity-contact')).toBe('supported');
-    expect(serviceArea('investment', 'AL', 'dscr-magnet')).toBe('supported');
+    expect(serviceArea('investment', 'OR', 'dscr-magnet')).toBe('supported');
+    expect(serviceArea('investment', 'NY', 'home-equity-calculator')).toBe('out-of-market');
   });
   it('static forms load the same policy and record an independent property state', async () => {
     document.body.innerHTML = '<div><div class="compliance-disclosure"><input data-privacy-form="static-test"></div></div>';
@@ -27,11 +28,11 @@ describe('property service-area routing', () => {
     await vi.waitFor(() => expect(fake.DTServiceArea?.ready()).toBe(true));
     const use = document.querySelector<HTMLSelectElement>('[data-property-use]')!;
     const state = document.querySelector<HTMLSelectElement>('[data-property-state]')!;
-    use.value = 'investment'; state.value = 'OR'; expect(fake.DTServiceArea!.validate('static-test')).toBe(false);
+    use.value = 'investment'; state.value = 'NH'; expect(fake.DTServiceArea!.validate('static-test')).toBe(false);
     state.value = 'FL'; expect(fake.DTServiceArea!.validate('static-test')).toBe(true);
     expect(fake.DTServiceArea!.read('static-test')).toMatchObject({propertyState: 'FL', propertyUse: 'investment', serviceAreaResult: 'supported'});
   });
-  it.each([['primary', 'OR', 'supported'], ['investment', 'OR', 'out-of-market'], ['primary', 'NY', 'out-of-market'], ['investment', 'FL', 'supported'], ['investment', 'NH', 'out-of-market'], ['investment', 'DC', 'supported'], ['', 'CA', 'incomplete'], ['primary', '', 'incomplete']])('%s in %s returns %s', (use, state, result) => { expect(serviceArea(use, state)).toBe(result); });
+  it.each([['primary', 'OR', 'supported'], ['investment', 'OR', 'supported'], ['primary', 'NY', 'out-of-market'], ['investment', 'FL', 'supported'], ['investment', 'NH', 'out-of-market'], ['investment', 'DC', 'supported'], ['', 'CA', 'incomplete'], ['primary', '', 'incomplete']])('%s in %s returns %s', (use, state, result) => { expect(serviceArea(use, state)).toBe(result); });
   it('blocks unsupported review before posting and preserves legacy state/attribution for a supported property', async () => {
     document.body.innerHTML = renderToStaticMarkup(<ServiceAreaFields formId="test" />);
     const use = document.querySelector<HTMLSelectElement>('[data-property-use]')!;
@@ -63,32 +64,89 @@ describe('property service-area routing', () => {
 });
 
 /**
- * Policy v3 (15 Oct 2026, Darren): a second home is served in the same 8
- * licensed states as a primary home, and nowhere else. FHA stays primary-only
- * and DSCR investment-only.
+ * State rules, final (policy v3, 15 Oct 2026). The state checked is the state
+ * of the property the loan is on. Primary or second home: the 8 licensed
+ * states. Investment (DSCR, or a rental used as collateral): on either list.
  */
-describe('second homes (policy v3)', () => {
+describe('state rules, final (policy v3)', () => {
   const POLICY = JSON.parse(readFileSync(__dirname + '/../public/service-area-policy.json', 'utf8'));
   const LICENSED = ['AZ', 'CA', 'FL', 'HI', 'OR', 'PA', 'TN', 'TX'];
+  const NEITHER = ['ID', 'MN', 'ND', 'NH', 'NJ', 'NV', 'NY', 'SD', 'UT'];
 
-  it('is version v3 and lists exactly the 8 licensed states', () => {
+  it('is version v3; investment passes on either list, which fails exactly 9 states', () => {
     expect(POLICY.version).toBe('2026-10-15-v3');
-    expect([...POLICY.secondHome].sort()).toEqual(LICENSED);
-    expect(POLICY.secondHome).toEqual(POLICY.consumer);
+    expect([...POLICY.consumer].sort()).toEqual(LICENSED);
+    expect([...INVESTMENT_STATES].sort()).toEqual(POLICY.states.filter((x: string) => !NEITHER.includes(x)).sort());
+    expect(INVESTMENT_STATES).toHaveLength(42);
+    expect(INVESTMENT_STATES).toContain('OR');
   });
 
-  it.each(['home-contact', 'home-equity', 'booking-prequal', 'debt-savings-calculator', 'adu-calculator'])('serves the 8 states and refuses the rest for %s', (source) => {
-    for (const s of LICENSED) expect(serviceArea('second-home', s, source), s).toBe('supported');
-    for (const s of ['NV', 'NY', 'WA', 'CO', 'AL']) expect(serviceArea('second-home', s, source), s).toBe('out-of-market');
+  it.each(['home-equity', 'booking-prequal', 'debt-savings-calculator', 'adu-calculator', 'mortgage-calculator-contact-modal'])('primary and second home pass only in the 8 for %s', (source) => {
+    for (const use of ['primary', 'second-home']) {
+      for (const st of LICENSED) expect(serviceArea(use, st, source), use + st).toBe('supported');
+      for (const st of ['NV', 'NY', 'WA', 'CO', 'AL', 'OH']) expect(serviceArea(use, st, source), use + st).toBe('out-of-market');
+    }
+  });
+
+  it('investment fails in exactly ID, MN, ND, NH, NJ, NV, NY, SD, UT, and passes everywhere else', () => {
+    for (const st of POLICY.states) {
+      for (const source of ['dscr-magnet', 'home-equity', 'home-contact']) {
+        expect(serviceArea('investment', st, source), source + st).toBe(NEITHER.includes(st) ? 'out-of-market' : 'supported');
+      }
+    }
   });
 
   it('keeps FHA primary-only and DSCR investment-only', () => {
     expect(serviceArea('second-home', 'CA', 'fha-magnet')).toBe('out-of-market');
-    expect(serviceArea('second-home', 'CA', 'dscr-magnet')).toBe('out-of-market');
+    expect(serviceArea('investment', 'CA', 'fha-magnet')).toBe('out-of-market');
+    expect(serviceArea('primary', 'CA', 'dscr-magnet')).toBe('out-of-market');
+  });
+
+  it('applies /book/ goals: equity and everything else general, DSCR and commercial investment, own-home and not-sure the 8', () => {
+    expect(serviceArea('investment', 'OH', 'book-contact', 'equity')).toBe('supported');
+    expect(serviceArea('investment', 'OR', 'book-contact', 'dscr')).toBe('supported');
+    expect(serviceArea('primary', 'TX', 'book-contact', 'dscr')).toBe('out-of-market');
+    expect(serviceArea('investment', 'OH', 'book-contact', 'commercial')).toBe('supported');
+    expect(serviceArea('primary', 'OR', 'book-contact', 'own-home')).toBe('supported');
+    expect(serviceArea('second-home', 'NV', 'book-contact', 'own-home')).toBe('out-of-market');
+    expect(serviceArea('investment', 'OH', 'book-contact', 'own-home')).toBe('out-of-market');
+    expect(serviceArea('primary', 'CA', 'book-contact', 'not-sure')).toBe('supported');
+    expect(serviceArea('primary', 'CA', 'book-contact', 'made-up')).toBe('out-of-market');
+    expect(BOOKING_GOALS.commercial.review && BOOKING_GOALS['not-sure'].review).toBe(true);
+    expect(BOOKING_GOALS.equity.review || BOOKING_GOALS.dscr.review || BOOKING_GOALS['own-home'].review).toBe(false);
+  });
+
+  it('routes a failure by use: investment to /out-of-market-dscr/, a home to /out-of-market-primary/', () => {
+    expect(outOfMarketPage('investment')).toBe('/out-of-market-dscr/');
+    expect(outOfMarketPage('primary')).toBe('/out-of-market-primary/');
+    expect(outOfMarketPage('second-home')).toBe('/out-of-market-primary/');
+  });
+
+  it('the browser copy agrees with the server on every state, use and goal', async () => {
+    const fake: { DTServiceArea?: { ready: () => boolean; check: (u: string, s: string, id: string, g?: string) => string } } = {};
+    new Function('window', 'document', 'fetch', readFileSync('public/service-area.js', 'utf8'))(fake, document, async () => ({ ok: true, json: async () => POLICY }));
+    await vi.waitFor(() => expect(fake.DTServiceArea?.ready()).toBe(true));
+    for (const st of POLICY.states) for (const use of ['primary', 'second-home', 'investment']) {
+      for (const [id, goal] of [['home-equity', undefined], ['dscr-magnet', undefined], ['fha-magnet', undefined], ['book-contact', 'equity'], ['book-contact', 'dscr'], ['book-contact', 'own-home'], ['book-contact', 'commercial'], ['book-contact', 'not-sure']] as const) {
+        expect(fake.DTServiceArea!.check(use, st, id, goal), `${use} ${st} ${id} ${goal}`).toBe(serviceArea(use, st, id, goal));
+      }
+    }
+  });
+
+  it('asks equity forms about the home being borrowed against, and drops "(not your current residence)"', () => {
+    expect(serviceAreaWording('home-equity-calculator').legend).toMatch(/borrowing against/);
+    expect(serviceAreaWording('debt-savings-calculator').legend).toMatch(/borrowing against/);
+    expect(serviceAreaWording('adu-calculator').legend).toMatch(/borrowing against/);
+    expect(serviceAreaWording('mortgage-calculator-contact-modal').legend).toBe('Where is the property?');
+    expect(serviceAreaWording('dscr-magnet').legend).toBe('Where is the investment property?');
+    for (const f of ['public/service-area.js', 'src/components/ServiceAreaFields.tsx', 'public/booking-chooser.js']) {
+      expect(readFileSync(f, 'utf8'), f).not.toContain('not your current residence');
+    }
   });
 
   it('offers Second home in the shared select pair, but not on FHA or DSCR', () => {
     expect(renderToStaticMarkup(<ServiceAreaFields formId="home-equity-calculator" />)).toContain('value="second-home"');
     expect(renderToStaticMarkup(<ServiceAreaFields formId="fha-magnet" />)).not.toContain('value="second-home"');
+    expect(renderToStaticMarkup(<ServiceAreaFields formId="dscr-magnet" />)).not.toContain('value="second-home"');
   });
 });

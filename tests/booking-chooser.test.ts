@@ -49,8 +49,9 @@ function pickState(code: string) {
   sel.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function passSteps(use = 'primary', state = 'CA') {
-  tap('propertyUse', use);
+function passSteps(use = 'primary', state = 'CA', goal = 'equity') {
+  tap('bookingGoal', goal);
+  if (card().querySelector('[data-q="propertyUse"]')) tap('propertyUse', use);
   pickState(state);
   tap('propertyType', 'single-family-condo');
   next();
@@ -118,8 +119,11 @@ describe('one config spot for the calendar', () => {
 });
 
 describe('step 1: property', () => {
-  it('asks use, state and type before anything else', () => {
+  it('asks the goal first, then use, state and type', () => {
     booking.open();
+    expect(card().querySelector('[data-q="bookingGoal"]')).not.toBeNull();
+    expect(card().querySelector('[data-q="propertyUse"]')).toBeNull();
+    tap('bookingGoal', 'equity');
     expect(card().querySelector('[data-q="propertyUse"]')).not.toBeNull();
     expect(card().querySelector('[data-book="state"]')).not.toBeNull();
     expect(card().querySelector('[data-q="propertyType"]')).not.toBeNull();
@@ -129,14 +133,16 @@ describe('step 1: property', () => {
 
   it('keeps the visitor on the step until all three are answered', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'primary');
     next();
-    expect(errText()).toMatch(/all three/);
+    expect(errText()).toMatch(/answer each question/);
     expect(card().querySelector('[data-q="mortgageCurrent"]')).toBeNull();
   });
 
   it('sends an unsupported primary-home state to /out-of-market-primary/, posting nothing', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'primary');
     pickState('NY');
     tap('propertyType', 'single-family-condo');
@@ -147,6 +153,7 @@ describe('step 1: property', () => {
 
   it('sends an unsupported rental state to /out-of-market-dscr/', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'investment');
     pickState('NY');
     tap('propertyType', 'single-family-condo');
@@ -156,6 +163,7 @@ describe('step 1: property', () => {
 
   it('declines mobile homes and land with no calendar and no phone number', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'primary');
     pickState('CA');
     tap('propertyType', 'mobile-land');
@@ -168,12 +176,14 @@ describe('step 1: property', () => {
 
   it('offers primary, second home and rental (policy v3)', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     const values = [...card().querySelectorAll('[data-q="propertyUse"] [data-value]')].map((b) => b.getAttribute('data-value'));
     expect(values).toEqual(['primary', 'second-home', 'investment']);
   });
 
   it('lets a second home in a licensed state through to the knockouts', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'second-home');
     pickState('HI');
     tap('propertyType', 'single-family-condo');
@@ -183,6 +193,7 @@ describe('step 1: property', () => {
 
   it('sends a second home anywhere else to /out-of-market-primary/', () => {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'second-home');
     pickState('NV');
     tap('propertyType', 'single-family-condo');
@@ -192,9 +203,50 @@ describe('step 1: property', () => {
   });
 });
 
+describe('step 1: the goal decides the property question (policy v3)', () => {
+  const qText = () => card().textContent ?? '';
+  const uses = () => [...card().querySelectorAll('[data-q="propertyUse"] [data-value]')].map((b) => b.getAttribute('data-value'));
+
+  it('equity asks about the home being borrowed against, with primary, second home or rental', () => {
+    booking.open();
+    tap('bookingGoal', 'equity');
+    expect(qText()).toContain('Where is the home you’re borrowing against?');
+    expect(uses()).toEqual(['primary', 'second-home', 'investment']);
+    expect(qText()).not.toMatch(/not your current residence|where.*cash/i);
+  });
+
+  it('DSCR and commercial ask only where the investment property is', () => {
+    for (const goal of ['dscr', 'commercial']) {
+      booking.open();
+      tap('bookingGoal', goal);
+      expect(card().querySelector('[data-q="propertyUse"]')).toBeNull();
+      expect(qText()).toMatch(goal === 'dscr' ? /Where is the investment property\?/ : /Where is the property\?/);
+      booking.close();
+    }
+  });
+
+  it('own-home and not-sure ask primary or second home only', () => {
+    for (const goal of ['own-home', 'not-sure']) {
+      booking.open();
+      tap('bookingGoal', goal);
+      expect(uses()).toEqual(['primary', 'second-home']);
+      booking.close();
+    }
+  });
+
+  it('flags commercial and not-sure for Darren, and posts the goal', async () => {
+    booking.open();
+    passSteps('primary', 'CA', 'not-sure');
+    fillContact();
+    await flush();
+    expect(leadBody()).toMatchObject({ bookingGoal: 'not-sure', reviewFlag: 'Yes' });
+  });
+});
+
 describe('step 2: the two knockouts', () => {
   function toStep2() {
     booking.open();
+    tap('bookingGoal', 'equity');
     tap('propertyUse', 'primary');
     pickState('CA');
     tap('propertyType', '2-4-units');
@@ -248,6 +300,7 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(leadFetch.mock.calls[0][0]).toBe('/api/lead');
     expect(leadBody()).toMatchObject({
       formId: 'booking-prequal', source: 'home-contact', email: 'ada@example.com',
+      bookingGoal: 'equity', reviewFlag: '',
       propertyUse: 'primary', propertyState: 'CA', state: 'CA', propertyType: 'single-family-condo',
       mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no', privacyAcknowledged: true,
       smsInformationalConsent: false, smsMarketingConsent: false, serviceAreaVersion: POLICY.version,
@@ -363,7 +416,7 @@ describe('the panel', () => {
     document.body.appendChild(host);
     booking.mount(host);
     expect(host.classList.contains('dt-book-inline')).toBe(true);
-    expect(host.querySelector('[data-q="propertyUse"]')).not.toBeNull();
+    expect(host.querySelector('[data-q="bookingGoal"]')).not.toBeNull();
     expect(AREA).toContain(".closest('.dt-book-overlay, .dt-book-inline')");
   });
 });

@@ -58,6 +58,28 @@
   var MEETINGS_ORIGIN = /^https:\/\/meetings(?:-[a-z0-9]+)?\.hubspot\.com$/;
 
   var FORM_ID = 'booking-prequal';
+
+  /**
+   * /book/'s goal question (15 Oct 2026). The values are what the Sheet's
+   * Booking Goal column and lead.mts receive; src/utils/serviceArea.ts maps
+   * each to its rule. Commercial and not-sure are flagged for Darren.
+   */
+  var GOAL_OPTIONS = [
+    ['equity', 'Get cash from my home’s equity (HELOC / HEI)'],
+    ['dscr', 'Investment property (DSCR)'],
+    ['own-home', 'Buy or refinance a home I live in or a second home (self-employed welcome)'],
+    ['commercial', 'Commercial or custom scenario'],
+    ['not-sure', 'Not sure yet']
+  ];
+  var GOAL_WORDING = {
+    equity: { state: 'Where is the home you’re borrowing against?', use: 'How do you use that home?' },
+    dscr: { state: 'Where is the investment property?', use: '' },
+    'own-home': { state: 'Where is the home?', use: 'How will you use it?' },
+    commercial: { state: 'Where is the property?', use: '' },
+    'not-sure': { state: 'Where is the home?', use: 'How will you use it?' }
+  };
+  var REVIEW_GOALS = ['commercial', 'not-sure'];
+  function outOfMarketPage(use) { return use === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/'; }
   var STYLE_ID = 'dt-booking-style';
 
   /**
@@ -197,7 +219,7 @@
    * the name and email go to sessionStorage, through identify().
    */
   function newAnswers() {
-    return { propertyUse: '', propertyState: '', propertyType: '', mortgageCurrent: '', recentBankruptcyForeclosure: '' };
+    return { bookingGoal: '', propertyUse: '', propertyState: '', propertyType: '', mortgageCurrent: '', recentBankruptcyForeclosure: '' };
   }
 
   function choiceGroup(name, options, value) {
@@ -238,46 +260,68 @@
     function closeLink() { return inline ? '' : '<button type="button" class="dt-book-link dt-book-close">Close</button>'; }
     function wireClose() { var c = card.querySelector('.dt-book-close'); if (c) c.addEventListener('click', close); }
 
+    /**
+     * Step 1. The goal comes first and decides which property is asked about
+     * and which rule applies (policy v3, 15 Oct 2026): for an equity loan, the
+     * home being borrowed against (where the cash goes is not asked); for DSCR
+     * or commercial, the investment property; otherwise the home they will
+     * live in. Commercial and "Not sure yet" are flagged for Darren.
+     */
     function stepProperty() {
       card.classList.remove('dt-cal');
-      var uses = window.DTServiceArea.uses(ctx);
-      var useOpts = [];
-      if (uses.indexOf('primary') !== -1) useOpts.push(['primary', 'Primary home']);
-      if (uses.indexOf('second-home') !== -1) useOpts.push(['second-home', 'Second home']);
-      if (uses.indexOf('investment') !== -1) useOpts.push(['investment', 'Rental / investment']);
-      if (useOpts.length === 1) answers.propertyUse = useOpts[0][0];
-      var states = window.DTServiceArea.states();
-      var stateOpts = '<option value="">Choose a state</option>';
-      for (var i = 0; i < states.length; i++) {
-        stateOpts += '<option value="' + states[i][0] + '"' + (answers.propertyState === states[i][0] ? ' selected' : '') + '>' + esc(states[i][1]) + '</option>';
-      }
-      card.innerHTML =
+      var goal = answers.bookingGoal;
+      var html =
         '<p class="dt-book-step">Step 1 of 3</p>' +
         '<h2 class="dt-book-title">Talk to Darren</h2>' +
         '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property before you pick a time.</p>' +
-        '<p class="dt-book-q">How is the property used?</p>' + choiceGroup('propertyUse', useOpts, answers.propertyUse) +
-        '<label class="dt-book-field">Where is the property?<select data-book="state">' + stateOpts + '</select></label>' +
-        '<p class="dt-book-q">What type of property is it?</p>' +
-        choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType) +
+        '<p class="dt-book-q">What would you like help with?</p>' +
+        choiceGroup('bookingGoal', GOAL_OPTIONS, goal);
+      if (goal) {
+        var uses = window.DTServiceArea.uses(ctx, goal);
+        if (uses.indexOf(answers.propertyUse) === -1) answers.propertyUse = uses.length === 1 ? uses[0] : '';
+        var w = GOAL_WORDING[goal];
+        var useOpts = [];
+        if (uses.indexOf('primary') !== -1) useOpts.push(['primary', 'Primary home']);
+        if (uses.indexOf('second-home') !== -1) useOpts.push(['second-home', 'Second home']);
+        if (uses.indexOf('investment') !== -1) useOpts.push(['investment', 'Rental']);
+        var states = window.DTServiceArea.states();
+        var stateOpts = '<option value="">Choose a state</option>';
+        for (var i = 0; i < states.length; i++) {
+          stateOpts += '<option value="' + states[i][0] + '"' + (answers.propertyState === states[i][0] ? ' selected' : '') + '>' + esc(states[i][1]) + '</option>';
+        }
+        html +=
+          '<label class="dt-book-field">' + w.state + '<select data-book="state">' + stateOpts + '</select></label>' +
+          (useOpts.length > 1 ? '<p class="dt-book-q">' + w.use + '</p>' + choiceGroup('propertyUse', useOpts, answers.propertyUse) : '') +
+          '<p class="dt-book-q">What type of property is it?</p>' +
+          choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType);
+      }
+      html +=
         '<p class="dt-book-err" role="alert"></p>' +
         '<button type="button" class="dt-book-next">Continue</button>' +
         '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
-      wireChoices(card, answers, function () { setErr(''); });
-      card.querySelector('[data-book="state"]').addEventListener('change', function (e) { answers.propertyState = e.target.value; setErr(''); });
+      card.innerHTML = html;
+      wireChoices(card, answers, function () {
+        setErr('');
+        // A new goal asks a different property question.
+        if (answers.bookingGoal !== goal) stepProperty();
+      });
+      var stateSel = card.querySelector('[data-book="state"]');
+      if (stateSel) stateSel.addEventListener('change', function (e) { answers.propertyState = e.target.value; setErr(''); });
       wireClose();
       card.querySelector('.dt-book-next').addEventListener('click', function () {
+        if (!answers.bookingGoal) { setErr('Please choose what you would like help with.'); return; }
         if (!answers.propertyUse || !answers.propertyState || !answers.propertyType) {
-          setErr('Please answer all three to continue.');
+          setErr('Please answer each question to continue.');
           return;
         }
-        var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx);
+        var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal);
         if (area === 'out-of-market') {
           // Darren's redirect pages: plain words, NMLS lookup, the calculators,
           // and no booking or contact buttons.
-          window.location.assign(answers.propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/');
+          window.location.assign(outOfMarketPage(answers.propertyUse));
           return;
         }
-        if (area !== 'supported') { setErr('Please choose the property use and state.'); return; }
+        if (area !== 'supported') { setErr('Please choose the property state.'); return; }
         if (answers.propertyType === 'mobile-land') { decline('property-type'); return; }
         stepHistory();
       });
@@ -354,6 +398,7 @@
         firstName: val('firstName'), lastName: val('lastName'), email: val('email'), phone: val('phone'),
         state: answers.propertyState,
         source: source, formId: FORM_ID, magnet: 'Booking prequal',
+        bookingGoal: answers.bookingGoal, reviewFlag: REVIEW_GOALS.indexOf(answers.bookingGoal) !== -1 ? 'Yes' : '',
         propertyUse: answers.propertyUse, propertyState: answers.propertyState,
         serviceAreaResult: 'supported', serviceAreaVersion: window.DTServiceArea.version(),
         propertyType: answers.propertyType, mortgageCurrent: answers.mortgageCurrent,
@@ -394,7 +439,7 @@
           }
           // The server's own screening said no. Same outcome as on the page.
           if (r.status === 422 && r.body && r.body.field === 'propertyState') {
-            window.location.assign(answers.propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/');
+            window.location.assign(outOfMarketPage(answers.propertyUse));
             return;
           }
           if (r.status === 422 && r.body && r.body.field === 'prequal') { decline('server'); return; }

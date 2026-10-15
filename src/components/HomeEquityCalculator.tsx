@@ -5,7 +5,7 @@ import { EMAIL } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
-import { serviceArea, prequalPasses } from '../utils/serviceArea';
+import { serviceArea, prequalPasses, outOfMarketPage } from '../utils/serviceArea';
 import { stateForZip } from '../utils/zipState';
 import EquityPage, { EQUITY_FORM_ID, type EquityPageView } from './HomeEquityViews';
 import { ErrorDialog } from './PageParts';
@@ -103,13 +103,13 @@ export default function HomeEquityCalculator() {
         return;
       }
       if (!propertyType || !propertyUse || !/^\d{5}$/.test(zip) || !propertyState) {
-        setErrorMsg('Please choose the property type and how it is used, and enter the property ZIP code.');
+        setErrorMsg('Please choose the property type and how you use the home, and enter the ZIP of the home you’re borrowing against.');
         return;
       }
       if (propertyType === 'mobile-land') { setDeclined('property-type'); scrollToFlow(); return; }
       const area = serviceArea(propertyUse, propertyState, 'home-equity');
       if (area === 'out-of-market') {
-        window.location.assign(propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/');
+        window.location.assign(outOfMarketPage(propertyUse));
         return;
       }
       if (area !== 'supported') { setErrorMsg('Please check the property state.'); return; }
@@ -171,7 +171,7 @@ export default function HomeEquityCalculator() {
     }
     if (!result.ok && result.kind === 'fieldError') {
       if (result.field === 'propertyState') {
-        window.location.assign(propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/');
+        window.location.assign(outOfMarketPage(propertyUse));
         return;
       }
       setErrorMsg(result.message);

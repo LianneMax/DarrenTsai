@@ -14,25 +14,48 @@
     waiting.splice(0).forEach(function (w) { try { if (ok) w.ok(); else if (w.fail) w.fail(); } catch (e) { /* one caller must not break another */ } });
   }
   if (!document.querySelector('link[href="/compliance.css"]')) { var css=document.createElement('link');css.rel='stylesheet';css.href='/compliance.css';document.head.appendChild(css); }
-  function propertyUses(id) {
-    var context = String(id) + ' ' + (window.location ? window.location.pathname : '');
-    if (context.indexOf('fha') >= 0) return policy.propertyUses.fha;
-    if (context.indexOf('dscr') >= 0) return policy.propertyUses.dscr;
-    return policy.propertyUses['default'];
+  // State rules, final (policy v3, 15 Oct 2026): the state checked is the
+  // state of the property the loan is on. Primary or second home: the 8
+  // licensed states. Investment (DSCR, or a rental used as collateral for an
+  // equity loan): on either list. Mirrors src/utils/serviceArea.ts.
+  var GOALS = { equity: 'general', dscr: 'dscr', 'own-home': 'own-home', commercial: 'dscr', 'not-sure': 'own-home' };
+  function context(id, goal) {
+    if (goal) return Object.prototype.hasOwnProperty.call(GOALS, goal) ? GOALS[goal] : null;
+    var where = String(id) + ' ' + (window.location ? window.location.pathname : '');
+    if (where.indexOf('fha') >= 0) return 'fha';
+    if (where.indexOf('dscr') >= 0) return 'dscr';
+    return 'general';
   }
-  function result(use, state, id) {
-    var equity = String(id).indexOf('home-equity') >= 0 || (window.location && window.location.pathname.indexOf('/home-equity') === 0);
-    var list = policy && (use === 'primary' ? policy.consumer : use === 'second-home' ? policy.secondHome : use === 'investment' ? (equity ? policy.consumer : policy.investment) : []);
-    if (!list || !list.length || policy.states.indexOf(state) < 0) return 'incomplete';
-    if (propertyUses(id).indexOf(use) < 0) return 'out-of-market';
-    return list.indexOf(state) >= 0 ? 'supported' : 'out-of-market';
+  function propertyUses(id, goal) {
+    var c = context(id, goal);
+    return c ? policy.propertyUses[c] : [];
+  }
+  function onEitherList(state) {
+    return policy.investment.indexOf(state) >= 0 || policy.consumer.indexOf(state) >= 0;
+  }
+  function result(use, state, id, goal) {
+    if (!policy || policy.states.indexOf(state) < 0 || (use !== 'primary' && use !== 'second-home' && use !== 'investment')) return 'incomplete';
+    if (propertyUses(id, goal).indexOf(use) < 0) return 'out-of-market';
+    var ok = use === 'investment' ? onEitherList(state) : policy.consumer.indexOf(state) >= 0;
+    return ok ? 'supported' : 'out-of-market';
+  }
+  function wording(id) {
+    var w = String(id).toLowerCase() + ' ' + (window.location ? window.location.pathname : '');
+    if (w.indexOf('fha') >= 0) return { legend: 'Where is the home?', use: 'How will you use the home?', state: 'Home state' };
+    if (w.indexOf('dscr') >= 0) return { legend: 'Where is the investment property?', use: 'Property use', state: 'Investment property state' };
+    if (String(id).indexOf('contact') < 0 && /home-equity|debt|adu/.test(String(id))) return { legend: 'Where is the home you’re borrowing against?', use: 'How do you use that home?', state: 'State of the home you’re borrowing against' };
+    return { legend: 'Where is the property?', use: 'Property use', state: 'Property state' };
   }
   function fields(id) {
+    var w = wording(id);
     var root = document.createElement('fieldset'); root.className = 'compliance-disclosure'; root.setAttribute('data-service-area', id);
-    root.innerHTML = '<legend>Where is the property?</legend><label for="'+id+'-use">Property use</label><select id="'+id+'-use" required data-property-use="'+id+'"><option value="">Choose property use</option><option value="primary">Primary home / owner-occupied</option><option value="second-home">Second home</option><option value="investment">Investment / rental</option></select><label for="'+id+'-state">Property state (not your current residence)</label><select id="'+id+'-state" required data-property-state="'+id+'"><option value="">Choose property state</option>'+policy.states.map(function(s){return '<option value="'+s+'">'+policy.labels[s]+'</option>';}).join('')+'</select><p role="status">This checks service area only, not loan approval.</p>';
+    root.innerHTML = '<legend>'+w.legend+'</legend><label for="'+id+'-use">'+w.use+'</label><select id="'+id+'-use" required data-property-use="'+id+'"><option value="">Choose one</option><option value="primary">Primary home</option><option value="second-home">Second home</option><option value="investment">Rental / investment</option></select><label for="'+id+'-state">'+w.state+'</label><select id="'+id+'-state" required data-property-state="'+id+'"><option value="">Choose the state</option>'+policy.states.map(function(s){return '<option value="'+s+'">'+policy.labels[s]+'</option>';}).join('')+'</select><p role="status">This checks service area only, not loan approval.</p>';
     root.querySelectorAll('[data-property-use] option').forEach(function(option) {
       if (option.value && propertyUses(id).indexOf(option.value) < 0) option.remove();
     });
+    // A single allowed use (DSCR, FHA) is the answer, not a question.
+    var useSelect = root.querySelector('[data-property-use]');
+    if (propertyUses(id).length === 1) useSelect.value = propertyUses(id)[0];
     root.addEventListener('change', function(){validate(id);}); return root;
   }
   function read(id) {
@@ -55,8 +78,8 @@
     return !!policy && data.serviceAreaResult==='supported';
   }
   window.DTServiceArea={read:read,validate:validate,fields:fields,ready:function(){return !!policy;},whenReady:whenReady,
-    check:function(use,state,id){return policy?result(use,state,id):'incomplete';},
-    uses:function(id){return policy?propertyUses(id):[];},
+    check:function(use,state,id,goal){return policy?result(use,state,id,goal):'incomplete';},
+    uses:function(id,goal){return policy?propertyUses(id,goal):[];},
     states:function(){return policy?policy.states.map(function(s){return [s,policy.labels[s]];}):[];},
     version:function(){return policy?policy.version:'';}};
   document.addEventListener('click', function(e) {

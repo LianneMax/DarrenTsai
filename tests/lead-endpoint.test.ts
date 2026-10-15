@@ -90,7 +90,7 @@ describe('request guards', () => {
    */
   describe('booking-prequal', () => {
     const PREQUAL = {
-      ...LEAD, formId: 'booking-prequal', source: 'home-contact',
+      ...LEAD, formId: 'booking-prequal', source: 'home-contact', bookingGoal: 'equity',
       propertyUse: 'primary', propertyState: 'CA', serviceAreaVersion: 'v',
       propertyType: 'single-family-condo', mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no',
     };
@@ -131,6 +131,36 @@ describe('request guards', () => {
       const refused = await handler(req({ ...PREQUAL, propertyUse: 'second-home', propertyState: 'NV' }), ctx);
       expect(refused.status).toBe(422);
       expect((await refused.json()).field).toBe('propertyState');
+    });
+
+    it('refuses a booking with no goal, or one it does not know', async () => {
+      for (const bookingGoal of [undefined, '', 'made-up']) {
+        const response = await handler(req({ ...PREQUAL, bookingGoal }), ctx);
+        expect(response.status, String(bookingGoal)).toBe(422);
+      }
+      expect(upstreamCalled()).toBe(false);
+    });
+
+    it('applies the goal: DSCR in OR passes, in NY and NH is refused; own-home rental is refused', async () => {
+      const dscr = { ...PREQUAL, bookingGoal: 'dscr', propertyUse: 'investment' };
+      expect((await handler(req({ ...dscr, propertyState: 'OR' }), ctx)).status).toBe(200);
+      for (const st of ['NY', 'NH']) expect((await handler(req({ ...dscr, propertyState: st }), ctx)).status, st).toBe(422);
+      expect((await handler(req({ ...PREQUAL, bookingGoal: 'own-home', propertyUse: 'investment', propertyState: 'TX' }), ctx)).status).toBe(422);
+    });
+
+    it('takes an equity rental used as collateral on either list (OH, OR) and refuses it in NY', async () => {
+      const rental = { ...PREQUAL, bookingGoal: 'equity', propertyUse: 'investment' };
+      for (const st of ['OH', 'OR']) expect((await handler(req({ ...rental, propertyState: st }), ctx)).status, st).toBe(200);
+      expect((await handler(req({ ...rental, propertyState: 'NY' }), ctx)).status).toBe(422);
+    });
+
+    it('sets the review flag on the server from the goal, whatever the browser sent', async () => {
+      await handler(req({ ...PREQUAL, bookingGoal: 'commercial', propertyUse: 'investment', propertyState: 'OH', reviewFlag: '' }), ctx);
+      const sent = JSON.parse(String(calls.find((c) => c.url === UPSTREAM)!.init!.body));
+      expect(sent).toMatchObject({ bookingGoal: 'commercial', reviewFlag: 'Yes' });
+      calls = [];
+      await handler(req({ ...PREQUAL, reviewFlag: 'Yes' }), ctx);
+      expect(JSON.parse(String(calls.find((c) => c.url === UPSTREAM)!.init!.body)).reviewFlag).toBe('');
     });
 
     it('holds /home-equity/ to the same rules', async () => {

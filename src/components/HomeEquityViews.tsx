@@ -156,19 +156,19 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
       <h3 className="dcp-h3">What type of property is it?</h3>
       <Choices options={PROPERTY_TYPES} value={v.propertyType} onChange={v.setPropertyType} label="Property type" />
 
-      <h3 className="dcp-h3">How is it used?</h3>
+      <h3 className="dcp-h3">How do you use the home you&apos;re borrowing against?</h3>
       <Choices options={PROPERTY_USES} value={v.propertyUse} onChange={v.setPropertyUse} label="Property use" />
 
       <div className="dcp-grid-2">
         <div>
-          <label className="input-label" htmlFor="he-zip">Property ZIP code</label>
+          <label className="input-label" htmlFor="he-zip">ZIP of the home you&apos;re borrowing against</label>
           <input id="he-zip" className="form-input" inputMode="numeric" autoComplete="postal-code"
             maxLength={5} placeholder="e.g. 92646" value={v.zip}
             onChange={(e) => v.setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
         </div>
         {zipDone && (
           <div>
-            <label className="input-label" htmlFor="he-state">Property state</label>
+            <label className="input-label" htmlFor="he-state">State of the home you&apos;re borrowing against</label>
             <select id="he-state" className="form-input" value={v.propertyState}
               onChange={(e) => v.setPropertyState(e.target.value)}>
               <option value="">Choose the property state</option>
@@ -177,7 +177,7 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
           </div>
         )}
       </div>
-      <p className="dcp-hint">The property&apos;s ZIP, not where you live. It checks that Darren is licensed there.</p>
+      <p className="dcp-hint">ZIP of the home you&apos;re borrowing against. It checks that Darren can lend on it; where you use the cash doesn&apos;t matter.</p>
 
       <div className="dcp-actions">
         <small className="dcp-caption dcp-actions-note">No application required to see this estimate.</small>

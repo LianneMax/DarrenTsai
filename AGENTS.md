@@ -306,6 +306,20 @@ or the lead lands on the generic tab with its fields dropped:
   Loan-field mapping and CRM acceptance remain pending. Max has read access
   but cannot obtain settings-edit permissions; Niko / Kocah owns the admin
   work in `.local-notes/SITE-AUDIT.md#nikos-short-checklist`. Preserve the existing lead flow.
+- **State rules, final (policy v3, 15 Oct 2026, Darren and Max).** The state
+  checked is the state of the property the loan is on, in the browser
+  (`service-area.js`) and on the server (`src/utils/serviceArea.ts`, used by
+  `lead.mts`). A primary or second home passes in the 8 licensed states. An
+  investment property (a DSCR loan, or a rental used as collateral for an
+  equity loan) passes if its state is on either list, the investment list or
+  the 8 licensed states; that fails exactly ID, MN, ND, NH, NJ, NV, NY, SD and
+  UT, and Oregon passes. For an equity loan (`/home-equity/`, `/debt-
+  consolidation/`, `/adu/`, `/book/` goal "Get cash from my home's equity")
+  the forms ask about the home being borrowed against; where the cash goes is
+  never asked. FHA is primary-only, DSCR investment-only. `/book/` asks the
+  goal first and posts it as `bookingGoal`; `lead.mts` applies its rule and
+  sets `reviewFlag` (commercial and not-sure) itself. A failing home goes to
+  `/out-of-market-primary/`, a failing investment to `/out-of-market-dscr/`.
 - **Booking is a prequal in front of HubSpot Meetings (15 Oct 2026, decided
   with Darren).** Calendly is gone: its free plan could not screen anyone and
   its public link let out-of-state visitors book around the site's state check.
@@ -313,8 +327,7 @@ or the lead lands on the generic tab with its fields dropped:
   (`service-area.js` routes them), opens the one flow in
   `public/booking-chooser.js`; `/book/` mounts the same flow inline, and every
   email booking link points there with UTMs. Order: property use, state
-  (policy v3: primary, second home or rental; a second home is served in the
-  same 8 states as a primary home) and type; the two knockouts (mortgage current, no bankruptcy or
+  and type, after a goal question that picks the rule; the two knockouts (mortgage current, no bankruptcy or
   foreclosure in 4 years); contact and consent; `POST /api/lead` as
   `formId: booking-prequal` with the page's contact source. Only after a
   confirmed receipt does the HubSpot calendar render, prefilled with

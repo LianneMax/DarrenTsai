@@ -1,4 +1,4 @@
-import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, prequalPasses } from '../../src/utils/serviceArea';
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses } from '../../src/utils/serviceArea';
 // Netlify Function: lead
 //
 // The single server-side entry point for every lead on the site. All eight
@@ -627,7 +627,9 @@ export default async (req: Request, context: Context) => {
   // Rollout switch supports old open tabs until the new fields are deployed.
   // Once enabled, omission cannot bypass screening. Never trust a client result.
   if (payload.serviceAreaVersion || Netlify.env.get('SERVICE_AREA_REQUIRED') === 'true') {
-    const result = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || payload.formId || ''));
+    // /book/'s goal decides the rule there (policy v3); other forms send none.
+    const goal = payload.formId === BOOKING_PREQUAL_FORM ? payload.bookingGoal : undefined;
+    const result = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || payload.formId || ''), goal);
     if (result !== 'supported') return jsonResponse(422, { field: 'propertyState', message: result === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
     payload.propertyState = String(payload.propertyState).trim().toUpperCase();
     payload.serviceAreaResult = result;
@@ -639,7 +641,14 @@ export default async (req: Request, context: Context) => {
   // rollout switch says: a hand-built post must not book around them.
   // Decided with Darren on 15 Oct 2026.
   if (PREQUAL_FORMS.includes(String(payload.formId))) {
-    const area = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || ''));
+    // /book/ must say what the call is for: the goal picks the rule, and an
+    // unknown or missing goal is refused rather than defaulted.
+    const goal = payload.formId === BOOKING_PREQUAL_FORM ? String(payload.bookingGoal ?? '') : undefined;
+    if (goal !== undefined && !Object.prototype.hasOwnProperty.call(BOOKING_GOALS, goal)) {
+      return jsonResponse(422, { field: 'prequal', message: 'Please choose what you would like help with.' });
+    }
+    if (goal !== undefined) payload.reviewFlag = BOOKING_GOALS[goal].review ? 'Yes' : '';
+    const area = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || ''), goal);
     if (area !== 'supported') return jsonResponse(422, { field: 'propertyState', message: area === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
     if (!prequalPasses(payload)) return jsonResponse(422, { field: 'prequal', message: 'A call is not available for these answers.' });
   }

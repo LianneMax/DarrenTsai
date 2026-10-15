@@ -187,12 +187,18 @@ describe('what the page says', () => {
 
   it('step 1 asks home, type, use and ZIP; step 2 asks goal, credit, cash and the two knockouts', () => {
     const one = html(<StepEquityHome v={view()} />);
-    for (const t of ['Single family or condo', '2 to 4 units', 'Mobile home or land', 'Primary home', 'Rental', 'Property ZIP code']) expect(one).toContain(t);
+    for (const t of ['Single family or condo', '2 to 4 units', 'Mobile home or land', 'Primary home', 'Second home', 'Rental', 'ZIP of the home you&#x27;re borrowing against']) expect(one).toContain(t);
     const two = html(<StepEquityGoal v={filled} />);
     for (const t of ['Debt payoff', 'Home improvement', 'Business or investment', 'Other', '720+', '600-719', 'Below 600',
       '$25k-75k', '$75k-150k', '$150k+', 'Is your mortgage current?', 'bankruptcy or foreclosure in the last 4 years']) {
       expect(two).toContain(t.replace('&', '&amp;'));
     }
+  });
+
+  it('asks about the home being borrowed against, never where the cash goes', () => {
+    const one = html(<StepEquityHome v={view()} />);
+    expect(one).toContain('How do you use the home you&#x27;re borrowing against?');
+    expect(one).not.toMatch(/not where you live|not your current residence|where.{0,20}(cash|money) (will|is) (be )?used/i);
   });
 
   it('asks no income, employer, start date or co-borrower question anywhere', () => {
