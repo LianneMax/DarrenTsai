@@ -95,3 +95,25 @@ describe('outside the stylesheets', () => {
     }
   });
 });
+
+/**
+ * 16 Oct 2026: PageSpeed mobile CLS 0.195 on the homepage. The headline's
+ * max-width was 17ch, and a ch is the width of the 0 in whichever font is
+ * showing, so it changed when Outfit swapped in: the headline re-wrapped and
+ * everything below it, the hero aside most of all, moved up 36px. Widths are
+ * now in em (17ch of Outfit Bold = 11.32em), which the swap cannot change.
+ */
+describe('no width that depends on which font is showing', () => {
+  it.each(['src/index.css', 'public/legal-site.css', 'public/cookie-preferences.css'])('%s sizes nothing in ch', (file) => {
+    const css = readFileSync(resolve(__dirname, '..', file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(css).not.toMatch(/(?:max-|min-)?(?:width|inline-size)\s*:\s*[\d.]+ch\b/);
+  });
+
+  it('keeps the cookie button the same size across the swap', () => {
+    const css = readFileSync(resolve(__dirname, '../public/cookie-preferences.css'), 'utf8');
+    const rule = /\.dt-cookie-reopen \{[^}]*\}/.exec(css)![0];
+    expect(rule).toContain("'Outfit Fallback'");
+    expect(rule).toMatch(/font: 12px\/16px/);
+    expect(rule).toContain('height: 32px');
+  });
+});

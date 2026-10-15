@@ -1943,7 +1943,7 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
   font-style: normal; font-weight: 800; color: var(--accent-on-teal);
   display: inline-block; transform: skewX(-10deg);
 }
-.dcp-hero-sub { color: var(--header-text); margin: 18px 0 23px; font-size: 16px; line-height: 1.6; max-width: 46ch; }
+.dcp-hero-sub { color: var(--header-text); margin: 18px 0 23px; font-size: 16px; line-height: 1.6; max-width: 30.18em; /* 46ch in Outfit Regular, fixed across the font swap (see .hub-h1) */ }
 .dcp-hero-btn { background: var(--dcp-action); color: #fff; text-decoration: none; }
 .dcp-hero-btn:hover, .hub-hero-btn:hover { box-shadow: 0 8px 24px var(--accent-glow); }
 .dcp-hero-note { font-size: 12px; color: var(--header-text); margin-top: 14px; }
@@ -2227,7 +2227,11 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 .hub-eyebrow-dark { color: var(--teal); }
 .hub-h1 {
   margin: 0; font-size: clamp(32px, 4.1vw, 50px); line-height: 1.12; letter-spacing: -.02em;
-  font-weight: 700; color: #fff; max-width: 17ch;
+  /* 17ch in Outfit Bold (its 0 is 0.666em), written in em: a ch is the width
+     of the 0 in whichever font is showing, so 17ch changed width when Outfit
+     swapped in, the headline re-wrapped and the hero below it moved (CLS
+     0.195 on PageSpeed mobile, 16 Oct). The same width, fixed. */
+  font-weight: 700; color: #fff; max-width: 11.32em;
 }
 .hub-hero-sub { color: var(--header-text); margin: 20px 0 26px; max-width: 480px; font-size: 16px; line-height: 1.6; }
 .hub-hero-btn { background: var(--dcp-action, #177f94); color: #fff; text-decoration: none; }
