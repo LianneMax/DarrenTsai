@@ -431,9 +431,14 @@
           if (r.ok) {
             identify({ name: lead.firstName + ' ' + lead.lastName, email: lead.email });
             // The one website form conversion. Once, and only for a qualified
-            // lead the server confirmed. No PII: not even the nested user_data
-            // the other forms carry.
-            track('generate_lead', { lead_source: source, form_id: FORM_ID, page_path: window.location.pathname });
+            // lead the server confirmed. user_data is attached only after
+            // consent (DT.userData), for the Google tag to hash as enhanced
+            // conversions; it is never a GA4 event parameter.
+            var conversion = { lead_source: source, form_id: FORM_ID, page_path: window.location.pathname };
+            var ud;
+            try { ud = window.DT && window.DT.userData ? window.DT.userData(lead) : undefined; } catch (e3) { ud = undefined; }
+            if (ud) conversion.user_data = ud;
+            track('generate_lead', conversion);
             showCalendar(lead);
             return;
           }

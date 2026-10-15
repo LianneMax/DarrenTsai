@@ -330,3 +330,41 @@ describe('track()', () => {
     expect(tracked).toHaveLength(2);
   });
 });
+
+/**
+ * Enhanced conversions (15 Oct 2026): DT.userData hands the Google tag's
+ * user-provided data variable the visitor's details to hash, and only after
+ * optional tracking is accepted. Before consent there is nothing to push.
+ */
+describe('DT.userData', () => {
+  const LEAD = { email: '  Ada@Example.COM ', phone: '(714) 555-0123', firstName: ' Ada ', lastName: 'LOVELACE', state: 'CA' };
+  const setConsent = (allowed: boolean | null) => {
+    if (allowed === null) delete (window as Record<string, unknown>).DTConsent;
+    else (window as Record<string, unknown>).DTConsent = { isAllowed: () => allowed, whenAllowed: () => {} };
+  };
+
+  it('returns nothing before consent, or with no consent script at all', () => {
+    setConsent(false);
+    expect((load() as unknown as { userData: (l: object) => unknown }).userData(LEAD)).toBeUndefined();
+    setConsent(null);
+    expect((load() as unknown as { userData: (l: object) => unknown }).userData(LEAD)).toBeUndefined();
+  });
+
+  it('after consent, normalises only the fields the tag hashes', () => {
+    setConsent(true);
+    const ud = (load() as unknown as { userData: (l: object) => unknown }).userData({ ...LEAD, message: 'secret', zip: '92646' });
+    expect(ud).toEqual({
+      email: 'ada@example.com',
+      phone_number: '+17145550123',
+      address: { first_name: 'ada', last_name: 'lovelace', region: 'ca', country: 'us' },
+    });
+    setConsent(null);
+  });
+
+  it('drops a phone it cannot put in E.164 rather than guessing', () => {
+    setConsent(true);
+    const ud = (load() as unknown as { userData: (l: object) => Record<string, unknown> }).userData({ email: 'a@b.co', phone: '555' });
+    expect(ud).toEqual({ email: 'a@b.co' });
+    setConsent(null);
+  });
+});

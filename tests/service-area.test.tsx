@@ -150,3 +150,28 @@ describe('state rules, final (policy v3)', () => {
     expect(renderToStaticMarkup(<ServiceAreaFields formId="dscr-magnet" />)).not.toContain('value="second-home"');
   });
 });
+
+describe('enhanced conversions on /home-equity/ (consentGatedUserData)', () => {
+  const data = { firstName: 'Ada', lastName: 'Owner', email: 'ada@example.com', phone: '7145550123', state: 'CA', source: 'home-equity', propertyUse: 'primary', propertyState: 'CA' };
+  async function run(userData?: (l: object) => unknown) {
+    const { track } = await import('../src/utils/attribution');
+    (track as unknown as ReturnType<typeof vi.fn>).mockClear();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"success":true}')));
+    vi.stubGlobal('DT', userData ? { userData } : {});
+    const submit = useLeadSubmit({ formId: 'home-equity-calculator', thankYouPath: '/t', thankYouTitle: 'T', consentGatedUserData: true });
+    expect(await submit(data)).toEqual({ ok: true });
+    return (track as unknown as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[0] === 'generate_lead')![1];
+  }
+
+  it('sends no user_data before consent', async () => {
+    expect(await run(() => undefined)).not.toHaveProperty('user_data');
+    expect(await run()).not.toHaveProperty('user_data');
+  });
+
+  it('sends DT.userData output after consent, and nothing else personal', async () => {
+    const ud = { email: 'ada@example.com', phone_number: '+17145550123' };
+    const event = await run(() => ud);
+    expect(event.user_data).toEqual(ud);
+    expect(Object.keys(event).sort()).toEqual(['form_id', 'lead_source', 'page_path', 'user_data']);
+  });
+});

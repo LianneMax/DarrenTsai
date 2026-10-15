@@ -60,14 +60,27 @@ export type LeadSubmitConfig = {
   thankYouPath: string;
   thankYouTitle: string;
   /**
-   * Leave the visitor's details out of generate_lead. The booking prequal's
-   * forms (15 Oct 2026) send no PII in any event; the older forms still carry
-   * the nested user_data described in AGENTS.md.
+   * Attach user_data to generate_lead only once optional tracking is accepted,
+   * normalised for the Google tag's user-provided data variable to hash
+   * (DT.userData in public/attribution.js). /home-equity/ and the booking
+   * prequal use this (15 Oct 2026); the older forms still carry the nested
+   * user_data described in AGENTS.md.
    */
-  omitUserData?: boolean;
+  consentGatedUserData?: boolean;
 };
 
-export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, omitUserData }: LeadSubmitConfig) {
+/** user_data from DT.userData, or nothing before consent or if the script is missing. */
+function gatedUserData(payload: LeadPayload): Record<string, unknown> {
+  try {
+    const dt = (window as Window & { DT?: { userData?: (l: object) => unknown } }).DT;
+    const ud = dt?.userData?.({ email: payload.email, phone: payload.phone, firstName: payload.firstName, lastName: payload.lastName, state: payload.state });
+    return ud ? { user_data: ud } : {};
+  } catch {
+    return {};
+  }
+}
+
+export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGatedUserData }: LeadSubmitConfig) {
   return async function submitLead(payload: LeadPayload): Promise<SubmitResult> {
     // A form that asks property use and state as its own steps (/home-equity/)
     // passes them in the payload; every other form has the shared select pair.
@@ -121,7 +134,7 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, omitUserDat
         lead_source: payload.source,
         form_id: formId,
         page_path: window.location.pathname,
-        ...(omitUserData ? {} : {
+        ...(consentGatedUserData ? gatedUserData(payload) : {
           user_data: {
             email: payload.email,
             phone_number: payload.phone,

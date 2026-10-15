@@ -330,7 +330,7 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(card().querySelector('a[href^="tel:"]')).not.toBeNull();
   });
 
-  it('fires generate_lead once with no PII, then booking_page_shown', async () => {
+  it('fires generate_lead once, with no PII before consent, then booking_page_shown', async () => {
     booking.open();
     passSteps();
     fillContact();
@@ -342,6 +342,21 @@ describe('step 3: save the lead, then the calendar', () => {
     const lead = track.mock.calls.find((c) => c[0] === 'generate_lead')![1];
     expect(lead).toEqual({ lead_source: 'home-contact', form_id: 'booking-prequal', page_path: '/' });
     expect(JSON.stringify(track.mock.calls)).not.toMatch(/ada|Lovelace|7145550123/i);
+  });
+
+  it('attaches user_data for enhanced conversions only when DT.userData returns it (after consent)', async () => {
+    const userData = vi.fn(() => ({ email: 'ada@example.com', phone_number: '+17145550123' }));
+    (window as unknown as { DT: unknown }).DT = { track, attr: () => ({}), userData };
+    booking.open();
+    passSteps();
+    fillContact();
+    await flush();
+    await flush();
+    expect(userData).toHaveBeenCalledWith(expect.objectContaining({ email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' }));
+    const lead = track.mock.calls.find((c) => c[0] === 'generate_lead')![1];
+    expect(lead).toEqual({ lead_source: 'home-contact', form_id: 'booking-prequal', page_path: '/', user_data: { email: 'ada@example.com', phone_number: '+17145550123' } });
+    // Only generate_lead carries it.
+    for (const [event, params] of track.mock.calls) if (event !== 'generate_lead') expect(JSON.stringify(params)).not.toContain('ada@');
   });
 
   it('shows no calendar when the server refuses the answers', async () => {

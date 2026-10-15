@@ -65,7 +65,7 @@ export default function HomeEquityCalculator() {
     formId: EQUITY_FORM_ID,
     thankYouPath: '/thank-you/home-equity',
     thankYouTitle: 'Thank You — Home Equity',
-    omitUserData: true,
+    consentGatedUserData: true,
   });
 
   // The ZIP proposes the state; the visitor can still change it.

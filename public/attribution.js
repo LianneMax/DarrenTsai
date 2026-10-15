@@ -186,6 +186,32 @@
 
   window.dataLayer = window.dataLayer || [];
 
+  /**
+   * Enhanced conversions: the visitor's own details for the Google tag's
+   * user-provided data variable, which hashes them before anything leaves the
+   * page (15 Oct 2026). Returned only once optional tracking is accepted, so a
+   * visitor who rejected it never has these in the dataLayer at all; GTM is
+   * not loaded for them either. Normalised the way Google asks: trimmed,
+   * lower-case email and names, E.164 phone. Only the fields the variable
+   * hashes, nothing else. In GTM these are read by the User-Provided Data
+   * variable and must never be mapped to GA4 event parameters.
+   */
+  function userData(lead) {
+    if (!lead || !window.DTConsent || !window.DTConsent.isAllowed()) return undefined;
+    var low = function (v) { return String(v == null ? '' : v).trim().toLowerCase(); };
+    var digits = String(lead.phone == null ? '' : lead.phone).replace(/\D/g, '');
+    if (digits.length === 10) digits = '1' + digits;
+    var out = {};
+    if (low(lead.email)) out.email = low(lead.email);
+    if (digits.length === 11 && digits.charAt(0) === '1') out.phone_number = '+' + digits;
+    var address = {};
+    if (low(lead.firstName)) address.first_name = low(lead.firstName);
+    if (low(lead.lastName)) address.last_name = low(lead.lastName);
+    if (low(lead.state)) address.region = low(lead.state);
+    if (address.first_name || address.last_name) { address.country = 'us'; out.address = address; }
+    return out.email || out.phone_number ? out : undefined;
+  }
+
   /** Every event carries the attribution snapshot, so GTM tags need no second lookup. */
   function track(event, paramsObj) {
     var payload = { event: event };
@@ -198,7 +224,7 @@
     return payload;
   }
 
-  window.DT = { attr: attr, track: track };
+  window.DT = { attr: attr, track: track, userData: userData };
 
   // Clicks that are conversions in their own right. Phone calls are plausibly
   // the dominant conversion for a broker and are otherwise invisible.

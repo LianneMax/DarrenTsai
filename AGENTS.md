@@ -108,7 +108,12 @@ constrain code:
   under Known state).
 - **No PII into GA4.** The `generate_lead` dataLayer payload carries nested
   `user_data` for internal use. Do not map names, emails, phones or messages into
-  GA4 event parameters.
+  GA4 event parameters. On `/book/` and `/home-equity/` (15 Oct 2026) it comes
+  from `DT.userData()` in `attribution.js`: present only after optional
+  tracking is accepted, normalised (lower-case email and names, E.164 phone),
+  and limited to the fields Google hashes. GTM reads it through a User-Provided
+  Data variable on the Google tag / Ads conversion (enhanced conversions),
+  which hashes it before sending.
 - **First touch is kept for 90 days** (Google's gclid lookback), last touch for
   30. A direct or internal-referrer pageview must never overwrite a stored ad
   click; that bug is the usual cause of "Ads reports conversions but the Sheet
@@ -341,8 +346,8 @@ or the lead lands on the generic tab with its fields dropped:
 - `BOOKING_URL` in `booking-chooser.js` is the only place the meetings link
   lives. While it is the placeholder, a passing lead is saved and sees a Call
   button but no calendar.
-- Events: `generate_lead` once, on confirmed receipt of a qualified lead, with
-  no PII; `booking_page_shown` when the calendar is drawn; `meeting_booked`
+- Events: `generate_lead` once, on confirmed receipt of a qualified lead,
+  with consent-gated `user_data` only (see No PII into GA4); `booking_page_shown` when the calendar is drawn; `meeting_booked`
   once, when the embed posts `meetingBookSucceeded` from a
   `meetings*.hubspot.com` origin (exact host match; that message name comes
   from community reports, not HubSpot docs, so confirm it on the first live
