@@ -1221,8 +1221,7 @@
         insuranceEl = $('insurance'), hoaEl = $('hoa'), dpEl = $('dp');
 
   // Last calculated scenario as raw numbers, so the opt-in payload can send
-  // exact figures instead of scraped display strings (the CRM's Loan Amount /
-  // Down Payment / Purchase Price are numeric fields) and can carry the
+  // exact figures instead of scraped display strings and can carry the
   // calculator INPUTS, not just the outputs Darren would otherwise have to
   // reverse-engineer from the ratio.
   // Whether the calculator has every input its result depends on. The opt-in
@@ -1230,7 +1229,7 @@
   let dscrReady = false;
 
   let lastCalc = {
-    price: 0, downAmount: 0, loanAmount: 0,
+    price: 0, loanAmount: 0,
     rent: 0, tax: 0, insurance: 0, hoa: 0, pi: 0, pitia: 0,
   };
 
@@ -1319,7 +1318,7 @@
     }
 
     lastCalc = {
-      price: price, downAmount: downAmount, loanAmount: loanAmount,
+      price: price, loanAmount: loanAmount,
       rent: rent, tax: tax, insurance: insurance, hoa: hoa,
       pi: pi, pitia: pitia,
     };
@@ -1706,11 +1705,10 @@
       downPayment: dscrReady ? dpEl.value + '%' : '',
       rate: dscrReady ? $('outRate').textContent : '',
       loanAmount: dscrReady ? $('outLoan').textContent : '',
-      // Exact figures, kept in the Submission Snapshot (Sheet and HubSpot) since
-      // Bonzo, which they were added for, was retired. The four above are
-      // display strings kept as-is because the Sheet columns and the PDF cover
-      // already render them that way.
-      downPaymentAmount: dscrReady ? Math.round(lastCalc.downAmount) : '',
+      // The exact price, for the DSCR tab's Purchase Price column. The four
+      // above are display strings kept as-is because the Sheet columns and the
+      // PDF cover already render them that way. (A downPaymentAmount sat here
+      // for Bonzo's numeric field; nothing read it once Bonzo was retired.)
       purchasePrice: dscrReady ? Math.round(lastCalc.price) : '',
       // The calculator inputs themselves, so Darren can see the scenario the
       // lead actually built rather than just the ratio it produced.
