@@ -126,6 +126,13 @@ describe('request guards', () => {
       expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
     });
 
+    it('holds /home-equity/ to the same rules', async () => {
+      const equity = { ...PREQUAL, formId: 'home-equity-calculator', source: 'home-equity' };
+      expect((await handler(req(equity), ctx)).status).toBe(200);
+      const refused = await handler(req({ ...equity, recentBankruptcyForeclosure: 'yes' }), ctx);
+      expect(refused.status).toBe(422);
+    });
+
     it('leaves every other form alone', async () => {
       const response = await handler(req({ ...LEAD, mortgageCurrent: 'no' }), ctx);
       expect(response.status).toBe(200);

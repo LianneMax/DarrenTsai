@@ -1,4 +1,4 @@
-import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, BOOKING_PREQUAL_FORM, prequalPasses } from '../../src/utils/serviceArea';
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, prequalPasses } from '../../src/utils/serviceArea';
 // Netlify Function: lead
 //
 // The single server-side entry point for every lead on the site. All eight
@@ -634,11 +634,11 @@ export default async (req: Request, context: Context) => {
     payload.serviceAreaVersion = SERVICE_AREA_VERSION;
   }
 
-  // The booking prequal (public/booking-chooser.js) shows Darren's calendar
-  // only to a lead that passes, so the same rules hold here whatever the
+  // The booking prequal (public/booking-chooser.js) and /home-equity/ show
+  // Darren's calendar only to a lead that passes, so the same rules hold here whatever the
   // rollout switch says: a hand-built post must not book around them.
   // Decided with Darren on 15 Oct 2026.
-  if (payload.formId === BOOKING_PREQUAL_FORM) {
+  if (PREQUAL_FORMS.includes(String(payload.formId))) {
     const area = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || ''));
     if (area !== 'supported') return jsonResponse(422, { field: 'propertyState', message: area === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
     if (!prequalPasses(payload)) return jsonResponse(422, { field: 'prequal', message: 'A call is not available for these answers.' });

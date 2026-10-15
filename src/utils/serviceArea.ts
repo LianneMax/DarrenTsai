@@ -26,6 +26,9 @@ export const OUT_OF_MARKET_MESSAGE = 'A personal review isn’t available for th
 // mortgage that is not current and a bankruptcy or foreclosure in the last 4
 // years. "No mortgage yet" passes: a buyer has no mortgage to be current on.
 export const BOOKING_PREQUAL_FORM = 'booking-prequal';
+// /home-equity/ asks the same questions as its own three steps and shows the
+// same calendar after them, so it is held to the same rules.
+export const PREQUAL_FORMS = [BOOKING_PREQUAL_FORM, 'home-equity-calculator'];
 export const PREQUAL_PROPERTY_TYPES = ['single-family-condo', '2-4-units'];
 export const PREQUAL_MORTGAGE_OK = ['yes', 'no-mortgage'];
 export function prequalPasses(p: Record<string, unknown>): boolean {

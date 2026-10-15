@@ -2231,6 +2231,8 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 }
 .hub-hero-sub { color: var(--header-text); margin: 20px 0 26px; max-width: 480px; font-size: 16px; line-height: 1.6; }
 .hub-hero-btn { background: var(--dcp-action, #177f94); color: #fff; text-decoration: none; }
+.hub-hero-link { display: inline-block; margin-left: 18px; color: var(--header-text); font-size: 15px; text-decoration: underline; }
+@media (max-width: 480px) { .hub-hero-link { display: block; margin: 14px 0 0; } }
 .hub-cred { font-size: 12px; color: var(--header-text); margin: 22px 0 0; line-height: 1.6; }
 .hub-hero-aside {
   border-left: 1px solid rgba(200, 226, 232, .25); padding-left: 30px;

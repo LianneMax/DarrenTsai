@@ -17,7 +17,7 @@ describe('the pre-rendered homepage shell', () => {
     const shell = renderHomeShell();
     expect(shell.startsWith('<nav')).toBe(true);
     expect(shell).toContain('<main>');
-    expect(shell).toMatch(/<h1[^>]*>Start with your goal\. Make your next move/);
+    expect(shell).toMatch(/<h1[^>]*>Access your home <em>equity\.<\/em>/);
     expect(shell.match(/<h1\b/g)).toHaveLength(1);
   });
 

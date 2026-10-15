@@ -410,32 +410,8 @@
     }
 
     function showCalendar(lead) {
-      var call = '<a class="dt-book-call" href="' + PHONE_HREF + '">Prefer to talk now? Call ' + PHONE_DISPLAY + '</a>';
-      if (!BOOKING_READY) {
-        card.innerHTML = '<h2 class="dt-book-title">You\'re all set, ' + esc(lead.firstName) + '</h2>' +
-          '<p class="dt-book-sub">Darren has your details and will reach out to set a time.</p>' + call +
-          '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
-        wireClose();
-        return;
-      }
-      var src = BOOKING_URL + (BOOKING_URL.indexOf('?') === -1 ? '?' : '&') + 'embed=true' +
-        '&firstname=' + encodeURIComponent(lead.firstName) +
-        '&lastname=' + encodeURIComponent(lead.lastName) +
-        '&email=' + encodeURIComponent(lead.email);
-      // Wider only once there is a calendar to lay out.
-      card.classList.add('dt-cal');
-      card.innerHTML = '<h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' +
-        '<p class="dt-book-sub">Free 15 minute call with Darren.</p>' +
-        '<div class="dt-book-frame"><div class="meetings-iframe-container" data-src="' + esc(src) + '"></div></div>' + call +
-        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
+      renderCalendar(card, lead, '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>');
       wireClose();
-      // HubSpot's embed script scans for containers once, when it runs, so it
-      // is added after the container rather than preloaded.
-      var js = document.createElement('script');
-      js.src = MEETINGS_SCRIPT;
-      js.async = true;
-      card.appendChild(js);
-      track('booking_page_shown', { page_path: window.location.pathname });
     }
 
     function decline(reason) {
@@ -458,6 +434,46 @@
         '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
       wireClose();
     });
+  }
+
+  /**
+   * The calendar, for a lead that has passed and been saved. Shared by this
+   * flow and by /home-equity/, which asks the same questions as its own steps
+   * (DTBooking.calendar). While BOOKING_URL is the placeholder, the Call button
+   * and a plain "Darren has your details" stand in for it.
+   */
+  function renderCalendar(card, lead, footer) {
+    injectStyles();
+    var call = '<a class="dt-book-call" href="' + PHONE_HREF + '">Prefer to talk now? Call ' + PHONE_DISPLAY + '</a>';
+    if (!BOOKING_READY) {
+      card.innerHTML = '<h2 class="dt-book-title">You\'re all set, ' + esc(lead.firstName) + '</h2>' +
+        '<p class="dt-book-sub">Darren has your details and will reach out to set a time.</p>' + call + (footer || '');
+      return;
+    }
+    var src = BOOKING_URL + (BOOKING_URL.indexOf('?') === -1 ? '?' : '&') + 'embed=true' +
+      '&firstname=' + encodeURIComponent(lead.firstName || '') +
+      '&lastname=' + encodeURIComponent(lead.lastName || '') +
+      '&email=' + encodeURIComponent(lead.email || '');
+    // Wider only once there is a calendar to lay out.
+    card.classList.add('dt-cal');
+    card.innerHTML = '<h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' +
+      '<p class="dt-book-sub">Free 15 minute call with Darren.</p>' +
+      '<div class="dt-book-frame"><div class="meetings-iframe-container" data-src="' + esc(src) + '"></div></div>' + call + (footer || '');
+    // HubSpot's embed script scans for containers once, when it runs, so it
+    // is added after the container rather than preloaded.
+    var js = document.createElement('script');
+    js.src = MEETINGS_SCRIPT;
+    js.async = true;
+    card.appendChild(js);
+    track('booking_page_shown', { page_path: window.location.pathname });
+  }
+
+  /** For a page that ran the prequal itself: draw the calendar inline in `el`. */
+  function calendar(el, lead) {
+    if (!el || !lead) return;
+    el.classList.add('dt-book-inline');
+    el.innerHTML = '<div class="dt-book-card"></div>';
+    renderCalendar(el.querySelector('.dt-book-card'), lead, '');
   }
 
   function close() {
@@ -546,5 +562,5 @@
 
   // preload is kept so existing callers do not break; nothing is worth
   // fetching before the prequal passes.
-  window.DTBooking = { open: open, close: close, mount: mount, preload: function () {}, identify: identify };
+  window.DTBooking = { open: open, close: close, mount: mount, calendar: calendar, preload: function () {}, identify: identify };
 })();

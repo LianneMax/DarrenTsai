@@ -59,17 +59,26 @@ export type LeadSubmitConfig = {
   formId: string;
   thankYouPath: string;
   thankYouTitle: string;
+  /**
+   * Leave the visitor's details out of generate_lead. The booking prequal's
+   * forms (15 Oct 2026) send no PII in any event; the older forms still carry
+   * the nested user_data described in AGENTS.md.
+   */
+  omitUserData?: boolean;
 };
 
-export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmitConfig) {
+export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, omitUserData }: LeadSubmitConfig) {
   return async function submitLead(payload: LeadPayload): Promise<SubmitResult> {
-    const screening = document.querySelector('[data-service-area="' + formId + '"]');
-    const propertyUse = document.querySelector<HTMLSelectElement>('[data-property-use="' + formId + '"]')?.value;
-    const propertyState = document.querySelector<HTMLSelectElement>('[data-property-state="' + formId + '"]')?.value;
-    const result = serviceArea(propertyUse, propertyState, formId);
+    // A form that asks property use and state as its own steps (/home-equity/)
+    // passes them in the payload; every other form has the shared select pair.
+    const fromPayload = typeof payload.propertyUse === 'string' && typeof payload.propertyState === 'string';
+    const screening = fromPayload || document.querySelector('[data-service-area="' + formId + '"]');
+    const propertyUse = fromPayload ? String(payload.propertyUse) : document.querySelector<HTMLSelectElement>('[data-property-use="' + formId + '"]')?.value;
+    const propertyState = fromPayload ? String(payload.propertyState) : document.querySelector<HTMLSelectElement>('[data-property-state="' + formId + '"]')?.value;
+    const result = serviceArea(propertyUse, propertyState, String(payload.source || formId));
     if (screening && result !== 'supported') {
       const message = result === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE;
-      const status = screening.querySelector('[role="status"]'); if (status) status.textContent = message;
+      const status = screening instanceof Element ? screening.querySelector('[role="status"]') : null; if (status) status.textContent = message;
       return { ok: false, kind: 'fieldError', field: 'propertyState', message };
     }
     const acknowledgment = document.querySelector<HTMLInputElement>('input[data-privacy-form="' + formId + '"]');
@@ -112,11 +121,13 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle }: LeadSubmi
         lead_source: payload.source,
         form_id: formId,
         page_path: window.location.pathname,
-        user_data: {
-          email: payload.email,
-          phone_number: payload.phone,
-          address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state },
-        },
+        ...(omitUserData ? {} : {
+          user_data: {
+            email: payload.email,
+            phone_number: payload.phone,
+            address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state },
+          },
+        }),
       });
       track('virtual_page_view', {
         page_path: thankYouPath,

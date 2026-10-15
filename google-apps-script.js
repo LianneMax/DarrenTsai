@@ -162,7 +162,9 @@ const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
 const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot',
   // The booking prequal's answers (15 Oct 2026), after everything that was
   // already there: a new name is appended to a live tab, nothing moves.
-  'Property Type', 'Mortgage Current', 'Recent Bankruptcy/Foreclosure'];
+  'Property Type', 'Mortgage Current', 'Recent Bankruptcy/Foreclosure',
+  // /home-equity/'s three-step rebuild (15 Oct 2026), appended the same way.
+  'Property ZIP', 'Credit Range', 'Cash Range'];
 
 /**
  * The addresses used for testing, matched with any +tag stripped.
@@ -486,7 +488,7 @@ function finishLeadSchema(schema) {
     ]);
     const own = schema.detailValues(d);
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
-    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '']);
+    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '', d.propertyZip || '', d.creditRange || '', d.cashRange || '']);
     SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
     const attr = byHeader(ATTR_HEADERS, attrRow(d));
     ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });

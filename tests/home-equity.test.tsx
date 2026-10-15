@@ -12,53 +12,74 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildEquityLead, equityNumbers } from '../src/utils/homeEquity';
+import { stateForZip } from '../src/utils/zipState';
+import { prequalPasses } from '../src/utils/serviceArea';
 import EquityPage, {
-  EquityPageHero, StepEquityHome, StepEquityOptions, StepEquityContact, EquityRecap, type EquityPageView,
+  EquityPageHero, StepEquityHome, StepEquityGoal, StepEquityContact, EquityRecap, EquityDeclined, EquityProducts,
+  EQUITY_FORM_ID, type EquityPageView,
 } from '../src/components/HomeEquityViews';
 import { loadGas, recordingFetch, type FetchCall } from './helpers/gas-harness';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
+/** Source without comments: the comments name the banned claims on purpose. */
+const code = (p: string) => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/^\s*\/\/.*$/gm, '');
 const noop = () => {};
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
 
-const CONTACT = { firstName: 'Ava', lastName: 'Owner', phone: '(714) 882-1190', email: 'ava@example.com', state: 'CA' };
+const CONTACT = { firstName: 'Ava', lastName: 'Owner', phone: '(714) 882-1190', email: 'ava@example.com' };
+const ANSWERS = {
+  propertyType: 'single-family-condo', propertyUse: 'primary', propertyZip: '92646', propertyState: 'CA',
+  goal: 'Home improvement', creditRange: '720+', cashRange: '$75k-150k',
+  mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no',
+};
 
 describe('the lead the page sends', () => {
-  it('carries the snapshot, the goal and the source', () => {
-    const lead = buildEquityLead({
-      ...CONTACT, homeValue: 650000, mortgageBalance: 350000,
-      goal: 'Renovation / ADU', amountExploring: 75000, preference: 'Predictable payments',
-    });
+  it('carries the snapshot, the answers and the source', () => {
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, homeValue: 650000, mortgageBalance: 350000 });
     expect(lead).toMatchObject({
-      source: 'home-equity',
+      source: 'home-equity', state: 'CA',
       homeValue: 650000, mortgageBalance: 350000,
       estimatedEquity: 300000, currentLtv: 53.8,
-      goal: 'Renovation / ADU', amountExploring: 75000, illustrativeCltv: 65.4,
-      preference: 'Predictable payments',
+      ...ANSWERS,
     });
+    expect(prequalPasses(lead)).toBe(true);
   });
 
-  it('sends a skipped amount and preference as blank, never as 0', () => {
-    const lead = buildEquityLead({
-      ...CONTACT, homeValue: 650000, mortgageBalance: 350000,
-      goal: 'Pay Off Debt', amountExploring: 0, preference: '',
-    });
+  it('sends the columns it no longer asks for as blank, never as 0', () => {
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, homeValue: 650000, mortgageBalance: 350000 });
     expect(lead.amountExploring).toBe('');
     expect(lead.illustrativeCltv).toBe('');
     expect(lead.preference).toBe('');
   });
 
   it('keeps a paid-off home: a balance of 0 is an answer', () => {
-    const lead = buildEquityLead({
-      ...CONTACT, homeValue: 500000, mortgageBalance: 0, goal: 'Investment', amountExploring: 0, preference: '',
-    });
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, mortgageCurrent: 'no-mortgage', homeValue: 500000, mortgageBalance: 0 });
     expect(lead.mortgageBalance).toBe(0);
     expect(lead.estimatedEquity).toBe(500000);
     expect(lead.currentLtv).toBe(0);
+    expect(prequalPasses(lead)).toBe(true);
   });
 
   it('computes nothing from a missing home value', () => {
     expect(equityNumbers(0, 350000, 75000)).toEqual({ equity: 0, ltv: 0, cltv: 0 });
+  });
+
+  it('is held to the booking prequal rules on the server', () => {
+    expect(read('src/utils/serviceArea.ts')).toContain(`PREQUAL_FORMS = [BOOKING_PREQUAL_FORM, '${EQUITY_FORM_ID}']`);
+  });
+});
+
+describe('the ZIP gives the state', () => {
+  it.each([
+    ['92646', 'CA'], ['90210', 'CA'], ['96813', 'HI'], ['97201', 'OR'], ['85001', 'AZ'],
+    ['33101', 'FL'], ['19103', 'PA'], ['37201', 'TN'], ['75201', 'TX'], ['88510', 'TX'],
+    ['10001', 'NY'], ['83702', 'ID'], ['20001', 'DC'], ['05501', 'MA'], ['73301', 'TX'],
+  ])('%s is in %s', (zip, state) => {
+    expect(stateForZip(zip)).toBe(state);
+  });
+
+  it('places nothing it cannot be sure of', () => {
+    for (const zip of ['', '9264', 'abcde', '00601', '09001', '96201', '96910']) expect(stateForZip(zip), zip).toBe('');
   });
 });
 
@@ -73,10 +94,7 @@ describe('where it lands: the Home Equity tab', () => {
   }
 
   it('writes every equity column under its own header', () => {
-    const lead = buildEquityLead({
-      ...CONTACT, homeValue: 650000, mortgageBalance: 350000,
-      goal: 'Renovation / ADU', amountExploring: 75000, preference: '',
-    });
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, homeValue: 650000, mortgageBalance: 350000 });
     const { res, rowOf, tabs } = post({ ...lead, utm_source: 'youtube', utm_campaign: 'yt-heloc' });
     expect(res.success).toBe(true);
     expect(tabs.has('Leads')).toBe(false);
@@ -84,19 +102,16 @@ describe('where it lands: the Home Equity tab', () => {
       'First Name': 'Ava', State: 'CA', Source: 'home-equity',
       'Home Value': 650000, 'Mortgage Balance': 350000,
       'Estimated Home Equity': 300000, 'Current LTV': 53.8,
-      Goal: 'Renovation / ADU', 'Amount Exploring': 75000, 'Illustrative CLTV': 65.4,
-      Preference: '', 'Licensed?': 'Yes',
+      Goal: 'Home improvement', 'Amount Exploring': '', 'Illustrative CLTV': '', Preference: '',
+      'Licensed?': 'Yes', 'Property Type': 'single-family-condo', 'Mortgage Current': 'yes',
+      'Recent Bankruptcy/Foreclosure': 'no', 'Property ZIP': '92646', 'Credit Range': '720+', 'Cash Range': '$75k-150k',
       'UTM Source': 'youtube', 'UTM Campaign': 'yt-heloc',
     });
   });
 
-  it('writes a paid-off balance as 0 and a skipped amount as blank', () => {
-    const lead = buildEquityLead({
-      ...CONTACT, homeValue: 500000, mortgageBalance: 0, goal: 'Investment', amountExploring: 0, preference: '',
-    });
-    expect(post(lead).rowOf('Home Equity')).toMatchObject({
-      'Mortgage Balance': 0, 'Amount Exploring': '', 'Illustrative CLTV': '',
-    });
+  it('writes a paid-off balance as 0', () => {
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, mortgageCurrent: 'no-mortgage', homeValue: 500000, mortgageBalance: 0 });
+    expect(post(lead).rowOf('Home Equity')).toMatchObject({ 'Mortgage Balance': 0 });
   });
 });
 
@@ -108,10 +123,7 @@ describe('after Bonzo was retired (15 Oct 2026)', () => {
       props: { BONZO_API_KEY: 't', BONZO_CAMPAIGN_ID: '999', BONZO_HOME_EQUITY_CAMPAIGN_ID: '4321' },
       fetch: recordingFetch(fetches, []),
     });
-    queue(buildEquityLead({
-      ...CONTACT, homeValue: 650000, mortgageBalance: 350000,
-      goal: 'Renovation / ADU', amountExploring: 75000, preference: 'Keeping my current mortgage',
-    }));
+    queue(buildEquityLead({ ...CONTACT, ...ANSWERS, homeValue: 650000, mortgageBalance: 350000 }));
     gas.processFollowUps();
     expect(fetches.filter((f) => f.url.includes('getbonzo.com'))).toHaveLength(0);
   });
@@ -120,22 +132,35 @@ describe('after Bonzo was retired (15 Oct 2026)', () => {
 /** An untouched page. */
 function view(over: Partial<EquityPageView> = {}): EquityPageView {
   return {
-    step: 1, goStep: noop,
-    homeValue: '', setHomeValue: noop, mtgBalance: '', setMtgBalance: noop, amount: '', setAmount: noop,
-    hv: 0, mb: 0, amt: 0, hasHome: false, equity: 0, ltv: 0, cltv: 0,
-    goal: '', setGoal: noop, preference: '', setPreference: noop,
+    step: 1, goStep: noop, next: noop,
+    homeValue: '', setHomeValue: noop, mtgBalance: '', setMtgBalance: noop,
+    hv: 0, mb: 0, hasHome: false, equity: 0,
+    propertyType: '', setPropertyType: noop, propertyUse: '', setPropertyUse: noop,
+    zip: '', setZip: noop, propertyState: '', setPropertyState: noop,
+    goal: '', setGoal: noop, creditRange: '', setCreditRange: noop, cashRange: '', setCashRange: noop,
+    mortgageCurrent: '', setMortgageCurrent: noop, bankruptcy: '', setBankruptcy: noop,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
-    email: '', setEmail: noop, emailHint: null, setEmailHint: noop, usState: '', setUsState: noop,
-    sending: false, submitted: false, submitLead: noop, openBooking: noop,
+    email: '', setEmail: noop, emailHint: null, setEmailHint: noop,
+    sending: false, submitted: false, declined: '', submitLead: noop,
     ...over,
   };
 }
 
 const filled = view({
-  step: 2, homeValue: '650000', mtgBalance: '350000', amount: '75000',
-  hv: 650000, mb: 350000, amt: 75000, hasHome: true, equity: 300000, ltv: 53.8, cltv: 65.4,
-  goal: 'Renovation / ADU',
+  step: 2, homeValue: '650000', mtgBalance: '350000', hv: 650000, mb: 350000, hasHome: true, equity: 300000,
+  propertyType: 'single-family-condo', propertyUse: 'primary', zip: '92646', propertyState: 'CA',
+  goal: 'Home improvement', creditRange: '720+', cashRange: '$75k-150k', mortgageCurrent: 'yes', bankruptcy: 'no',
+  fname: 'Ava', lname: 'Owner', email: 'ava@example.com',
 });
+
+/**
+ * Held until Saxton approves them (15 Oct 2026). Checked across the whole
+ * page source, not just one render, so a later step cannot slip one in.
+ */
+const UNAPPROVED = [
+  /approval locked in/i, /zero credit impact/i, /soft[- ]pull/i, /no hard pull/i, /tax[- ]free/i,
+  /\$400,?000/, /exact funded amount/i, /15 minutes?\b.*approv|approv.*15 minutes?/i, /\b7 days\b/i,
+];
 
 describe('what the page says', () => {
   it('the hero is the only <h1>, carries no phone number and needs no JavaScript', () => {
@@ -145,7 +170,7 @@ describe('what the page says', () => {
     expect(hero).toContain('href="#equity"');
   });
 
-  it('arrives empty: no figure, no goal chosen, every number an example', () => {
+  it('arrives empty: no figure, no answer chosen, every number an example', () => {
     const page = html(<StepEquityHome v={view()} />);
     expect(page).not.toContain('Estimated Home Equity');
     expect(page).not.toContain('aria-pressed="true"');
@@ -155,37 +180,65 @@ describe('what the page says', () => {
     expect(page).not.toMatch(/value="\d/);
   });
 
-  it('draws the snapshot once there is a value and a balance, including a balance of 0', () => {
-    expect(html(<StepEquityHome v={{ ...filled, step: 1 }} />)).toContain('Estimated Home Equity');
+  it('draws the live equity bar once there is a value and a balance, including a balance of 0', () => {
+    expect(html(<StepEquityHome v={{ ...filled, step: 1 }} />)).toContain('class="dcp-bar"');
     expect(html(<StepEquityHome v={{ ...filled, step: 1, mb: 0, mtgBalance: '0' }} />)).toContain('$650,000');
   });
 
-  it('quotes no payment, rate or approval', () => {
-    const page = html(<StepEquityOptions v={filled} />);
-    expect(page).not.toMatch(/\/mo\b|you qualify|pre-?approved|\bAPR\b/i);
-    expect(page).toContain('Illustrative CLTV');
-    expect(page).toContain('Not an approval or available credit.');
+  it('step 1 asks home, type, use and ZIP; step 2 asks goal, credit, cash and the two knockouts', () => {
+    const one = html(<StepEquityHome v={view()} />);
+    for (const t of ['Single family or condo', '2 to 4 units', 'Mobile home or land', 'Primary home', 'Rental', 'Property ZIP code']) expect(one).toContain(t);
+    const two = html(<StepEquityGoal v={filled} />);
+    for (const t of ['Debt payoff', 'Home improvement', 'Business or investment', 'Other', '720+', '600-719', 'Below 600',
+      '$25k-75k', '$75k-150k', '$150k+', 'Is your mortgage current?', 'bankruptcy or foreclosure in the last 4 years']) {
+      expect(two).toContain(t.replace('&', '&amp;'));
+    }
   });
 
-  it('says when the amount goes past the 85% CLTV lenders commonly use', () => {
-    expect(html(<StepEquityOptions v={filled} />)).not.toContain('above the 85%');
-    expect(html(<StepEquityOptions v={{ ...filled, cltv: 92.3 }} />)).toContain('above the 85% combined loan-to-value');
+  it('asks no income, employer, start date or co-borrower question anywhere', () => {
+    const src = code('src/components/HomeEquityViews.tsx');
+    expect(src).not.toMatch(/income|employer|start date|co-?borrower/i);
   });
 
-  it('asks only for contact details on step 3', () => {
+  it('asks only contact and consent on step 3, with no second state question', () => {
     const page = html(<StepEquityContact v={view({ step: 3 })} />);
-    expect(page).not.toMatch(/Best Time|How did you hear/i);
+    expect(page).not.toMatch(/Best Time|How did you hear|data-property-state/i);
+    expect(page).toContain(`data-service-area="${EQUITY_FORM_ID}"`);
+    expect(page).toContain(`data-privacy-form="${EQUITY_FORM_ID}"`);
     expect(page).toContain('Not a loan application, approval or commitment to lend.');
   });
 
-  it('confirms with the estimate and goal it sent, and promises no time', () => {
+  it('declines with no calendar and no phone number', () => {
+    for (const declined of ['property-type', 'knockout'] as const) {
+      const page = html(<EquityDeclined v={view({ declined })} />);
+      expect(page).not.toMatch(/tel:|meetings/);
+    }
+  });
+
+  it('confirms with the estimate and answers it sent, and promises no time', () => {
     const page = html(<EquityRecap v={{ ...filled, submitted: true }} />);
     expect(page).toContain('Your request has been received.');
     expect(page).toContain('$300,000');
-    expect(page).toContain('$75,000');
-    expect(page).toContain('Renovation / ADU');
+    expect(page).toContain('Home improvement');
     expect(page).toContain('Darren will be in touch.');
+    expect(page).toContain('dcp-recap-calendar');
     expect(page).not.toMatch(/business day|shortly|has reviewed/i);
+  });
+
+  it('explains HELOC first, then the fixed loan, then cash-out, and names no HEI', () => {
+    const page = html(<EquityProducts />);
+    const order = ['HELOC', 'Fixed home equity loan', 'Cash-out refinance'].map((t) => page.indexOf(t));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(page).not.toMatch(/\bHEI\b|home equity investment|equity sharing/i);
+    expect(page).not.toMatch(/\/mo\b|you qualify|pre-?approved|\bAPR\b/i);
+  });
+
+  it('makes none of the claims awaiting Saxton approval', () => {
+    for (const file of ['src/components/HomeEquityViews.tsx', 'src/components/HomeEquityCalculator.tsx', 'src/components/HomeHub.tsx']) {
+      const src = code(file);
+      for (const claim of UNAPPROVED) expect(src, `${file}: ${claim}`).not.toMatch(claim);
+    }
   });
 
   it('keeps id="equity" on the flow, which the hero button scrolls to', () => {

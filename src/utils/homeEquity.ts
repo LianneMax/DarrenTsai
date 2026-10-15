@@ -9,22 +9,31 @@
  * says what anyone can borrow. That is a lender's answer, not a calculator's.
  */
 
-/** "What would you use your equity for?" Values from design preview v4. */
+/**
+ * The three-step page's taps (15 Oct 2026). Values are what the Sheet and
+ * HubSpot receive, so a label change here is a data change there.
+ */
 export const EQUITY_GOALS = [
-  'Pay Off Debt',
-  'Renovation / ADU',
-  'Investment',
-  'Major Expense',
-  'Something Else',
+  'Debt payoff',
+  'Home improvement',
+  'Business or investment',
+  'Other',
 ] as const;
 
-/** "What matters most to you?" Optional. Values from design preview v4. */
-export const EQUITY_PREFERENCES = [
-  'Flexible access',
-  'Predictable payments',
-  'Keeping my current mortgage',
-  'Lowest monthly payment',
-  "I'm not sure",
+export const CREDIT_RANGES = ['720+', '600-719', 'Below 600'] as const;
+
+export const CASH_RANGES = ['$25k-75k', '$75k-150k', '$150k+'] as const;
+
+/** Property type, primary/rental and the knockouts share the booking prequal's values. */
+export const PROPERTY_TYPES = [
+  ['single-family-condo', 'Single family or condo'],
+  ['2-4-units', '2 to 4 units'],
+  ['mobile-land', 'Mobile home or land'],
+] as const;
+
+export const PROPERTY_USES = [
+  ['primary', 'Primary home'],
+  ['investment', 'Rental'],
 ] as const;
 
 /**
@@ -57,34 +66,48 @@ export interface EquityLeadInput {
   lastName: string;
   phone: string;
   email: string;
-  state: string;
   homeValue: number;
   /** 0 is a real answer (a paid-off home), so the caller passes it through. */
   mortgageBalance: number;
+  propertyType: string;
+  propertyUse: string;
+  propertyZip: string;
+  propertyState: string;
   goal: string;
-  /** 0 when skipped. */
-  amountExploring: number;
-  preference: string;
+  creditRange: string;
+  cashRange: string;
+  mortgageCurrent: string;
+  recentBankruptcyForeclosure: string;
 }
 
 /**
- * The body posted to /api/lead. Every optional answer the visitor skipped is
- * sent as '' and never as 0 or a default, which is the field rule the whole
- * site follows (tests/field-rules.test.tsx): a 0 reads as an answer.
+ * The body posted to /api/lead. The property state is the Sheet's State too:
+ * the page asks for the property's ZIP, not where the visitor lives. Amount
+ * Exploring, Illustrative CLTV and Preference are no longer asked and go blank,
+ * so the Home Equity tab keeps its columns. The prequal answers ride with it so
+ * lead.mts can hold this form to the same rules as the booking prequal.
  */
 export function buildEquityLead(i: EquityLeadInput) {
-  const n = equityNumbers(i.homeValue, i.mortgageBalance, i.amountExploring);
+  const n = equityNumbers(i.homeValue, i.mortgageBalance, 0);
   return {
     firstName: i.firstName, lastName: i.lastName, phone: i.phone, email: i.email,
-    state: i.state,
+    state: i.propertyState,
     homeValue: i.homeValue,
     mortgageBalance: i.mortgageBalance,
     estimatedEquity: Math.round(n.equity),
     currentLtv: oneDecimal(n.ltv),
     goal: i.goal,
-    amountExploring: i.amountExploring > 0 ? i.amountExploring : '',
-    illustrativeCltv: n.cltv > 0 ? oneDecimal(n.cltv) : '',
-    preference: i.preference,
+    amountExploring: '',
+    illustrativeCltv: '',
+    preference: '',
+    propertyType: i.propertyType,
+    propertyUse: i.propertyUse,
+    propertyState: i.propertyState,
+    propertyZip: i.propertyZip,
+    creditRange: i.creditRange,
+    cashRange: i.cashRange,
+    mortgageCurrent: i.mortgageCurrent,
+    recentBankruptcyForeclosure: i.recentBankruptcyForeclosure,
     source: 'home-equity',
     timestamp: new Date().toISOString(),
   };

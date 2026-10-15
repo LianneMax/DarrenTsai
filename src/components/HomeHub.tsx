@@ -84,20 +84,24 @@ export function HomeHero() {
     <section className="hub-hero">
       <div className="hub-hero-inner container">
         <div>
-          <span className="hub-eyebrow">Mortgage &amp; Real Estate Guidance</span>
+          <span className="hub-eyebrow">Home Equity · HELOC</span>
+          {/* Home equity leads since 15 Oct 2026 (with Darren). Every other goal
+              and page stays: 101 YouTube descriptions link to them. */}
           <h1 className="hub-h1">
-            Start with your goal. Make your next move <em>with confidence.</em>
+            Access your home <em>equity.</em>
           </h1>
           <p className="hub-hero-sub">
-            Pay off debt, access equity, renovate, invest or buy a home. Understand your numbers first,
-            then explore what makes sense for you.
+            See your estimated equity in three quick steps, then learn how a HELOC, a fixed home equity
+            loan or a cash-out refinance could fit. Paying off debt, renovating, investing or buying?
+            Those are all still here.
           </p>
-          <a href="#goals" className="btn hub-hero-btn">
-            Explore Your Options
+          <a href="/home-equity/" className="btn hub-hero-btn">
+            Check My Home Equity
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </a>
+          <a href="#goals" className="hub-hero-link">Explore every goal</a>
           <p className="hub-cred">NMLS #{NMLS} · DRE #{DRE} · {COMPANY}</p>
         </div>
 
@@ -121,8 +125,8 @@ export function HomeHero() {
 // ─── Goals ────────────────────────────────────────────────────────────────────
 
 const GOALS: Array<{ name: string; desc: string; href: string; icon: ReactNode }> = [
+  { name: 'Access Your Home Equity', desc: 'Estimate your equity and explore a HELOC and your other options.', href: '/home-equity/', icon: ICONS.house },
   { name: 'Pay Off Debt', desc: 'Compare ways to consolidate higher-interest debt.', href: '/debt-consolidation/', icon: ICONS.wallet },
-  { name: 'Access Home Equity', desc: 'Estimate your equity and explore your options.', href: '/home-equity/', icon: ICONS.house },
   { name: 'Renovate / Build an ADU', desc: 'Explore funding for your next home project.', href: '/adu/', icon: ICONS.hammer },
 ];
 
