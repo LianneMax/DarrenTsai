@@ -133,8 +133,10 @@ constrain code:
   `DTBooking.calendar`. No income, employer, start date or co-borrower
   questions. Form id `home-equity-calculator` is held to the booking prequal
   rules in `lead.mts` (`PREQUAL_FORMS`). Products are explained HELOC first,
-  then the fixed home equity loan, then cash-out refinance. No HEI content, and
-  none of the claims awaiting Saxton (approval locked in, zero credit impact or
+  then the fixed home equity loan, cash-out refinance and a home equity
+  investment (HEI, Darren 15 Oct 2026: no provider, no pricing, "Availability
+  varies by state and property"); the visitor's optional pick goes to the
+  Preference column. None of the claims awaiting Saxton (approval locked in, zero credit impact or
   soft pull, tax-free, up to $400,000+, exact funded amount, approved in 15
   minutes or 7 days); `tests/home-equity.test.tsx` fails on each.
 - **Renovation and ADU have their own page, `/adu/` (revamp phase 5, 9 Oct;

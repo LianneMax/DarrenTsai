@@ -46,6 +46,7 @@ export default function HomeEquityCalculator() {
   const [cashRange, setCashRange] = useState('');
   const [mortgageCurrent, setMortgageCurrent] = useState('');
   const [bankruptcy, setBankruptcy] = useState('');
+  const [preference, setPreference] = useState('');
 
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
@@ -163,7 +164,7 @@ export default function HomeEquityCalculator() {
       firstName: fname, lastName: lname, phone, email,
       homeValue: hv, mortgageBalance: mb,
       propertyType, propertyUse, propertyZip: zip, propertyState,
-      goal, creditRange, cashRange, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy,
+      goal, creditRange, cashRange, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy, preference,
     }));
     if (!result.ok) {
       inFlight.current = false;
@@ -193,7 +194,7 @@ export default function HomeEquityCalculator() {
     homeValue, setHomeValue, mtgBalance, setMtgBalance, hv, mb, hasHome, equity,
     propertyType, setPropertyType, propertyUse, setPropertyUse, zip, setZip, propertyState, setPropertyState,
     goal, setGoal, creditRange, setCreditRange, cashRange, setCashRange,
-    mortgageCurrent, setMortgageCurrent, bankruptcy, setBankruptcy,
+    mortgageCurrent, setMortgageCurrent, bankruptcy, setBankruptcy, preference, setPreference,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint,
     sending, submitted, declined, submitLead: () => { void submitLead(); },

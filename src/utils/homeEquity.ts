@@ -24,6 +24,13 @@ export const CREDIT_RANGES = ['720+', '600-719', 'Below 600'] as const;
 
 export const CASH_RANGES = ['$25k-75k', '$75k-150k', '$150k+'] as const;
 
+/**
+ * "Which option interests you most?" Optional, on step 2, and saved to the
+ * Home Equity tab's existing Preference column. HEI added 15 Oct 2026
+ * (Darren), described without a provider or pricing.
+ */
+export const EQUITY_OPTIONS = ['HELOC', 'Fixed home equity loan', 'Cash-out refinance', 'Home equity investment (HEI)', 'Not sure yet'] as const;
+
 /** Property type, primary/rental and the knockouts share the booking prequal's values. */
 export const PROPERTY_TYPES = [
   ['single-family-condo', 'Single family or condo'],
@@ -79,13 +86,15 @@ export interface EquityLeadInput {
   cashRange: string;
   mortgageCurrent: string;
   recentBankruptcyForeclosure: string;
+  /** Optional; '' when skipped. */
+  preference: string;
 }
 
 /**
  * The body posted to /api/lead. The property state is the Sheet's State too:
  * the page asks for the property's ZIP, not where the visitor lives. Amount
- * Exploring, Illustrative CLTV and Preference are no longer asked and go blank,
- * so the Home Equity tab keeps its columns. The prequal answers ride with it so
+ * Exploring and Illustrative CLTV are no longer asked and go blank, so the Home
+ * Equity tab keeps its columns. Preference holds the optional product choice. The prequal answers ride with it so
  * lead.mts can hold this form to the same rules as the booking prequal.
  */
 export function buildEquityLead(i: EquityLeadInput) {
@@ -100,7 +109,7 @@ export function buildEquityLead(i: EquityLeadInput) {
     goal: i.goal,
     amountExploring: '',
     illustrativeCltv: '',
-    preference: '',
+    preference: i.preference,
     propertyType: i.propertyType,
     propertyUse: i.propertyUse,
     propertyState: i.propertyState,

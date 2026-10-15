@@ -30,7 +30,7 @@ const CONTACT = { firstName: 'Ava', lastName: 'Owner', phone: '(714) 882-1190', 
 const ANSWERS = {
   propertyType: 'single-family-condo', propertyUse: 'primary', propertyZip: '92646', propertyState: 'CA',
   goal: 'Home improvement', creditRange: '720+', cashRange: '$75k-150k',
-  mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no',
+  mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no', preference: 'HELOC',
 };
 
 describe('the lead the page sends', () => {
@@ -45,11 +45,16 @@ describe('the lead the page sends', () => {
     expect(prequalPasses(lead)).toBe(true);
   });
 
-  it('sends the columns it no longer asks for as blank, never as 0', () => {
-    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, homeValue: 650000, mortgageBalance: 350000 });
+  it('sends the columns it no longer asks for as blank, never as 0, and a skipped preference as blank', () => {
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, preference: '', homeValue: 650000, mortgageBalance: 350000 });
     expect(lead.amountExploring).toBe('');
     expect(lead.illustrativeCltv).toBe('');
     expect(lead.preference).toBe('');
+  });
+
+  it('carries HEI as the chosen option when the visitor picks it', () => {
+    const lead = buildEquityLead({ ...CONTACT, ...ANSWERS, preference: 'Home equity investment (HEI)', homeValue: 650000, mortgageBalance: 350000 });
+    expect(lead.preference).toBe('Home equity investment (HEI)');
   });
 
   it('keeps a paid-off home: a balance of 0 is an answer', () => {
@@ -102,7 +107,7 @@ describe('where it lands: the Home Equity tab', () => {
       'First Name': 'Ava', State: 'CA', Source: 'home-equity',
       'Home Value': 650000, 'Mortgage Balance': 350000,
       'Estimated Home Equity': 300000, 'Current LTV': 53.8,
-      Goal: 'Home improvement', 'Amount Exploring': '', 'Illustrative CLTV': '', Preference: '',
+      Goal: 'Home improvement', 'Amount Exploring': '', 'Illustrative CLTV': '', Preference: 'HELOC',
       'Licensed?': 'Yes', 'Property Type': 'single-family-condo', 'Mortgage Current': 'yes',
       'Recent Bankruptcy/Foreclosure': 'no', 'Property ZIP': '92646', 'Credit Range': '720+', 'Cash Range': '$75k-150k',
       'UTM Source': 'youtube', 'UTM Campaign': 'yt-heloc',
@@ -139,6 +144,7 @@ function view(over: Partial<EquityPageView> = {}): EquityPageView {
     zip: '', setZip: noop, propertyState: '', setPropertyState: noop,
     goal: '', setGoal: noop, creditRange: '', setCreditRange: noop, cashRange: '', setCashRange: noop,
     mortgageCurrent: '', setMortgageCurrent: noop, bankruptcy: '', setBankruptcy: noop,
+    preference: '', setPreference: noop,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop,
     sending: false, submitted: false, declined: '', submitLead: noop,
@@ -231,13 +237,28 @@ describe('what the page says', () => {
     expect(page).not.toMatch(/business day|shortly|has reviewed/i);
   });
 
-  it('explains HELOC first, then the fixed loan, then cash-out, and names no HEI', () => {
+  it('explains HELOC first, then the fixed loan, cash-out and HEI', () => {
     const page = html(<EquityProducts />);
-    const order = ['HELOC', 'Fixed home equity loan', 'Cash-out refinance'].map((t) => page.indexOf(t));
+    const order = ['HELOC', 'Fixed home equity loan', 'Cash-out refinance', 'Home equity investment (HEI)'].map((t) => page.indexOf(t));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(page).not.toMatch(/\bHEI\b|home equity investment|equity sharing/i);
     expect(page).not.toMatch(/\/mo\b|you qualify|pre-?approved|\bAPR\b/i);
+  });
+
+  it('describes HEI plainly, with no provider and no pricing', () => {
+    const page = html(<EquityProducts />);
+    const hei = page.slice(page.indexOf('Home equity investment (HEI)'));
+    expect(hei).toContain('no monthly payment');
+    expect(hei).toContain('share of your home&#x27;s future value');
+    expect(hei).toContain('can cost more than a loan over time');
+    expect(hei).toContain('Availability varies by state and property.');
+    expect(hei).not.toMatch(/splitero|unison|hometap|point\.com|\bpoint\b|unlock|aspire|noah|\d+\s?%|\$\d/i);
+  });
+
+  it('lets a visitor pick HEI as their option of interest', () => {
+    const page = html(<StepEquityGoal v={filled} />);
+    expect(page).toContain('Which option interests you most?');
+    expect(page).toContain('Home equity investment (HEI)');
   });
 
   it('makes none of the claims awaiting Saxton approval', () => {

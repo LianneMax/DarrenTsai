@@ -8,8 +8,9 @@
  * Rebuilt on 15 Oct 2026 (with Darren) as the site's main focus: three short
  * steps, mostly taps, with no income, employer, start date or co-borrower
  * questions, and Darren's calendar after them for a lead that passes. HELOC is
- * explained first, then the fixed home equity loan, then cash-out refinance. No
- * HEI content until Max confirms, and none of the claims awaiting Saxton's
+ * explained first, then the fixed home equity loan, cash-out refinance and a
+ * home equity investment (HEI, added 15 Oct 2026: no provider named, no
+ * pricing, availability varies). None of the claims awaiting Saxton's
  * approval ("approval locked in", "zero credit impact", "soft pull",
  * "tax-free", "up to $400,000+", "exact funded amount", "approved in 15
  * minutes", "7 days"): tests/home-equity.test.tsx fails on each of them.
@@ -22,7 +23,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { PHONE } from '../config';
 import { formatCurrency } from '../utils/formatters';
 import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/emailSuggest';
-import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
+import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip, Chips, MoneyInput } from './PageParts';
 import ComplianceDisclosure from './ComplianceDisclosure';
@@ -53,6 +54,7 @@ export interface EquityPageView {
   cashRange: string; setCashRange: (v: string) => void;
   mortgageCurrent: string; setMortgageCurrent: (v: string) => void;
   bankruptcy: string; setBankruptcy: (v: string) => void;
+  preference: string; setPreference: (v: string) => void;
 
   fname: string; setFname: (v: string) => void;
   lname: string; setLname: (v: string) => void;
@@ -209,6 +211,10 @@ export function StepEquityGoal({ v }: { v: EquityPageView }) {
       <h3 className="dcp-h3">Any bankruptcy or foreclosure in the last 4 years?</h3>
       <Choices options={NO_YES} value={v.bankruptcy} onChange={v.setBankruptcy} label="Bankruptcy or foreclosure" />
 
+      <h3 className="dcp-h3">Which option interests you most? <span className="dcp-optional">· optional</span></h3>
+      <Chips options={EQUITY_OPTIONS} value={v.preference} onChange={v.setPreference} label="Option of interest" />
+      <p className="dcp-hint">Each one is explained below.</p>
+
       <StepNav back="← Your Home" onBack={() => v.goStep(1)} next={<>Continue <Arrow /></>} onNext={v.next} />
     </div>
   );
@@ -329,6 +335,7 @@ export function EquityRecap({ v }: { v: EquityPageView }) {
         <Row label="Estimated equity" value={v.equity >= 0 ? formatCurrency(v.equity) : 'None at these numbers'} />
         <Row label="Goal" value={v.goal} />
         <Row label="Cash range" value={v.cashRange} />
+        {v.preference && <Row label="Option of interest" value={v.preference} />}
       </div>
 
       {/* booking-chooser.js owns this node's contents, so React leaves it empty. */}
@@ -350,7 +357,7 @@ export function EquityProducts() {
   return (
     <div className="dcp-panel">
       <span className="dcp-eyebrow dcp-eyebrow-dark">Your options, in plain words</span>
-      <h2 className="dcp-h2">Three ways to use your equity.</h2>
+      <h2 className="dcp-h2">Four ways to use your equity.</h2>
       <div className="dcp-products">
         <article className="dcp-product">
           <h3>HELOC (home equity line of credit)</h3>
@@ -375,6 +382,15 @@ export function EquityProducts() {
             <li>One mortgage payment</li>
             <li>Your current rate and terms change, and closing costs may apply</li>
           </ul>
+        </article>
+        <article className="dcp-product">
+          <h3>Home equity investment (HEI)</h3>
+          <p>Cash now with no monthly payment. In exchange, the investor gets a share of your home&apos;s future value when you sell, refinance or the term ends.</p>
+          <ul>
+            <li>No monthly payment</li>
+            <li>It can cost more than a loan over time, especially if your home gains value</li>
+          </ul>
+          <p className="dcp-caption">Availability varies by state and property.</p>
         </article>
       </div>
       <p className="dcp-caption">
