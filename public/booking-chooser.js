@@ -47,6 +47,16 @@
    */
   var BOOKING_URL = 'https://meetings.hubspot.com/PLACEHOLDER';
   var BOOKING_READY = BOOKING_URL.indexOf('PLACEHOLDER') === -1;
+
+  /**
+   * The words that promise a calendar, and what they say while there is none
+   * (16 Oct 2026): until BOOKING_URL is real, a passing lead is called back,
+   * so the copy says that. Set the link and the calendar wording returns.
+   * The React pages read the same setting at build (vite.config.ts).
+   */
+  var COPY = BOOKING_READY
+    ? { when: 'before you pick a time', submit: 'See Darren\'s calendar' }
+    : { when: 'before Darren calls you', submit: 'Send my request' };
   var MEETINGS_SCRIPT = 'https://static.hsappstatic.net/MeetingsEmbed/ex/MeetingsEmbedCode.js';
 
   /**
@@ -204,6 +214,7 @@
       '.dt-book-link{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:#517686;padding:4px 0;text-decoration:underline;}' +
       '.dt-book-call{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;min-height:48px;' +
       'border-radius:10px;border:1.5px solid #e6ebf0;text-decoration:none;color:#0f202d;font-weight:600;}' +
+      '.dt-book-nowrap{white-space:nowrap;}' +
       '.dt-book-frame{min-height:620px;}' +
       '.dt-book-frame iframe{width:100%!important;}' +
       '.dt-book-done{padding:8px 0 0;font-size:15px;line-height:22px;}';
@@ -272,7 +283,7 @@
       var html =
         '<p class="dt-book-step">Step 1 of 3</p>' +
         '<h2 class="dt-book-title">Talk to Darren</h2>' +
-        '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property before you pick a time.</p>' +
+        '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property ' + COPY.when + '.</p>' +
         '<p class="dt-book-q">What would you like help with?</p>' +
         choiceGroup('bookingGoal', GOAL_OPTIONS, goal);
       if (goal) {
@@ -371,7 +382,7 @@
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
         '<p class="dt-book-note">Text messages are optional and not a condition of purchase or of submitting this form. Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>' +
         '<p class="dt-book-err" role="alert"></p>' +
-        '<button type="submit" class="dt-book-next">See Darren\'s calendar</button>' +
+        '<button type="submit" class="dt-book-next">' + esc(COPY.submit) + '</button>' +
         '</form>' +
         '<div class="dt-book-bar"><button type="button" class="dt-book-link dt-book-back">&#8592; Back</button>' + closeLink() + '</div>';
       wireClose();
@@ -418,7 +429,7 @@
 
       var fail = function (message) {
         btn.disabled = false;
-        btn.textContent = 'See Darren\'s calendar';
+        btn.textContent = COPY.submit;
         setErr(message);
       };
       window.fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -495,10 +506,10 @@
    */
   function renderCalendar(card, lead, footer) {
     injectStyles();
-    var call = '<a class="dt-book-call" href="' + PHONE_HREF + '">Prefer to talk now? Call ' + PHONE_DISPLAY + '</a>';
+    var call = '<a class="dt-book-call" href="' + PHONE_HREF + '"><span>Prefer to talk now? Call <span class="dt-book-nowrap">' + PHONE_DISPLAY + '</span></span></a>';
     if (!BOOKING_READY) {
       card.innerHTML = '<h2 class="dt-book-title">You\'re all set, ' + esc(lead.firstName) + '</h2>' +
-        '<p class="dt-book-sub">Darren has your details and will reach out to set a time.</p>' + call + (footer || '');
+        '<p class="dt-book-sub">Darren has your details and will call you to set a time.</p>' + call + (footer || '');
       return;
     }
     var src = BOOKING_URL + (BOOKING_URL.indexOf('?') === -1 ? '?' : '&') + 'embed=true' +
@@ -575,6 +586,8 @@
   /** Renders the flow inline, for /book/. */
   function mount(el) {
     if (!el || !window.DTServiceArea) return;
+    var copies = document.querySelectorAll('[data-booking-when]');
+    for (var c = 0; c < copies.length; c++) copies[c].textContent = COPY.when;
     injectStyles();
     el.classList.add('dt-book-inline');
     el.innerHTML = '<div class="dt-book-card"></div>';

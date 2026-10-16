@@ -1,4 +1,5 @@
 import { defineConfig, createServer, type Plugin } from 'vite'
+import { bookingCalendarReady } from './booking-ready.config'
 import react from '@vitejs/plugin-react'
 
 const EMPTY_ROOT = '<div id="root"></div>'
@@ -56,6 +57,9 @@ function prerenderHomeShell(): Plugin {
         appType: 'custom',
         server: { middlewareMode: true, hmr: false, ws: false },
         optimizeDeps: { noDiscovery: true, include: [] },
+        // configFile is off, so the build's define is passed again: the shells
+        // render the same booking wording as the app.
+        define: { __BOOKING_CALENDAR_READY__: JSON.stringify(bookingCalendarReady()) },
       })
       try {
         const mod = await server.ssrLoadModule('/src/prerender.tsx')
@@ -124,6 +128,8 @@ function inlineHomeCss(): Plugin {
 
 export default defineConfig({
   plugins: [react(), prerenderHomeShell(), inlineHomeCss()],
+  // BOOKING_URL in public/booking-chooser.js, read at build (booking-ready.config.ts).
+  define: { __BOOKING_CALENDAR_READY__: JSON.stringify(bookingCalendarReady()) },
   server: {
     proxy: {
       // The /fred-api proxy that used to be here is gone. It made FRED work in

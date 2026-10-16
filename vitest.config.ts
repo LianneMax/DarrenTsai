@@ -1,8 +1,11 @@
 import { defineConfig } from 'vitest/config';
+import { bookingCalendarReady } from './booking-ready.config';
 
 export default defineConfig({
   // The .tsx test file renders components, so esbuild needs the JSX runtime.
   esbuild: { jsx: 'automatic' },
+  // The same flag the build defines (vite.config.ts).
+  define: { __BOOKING_CALENDAR_READY__: JSON.stringify(bookingCalendarReady()) },
   test: {
     environment: 'jsdom',
     environmentOptions: {

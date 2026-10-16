@@ -22,3 +22,10 @@ export function openBooking() {
   }
   window.location.assign('/book/');
 }
+
+/**
+ * Whether the calendar is live. While BOOKING_URL in public/booking-chooser.js
+ * is the placeholder, a passing lead is called back instead, and the copy says
+ * so (16 Oct 2026). Read from that one setting at build time.
+ */
+export const BOOKING_CALENDAR_READY: boolean = __BOOKING_CALENDAR_READY__;

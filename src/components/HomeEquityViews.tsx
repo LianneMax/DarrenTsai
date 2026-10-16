@@ -25,6 +25,7 @@ import { formatCurrency } from '../utils/formatters';
 import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/emailSuggest';
 import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
+import { BOOKING_CALENDAR_READY } from '../utils/booking';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip, Chips, MoneyInput } from './PageParts';
 import ComplianceDisclosure from './ComplianceDisclosure';
 import { AsYouType } from 'libphonenumber-js';
@@ -116,7 +117,7 @@ export function EquityPageHero() {
             <dl className="hv-equity">
               <div><dt>01</dt><dd>Your home and its estimated equity</dd></div>
               <div><dt>02</dt><dd>What the equity is for</dd></div>
-              <div><dt>03</dt><dd>Pick a time with Darren</dd></div>
+              <div><dt>03</dt><dd>{BOOKING_CALENDAR_READY ? 'Pick a time with Darren' : 'Darren calls you'}</dd></div>
             </dl>
             <dl className="hv-payoff">
               <div><dt>Today</dt><dd>Mortgage P&amp;I + your debts</dd></div>
@@ -261,7 +262,9 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Where should Darren reach you?</h2>
-      <p className="dcp-lead">Your estimate and answers go with your request. Next, you can pick a time on Darren&apos;s calendar.</p>
+      <p className="dcp-lead">Your estimate and answers go with your request. {BOOKING_CALENDAR_READY
+        ? <>Next, you can pick a time on Darren&apos;s calendar.</>
+        : <>Darren will call you to set a time.</>}</p>
       <span data-service-area={EQUITY_FORM_ID} hidden />
 
       <div className="dcp-grid-2">
@@ -308,7 +311,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
         disabled={v.sending}
         next={v.sending
           ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
-          : <>See Darren&apos;s Calendar <Arrow /></>}
+          : <>{BOOKING_CALENDAR_READY ? <>See Darren&apos;s Calendar</> : <>Send my request</>} <Arrow /></>}
         onNext={v.submitLead}
       />
     </div>
