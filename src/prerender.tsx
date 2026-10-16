@@ -30,8 +30,13 @@ import { AduPageHero } from './components/AduViews';
 import Calculator from './components/Calculator';
 import { defaultInputs } from './hooks/useMortgageInputs';
 import { calculateMortgage } from './utils/mortgageCalc';
+import { AboutHero } from './components/Marketing';
 
 const noop = () => {};
+
+export function renderAboutShell(): string {
+  return renderToStaticMarkup(<><Nav onOpenContact={noop} alwaysSolid /><main><AboutHero /></main></>);
+}
 
 /**
  * The mortgage entry was an empty root until its app ran: mobile LCP measured

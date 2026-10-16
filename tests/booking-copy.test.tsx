@@ -74,7 +74,7 @@ describe('/home-equity/ follows the same setting', () => {
     expect(page).toContain('Send my request');
     expect(page).toContain('Darren will call you to set a time.');
     expect(page).not.toMatch(/See Darren.{1,6}s Calendar|pick a time on Darren/);
-    expect(renderToStaticMarkup(<EquityPageHero />)).toContain('Darren calls you');
+    expect(renderToStaticMarkup(<EquityPageHero />)).not.toContain('Calendar');
   });
 });
 

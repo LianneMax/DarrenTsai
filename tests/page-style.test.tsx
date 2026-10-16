@@ -47,16 +47,12 @@ describe('the header and the buttons', () => {
   });
 
   it('gives each page headline one accent word', () => {
-    for (const f of ['HomeHub', 'AduViews']) {
+    for (const f of ['Marketing', 'AduViews']) {
       const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(read(`src/components/${f}.tsx`))?.[1] ?? '';
       expect(h1.match(/<em>/g), f).toHaveLength(1);
     }
-    // /home-equity/ holds two headings, one per path, and shows one: each has one accent word.
     const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(read('src/components/HomeEquityViews.tsx'))?.[1] ?? '';
-    for (const variant of ['hv-equity', 'hv-payoff']) {
-      const words = new RegExp(`<span className="${variant}">([\\s\\S]*?)</span>`).exec(h1)?.[1] ?? '';
-      expect(words.match(/<em>/g), variant).toHaveLength(1);
-    }
+    expect(h1.match(/<em>/g)).toHaveLength(1);
   });
 });
 

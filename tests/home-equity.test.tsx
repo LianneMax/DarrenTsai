@@ -169,11 +169,15 @@ const UNAPPROVED = [
 ];
 
 describe('what the page says', () => {
-  it('the hero is the only <h1>, carries no phone number and needs no JavaScript', () => {
+  it('the hero has one heading, no phone number and queues both path controls', () => {
     const hero = html(<EquityPageHero />);
     expect(hero.match(/<h1\b/g)).toHaveLength(1);
-    expect(hero).not.toMatch(/tel:|<button\b/);
-    expect(hero).toContain('href="#equity"');
+    expect(hero).not.toMatch(/tel:/);
+    expect(hero).toContain('data-early="equity-path-access"');
+    expect(hero).toContain('data-early="equity-path-payoff"');
+    const page = html(<EquityPage v={view()} overlays={null} disclosure={null} onPath={() => {}} />);
+    expect(page.match(/data-early="equity-path-/g)).toHaveLength(2);
+    expect(hero).toContain('What could your <em>home equity</em> help you do?');
   });
 
   it('arrives empty: no figure, no answer chosen, every number an example', () => {

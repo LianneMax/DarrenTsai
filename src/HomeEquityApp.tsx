@@ -6,6 +6,7 @@ import HomeEquityCalculator from './components/HomeEquityCalculator';
 import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 import { MobileActionBar } from './components/PageParts';
+import { MarketingOptions, MarketingFaq } from './components/Marketing';
 
 // /home-equity/ (frontend revamp, phase 3). The same shell as
 // DebtConsolidationApp: the nav, the page, the footer, and the contact modal
@@ -46,6 +47,8 @@ export default function HomeEquityApp() {
 
       <main>
         <HomeEquityCalculator />
+        <MarketingOptions />
+        <MarketingFaq onOpenContact={openContact} />
       </main>
       <Footer />
       <MobileActionBar target="equity" label={<><span className="hv-equity">Check My Home Equity</span><span className="hv-payoff">See My Comparison</span></>} />

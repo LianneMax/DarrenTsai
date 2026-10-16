@@ -1,0 +1,5 @@
+import { type useZipLookup } from '../hooks/useZipLookup';
+export default function ZipFeedback({check}: {check:ReturnType<typeof useZipLookup>}){
+ const messages={empty:'Enter the five-digit ZIP for this property.',typing:'Enter all five digits.',checking:'Checking ZIP…',found:`ZIP found: ${check.city}, ${check.state}.`,invalid:'Enter a valid five-digit US ZIP. 00000 is not a ZIP code.',unknown:'We couldn’t find this ZIP. Check the number, or confirm it below.',unavailable:'ZIP lookup is unavailable. Confirm your ZIP and property state to continue.'};
+ return <div className={`zip-feedback zip-${check.status}`}><p id="he-zip-feedback" role="status" aria-live="polite">{messages[check.status]}</p>{check.needsConfirmation&&<label className="zip-confirm"><input type="checkbox" checked={check.confirmed} onChange={e=>check.setConfirmed(e.target.checked)}/><span>My ZIP is correct. Use the property state I selected.</span></label>}<small>ZIP data source: <a href="https://www.geonames.org/export/zip/" target="_blank" rel="noopener noreferrer">GeoNames</a>. This checks the ZIP, not the address or loan eligibility.</small></div>;
+}

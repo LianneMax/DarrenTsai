@@ -1,88 +1,12 @@
 import { PHONE, EMAIL, NMLS, DRE, COMPANY, COMPANY_NMLS } from '../config';
 
+/** One footer serves every React page and is mirrored in static entries, with equality checked by the release tests. */
 export default function Footer() {
-  return (
-    <footer className="footer">
-      <div className="footer-dots" aria-hidden="true" />
-      <div className="container">
-        <div className="footer-grid">
-          <div className="footer-left">
-            <div className="footer-brand">
-              <img
-                src="/darren-avatar.png"
-                width={72}
-                height={72}
-                alt="Darren Tsai"
-                style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-              />
-              <span className="footer-name">Darren Tsai</span>
-            </div>
-            <p className="footer-title">Senior Loan Officer · {COMPANY}</p>
-            <p className="footer-meta">Darren Tsai | NMLS #{NMLS} | CA DRE Broker #{DRE}</p>
-            <p className="footer-meta">{COMPANY}, LLC | NMLS #{COMPANY_NMLS}</p>
-            <p className="footer-meta">Licensed in <strong>AZ · CA · FL · HI · OR · PA · TN · TX</strong></p>
-            <p className="footer-meta" style={{ marginTop: 6, lineHeight: 1.5 }}>
-              Real Estate Broker, California Department of Real Estate. Loans made or arranged
-              pursuant to California Department of Real Estate License.
-            </p>
-            <p className="footer-meta" style={{ marginTop: 12 }}>Real Darren Tsai is operated by Ren Marketing Group LLC, an independent marketing entity affiliated with Saxton Mortgage, LLC (NMLS #1717191) and Dream Home Development Corporation dba Saxton Mortgage (NMLS #2525913 / CA DRE #02205650).</p>
-          </div>
-
-          <div className="footer-right">
-            <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="footer-contact-link">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.07 1.18 2 2 0 012.07 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {PHONE}
-            </a>
-            <a href={`mailto:${EMAIL}`} className="footer-contact-link">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {EMAIL}
-            </a>
-            <a
-              href="https://www.linkedin.com/in/soldwithtsai/"
-              className="footer-contact-link footer-linkedin"
-              aria-label="Darren Tsai on LinkedIn"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-              LinkedIn
-            </a>
-
-            {/* Equal Housing */}
-            <div className="footer-contact-link">
-              <svg width="16" height="16" viewBox="0 0 60 60" fill="none" aria-label="Equal Housing Lender" role="img">
-                <defs>
-                  <mask id="eho-mask">
-                    <rect width="60" height="60" fill="white"/>
-                    <rect x="17" y="35" width="26" height="5" fill="black"/>
-                    <rect x="17" y="44" width="26" height="5" fill="black"/>
-                  </mask>
-                </defs>
-                <polygon points="30,5 56,28 4,28" fill="currentColor"/>
-                <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#eho-mask)"/>
-              </svg>
-              Equal Housing Lender
-            </div>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <p className="footer-copy">&copy; 2026 Darren Tsai / Ren Marketing Group LLC. All rights reserved.</p>
-          <p className="footer-disclaimer">
-            This is not a commitment to lend. All loans are subject to credit approval,
-            underwriting, and property valuation. Equal Housing Opportunity.
-          </p>
-          <div className="footer-compliance"><a href="/privacy-policy">Privacy Policy</a><a href="/legal">Terms & Legal Disclosures</a><a href="/legal#accessibility">Accessibility</a><a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Saxton disclosures</a><a href={`https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/${NMLS}`} target="_blank" rel="noopener noreferrer">Darren’s NMLS record</a><a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/1717191" target="_blank" rel="noopener noreferrer">Saxton’s NMLS record</a></div>
-        </div>
-      </div>
-    </footer>
-  );
+ return <footer className="site-footer wrap">
+  <div className="footer-top"><div className="footer-brand"><a className="brand" href="/">Darren Tsai</a><p>Senior Loan Officer · {COMPANY}<br/>Mortgage decisions, with personal guidance.</p><a href="/?contact=1">Contact Darren ↗</a><a href={`tel:${PHONE.replace(/\D/g,'')}`}>{PHONE}</a><a href={`mailto:${EMAIL}`}>{EMAIL}</a><a href="https://www.linkedin.com/in/soldwithtsai/" target="_blank" rel="noopener noreferrer">LinkedIn</a></div>
+  <div><h3>Explore your goal</h3><a href="/home-equity/">Home equity</a><a href="/home-equity/?goal=payoff">Pay off debt with equity</a><a href="/adu/">ADU &amp; renovation</a><a href="/fha/">Buy a home</a></div>
+  <div><h3>Tools &amp; resources</h3><a href="/mortgage-calculator/">Mortgage calculator</a><a href="/dscr/">DSCR calculator</a><a href="/fha/">FHA calculator</a><a href="/realestateinvesting/">Investing guide</a></div>
+  <div><h3>Information</h3><a href="/about/">About Darren</a><a href="/privacy-policy/">Privacy Policy</a><a href="/legal/">Legal</a><a href="/legal/#accessibility">Accessibility</a><a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Saxton disclosures</a></div></div>
+  <div className="legal"><p>Darren Tsai | NMLS #{NMLS} | CA DRE Broker #{DRE} · {COMPANY}, LLC | NMLS #{COMPANY_NMLS}<br/>Licensed in AZ · CA · FL · HI · OR · PA · TN · TX</p><p>Real Estate Broker, California Department of Real Estate. Loans made or arranged pursuant to California Department of Real Estate License. Real Darren Tsai is operated by Ren Marketing Group LLC, an independent marketing entity affiliated with Saxton Mortgage, LLC (NMLS #1717191) and Dream Home Development Corporation dba Saxton Mortgage (NMLS #2525913 / CA DRE #02205650).</p><p>This is not a commitment to lend. All loans are subject to credit approval, underwriting, and property valuation. Equal Housing Lender. Equal Housing Opportunity.</p><div><span>© {new Date().getFullYear()} Darren Tsai / Ren Marketing Group LLC. All rights reserved.</span><a href={`https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/${NMLS}`} target="_blank" rel="noopener noreferrer">Darren’s NMLS record</a><a href={`https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/${COMPANY_NMLS}`} target="_blank" rel="noopener noreferrer">NMLS Consumer Access</a></div></div>
+ </footer>;
 }

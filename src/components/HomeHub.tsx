@@ -21,6 +21,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NMLS, DRE, COMPANY, LICENSED_STATES } from '../config';
 import { openBooking } from '../utils/booking';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { MarketingHomeHero } from './Marketing';
 
 const STATES = LICENSED_STATES.join(' · ');
 
@@ -79,48 +80,7 @@ const ICONS = {
  * needs no early-click key, and it carries no phone number for CallRail to
  * swap and React to overwrite.
  */
-export function HomeHero() {
-  return (
-    <section className="hub-hero">
-      <div className="hub-hero-inner container">
-        <div>
-          <span className="hub-eyebrow">Home Equity · HELOC</span>
-          {/* Home equity leads since 15 Oct 2026 (with Darren). Every other goal
-              and page stays: 101 YouTube descriptions link to them. */}
-          <h1 className="hub-h1">
-            Access your home <em>equity.</em>
-          </h1>
-          <p className="hub-hero-sub">
-            See your estimated equity in three quick steps, then learn how a HELOC, a fixed home equity
-            loan or a cash-out refinance could fit. Paying off debt, renovating, investing or buying?
-            Those are all still here.
-          </p>
-          <a href="/home-equity/" className="btn hub-hero-btn">
-            Check My Home Equity
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
-          <a href="#goals" className="hub-hero-link">Explore every goal</a>
-          <p className="hub-cred">NMLS #{NMLS} · DRE #{DRE} · {COMPANY}</p>
-        </div>
-
-        <aside className="hub-hero-aside">
-          <img src="/darren-96.webp" srcSet="/darren-96.webp 96w, /darren-192.webp 192w"
-            sizes="96px" width={96} height={96} alt="Darren Tsai" className="hub-hero-photo" />
-          <div>
-            <p className="hub-hero-aside-title">Real numbers. Real guidance.</p>
-            <p className="hub-hero-aside-text">
-              Mortgage decisions are personal. Start with a useful estimate and a straightforward
-              conversation.
-            </p>
-            <p className="hub-cred">Darren Tsai<br />Senior Loan Officer · {COMPANY}</p>
-          </div>
-        </aside>
-      </div>
-    </section>
-  );
-}
+export function HomeHero() { return <MarketingHomeHero />; }
 
 // ─── Goals ────────────────────────────────────────────────────────────────────
 

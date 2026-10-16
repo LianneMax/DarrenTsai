@@ -1,3 +1,5 @@
+import { useZipLookup } from '../hooks/useZipLookup';
+import ZipFeedback from './ZipFeedback';
 /**
  * What /home-equity/ looks like.
  *
@@ -26,8 +28,9 @@ import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/
 import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
-import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip, Chips, MoneyInput } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput } from './PageParts';
 import ComplianceDisclosure from './ComplianceDisclosure';
+import { HouseOptions } from './Marketing';
 import { formatUsPhone } from '../utils/phone';
 
 export const EQUITY_FORM_ID = 'home-equity-calculator';
@@ -79,59 +82,8 @@ const STEPS = ['Your Home', 'Your Goal', 'Talk to Darren'];
  * element. Static on purpose, as on /debt-consolidation/: no JavaScript, no
  * fade-in, no phone number for CallRail to swap. The button is a real anchor.
  */
-export function EquityPageHero() {
-  // Both paths' words are in the pre-rendered HTML; the html.goal-payoff class,
-  // set by an inline script in home-equity/index.html before first paint (and
-  // by the path switch after), shows one. So an ad landing on ?goal=payoff
-  // never sees the other heading flash or the layout move.
-  return (
-    <>
-      <div className="dcp-hero">
-        <div className="dcp-hero-inner">
-          <div>
-            <span className="dcp-eyebrow">
-              <span className="hv-equity">Home Equity · HELOC</span>
-              <span className="hv-payoff">Home Equity · Pay off debt</span>
-            </span>
-            <h1 className="dcp-h1">
-              <span className="hv-equity">See what your home <em>equity</em> could help you do.</span>
-              <span className="hv-payoff">Compare paying off high-interest debt with home <em>equity</em></span>
-            </h1>
-            <p className="dcp-hero-sub">
-              <span className="hv-equity">Three quick steps, mostly taps. See your estimated equity, then talk it through with Darren.</span>
-              <span className="hv-payoff">See today&apos;s debt payments next to a HELOC, a fixed home equity loan and a cash-out refinance, with the tradeoffs in plain words.</span>
-            </p>
-            <a href="#equity" className="btn dcp-hero-btn">
-              <span className="hv-equity">Check My Home Equity</span>
-              <span className="hv-payoff">See My Comparison</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </a>
-            <p className="dcp-hero-note">No cost and no application to see your estimate.</p>
-          </div>
-
-          <div className="dcp-how">
-            <span className="dcp-eyebrow">How it works</span>
-            <p className="dcp-how-title">Know your numbers. Understand your options.</p>
-            <dl className="hv-equity">
-              <div><dt>01</dt><dd>Your home and its estimated equity</dd></div>
-              <div><dt>02</dt><dd>What the equity is for</dd></div>
-              <div><dt>03</dt><dd>{BOOKING_CALENDAR_READY ? 'Pick a time with Darren' : 'Darren calls you'}</dd></div>
-            </dl>
-            <dl className="hv-payoff">
-              <div><dt>Today</dt><dd>Mortgage P&amp;I + your debts</dd></div>
-              <div><dt>HELOC</dt><dd>Keeps your mortgage</dd></div>
-              <div><dt>Fixed loan</dt><dd>Keeps your mortgage</dd></div>
-              <div><dt>Cash-out</dt><dd>Replaces your mortgage</dd></div>
-            </dl>
-          </div>
-        </div>
-      </div>
-
-      <LicensedStrip />
-    </>
-  );
+export function EquityPageHero({path='equity',onPath}:{path?:EquityPath;onPath?:(p:EquityPath)=>void}) {
+ return <div className="equity-opening wrap"><div><h1>What could your <em>home equity</em> help you do?</h1><PathSwitch path={path} onPath={onPath || (()=>{})}/><p className="intent-context"><span className="hv-equity">Enter your home value and mortgage balance below to see your estimated equity.</span><span className="hv-payoff">Start with your current debts below. Then compare using home equity to pay them off.</span></p></div><div><HouseOptions large/><p className="illustration-note">Different structures. The same home as security.</p></div></div>;
 }
 
 export type EquityPath = 'equity' | 'payoff';
@@ -140,8 +92,8 @@ export type EquityPath = 'equity' | 'payoff';
 export function PathSwitch({ path, onPath }: { path: EquityPath; onPath: (p: EquityPath) => void }) {
   return (
     <div className="dcp-path" role="group" aria-label="What would you like to do?">
-      <button type="button" className="dcp-chip" aria-pressed={path === 'equity'} onClick={() => onPath('equity')}>Access my home equity</button>
-      <button type="button" className="dcp-chip" aria-pressed={path === 'payoff'} onClick={() => onPath('payoff')}>Pay off high-interest debt</button>
+      <button type="button" className="dcp-chip" aria-pressed={path === 'equity'} data-early="equity-path-access" onClick={() => onPath('equity')}><strong>Access my home equity</strong><small>Start with your home’s value</small></button>
+      <button type="button" className="dcp-chip" aria-pressed={path === 'payoff'} data-early="equity-path-payoff" onClick={() => onPath('payoff')}><strong>Pay off high-interest debt</strong><small>Compare your payment options</small></button>
     </div>
   );
 }
@@ -171,6 +123,13 @@ const NO_YES = [['no', 'No'], ['yes', 'Yes']] as const;
 
 export function StepEquityHome({ v }: { v: EquityPageView }) {
   const zipDone = /^\d{5}$/.test(v.zip);
+  const zipCheck = useZipLookup(v.zip);
+  const { setPropertyState } = v;
+  const { status: zipStatus, state: zipState, needsConfirmation } = zipCheck;
+  useEffect(() => {
+    if (zipStatus === 'found') setPropertyState(zipState || '');
+    else if (needsConfirmation || zipStatus === 'invalid') setPropertyState('');
+  }, [zipStatus, zipState, needsConfirmation, setPropertyState]);
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Your home, at a glance.</h2>
@@ -196,8 +155,9 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
         <div>
           <label className="input-label" htmlFor="he-zip">ZIP of the home you&apos;re borrowing against</label>
           <input id="he-zip" className="form-input" inputMode="numeric" autoComplete="postal-code"
-            maxLength={5} placeholder="e.g. 92646" value={v.zip}
+            maxLength={5} placeholder="e.g. 92646" value={v.zip} aria-describedby="he-zip-feedback" aria-invalid={zipCheck.status === 'invalid'}
             onChange={(e) => v.setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+          <ZipFeedback check={zipCheck} />
         </div>
         {zipDone && (
           <div>
@@ -214,7 +174,7 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
 
       <div className="dcp-actions">
         <small className="dcp-caption dcp-actions-note">No application required to see this estimate.</small>
-        <button type="button" className="btn btn-teal" onClick={v.next}>
+        <button type="button" className="btn btn-teal" disabled={!zipCheck.canContinue} onClick={v.next}>
           Continue <Arrow />
         </button>
       </div>
@@ -446,8 +406,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
   if (path === 'payoff') {
     return (
       <section className="dcp">
-        <EquityPageHero />
-        {onPath && <PathSwitch path={path} onPath={onPath} />}
+        <EquityPageHero path={path} onPath={onPath} />
         {payoff}
         {overlays}
       </section>
@@ -455,8 +414,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
   }
   return (
     <section className="dcp">
-      <EquityPageHero />
-      {onPath && <PathSwitch path={path} onPath={onPath} />}
+      <EquityPageHero path={path} onPath={onPath} />
 
       <div id="equity" className="dcp-flow">
         <ul className="dcp-trust">
@@ -488,7 +446,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
         {!done && v.step === 2 && <StepEquityGoal v={v} />}
         {!done && v.step === 3 && <StepEquityContact v={v} />}
 
-        <EquityProducts />
+        {/* Product education follows the calculator in the shared options section. */}
 
         <div className="dcp-disclosure">{disclosure}</div>
       </div>

@@ -17,7 +17,7 @@ describe('the pre-rendered homepage shell', () => {
     const shell = renderHomeShell();
     expect(shell.startsWith('<nav')).toBe(true);
     expect(shell).toContain('<main>');
-    expect(shell).toMatch(/<h1[^>]*>Access your home <em>equity\.<\/em>/);
+    expect(shell).toMatch(/<h1[^>]*>Your home\.<br\/>More <em>possibilities\.<\/em>/);
     expect(shell.match(/<h1\b/g)).toHaveLength(1);
   });
 
@@ -118,8 +118,9 @@ describe('/debt-consolidation/ retired into /home-equity/?goal=payoff', () => {
     const { default: HomeEquityApp } = await import('../src/HomeEquityApp');
     const html = renderToStaticMarkup(<HomeEquityApp />);
     window.history.replaceState({}, '', '/');
-    expect(html).toContain('Compare paying off high-interest debt with home <em>equity</em>');
-    expect(html).toContain('aria-pressed="true">Pay off high-interest debt</button>');
+    expect(html).toContain('What could your <em>home equity</em> help you do?');
+    expect(html).toContain('Start with your current debts below.');
+    expect(html).toContain('aria-pressed="true" data-early="equity-path-payoff"><strong>Pay off high-interest debt</strong>');
     expect(html).toContain('id="equity"');
     expect(html).toContain('Your Current Monthly Debts'); // the comparison's first step
   });

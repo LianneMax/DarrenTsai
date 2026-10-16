@@ -133,7 +133,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
           {/* Desktop links */}
           <div className="nav-links">
             {!landing && <>
-            <a href="/#about"      onClick={scrollTo('about')}      className="nav-link" data-early="nav-about">About Me</a>
+            <a href="/about/" className="nav-link" data-early="nav-about">About Me</a>
             <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-link" data-early="nav-reviews">Reviews</a>
             <div className={`nav-dropdown${calcOpen ? ' nav-dropdown--open' : ''}`} ref={calcDropdownRef}>
               <button
@@ -153,12 +153,13 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
                 {CALCULATORS.map((c) => (
                   <a key={c.href} href={c.href} onClick={() => setCalcOpen(false)} className="nav-dropdown-item">{c.label}</a>
                 ))}
+                <button onClick={openBooking} className="nav-dropdown-item" data-early="nav-book">Book a Call</button>
               </div>
             </div>
             </>}
             {/* The static pages' pair: Contact outlined, Book a Call solid slate. */}
             <button onClick={handleContactClick} className="btn btn-outline-teal btn-sm" data-early="nav-contact">Contact</button>
-            <button onClick={openBooking} className="btn btn-teal btn-sm" data-early="nav-book">Book a Call</button>
+            {landing ? <button onClick={openBooking} className="btn btn-teal btn-sm" data-early="nav-book">Book a Call</button> : <a href="/home-equity/" className="btn btn-teal btn-sm">Explore my options</a>}
           </div>
 
           {/* Hamburger button — mobile only */}
@@ -188,7 +189,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
         {landing ? (
           <a href="/" className="nav-mobile-link" tabIndex={drawerTab}>Home</a>
         ) : <>
-          <a href="/#about"      onClick={scrollTo('about')}      className="nav-mobile-link" tabIndex={drawerTab}>About Me</a>
+          <a href="/about/" className="nav-mobile-link" tabIndex={drawerTab}>About Me</a>
           <a href="/#reviews"    onClick={scrollTo('reviews')}    className="nav-mobile-link" tabIndex={drawerTab}>Reviews</a>
           <span className="nav-mobile-link nav-mobile-label">Calculators</span>
           {CALCULATORS.map((c) => (

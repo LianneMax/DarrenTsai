@@ -1,6 +1,7 @@
 import { defineConfig, createServer, type Plugin } from 'vite'
 import { bookingCalendarReady } from './booking-ready.config'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
 
 const EMPTY_ROOT = '<div id="root"></div>'
 
@@ -14,6 +15,7 @@ const EMPTY_ROOT = '<div id="root"></div>'
 const PRERENDERED: Record<string, string> = {
   '/index.html': 'renderHomeShell',
   '/home-equity/index.html': 'renderEquityShell',
+  '/about/index.html': 'renderAboutShell',
   '/adu/index.html': 'renderAduShell',
   '/mortgage-calculator/index.html': 'renderMortgageShell',
 }
@@ -120,7 +122,7 @@ function inlineHomeCss(): Plugin {
           }
           html = html.replace(tag, () => `<style>${css}</style>`)
         }
-        return html
+        return html.replace(/<link rel="stylesheet" href="\/site-design\.css"\s*\/>/, () => '<style>' + readFileSync('public/site-design.css', 'utf8') + '</style>')
       },
     },
   }
@@ -158,7 +160,8 @@ export default defineConfig({
         main: 'index.html',
         mortgageCalculator: 'mortgage-calculator/index.html',
         homeEquity: 'home-equity/index.html',
-        adu: 'adu/index.html',
+        about: 'about/index.html',
+      adu: 'adu/index.html',
       },
     },
     // recharts (~537KB) used to be forced into a named `charts` chunk here.

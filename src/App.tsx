@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { MortgageInputs } from './types/mortgage';
 import { loadInputs } from './hooks/useMortgageInputs';
 import Nav from './components/Nav';
-import { HomeHero, HomeGoals, HomeAbout, HomeTools, HomeEducation } from './components/HomeHub';
+import { HomeHero } from './components/HomeHub';
+import { MarketingBenefits, MarketingOptions, MarketingFaq, MarketingClosing } from './components/Marketing';
 import Reviews from './components/Education';
 import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
@@ -31,6 +32,7 @@ export default function App() {
   // tracked exactly as a normal click. take() empties the queue, so StrictMode's
   // second effect run in development replays nothing.
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('contact') === '1') setContactOpen(true);
     const early = (window as { __dtEarlyClick?: { take: () => string | null } }).__dtEarlyClick;
     const key = early?.take();
     if (!key) return;
@@ -44,11 +46,11 @@ export default function App() {
           and Lighthouse fails a page without one. Nav and Footer stay outside. */}
       <main>
         <HomeHero />
-        <HomeGoals onOpenContact={openContact} />
-        <HomeAbout />
+        <MarketingBenefits onOpenContact={openContact} />
+        <MarketingOptions />
         <Reviews />
-        <HomeTools />
-        <HomeEducation />
+        <MarketingFaq onOpenContact={openContact} outlined />
+        <MarketingClosing />
       </main>
       <Footer />
 

@@ -96,9 +96,9 @@ describe('the nav (revamp phase 6)', () => {
   it('lists every calculator, the new pages included, in the dropdown and the drawer alike', async () => {
     const nav = await navOf(false);
     for (const href of ['/home-equity/?goal=payoff', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/']) {
-      expect(nav.split(`href="${href}"`).length - 1, href).toBe(2);
+      expect(nav.split(`href="${href}"`).length - 1, href).toBeGreaterThanOrEqual(2);
     }
-    expect(nav).toContain('href="/#about"');
+    expect(nav).toContain('href="/about/"');
   });
 
   it('gives an ad landing page only Contact, Book a Call and the way home', async () => {

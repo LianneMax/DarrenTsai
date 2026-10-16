@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useScrollReveal } from '../hooks/useScrollReveal';
 
 const REVIEWS = [
   {
@@ -67,262 +66,36 @@ const REVIEWS = [
   },
 ];
 
-const AVATAR_COLORS = [
-  '#4285F4',
-  '#EA4335',
-  '#34A853',
-  '#9C27B0',
-  '#FF5722',
-  '#00ACC1',
-  '#E91E63',
-  '#3F51B5',
-  '#F4511E',
-];
-
-const STARS = '★★★★★';
-const INTERVAL_MS = 5000;
-
-// Characters visible before "See more" appears
+const AVATAR_COLORS = ['#2e69cb', '#c63529', '#287b3d', '#9c27b0', '#c8461b', '#087c90', '#d1195c', '#3f51b5', '#c34619'];
 const CHAR_LIMIT = 190;
-
 type Review = typeof REVIEWS[number];
+const getPerPage = () => typeof window !== 'undefined' && window.innerWidth <= 768 ? 1 : 3;
+function Stars() { return <div className="review-stars" role="img" aria-label="5 out of 5 stars">{Array.from({length:5},(_,i)=><svg key={i} width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" fill="currentColor"/></svg>)}</div>; }
+function ReviewAuthor({review}:{review:Review}) { return <div className="review-author"><span className="review-initials" style={{background:AVATAR_COLORS[review.id-1],color:'#fff'}} aria-hidden="true">{review.initials}</span><div><strong>{review.name}</strong><small>{review.meta}</small></div></div>; }
 
-function getPerPage() {
-  return typeof window !== 'undefined' && window.innerWidth <= 768 ? 1 : 3;
-}
-
+/** Same real reviews; autoplay stops for reading, keyboard use and reduced motion. */
 export default function Reviews() {
-  const headerRef   = useScrollReveal<HTMLDivElement>();
-  const carouselRef = useScrollReveal<HTMLDivElement>(80);
-
-  const [perPage, setPerPage] = useState(getPerPage);
-  const [current, setCurrent] = useState(0);
-  const [animated, setAnimated] = useState(true);
-  const [expandedReview, setExpandedReview] = useState<Review | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Derived from perPage — recomputed whenever perPage changes
-  const maxPos    = Math.max(0, REVIEWS.length - perPage);
-  const loopSlides = [...REVIEWS, ...REVIEWS.slice(0, perPage)];
-
-  // Update perPage on resize, reset position to avoid out-of-bounds
-  useEffect(() => {
-    const handler = () => {
-      const next = getPerPage();
-      setPerPage(prev => {
-        if (prev !== next) {
-          setCurrent(0);
-          setAnimated(false);
-        }
-        return next;
-      });
-    };
-    window.addEventListener('resize', handler, { passive: true });
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-
-  // Close modal on Escape
-  useEffect(() => {
-    if (!expandedReview) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpandedReview(null); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [expandedReview]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    document.body.style.overflow = expandedReview ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [expandedReview]);
-
-  // When we land on the clone zone, snap back silently
-  useEffect(() => {
-    if (current > maxPos) {
-      const t = setTimeout(() => {
-        setAnimated(false);
-        setCurrent(0);
-      }, 500);
-      return () => clearTimeout(t);
-    }
-  }, [current, maxPos]);
-
-  // Re-enable animation after the silent snap
-  useEffect(() => {
-    if (!animated) {
-      const t = requestAnimationFrame(() =>
-        requestAnimationFrame(() => setAnimated(true))
-      );
-      return () => cancelAnimationFrame(t);
-    }
-  }, [animated]);
-
-  const advance = () => setCurrent((prev) => prev + 1);
-
-  const resetTimer = (idx: number) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    const clamped = ((idx % (maxPos + 1)) + maxPos + 1) % (maxPos + 1);
-    setCurrent(clamped);
-    timerRef.current = setInterval(advance, INTERVAL_MS);
-  };
-
-  useEffect(() => {
-    timerRef.current = setInterval(advance, INTERVAL_MS);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []);
-
-  return (
-    <>
-      <section id="reviews" className="section section-white">
-        <div className="container">
-
-          <div ref={headerRef} className="section-header reveal">
-            <span className="section-eyebrow" style={{ color: 'var(--navy)' }}>Client Reviews</span>
-            <h2 className="section-title" style={{ color: 'var(--teal)' }}>What Homeowners Are Saying</h2>
-            <p className="section-sub">
-              Real results from real clients. Straight talk, no pressure, and savings that actually show up on your bank statement.
-            </p>
-          </div>
-
-          {/* Carousel */}
-          <div ref={carouselRef} className="reveal">
-            <div className="reviews-carousel">
-              <div
-                className="reviews-track"
-                style={{
-                  transform: `translateX(-${current * (100 / perPage)}%)`,
-                  transition: animated ? 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
-                }}
-              >
-                {loopSlides.map((r, i) => {
-                  const isTruncated = r.quote.length > CHAR_LIMIT;
-                  const displayQuote = isTruncated
-                    ? r.quote.slice(0, CHAR_LIMIT).trimEnd() + '…'
-                    : r.quote;
-
-                  return (
-                    <div
-                      key={`${r.id}-${i}`}
-                      className="review-slide"
-                      style={{ minWidth: `${100 / perPage}%` }}
-                    >
-                      <div className="review-card">
-                        {/* Stars */}
-                        <div className="review-stars" aria-label="5 out of 5 stars">
-                          {STARS.split('').map((s, j) => (
-                            <span key={j} className="review-star">{s}</span>
-                          ))}
-                        </div>
-
-                        {/* Quote + See more */}
-                        <div className="review-quote-wrap">
-                          <p className="review-quote">"{displayQuote}"</p>
-                          {isTruncated && (
-                            <button
-                              className="review-see-more"
-                              onClick={() => setExpandedReview(r)}
-                            >
-                              See more
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Author */}
-                        <div className="review-author">
-                          <div
-                            className="review-avatar"
-                            style={{ background: AVATAR_COLORS[(r.id - 1) % AVATAR_COLORS.length] }}
-                          >{r.initials}</div>
-                          <div>
-                            <p className="review-name">{r.name}</p>
-                            <p className="review-meta">{r.meta}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Navigation arrows */}
-            <div className="reviews-nav">
-              <button
-                className="reviews-nav-btn"
-                onClick={() => resetTimer(current - 1)}
-                aria-label="Previous review"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              <button
-                className="reviews-nav-btn"
-                onClick={() => resetTimer(current + 1)}
-                aria-label="Next review"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* Dots */}
-            <div className="reviews-dots" role="tablist" aria-label="Review slides">
-              {Array.from({ length: maxPos + 1 }, (_, i) => (
-                <button
-                  key={i}
-                  role="tab"
-                  aria-selected={i === current}
-                  className={`reviews-dot${i === current ? ' active' : ''}`}
-                  onClick={() => resetTimer(i)}
-                  aria-label={`Go to position ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Full-review modal */}
-      {expandedReview && (
-        <div
-          className="review-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setExpandedReview(null)}
-        >
-          <div className="review-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="review-modal-close"
-              onClick={() => setExpandedReview(null)}
-              aria-label="Close"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </button>
-
-            <div className="review-stars" aria-label="5 out of 5 stars">
-              {STARS.split('').map((s, i) => (
-                <span key={i} className="review-star">{s}</span>
-              ))}
-            </div>
-
-            <p className="review-modal-quote">"{expandedReview.quote}"</p>
-
-            <div className="review-author" style={{ marginTop: 20 }}>
-              <div className="review-avatar"
-                style={{ background: AVATAR_COLORS[(expandedReview.id - 1) % AVATAR_COLORS.length] }}
-              >{expandedReview.initials}</div>
-              <div>
-                <p className="review-name">{expandedReview.name}</p>
-                <p className="review-meta">{expandedReview.meta}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+ const [perPage,setPerPage]=useState(getPerPage);
+ const [current,setCurrent]=useState(0);
+ const [paused,setPaused]=useState(()=>typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+ const [hovered,setHovered]=useState(false),[focused,setFocused]=useState(false),[visible,setVisible]=useState(false);
+ const [pageVisible,setPageVisible]=useState(true);
+ const [expanded,setExpanded]=useState<Review|null>(null);
+ const section=useRef<HTMLElement>(null),viewport=useRef<HTMLDivElement>(null),dialog=useRef<HTMLDialogElement>(null),opener=useRef<HTMLButtonElement|null>(null);
+ const maximum=Math.max(0,REVIEWS.length-perPage);
+ const go=(n:number)=>setCurrent(((n%(maximum+1))+maximum+1)%(maximum+1));
+ useEffect(()=>{const resize=()=>{setPerPage(getPerPage());setCurrent(0);};window.addEventListener('resize',resize,{passive:true});return()=>window.removeEventListener('resize',resize);},[]);
+ useEffect(()=>{const m=window.matchMedia?.('(prefers-reduced-motion: reduce)');const update=()=>{if(m?.matches)setPaused(true);};m?.addEventListener('change',update);return()=>m?.removeEventListener('change',update);},[]);
+ useEffect(()=>{const update=()=>setPageVisible(!document.hidden);document.addEventListener('visibilitychange',update);return()=>document.removeEventListener('visibilitychange',update);},[]);
+ useEffect(()=>{if(!section.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>setVisible(entries[0].isIntersecting),{threshold:.15});observer.observe(section.current);return()=>observer.disconnect();},[]);
+ useEffect(()=>{if(paused||hovered||focused||!visible||!pageVisible||expanded)return;const timer=setInterval(()=>setCurrent(n=>(n+1)%(maximum+1)),5000);return()=>clearInterval(timer);},[paused,hovered,focused,visible,pageVisible,expanded,maximum]);
+ useEffect(()=>{const card=viewport.current?.querySelector('article');if(!card)return;viewport.current?.scrollTo?.({left:current*(card.getBoundingClientRect().width+20),behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});},[current,perPage]);
+ useEffect(()=>{if(!expanded)return;const old=document.body.style.overflow;document.body.style.overflow='hidden';dialog.current?.showModal?.();return()=>{document.body.style.overflow=old;opener.current?.focus();};},[expanded]);
+ const close=()=>{dialog.current?.close?.();setExpanded(null);};
+ return <section id="reviews" className="reviews-section wrap" ref={section} aria-roledescription="carousel" aria-labelledby="reviews-heading" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} onFocus={()=>setFocused(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setFocused(false);}}>
+  <div className="section-intro"><div><h2 id="reviews-heading">Client reviews.</h2><p>What homeowners are saying.</p></div><div className="review-controls"><button className="review-nav" aria-label={paused?'Start automatic review rotation':'Pause automatic review rotation'} title={paused?'Play reviews':'Pause reviews'} onClick={()=>setPaused(v=>!v)}><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{paused?<path d="m8 5 11 7-11 7Z"/>:<><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>}</svg></button><button className="review-nav" aria-label="Previous review" onClick={()=>go(current-1)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button><button className="review-nav" aria-label="Next review" onClick={()=>go(current+1)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button></div></div>
+  <div className="review-viewport" ref={viewport} tabIndex={0} aria-label="Client reviews. Use the navigation buttons to browse." onKeyDown={e=>{if(e.target!==e.currentTarget)return;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();go(current+(e.key==='ArrowRight'?1:-1));}}}>{REVIEWS.map((r,i)=><article className="client-review" key={r.id} role="group" aria-roledescription="slide" aria-label={`${i+1} of ${REVIEWS.length}`}><Stars/><blockquote>“{r.quote.length>CHAR_LIMIT?r.quote.slice(0,CHAR_LIMIT).trimEnd()+'…':r.quote}”</blockquote>{r.quote.length>CHAR_LIMIT&&<button className="text-button review-more" aria-haspopup="dialog" aria-label={`Read full review from ${r.name}`} onClick={e=>{opener.current=e.currentTarget;setPaused(true);setExpanded(r);}}>See more</button>}<ReviewAuthor review={r}/></article>)}</div>
+  <div className="review-bottom"><div className="review-dots" role="group" aria-label="Review positions">{Array.from({length:maximum+1},(_,i)=><button key={i} aria-current={current===i?'true':'false'} aria-label={`Go to review ${i+1}`} onClick={()=>go(i)}/>)}</div><span aria-live={paused?'polite':'off'}>{current+1}–{Math.min(REVIEWS.length,current+perPage)} of {REVIEWS.length} reviews</span></div>
+  {expanded&&<dialog ref={dialog} className="review-full-dialog" aria-labelledby="review-dialog-name" onCancel={close} onClose={()=>setExpanded(null)}><div className="review-dialog-top"><span>Client review</span><button onClick={close} aria-label="Close full review"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><div className="full-review"><h2 id="review-dialog-name">{expanded.name}</h2><p>{expanded.meta}</p><Stars/><blockquote>{expanded.quote}</blockquote></div></dialog>}
+ </section>;
 }
