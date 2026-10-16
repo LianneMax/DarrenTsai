@@ -1,7 +1,7 @@
 // Booking, for the React side.
 //
 // The behaviour lives in public/booking-chooser.js, which owns the prequal, the
-// HubSpot calendar and the booking events. It is a plain script on window so
+// Google calendar and the booking events. It is a plain script on window so
 // the three hand-written landing pages share the exact same implementation.
 //
 // What is left here is the fallback for when that script has not loaded, so a

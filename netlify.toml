@@ -112,7 +112,7 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     # Report-only first: inline calculators and vendor integrations must keep
     # working while the resource inventory is narrowed before enforcement.
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; frame-src https://*.hubspot.com https://www.google.com https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; frame-src https://calendar.google.com https://*.hubspot.com https://www.google.com https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'"
 
 [[redirects]]
   from = "/terms"

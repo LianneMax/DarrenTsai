@@ -24,7 +24,7 @@ async function contactStep(url: string) {
   (window as unknown as { fetch: unknown }).fetch = vi.fn(async () => ({ ok: true, json: async () => POLICY }));
   new Function(read('public/service-area.js'))();
   await vi.waitFor(() => expect((window as unknown as { DTServiceArea: { ready: () => boolean } }).DTServiceArea.ready()).toBe(true));
-  new Function(SOURCE.replace("var BOOKING_URL = 'https://meetings.hubspot.com/PLACEHOLDER'", `var BOOKING_URL = '${url}'`))();
+  new Function(SOURCE.replace(/var BOOKING_URL = '[^']*'/, `var BOOKING_URL = '${url}'`))();
   const booking = (window as unknown as { DTBooking: { mount: (el: Element) => void } }).DTBooking;
   booking.mount(document.getElementById('m')!);
   const card = () => document.querySelector('#m .dt-book-card')!;
@@ -43,10 +43,10 @@ async function contactStep(url: string) {
 beforeEach(() => { document.body.innerHTML = ''; });
 
 describe('one setting decides the booking wording', () => {
-  it('reads BOOKING_URL as a placeholder today, in the build flag and the chooser alike', () => {
-    expect(SOURCE).toContain("var BOOKING_URL = 'https://meetings.hubspot.com/PLACEHOLDER'");
-    expect(bookingCalendarReady()).toBe(false);
-    expect(BOOKING_CALENDAR_READY).toBe(false);
+  it('reads the supplied Google schedule in the build flag and chooser alike', () => {
+    expect(SOURCE).toContain('https://calendar.google.com/calendar/appointments/schedules/');
+    expect(bookingCalendarReady()).toBe(true);
+    expect(BOOKING_CALENDAR_READY).toBe(true);
   });
 
   it('says "Send my request" and "before Darren calls you" while it is the placeholder', async () => {
@@ -58,7 +58,7 @@ describe('one setting decides the booking wording', () => {
   });
 
   it('brings the calendar wording back on its own once a real link is set', async () => {
-    const s = await contactStep('https://meetings.hubspot.com/darren-test');
+    const s = await contactStep('https://calendar.google.com/calendar/appointments/schedules/AcZssZ2jtRO6oFZU1VgtFGePqnIMm8cYDO5eRRXAyu-5cuX9stZDl4mkCOn5nV83SFtW4BtfxhPu336X?gv=true');
     expect(s.button).toBe('See Darren’s calendar'.replace('’', "'"));
     expect(s.intro).toContain('before you pick a time');
     expect(s.hero).toBe('before you pick a time');
@@ -69,11 +69,10 @@ describe('/home-equity/ follows the same setting', () => {
   const v = { sending: false, fname: '', setFname: () => {}, lname: '', setLname: () => {}, email: '', setEmail: () => {},
     emailHint: null, setEmailHint: () => {}, phone: '', setPhone: () => {}, goStep: () => {}, submitLead: () => {} } as unknown as EquityPageView;
 
-  it('asks to send the request and says Darren will call, while there is no calendar', () => {
+  it('offers the calendar after a saved request when the schedule is configured', () => {
     const page = renderToStaticMarkup(<StepEquityContact v={v} />);
-    expect(page).toContain('Send my request');
-    expect(page).toContain('Darren will call you to set a time.');
-    expect(page).not.toMatch(/See Darren.{1,6}s Calendar|pick a time on Darren/);
+    expect(page).toContain('See Darren&#x27;s Calendar');
+    expect(page).toContain('pick a time on Darren');
     expect(renderToStaticMarkup(<EquityPageHero />)).not.toContain('Calendar');
   });
 });

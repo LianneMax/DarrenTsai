@@ -136,6 +136,35 @@ try {
       if (phone && r.small.length) {
         failures.push(`${width}px ${path}: fields under 16px (iOS zooms on focus): ${r.small.join(', ')}`);
       }
+      // Exercise the real screened flow with a local receipt, never a live lead
+      // or appointment. Google is blocked like every external host; the frame
+      // bounds, accessible title and working fallback still belong to this site.
+      if (path === '/book/' && [320, 1280].includes(width)) {
+        await page.route('**/api/lead', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+        const card = page.locator('#dt-book-mount .dt-book-card');
+        await card.locator('[data-q="bookingGoal"] [data-value="equity"]').click();
+        await card.locator('[data-book="state"]').selectOption('CA');
+        await card.locator('[data-q="propertyUse"] [data-value="primary"]').click();
+        await card.locator('[data-q="propertyType"] [data-value="single-family-condo"]').click();
+        await card.getByRole('button', { name: 'Continue', exact: true }).click();
+        await card.locator('[data-q="mortgageCurrent"] [data-value="yes"]').click();
+        await card.locator('[data-q="recentBankruptcyForeclosure"] [data-value="no"]').click();
+        await card.getByRole('button', { name: 'Continue', exact: true }).click();
+        await card.locator('[name="firstName"]').fill('TEST');
+        await card.locator('[name="lastName"]').fill('Layout');
+        await card.locator('[name="email"]').fill('layout@example.com');
+        await card.locator('[name="phone"]').fill('7145550193');
+        await card.locator('[name="privacy"]').check();
+        await card.getByRole('button', { name: "See Darren's calendar", exact: true }).click();
+        const frame = card.locator('iframe[title="Book a qualification call with Darren Tsai"]');
+        await frame.waitFor({ state: 'attached' });
+        const bounds = await frame.boundingBox();
+        const saved = await page.evaluate(measure);
+        checks++;
+        if (!bounds || bounds.x < 0 || bounds.x + bounds.width > width || saved.sw > saved.vw) failures.push(width + 'px booking calendar overflows');
+        if (!await card.getByRole('link', { name: 'Open calendar in a new tab', exact: true }).isVisible()) failures.push(width + 'px booking recovery link missing');
+        if (!(await frame.getAttribute('src')).startsWith('https://calendar.google.com/calendar/appointments/schedules/')) failures.push('Wrong booking provider');
+      }
       // An empty first screen cannot expose an APR popover overflowing a phone.
       // Exercise the real calculated state and its editable-fee explanation.
       if (path === '/mortgage-calculator/' && width < 600) {

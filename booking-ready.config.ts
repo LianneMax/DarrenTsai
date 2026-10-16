@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * Whether Darren's real HubSpot meetings link is set. The one setting is
+ * Whether Darren's real Google appointment schedule is set. The one setting is
  * BOOKING_URL in public/booking-chooser.js (served as written, so it cannot
  * import anything); this reads it at build time and hands the answer to the
  * React pages and their pre-rendered HTML as __BOOKING_CALENDAR_READY__, so

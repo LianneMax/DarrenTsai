@@ -10,10 +10,9 @@
  *  - Nothing is posted, and no calendar or phone number is shown, for a lead
  *    that fails: an unsupported state goes to the out-of-market pages, a
  *    knockout gets a decline.
- *  - The calendar appears only after /api/lead confirms receipt, prefilled so
- *    the booking lands on the same HubSpot contact.
+ *  - The calendar appears only after /api/lead confirms receipt, with a Google frame and a safe new-tab fallback.
  *  - generate_lead fires once, for a confirmed qualified lead, with no PII.
- *  - meeting_booked fires once, only for a message from HubSpot's own origin.
+ *  - an unverified iframe message never reports meeting_booked.
  *
  * The source is loaded once for the file rather than per test, because its
  * message listener is registered at evaluation: re-evaluating per test would
@@ -28,7 +27,7 @@ const SOURCE = readFileSync(resolve(__dirname, '../public/booking-chooser.js'), 
 const AREA = readFileSync(resolve(__dirname, '../public/service-area.js'), 'utf8');
 const COMPLIANCE = readFileSync(resolve(__dirname, '../public/compliance.js'), 'utf8');
 const POLICY = JSON.parse(readFileSync(resolve(__dirname, '../public/service-area-policy.json'), 'utf8'));
-const TEST_URL = 'https://meetings.hubspot.com/darren-test';
+const TEST_URL = 'https://calendar.google.com/calendar/appointments/schedules/test?gv=true';
 
 type Booking = { open: () => void; close: () => void; mount: (el: Element) => void; identify: (l: { name?: string; email?: string }) => void };
 
@@ -81,7 +80,7 @@ beforeAll(async () => {
   new Function(AREA)();
   await flush();
   await flush();
-  new Function(SOURCE.replace('https://meetings.hubspot.com/PLACEHOLDER', TEST_URL))();
+  new Function(SOURCE.replace(/var BOOKING_URL = '[^']*'/, `var BOOKING_URL = '${TEST_URL}'`))();
   booking = (window as unknown as { DTBooking: Booking }).DTBooking;
 });
 
@@ -99,9 +98,10 @@ beforeEach(() => {
 });
 
 describe('one config spot for the calendar', () => {
-  it('names the HubSpot meetings address once, as a placeholder until Darren sends it', () => {
-    expect(SOURCE.match(/https:\/\/meetings\.hubspot\.com\/[A-Za-z0-9-]+/g)).toEqual(['https://meetings.hubspot.com/PLACEHOLDER']);
-    expect(SOURCE).toMatch(/BOOKING_READY = BOOKING_URL\.indexOf\('PLACEHOLDER'\) === -1/);
+  it('names the supplied Google appointment schedule in one setting', () => {
+    expect(SOURCE.match(/var BOOKING_URL = /g)).toHaveLength(1);
+    expect(SOURCE).toContain('https://calendar.google.com/calendar/appointments/schedules/');
+    expect(SOURCE).not.toContain('MeetingsEmbedCode.js');
   });
 
   it('has nothing of Calendly left in it', () => {
@@ -170,7 +170,7 @@ describe('step 1: property', () => {
     next();
     expect(card().textContent).toMatch(/mobile homes or land/);
     expect(card().querySelector('a[href^="tel:"]')).toBeNull();
-    expect(card().querySelector('.meetings-iframe-container')).toBeNull();
+    expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
     expect(leadFetch).not.toHaveBeenCalled();
   });
 
@@ -309,24 +309,24 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(prequalPasses(leadBody())).toBe(true);
   });
 
-  it('shows the calendar only after a confirmed receipt, prefilled for the same contact', async () => {
+  it('shows the calendar only after a confirmed receipt, with a safe fallback and no PII in its URL', async () => {
     let resolveLead: (v: unknown) => void = () => {};
     leadFetch = vi.fn(() => new Promise((r) => { resolveLead = r; }));
     booking.open();
     passSteps();
     fillContact();
     await flush();
-    expect(card().querySelector('.meetings-iframe-container')).toBeNull();
+    expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
     resolveLead({ ok: true, status: 200, json: () => Promise.resolve({}) });
     await flush();
     await flush();
-    const container = card().querySelector('.meetings-iframe-container')!;
-    const src = container.getAttribute('data-src')!;
-    expect(src.startsWith(TEST_URL + '?embed=true')).toBe(true);
-    expect(src).toContain('firstname=Ada');
-    expect(src).toContain('lastname=Lovelace');
-    expect(src).toContain('email=ada%40example.com');
-    expect(document.querySelector('script[src*="MeetingsEmbedCode.js"]')).not.toBeNull();
+    const container = card().querySelector('.dt-book-frame iframe')!;
+    const src = container.getAttribute('src')!;
+    expect(src).toBe(TEST_URL);
+    expect(src).not.toMatch(/Ada|Lovelace|ada|firstname|lastname|email/);
+    expect(container.getAttribute('title')).toBe('Book a qualification call with Darren Tsai');
+    expect(card().querySelector('.dt-book-calendar-link')?.getAttribute('href')).toBe(TEST_URL);
+    expect(document.querySelector('script[src*="MeetingsEmbedCode.js"]')).toBeNull();
     expect(card().querySelector('a[href^="tel:"]')).not.toBeNull();
   });
 
@@ -366,7 +366,7 @@ describe('step 3: save the lead, then the calendar', () => {
     fillContact();
     await flush();
     await flush();
-    expect(card().querySelector('.meetings-iframe-container')).toBeNull();
+    expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
     expect(card().querySelector('a[href^="tel:"]')).toBeNull();
     expect(track.mock.calls.map((c) => c[0])).not.toContain('generate_lead');
   });
@@ -388,7 +388,7 @@ describe('step 3: save the lead, then the calendar', () => {
     fillContact();
     await flush();
     await flush();
-    expect(card().querySelector('.meetings-iframe-container')).toBeNull();
+    expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
     expect(card().textContent).toMatch(/No need to submit again/);
   });
 
@@ -402,15 +402,9 @@ describe('step 3: save the lead, then the calendar', () => {
   });
 });
 
-describe('meeting_booked', () => {
-  it('fires once for HubSpot saying the meeting was booked', () => {
-    window.dispatchEvent(new MessageEvent('message', { data: { meetingBookSucceeded: true }, origin: 'https://meetings.hubspot.com' }));
-    window.dispatchEvent(new MessageEvent('message', { data: { meetingBookSucceeded: true }, origin: 'https://meetings-na2.hubspot.com' }));
-    expect(track.mock.calls.filter((c) => c[0] === 'meeting_booked')).toEqual([['meeting_booked', { page_path: '/' }]]);
-  });
-
-  it('ignores the same message from any other origin', () => {
-    for (const origin of ['https://evil.example', 'https://meetings.hubspot.com.attacker.example', 'https://app.hubspot.com']) {
+describe('Google booking conversion truth', () => {
+  it('never reports a booking from an iframe load or an unverified message', () => {
+    for (const origin of ['https://calendar.google.com', 'https://meetings.hubspot.com', 'https://meetings-na2.hubspot.com', 'https://evil.example']) {
       window.dispatchEvent(new MessageEvent('message', { data: { meetingBookSucceeded: true }, origin }));
     }
     expect(track.mock.calls.map((c) => c[0])).not.toContain('meeting_booked');

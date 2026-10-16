@@ -4,7 +4,7 @@
  * WHY THIS EXISTS. Decided with Darren on 15 Oct 2026: only licensed-state
  * leads can book, and the site does the qualifying. Calendly's free plan could
  * not screen anyone, and its public link let a New York visitor book around the
- * state check the site already had. So booking moved to HubSpot Meetings, and
+ * state check the site already had. Google scheduling now follows this prequal, and
  * the calendar is only ever drawn here, after this prequal passes and the lead
  * has been saved. Nothing else on the site links to the calendar.
  *
@@ -21,7 +21,7 @@
  *   2. Darren's two knockouts: mortgage current, and no bankruptcy or
  *      foreclosure in the last 4 years
  *   3. contact details, the required privacy box and the two optional SMS boxes
- *   4. POST /api/lead. Only after a confirmed receipt: the calendar, prefilled,
+ *   4. POST /api/lead. Only after a confirmed receipt: the calendar,
  *      plus a Call button.
  * An unsupported state goes to /out-of-market-primary/ or /out-of-market-dscr/.
  * A knockout gets a short, kind decline. A fail shows no calendar and no phone
@@ -39,13 +39,11 @@
   var PHONE_HREF = 'tel:+17148875432';
 
   /**
-   * The one place the calendar address lives. PLACEHOLDER until Darren sends
-   * his HubSpot meetings link (darren@ or team@, open decision). While it is a
-   * placeholder the flow still saves the lead and offers the Call button, but
-   * draws no calendar, so nothing ships that books into a page that does not
-   * exist.
+   * The one schedule setting, supplied by Max on 17 Oct 2026. The site saves
+   * a screened lead before drawing Google's booking page. Google owns the
+   * inner calendar UI; our wrapper and actions use the site's brand styles.
    */
-  var BOOKING_URL = 'https://meetings.hubspot.com/PLACEHOLDER';
+  var BOOKING_URL = 'https://calendar.google.com/calendar/appointments/schedules/AcZssZ2jtRO6oFZU1VgtFGePqnIMm8cYDO5eRRXAyu-5cuX9stZDl4mkCOn5nV83SFtW4BtfxhPu336X?gv=true';
   var BOOKING_READY = BOOKING_URL.indexOf('PLACEHOLDER') === -1;
 
   /**
@@ -57,15 +55,6 @@
   var COPY = BOOKING_READY
     ? { when: 'before you pick a time', submit: 'See Darren\'s calendar' }
     : { when: 'before Darren calls you', submit: 'Send my request' };
-  var MEETINGS_SCRIPT = 'https://static.hsappstatic.net/MeetingsEmbed/ex/MeetingsEmbedCode.js';
-
-  /**
-   * Who may tell us a meeting was booked. The embed is served from
-   * meetings.hubspot.com, or a regional host such as meetings-na2.hubspot.com.
-   * Exact host match, not a substring: indexOf('hubspot.com') also accepts
-   * https://hubspot.com.attacker.example, which could post a forged booking.
-   */
-  var MEETINGS_ORIGIN = /^https:\/\/meetings(?:-[a-z0-9]+)?\.hubspot\.com$/;
 
   var FORM_ID = 'booking-prequal';
 
@@ -119,7 +108,6 @@
 
   var overlay = null;
   var lastFocus = null;
-  var bookedSent = false; // meeting_booked fires once per page view
 
   /**
    * Who is booking, when we happen to know.
@@ -242,15 +230,21 @@
       '.dt-book-err{margin:12px 0 0;font-size:14px;line-height:20px;color:#b42318;}' +
       '.dt-book-err:empty{display:none;}' +
       '.dt-book-next{display:block;width:100%;margin-top:18px;min-height:48px;padding:12px 16px;border:0;border-radius:10px;' +
-      'background:#223d55;color:#fff;font:inherit;font-size:16px;font-weight:600;cursor:pointer;}' +
+      'background:#1a7f99;color:#fff;font:inherit;font-size:16px;font-weight:600;cursor:pointer;}' +
+      '.dt-book-next:hover{background:#146b82;}' +
+      '.dt-book-next:focus-visible,.dt-book-calendar-link:focus-visible{outline:3px solid #1a7f99;outline-offset:3px;}' +
       '.dt-book-next[disabled]{opacity:.6;cursor:default;}' +
       '.dt-book-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;}' +
       '.dt-book-link{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:#517686;padding:4px 0;text-decoration:underline;}' +
       '.dt-book-call{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;min-height:48px;' +
       'border-radius:10px;border:1.5px solid #e6ebf0;text-decoration:none;color:#0f202d;font-weight:600;}' +
       '.dt-book-nowrap{white-space:nowrap;}' +
-      '.dt-book-frame{min-height:620px;}' +
-      '.dt-book-frame iframe{width:100%!important;}' +
+      '.dt-book-frame{margin-top:20px;background:#fff;border-radius:12px;overflow:hidden;}' +
+      '.dt-book-frame iframe{display:block;width:100%;height:680px;border:0;background:#fff;}' +
+      '.dt-book-calendar-link{display:flex;align-items:center;justify-content:center;min-height:48px;margin-top:14px;padding:12px 16px;border-radius:8px;background:#1a7f99;color:#fff;text-decoration:none;font-weight:600;}' +
+      '.dt-book-calendar-link:hover{background:#146b82;}' +
+      '.dt-book-calendar-help{margin:14px 0 0;font-size:14px;line-height:1.6;color:#526676;}' +
+      '@media(max-width:600px){.dt-book-frame iframe{height:720px;}.dt-book-card.dt-cal{padding:22px 16px;}}' +
       '.dt-book-done{padding:8px 0 0;font-size:15px;line-height:22px;}';
     var style = document.createElement('style');
     style.id = STYLE_ID;
@@ -550,21 +544,14 @@
         '<p class="dt-book-sub">Darren has your details and will call you to set a time.</p>' + call + (footer || '');
       return;
     }
-    var src = BOOKING_URL + (BOOKING_URL.indexOf('?') === -1 ? '?' : '&') + 'embed=true' +
-      '&firstname=' + encodeURIComponent(lead.firstName || '') +
-      '&lastname=' + encodeURIComponent(lead.lastName || '') +
-      '&email=' + encodeURIComponent(lead.email || '');
-    // Wider only once there is a calendar to lay out.
+    // Google's embed has no documented HubSpot-style prefill parameters.
+    // Keep names and emails out of the third-party iframe URL.
     card.classList.add('dt-cal');
     card.innerHTML = '<h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' +
-      '<p class="dt-book-sub">Free 15 minute call with Darren.</p>' +
-      '<div class="dt-book-frame"><div class="meetings-iframe-container" data-src="' + esc(src) + '"></div></div>' + call + (footer || '');
-    // HubSpot's embed script scans for containers once, when it runs, so it
-    // is added after the container rather than preloaded.
-    var js = document.createElement('script');
-    js.src = MEETINGS_SCRIPT;
-    js.async = true;
-    card.appendChild(js);
+      '<p class="dt-book-sub">Your request is saved. Choose a time for your 15-minute qualification call with Darren.</p>' +
+      '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a qualification call with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
+      '<p class="dt-book-calendar-help">Google Calendar will ask you to confirm your booking details. If the calendar does not load, open it in a new tab.</p>' +
+      '<a class="dt-book-calendar-link" href="' + esc(BOOKING_URL) + '" target="_blank" rel="noopener noreferrer">Open calendar in a new tab</a>' + call + (footer || '');
     track('booking_page_shown', { page_path: window.location.pathname });
   }
 
@@ -635,19 +622,11 @@
   }
 
   /**
-   * HubSpot's embed announces a booking by posting to this page. The origin
-   * check is the security boundary: without it any page could post a forged
-   * booking and inflate the count. meeting_booked replaces calendly_booking,
-   * which Kocah imports into Google Ads; their import has to be repointed.
-   * page_path only.
+   * Google appointment scheduling does not document a booking-success message
+   * for this iframe. An open, load or arbitrary postMessage is not a booking.
+   * Keep booking_page_shown as observation only; meeting_booked needs a verified
+   * provider/server confirmation before it can be emitted again.
    */
-  window.addEventListener('message', function (e) {
-    if (!MEETINGS_ORIGIN.test(String(e.origin || ''))) return;
-    var d = e.data;
-    if (!d || d.meetingBookSucceeded !== true || bookedSent) return;
-    bookedSent = true;
-    track('meeting_booked', { page_path: window.location.pathname });
-  });
 
   /**
    * Tell the flow who this visitor is, after a form has already asked them.
