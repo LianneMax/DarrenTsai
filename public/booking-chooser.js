@@ -237,6 +237,8 @@
       '.dt-book-check-req{margin:14px 0 14px;}' +
       '.dt-book-check a{color:#2b6b80;}' +
       '.dt-book-note{margin:12px 0 0;font-size:11px;line-height:16px;color:#6b7280;}' +
+      // The SMS line reads at the boxes' size; the mortgage disclosure stays 11px.
+      '.dt-book-note-sms{font-size:12.5px;line-height:18px;color:#5b6573;}' +
       '.dt-book-err{margin:12px 0 0;font-size:14px;line-height:20px;color:#b42318;}' +
       '.dt-book-err:empty{display:none;}' +
       '.dt-book-next{display:block;width:100%;margin-top:18px;min-height:48px;padding:12px 16px;border:0;border-radius:10px;' +
@@ -412,7 +414,8 @@
         '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
-        '<p class="dt-book-note">Text messages are optional and not a condition of purchase or of submitting this form. Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>' +
+        '<p class="dt-book-note dt-book-note-sms">Text messages are optional and not a condition of purchase or of submitting this form.</p>' +
+        '<p class="dt-book-note">Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>' +
         '<p class="dt-book-err" role="alert"></p>' +
         '<button type="submit" class="dt-book-next">' + esc(COPY.submit) + '</button>' +
         '</form>' +

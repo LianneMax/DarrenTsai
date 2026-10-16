@@ -82,7 +82,8 @@ describe('the consent words are untouched (10DLC review)', () => {
   it('keeps every consent string in the chooser identical to compliance.js', () => {
     for (const m of SOURCE.matchAll(/var SMS_(?:INFO|MARKETING)_TEXT = '([^']+)'/g)) expect(read('public/compliance.js')).toContain(m[1]);
     expect(SOURCE).toContain('I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)');
-    expect(SOURCE).toContain('Text messages are optional and not a condition of purchase or of submitting this form. Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.');
+    expect(SOURCE).toContain('>Text messages are optional and not a condition of purchase or of submitting this form.</p>');
+    expect(SOURCE).toContain('>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>');
   });
 
   it('keeps the whole block visible: nothing collapsed behind a toggle', () => {
@@ -119,5 +120,31 @@ describe('React forms format a US number the same way (16 Oct 2026)', () => {
     for (const f of ['src/components/HomeEquityCalculator.tsx', 'src/components/AduCalculator.tsx', 'src/components/DebtSavingsCalculator.tsx', 'src/components/LeadForm.tsx']) {
       expect(read(f), f).toMatch(/isValidPhoneNumber\(.*, 'US'\)/);
     }
+  });
+});
+
+describe('consent sizes (16 Oct 2026)', () => {
+  it('sets the SMS line at the boxes 12.5px and keeps the mortgage disclosure at 11px', () => {
+    for (const f of ['public/compliance.css', 'src/index.css']) {
+      const css = read(f);
+      expect(css, f).toContain('.compliance-disclosure p{margin:8px 0;font-size:11px;line-height:1.45}');
+      expect(css, f).toContain('.compliance-disclosure p.sms-details{font-size:12.5px;line-height:1.45}');
+    }
+    expect(SOURCE).toContain(".dt-book-note-sms{font-size:12.5px;");
+    expect(SOURCE).toContain(".dt-book-note{margin:12px 0 0;font-size:11px;");
+  });
+});
+
+/**
+ * The booking card's Call link starts from the site's one real number, like
+ * every other number on the site; CallRail's swap.js replaces it, link and
+ * text, with the visitor's tracking number once cookies are accepted, including
+ * on links added after load (checked live, 16 Oct 2026).
+ */
+describe('the booking card number', () => {
+  it('is the same real number as the rest of the site, for CallRail to swap', () => {
+    const config = /export const PHONE = "([^"]+)"/.exec(read('src/config.ts'))![1];
+    expect(SOURCE).toContain(`var PHONE_DISPLAY = '${config}';`);
+    expect(SOURCE).toContain(`var PHONE_HREF = 'tel:+1${config.replace(/\D/g, '')}';`);
   });
 });
