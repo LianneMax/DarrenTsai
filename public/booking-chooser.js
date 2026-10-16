@@ -201,10 +201,14 @@
       '.dt-book-field input,.dt-book-field select{display:block;width:100%;box-sizing:border-box;margin-top:6px;' +
       'padding:11px 12px;border:1px solid #cfd8e0;border-radius:8px;font:inherit;font-size:16px;font-weight:400;background:#fff;color:#0f202d;}' +
       '.dt-book-row{display:flex;gap:10px;}.dt-book-row .dt-book-field{flex:1;min-width:0;}' +
-      '.dt-book-check{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;font-size:13px;line-height:19px;color:#374151;}' +
-      '.dt-book-check input{flex-shrink:0;margin-top:3px;width:18px;height:18px;}' +
+      // Consent, layout only (16 Oct 2026): muted 12.5px on a tighter line, each
+      // box on its text's first line, a gap after the required box, and the
+      // disclosure at the smallest legible size. The words do not change.
+      '.dt-book-check{display:flex;gap:10px;align-items:flex-start;margin:8px 0 0;font-size:12.5px;line-height:18px;color:#5b6573;}' +
+      '.dt-book-check input{flex-shrink:0;margin:1px 0 0;width:16px;height:16px;}' +
+      '.dt-book-check-req{margin:14px 0 14px;}' +
       '.dt-book-check a{color:#2b6b80;}' +
-      '.dt-book-note{margin:12px 0 0;font-size:12px;line-height:18px;color:#6b7280;}' +
+      '.dt-book-note{margin:12px 0 0;font-size:11px;line-height:16px;color:#6b7280;}' +
       '.dt-book-err{margin:12px 0 0;font-size:14px;line-height:20px;color:#b42318;}' +
       '.dt-book-err:empty{display:none;}' +
       '.dt-book-next{display:block;width:100%;margin-top:18px;min-height:48px;padding:12px 16px;border:0;border-radius:10px;' +
@@ -377,7 +381,7 @@
         '</div>' +
         '<label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(knownLead && knownLead.email) + '"></label>' +
         '<label class="dt-book-field">Phone<input name="phone" type="tel" autocomplete="tel" required></label>' +
-        '<label class="dt-book-check"><input type="checkbox" name="privacy" required> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
+        '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
         '<p class="dt-book-note">Text messages are optional and not a condition of purchase or of submitting this form. Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>' +

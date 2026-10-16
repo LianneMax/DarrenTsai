@@ -2358,7 +2358,7 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
   .apr-tooltip { position: fixed; left: 16px; right: 16px; top: auto; bottom: 90px; width: auto; }
 }
 
-.compliance-disclosure{font-size:12px;line-height:1.6;color:var(--text-muted);margin:18px 0}.compliance-disclosure p{margin:8px 0}.sms-choice{display:flex;align-items:flex-start;gap:10px;font-weight:400}.sms-choice input{width:16px!important;height:16px!important;flex-shrink:0;margin-top:3px}.compliance-disclosure summary{cursor:pointer;color:var(--teal)}.compliance-disclosure a{color:var(--teal)}
+/* Consent block, layout only (16 Oct 2026; the words are under 10DLC review and do not change). Muted 12.5px text on a tighter line, each box on its text's first line, a gap after the required box, and the disclosure paragraphs at the smallest legible size. Everything stays visible. */.compliance-disclosure{font-size:12.5px;line-height:1.45;color:var(--text-muted);margin:18px 0}.compliance-disclosure p{margin:8px 0;font-size:11px;line-height:1.45}.sms-choice{display:flex;align-items:flex-start;gap:10px;font-weight:400;margin:6px 0}.sms-choice input{width:16px!important;height:16px!important;flex-shrink:0;margin:1px 0 0!important}.sms-choice:has(input[data-privacy-form]){margin-bottom:14px}.compliance-disclosure summary{cursor:pointer;color:var(--teal)}.compliance-disclosure a{color:var(--teal)}
 
 [data-service-area]{border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}[data-service-area] label{display:block;margin:8px 0}[data-service-area] select{display:block;width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--text-dark)}[data-service-area] legend{font-weight:600;font-size:16px}
 
