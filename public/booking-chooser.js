@@ -216,6 +216,8 @@
       '.dt-book-field{display:block;margin:12px 0 0;font-size:14px;font-weight:600;}' +
       '.dt-book-field input,.dt-book-field select{display:block;width:100%;box-sizing:border-box;margin-top:6px;' +
       'padding:11px 12px;border:1px solid #cfd8e0;border-radius:8px;font:inherit;font-size:16px;font-weight:400;background:#fff;color:#0f202d;}' +
+      '.dt-book-situation{display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:11px 12px;border:1px solid #cfd8e0;border-radius:8px;font:inherit;font-size:16px;color:#223d55;resize:vertical;min-height:104px;}' +
+      '.dt-book-situation:focus-visible{outline:3px solid #1a7f99;outline-offset:3px;}' +
       '.dt-book-row{display:flex;gap:10px;}.dt-book-row .dt-book-field{flex:1;min-width:0;}' +
       // Consent, layout only (16 Oct 2026): muted 12.5px on a tighter line, each
       // box on its text's first line, a gap after the required box, and the
@@ -257,7 +259,7 @@
    * the name and email go to sessionStorage, through identify().
    */
   function newAnswers() {
-    return { bookingGoal: '', propertyUse: '', propertyState: '', propertyType: '', mortgageCurrent: '', recentBankruptcyForeclosure: '' };
+    return { situation: '', bookingGoal: '', propertyUse: '', propertyState: '', propertyType: '', mortgageCurrent: '', recentBankruptcyForeclosure: '' };
   }
 
   function choiceGroup(name, options, value) {
@@ -314,6 +316,11 @@
         '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property ' + COPY.when + '.</p>' +
         '<p class="dt-book-q">What would you like help with?</p>' +
         choiceGroup('bookingGoal', GOAL_OPTIONS, goal);
+      if (goal === 'not-sure') {
+        html += '<label class="dt-book-field" for="dt-book-situation">Tell Darren a little about your situation (required)</label>' +
+          '<textarea class="dt-book-situation" id="dt-book-situation" rows="3" maxlength="2000" required aria-describedby="dt-book-situation-help">' + esc(answers.situation) + '</textarea>' +
+          '<p class="dt-book-calendar-help" id="dt-book-situation-help">A sentence or two about your goal or question helps Darren prepare. Please leave out account numbers and other sensitive details.</p>';
+      }
       if (goal) {
         var uses = window.DTServiceArea.uses(ctx, goal);
         if (uses.indexOf(answers.propertyUse) === -1) answers.propertyUse = uses.length === 1 ? uses[0] : '';
@@ -345,8 +352,14 @@
       });
       var stateSel = card.querySelector('[data-book="state"]');
       if (stateSel) stateSel.addEventListener('change', function (e) { answers.propertyState = e.target.value; setErr(''); });
+      var situation = card.querySelector('#dt-book-situation');
+      if (situation) situation.addEventListener('input', function () { answers.situation = situation.value; situation.removeAttribute('aria-invalid'); setErr(''); });
       wireClose();
       card.querySelector('.dt-book-next').addEventListener('click', function () {
+        if (answers.bookingGoal === 'not-sure' && !answers.situation.trim()) {
+          setErr('Please tell Darren a little about your situation.');
+          situation.setAttribute('aria-invalid', 'true'); situation.focus(); return;
+        }
         if (!answers.bookingGoal) { setErr('Please choose what you would like help with.'); return; }
         if (!answers.propertyUse || !answers.propertyState || !answers.propertyType) {
           setErr('Please answer each question to continue.');
@@ -452,6 +465,7 @@
         smsConsentAt: new Date().toISOString(),
         timestamp: new Date().toISOString()
       };
+      if (answers.bookingGoal === 'not-sure') lead.message = answers.situation.trim();
       var attr = {};
       try { attr = window.DT && window.DT.attr ? window.DT.attr() : {}; } catch (e2) { attr = {}; }
       var body = {};

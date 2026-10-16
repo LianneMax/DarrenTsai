@@ -661,6 +661,11 @@ export default async (req: Request, context: Context) => {
     if (goal !== undefined && !Object.prototype.hasOwnProperty.call(BOOKING_GOALS, goal)) {
       return jsonResponse(422, { field: 'prequal', message: 'Please choose what you would like help with.' });
     }
+    // Not-sure bookings need context for Darren, even if a client bypasses the
+    // first step. Reuse message so the existing Sheet/snapshot route retains it.
+    if (goal === 'not-sure' && (typeof payload.message !== 'string' || !payload.message.trim() || payload.message.trim().length > 2000)) {
+      return jsonResponse(422, { field: 'message', message: 'Please explain your situation in a sentence or two (up to 2,000 characters).' });
+    }
     if (goal !== undefined) payload.reviewFlag = BOOKING_GOALS[goal].review ? 'Yes' : '';
     const area = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || ''), goal);
     if (area !== 'supported') return jsonResponse(422, { field: 'propertyState', message: area === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });

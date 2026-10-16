@@ -163,6 +163,14 @@ describe('request guards', () => {
       expect(JSON.parse(String(calls.find((c) => c.url === UPSTREAM)!.init!.body)).reviewFlag).toBe('');
     });
 
+    it('requires an explanation for not-sure before an upstream write', async () => {
+      for (const message of [undefined, '   ', 42, 'x'.repeat(2001)]) {
+        expect((await handler(req({ ...PREQUAL, bookingGoal: 'not-sure', message }), ctx)).status).toBe(422);
+      }
+      expect(upstreamCalled()).toBe(false);
+      expect((await handler(req({ ...PREQUAL, bookingGoal: 'not-sure', message: 'I need help comparing my options.' }), ctx)).status).toBe(200);
+    });
+
     it('holds /home-equity/ to the same rules', async () => {
       const equity = { ...PREQUAL, formId: 'home-equity-calculator', source: 'home-equity' };
       expect((await handler(req(equity), ctx)).status).toBe(200);

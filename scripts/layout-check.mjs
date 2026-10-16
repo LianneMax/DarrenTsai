@@ -142,10 +142,18 @@ try {
       if (path === '/book/' && [320, 1280].includes(width)) {
         await page.route('**/api/lead', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
         const card = page.locator('#dt-book-mount .dt-book-card');
-        await card.locator('[data-q="bookingGoal"] [data-value="equity"]').click();
+        const bookingGoal = width === 320 ? 'not-sure' : 'equity';
+        await card.locator('[data-q="bookingGoal"] [data-value="' + bookingGoal + '"]').click();
         await card.locator('[data-book="state"]').selectOption('CA');
         await card.locator('[data-q="propertyUse"] [data-value="primary"]').click();
         await card.locator('[data-q="propertyType"] [data-value="single-family-condo"]').click();
+        if (bookingGoal === 'not-sure') {
+          await card.getByRole('button', { name: 'Continue', exact: true }).click();
+          if (!await card.getByText('Please tell Darren a little about your situation.', { exact: true }).isVisible()) failures.push('Missing not-sure explanation gate');
+          await card.locator('#dt-book-situation').fill('I need help comparing refinancing with using my equity.');
+          const noteLayout = await page.evaluate(measure);
+          if (noteLayout.sw > noteLayout.vw || noteLayout.small.length) failures.push('Not-sure explanation field does not fit a phone');
+        }
         await card.getByRole('button', { name: 'Continue', exact: true }).click();
         await card.locator('[data-q="mortgageCurrent"] [data-value="yes"]').click();
         await card.locator('[data-q="recentBankruptcyForeclosure"] [data-value="no"]').click();

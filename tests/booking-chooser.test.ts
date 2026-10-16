@@ -53,6 +53,10 @@ function passSteps(use = 'primary', state = 'CA', goal = 'equity') {
   if (card().querySelector('[data-q="propertyUse"]')) tap('propertyUse', use);
   pickState(state);
   tap('propertyType', 'single-family-condo');
+  if (goal === 'not-sure') {
+    const note = card().querySelector('textarea') as HTMLTextAreaElement;
+    note.value = 'I want to compare refinancing with using my equity.'; note.dispatchEvent(new Event('input'));
+  }
   next();
   tap('mortgageCurrent', 'yes');
   tap('recentBankruptcyForeclosure', 'no');
@@ -234,12 +238,23 @@ describe('step 1: the goal decides the property question (policy v3)', () => {
     }
   });
 
+  it('requires a nonblank explanation for not-sure, and hides it for another goal', () => {
+    booking.open(); tap('bookingGoal', 'not-sure'); next();
+    expect(errText()).toContain('tell Darren');
+    const note = card().querySelector('textarea') as HTMLTextAreaElement;
+    expect(document.activeElement).toBe(note);
+    note.value = '   '; note.dispatchEvent(new Event('input')); next();
+    expect(errText()).toContain('tell Darren');
+    expect(leadFetch).not.toHaveBeenCalled();
+    tap('bookingGoal', 'equity'); expect(card().querySelector('textarea')).toBeNull();
+  });
+
   it('flags commercial and not-sure for Darren, and posts the goal', async () => {
     booking.open();
     passSteps('primary', 'CA', 'not-sure');
     fillContact();
     await flush();
-    expect(leadBody()).toMatchObject({ bookingGoal: 'not-sure', reviewFlag: 'Yes' });
+    expect(leadBody()).toMatchObject({ bookingGoal: 'not-sure', reviewFlag: 'Yes', message: 'I want to compare refinancing with using my equity.' });
   });
 });
 
