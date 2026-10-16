@@ -21,7 +21,7 @@ import ComplianceDisclosure from './ComplianceDisclosure';
  * unchosen, rates and tiers are the calculator's own, amounts are computed,
  * and a payment that goes up is said in those words.
  */
-import { AsYouType } from 'libphonenumber-js';
+import { formatUsPhone } from '../utils/phone';
 import type { ReactNode } from 'react';
 import { LICENSED_STATES, PHONE, isLicensedState } from '../config';
 import { formatCurrency, formatRate } from '../utils/formatters';
@@ -563,7 +563,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
         <div>
           <label className="input-label">Phone Number</label>
           <input type="tel" className="form-input" placeholder="(714) 000-0000"
-            value={v.phone} onChange={(e) => v.setPhone(new AsYouType('US').input(e.target.value))} />
+            value={v.phone} onChange={(e) => v.setPhone(formatUsPhone(e.target.value))} />
         </div>
       </div>
 

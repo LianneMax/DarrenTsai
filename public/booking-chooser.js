@@ -163,6 +163,34 @@
     } catch (e) { /* analytics must never break a booking */ }
   }
 
+  /**
+   * Contact checks, the same rules as the static pages' forms (16 Oct 2026):
+   * a US number of 10 digits once a leading 1 is dropped, whose area code and
+   * exchange start 2-9 and are not N11 (NANP), formatted (XXX) XXX-XXXX as it
+   * is typed; and an email with a dot and at least two letters after the @.
+   * lead.mts holds the same line on the server.
+   */
+  function phoneDigits(raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    // No US area code starts with 1, so a leading 1 is the country code: dropped
+    // as soon as it is typed, so "+1 714..." never shows as (171) 4...
+    if (d.charAt(0) === '1') d = d.slice(1);
+    return d;
+  }
+  function formatPhone(raw) {
+    var d = phoneDigits(raw).slice(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return '(' + d.slice(0, 3) + ') ' + d.slice(3);
+    return '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);
+  }
+  function validPhone(raw) {
+    var d = phoneDigits(raw);
+    if (d.length !== 10) return false;
+    var block = function (b) { return /^[2-9]\d{2}$/.test(b) && !/^[2-9]11$/.test(b); };
+    return block(d.slice(0, 3)) && block(d.slice(3, 6));
+  }
+  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || '').trim()); }
+
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -380,7 +408,7 @@
         '<label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(last) + '"></label>' +
         '</div>' +
         '<label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(knownLead && knownLead.email) + '"></label>' +
-        '<label class="dt-book-field">Phone<input name="phone" type="tel" autocomplete="tel" required></label>' +
+        '<label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required></label>' +
         '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
@@ -392,6 +420,8 @@
       wireClose();
       card.querySelector('.dt-book-back').addEventListener('click', stepHistory);
       var form = card.querySelector('form');
+      // Formats as it is typed, so what is posted is (XXX) XXX-XXXX.
+      form.elements.phone.addEventListener('input', function (e) { e.target.value = formatPhone(e.target.value); });
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         submit(form);
@@ -402,7 +432,8 @@
       var f = form.elements;
       var val = function (n) { return String(f[n].value || '').trim(); };
       if (!val('firstName') || !val('lastName') || !val('email') || !val('phone')) { setErr('Please fill in your name, email and phone.'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('email'))) { setErr('Please check your email address.'); return; }
+      if (!validEmail(val('email'))) { setErr('Please enter a valid email address.'); f.email.focus(); return; }
+      if (!validPhone(val('phone'))) { setErr('Please enter a valid US phone number.'); f.phone.focus(); return; }
       if (!f.privacy.checked) { setErr('Please acknowledge the Privacy Policy and Terms to continue.'); f.privacy.focus(); return; }
       setErr('');
       var btn = form.querySelector('.dt-book-next');

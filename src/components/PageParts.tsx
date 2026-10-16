@@ -7,7 +7,7 @@ import ComplianceDisclosure from './ComplianceDisclosure';
  * them. Styles are the dcp- block in src/index.css, which both pages share.
  */
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { AsYouType } from 'libphonenumber-js';
+import { formatUsPhone } from '../utils/phone';
 import { LICENSED_STATES, NMLS, DRE, PHONE } from '../config';
 import { formatCurrency } from '../utils/formatters';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
@@ -267,7 +267,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }
         <div>
           <label className="input-label" htmlFor="lead-phone">Phone Number</label>
           <input id="lead-phone" type="tel" className="form-input" placeholder="(714) 000-0000"
-            value={v.phone} onChange={(e) => v.setPhone(new AsYouType('US').input(e.target.value))} />
+            value={v.phone} onChange={(e) => v.setPhone(formatUsPhone(e.target.value))} />
         </div>
       </div>
 

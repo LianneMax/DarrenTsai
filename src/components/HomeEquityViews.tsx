@@ -28,7 +28,7 @@ import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, LicensedStrip, Chips, MoneyInput } from './PageParts';
 import ComplianceDisclosure from './ComplianceDisclosure';
-import { AsYouType } from 'libphonenumber-js';
+import { formatUsPhone } from '../utils/phone';
 
 export const EQUITY_FORM_ID = 'home-equity-calculator';
 
@@ -300,7 +300,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
         <div>
           <label className="input-label" htmlFor="lead-phone">Phone Number</label>
           <input id="lead-phone" type="tel" className="form-input" placeholder="(714) 000-0000" autoComplete="tel"
-            value={v.phone} onChange={(e) => v.setPhone(new AsYouType('US').input(e.target.value))} />
+            value={v.phone} onChange={(e) => v.setPhone(formatUsPhone(e.target.value))} />
         </div>
       </div>
 

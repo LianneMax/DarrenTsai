@@ -42,7 +42,7 @@ function req(body: unknown, opts: { method?: string; origin?: string | null } = 
 
 // gmail.com is on the endpoint's known-good list, so these tests never reach
 // the DNS resolver. The domain check has its own file: lead-email-domain.test.ts.
-const LEAD = { firstName: 'Jane', email: 'jane@gmail.com', phone: '5551234567', source: 'dscr' };
+const LEAD = { firstName: 'Jane', email: 'jane@gmail.com', phone: '7145550123', source: 'dscr' };
 
 /** Did the handler try to send the rescue email? */
 function rescueSent() {
@@ -294,7 +294,7 @@ describe('request guards', () => {
   });
 
   it('accepts a phone-only lead', async () => {
-    const res = await handler(req({ phone: '5551234567' }), ctx);
+    const res = await handler(req({ phone: '7145550123' }), ctx);
     expect(res.status).toBe(200);
   });
 });
@@ -576,5 +576,34 @@ describe('hubspotutk', () => {
     expect(readHutk('xhubspotutk=' + HUTK)).toBeNull();
     expect(readHutk(null)).toBeNull();
     expect(readHutk('')).toBeNull();
+  });
+});
+
+/**
+ * 16 Oct 2026: the server holds the same email and US-phone line every form
+ * applies, so a stale or hand-built request cannot save a malformed contact.
+ */
+describe('contact format', () => {
+  it.each(['jane', 'jane@', '@gmail.com', 'jane@gmail', 'jane@gmail.c', 'ja ne@gmail.com'])('refuses the email %s with its own message, saving nothing', async (email) => {
+    const res = await handler(req({ ...LEAD, email }), ctx);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ field: 'email', message: 'Please enter a valid email address.' });
+    expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
+
+  it.each(['123', '714555012', '71455501234', '1234567890', '0145550123', '9115550123', '7141110123', '7140110123', '+44 20 7946 0958'])('refuses the phone %s as not a US number', async (phone) => {
+    const res = await handler(req({ ...LEAD, phone }), ctx);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ field: 'phone', message: 'Please enter a valid US phone number.' });
+    expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
+
+  it.each(['7145550123', '(714) 555-0123', '714-555-0123', '+1 (714) 555-0123', '1 714 555 0123'])('accepts the US number %s', async (phone) => {
+    expect((await handler(req({ ...LEAD, phone }), ctx)).status).toBe(200);
+  });
+
+  it('still accepts an email-only lead and a phone-only lead', async () => {
+    expect((await handler(req({ firstName: 'Jane', email: 'jane@gmail.com', source: 'dscr' }), ctx)).status).toBe(200);
+    expect((await handler(req({ firstName: 'Jane', phone: '(714) 555-0123', source: 'dscr' }), ctx)).status).toBe(200);
   });
 });

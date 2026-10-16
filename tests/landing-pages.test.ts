@@ -100,6 +100,31 @@ describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ on a rate-limited po
   it('shows the endpoint\'s message on both of its forms', () => {
     const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
     expect(html.split('if (res.status === 422 || res.status === 429) {').length - 1).toBe(2);
-    expect(html.split("(fix.field === 'email' || fix.field === 'rate')").length - 1).toBe(2);
+    // phone since 16 Oct 2026: lead.mts refuses a non-US number with a message too.
+    expect(html.split("(fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')").length - 1).toBe(2);
+  });
+});
+
+/**
+ * 16 Oct 2026: every static form formats its phone as a US number while it is
+ * typed, and a leading 1 (the country code) is dropped the moment it is typed,
+ * so "+1 714..." never shows as (171) 4... The page's own functions, run here.
+ */
+describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ phone formatting', (page) => {
+  const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
+  const fns = [...html.matchAll(/function (formatUSPhone|formatPhone)\(raw\) \{[\s\S]*?\n {2}\}/g)].map((m) => m[0]);
+
+  it('has a formatter on both of its forms', () => {
+    expect(fns).toHaveLength(2);
+  });
+
+  it.each([
+    ['714', '714'], ['7145', '(714) 5'], ['7145550123', '(714) 555-0123'],
+    ['17145550123', '(714) 555-0123'], ['+1 7', '7'], ['+1 714', '714'], ['+1 (714) 555-0123', '(714) 555-0123'],
+  ])('turns %s into %s', (typed, shown) => {
+    for (const src of fns) {
+      const name = /function (\w+)/.exec(src)![1];
+      expect(new Function(`${src}; return ${name};`)()(typed), name).toBe(shown);
+    }
   });
 });

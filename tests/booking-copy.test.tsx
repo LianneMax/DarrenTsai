@@ -100,3 +100,24 @@ describe('the flag reaches every build path', () => {
     expect(read('vitest.config.ts')).toContain('__BOOKING_CALENDAR_READY__: JSON.stringify(bookingCalendarReady())');
   });
 });
+
+describe('React forms format a US number the same way (16 Oct 2026)', () => {
+  it.each([
+    ['714', '714'], ['7145', '(714) 5'], ['7145550123', '(714) 555-0123'],
+    ['17145550123', '(714) 555-0123'], ['+1 (714) 555-0123', '(714) 555-0123'], ['+1 714 555 0123 99', '(714) 555-0123'],
+  ])('turns %s into %s', async (typed, shown) => {
+    const { formatUsPhone } = await import('../src/utils/phone');
+    expect(formatUsPhone(typed)).toBe(shown);
+  });
+
+  it('is what every React phone field uses, still validated as a US number', () => {
+    for (const f of ['src/components/DebtPageViews.tsx', 'src/components/HomeEquityViews.tsx', 'src/components/PageParts.tsx', 'src/components/LeadForm.tsx']) {
+      const src = read(f);
+      expect(src, f).toContain('formatUsPhone(');
+      expect(src, f).not.toContain('AsYouType');
+    }
+    for (const f of ['src/components/HomeEquityCalculator.tsx', 'src/components/AduCalculator.tsx', 'src/components/DebtSavingsCalculator.tsx', 'src/components/LeadForm.tsx']) {
+      expect(read(f), f).toMatch(/isValidPhoneNumber\(.*, 'US'\)/);
+    }
+  });
+});

@@ -3,7 +3,8 @@ import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
 import { useRef, useState } from 'react';
 import { z } from 'zod';
-import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
+import { isValidPhoneNumber } from 'libphonenumber-js';
+import { formatUsPhone } from '../utils/phone';
 import type { MortgageInputs } from '../types/mortgage';
 import { EMAIL, LICENSED_STATES, isLicensedState } from '../config';
 import StateSelect from './StateSelect';
@@ -134,7 +135,7 @@ export default function LeadForm({
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = new AsYouType('US').input(e.target.value);
+    const formatted = formatUsPhone(e.target.value);
     setForm((prev) => ({ ...prev, phone: formatted }));
     setErrors((prev) => ({ ...prev, phone: undefined }));
   };

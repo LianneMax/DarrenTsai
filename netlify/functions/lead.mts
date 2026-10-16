@@ -180,6 +180,20 @@ export function __setResolverFactory(factory: (() => MxResolver) | null) {
 /** DNS errors that mean the domain genuinely has no mail route. */
 const DEFINITIVE_NXDOMAIN = new Set(["ENOTFOUND", "ENODATA", "NXDOMAIN"]);
 
+/** An email with something before the @ and a dot plus two letters after it. */
+export function isEmailFormat(email: unknown): boolean {
+  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
+/** A US number under NANP rules, the forms' validPhone. */
+export function isUsPhone(phone: unknown): boolean {
+  let d = String(phone ?? "").replace(/\D/g, "");
+  if (d.charAt(0) === "1") d = d.slice(1); // the country code; no US area code starts with 1
+  if (d.length !== 10) return false;
+  const block = (b: string) => /^[2-9]\d{2}$/.test(b) && !/^[2-9]11$/.test(b);
+  return block(d.slice(0, 3)) && block(d.slice(3, 6));
+}
+
 export function emailDomain(email: unknown): string | null {
   if (typeof email !== "string") return null;
   const at = email.trim().lastIndexOf("@");
@@ -661,6 +675,19 @@ export default async (req: Request, context: Context) => {
 
   if (!payload.email && !payload.phone) {
     return jsonResponse(400, { error: "email or phone required" });
+  }
+
+  // Format checks (16 Oct 2026), the same rules every form applies before it
+  // posts, so only a stale or hand-built request meets them: an email with a
+  // dot and two or more letters after the @, and a US number (NANP: 10 digits
+  // once a leading 1 is dropped, area code and exchange 2-9 and not N11).
+  // Refused before anything is saved or emailed, with a message the forms
+  // show beside the field.
+  if (typeof payload.email === "string" && payload.email.trim() !== "" && !isEmailFormat(payload.email)) {
+    return jsonResponse(422, { ok: false, error: "invalid email", field: "email", message: "Please enter a valid email address." });
+  }
+  if (payload.phone !== undefined && payload.phone !== null && String(payload.phone).trim() !== "" && !isUsPhone(payload.phone)) {
+    return jsonResponse(422, { ok: false, error: "invalid phone", field: "phone", message: "Please enter a valid US phone number." });
   }
 
   // The visitor is still on the page at this point, so a dead email domain can

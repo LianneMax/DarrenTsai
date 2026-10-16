@@ -123,7 +123,7 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
       if (!res.ok) {
         if (res.status === 422) {
           const fix = await res.json().catch(() => null);
-          if (fix && (fix.field === 'email' || fix.field === 'propertyState') && fix.message) {
+          if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'propertyState') && fix.message) {
             return { ok: false, kind: 'fieldError', field: fix.field, message: String(fix.message) };
           }
         }

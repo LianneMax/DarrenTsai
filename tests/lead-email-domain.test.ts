@@ -47,7 +47,7 @@ function req(body: unknown) {
     body: JSON.stringify(body),
   });
 }
-const lead = (email: string) => ({ firstName: 'Jane', phone: '5551234567', email, source: 'dscr' });
+const lead = (email: string) => ({ firstName: 'Jane', phone: '7145550123', email, source: 'dscr' });
 const ctx = {} as never;
 const saved = () => calls.includes(UPSTREAM);
 
@@ -131,17 +131,19 @@ describe('fails open — a real lead must never be turned away', () => {
   }, 10_000);
 
   it('saves the lead when there is no email at all, only a phone', async () => {
-    const res = await handler(req({ firstName: 'Jane', phone: '5551234567', source: 'dscr' }), ctx);
+    const res = await handler(req({ firstName: 'Jane', phone: '7145550123', source: 'dscr' }), ctx);
     expect(res.status).toBe(200);
     expect(saved()).toBe(true);
     expect(resolverCalls).toBe(0);
   });
 
-  it('saves the lead when the address is too odd to parse a domain from', async () => {
+  it('refuses an address with no domain ending before any DNS lookup (16 Oct 2026)', async () => {
+    // Every form already refuses it; the server now holds the same line.
     answers.mx = { err: 'ENOTFOUND' };
     answers.a = { err: 'ENOTFOUND' };
     const res = await handler(req(lead('jane@localhost')), ctx);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ field: 'email', message: 'Please enter a valid email address.' });
     expect(resolverCalls).toBe(0);
   });
 });

@@ -1703,7 +1703,7 @@
   // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1"
   function formatUSPhone(raw) {
     let digits = raw.replace(/\D/g, '');
-    if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+    if (digits[0] === '1') digits = digits.slice(1); // country code: no US area code starts with 1
     digits = digits.slice(0, 10);
     if (digits.length <= 3) return digits;
     if (digits.length <= 6) return `(${digits.slice(0,3)}) ${digits.slice(3)}`;
@@ -1792,7 +1792,7 @@
         // 429: the rate limit refused it before reading it, so nothing reached
         // Darren and no rescue email went out. Its message says so.
         if (res.status === 422 || res.status === 429) {
-          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'rate')) visitorMessage = fix.message; }
+          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')) visitorMessage = fix.message; }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);
@@ -2217,7 +2217,7 @@
   // Live-format phone as (XXX) XXX-XXXX while typing; strips a leading US "1"
   function formatPhone(raw) {
     var digits = raw.replace(/\D/g, '');
-    if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1);
+    if (digits[0] === '1') digits = digits.slice(1); // country code: no US area code starts with 1
     digits = digits.slice(0, 10);
     if (digits.length <= 3) return digits;
     if (digits.length <= 6) return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
@@ -2359,7 +2359,7 @@
         // 429: the rate limit refused it before reading it, so nothing reached
         // Darren and no rescue email went out. Its message says so.
         if (res.status === 422 || res.status === 429) {
-          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'rate')) visitorMessage = fix.message; }
+          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')) visitorMessage = fix.message; }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);

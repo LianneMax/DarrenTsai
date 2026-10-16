@@ -435,3 +435,57 @@ describe('the panel', () => {
     expect(AREA).toContain(".closest('.dt-book-overlay, .dt-book-inline')");
   });
 });
+
+describe('contact checks (16 Oct 2026)', () => {
+  function toContact() {
+    booking.open();
+    passSteps();
+    return card().querySelector('form') as HTMLFormElement;
+  }
+  const field = (form: HTMLFormElement, name: string) => form.elements.namedItem(name) as HTMLInputElement;
+
+  it('formats the phone as a US number while it is typed', () => {
+    const form = toContact();
+    const phone = field(form, 'phone');
+    for (const [typed, shown] of [['714', '714'], ['7145', '(714) 5'], ['7145550123', '(714) 555-0123'], ['17145550123', '(714) 555-0123'], ['+1 (714) 555-0123 99', '(714) 555-0123']]) {
+      phone.value = typed;
+      phone.dispatchEvent(new Event('input', { bubbles: true }));
+      expect(phone.value, typed).toBe(shown);
+    }
+    expect(phone.getAttribute('inputmode')).toBe('tel');
+  });
+
+  it.each(['7141110123', '1234567890', '9115550123', '71455501'])('refuses %s as not a US number and posts nothing', async (typed) => {
+    const form = toContact();
+    field(form, 'firstName').value = 'Ada'; field(form, 'lastName').value = 'Lovelace';
+    field(form, 'email').value = 'ada@example.com'; field(form, 'phone').value = typed;
+    field(form, 'privacy').checked = true;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    await flush();
+    expect(errText()).toBe('Please enter a valid US phone number.');
+    expect(leadFetch).not.toHaveBeenCalled();
+  });
+
+  it.each(['ada', 'ada@example', 'ada@example.c', 'ada @example.com'])('refuses the email %s and posts nothing', async (email) => {
+    const form = toContact();
+    field(form, 'firstName').value = 'Ada'; field(form, 'lastName').value = 'Lovelace';
+    field(form, 'email').value = email; field(form, 'phone').value = '(714) 555-0123';
+    field(form, 'privacy').checked = true;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    await flush();
+    expect(errText()).toBe('Please enter a valid email address.');
+    expect(leadFetch).not.toHaveBeenCalled();
+  });
+
+  it('posts the formatted number', async () => {
+    const form = toContact();
+    field(form, 'firstName').value = 'Ada'; field(form, 'lastName').value = 'Lovelace';
+    field(form, 'email').value = 'ada@example.com';
+    const phone = field(form, 'phone');
+    phone.value = '7145550123'; phone.dispatchEvent(new Event('input', { bubbles: true }));
+    field(form, 'privacy').checked = true;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    await flush();
+    expect(leadBody().phone).toBe('(714) 555-0123');
+  });
+});
