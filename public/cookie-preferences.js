@@ -1,8 +1,9 @@
 /**
- * Basic consent: no optional vendor script is requested before acceptance.
+ * Optional tracking defaults on (Darren, confirmed by Max, 17 Oct 2026).
  * A banner alone would leave GTM, HubSpot's ads pixel and CallRail tracking
  * running after Reject. Gate the loaders instead, while keeping forms and
- * in-memory URL attribution available. Max approved these controls on 10 Oct.
+ * in-memory URL attribution available. Saved opt-outs and GPC override the
+ * default; absence of a choice is not stored as an affirmative acceptance.
  * One optional category includes analytics and marketing together, because
  * the existing GTM container loads both. Do not offer a split we cannot honor.
  */
@@ -11,12 +12,21 @@
   var KEY = 'dt_cookie_preferences';
   var TTL = 180 * 24 * 60 * 60 * 1000;
   var choice = null;
+  var storageUnavailable = false;
   var waiting = [];
   var panel, manage, toggle, previousFocus;
   try {
+    // Reject reloads to stop already-loaded vendors. If preferences cannot be
+    // saved, default off so that reload cannot silently enable tracking again.
+    window.localStorage.setItem(KEY + '_probe', '1');
+    window.localStorage.removeItem(KEY + '_probe');
     var saved = JSON.parse(window.localStorage.getItem(KEY));
-    if (saved && typeof saved.optional === 'boolean' && typeof saved.ts === 'number' && Date.now() - saved.ts < TTL) choice = saved.optional;
-  } catch (e) { /* The controls still work when storage is unavailable. */ }
+    if (saved && typeof saved.optional === 'boolean' && typeof saved.ts === 'number') {
+      // Never silently restart tracking for a returning visitor who rejected it.
+      // Acceptance expires after 180 days; rejection lasts until they change it.
+      if (saved.optional === false || Date.now() - saved.ts < TTL) choice = saved.optional;
+    }
+  } catch (e) { storageUnavailable = true; choice = false; }
   var gpc = window.navigator.globalPrivacyControl === true;
   if (gpc) choice = false;
   window.dataLayer = window.dataLayer || [];
@@ -25,8 +35,8 @@
     function enqueue() { window.dataLayer.push(arguments); }
     enqueue('consent', command, { ad_storage: status, analytics_storage: status, ad_user_data: status, ad_personalization: status });
   }
-  consent(choice === true ? 'granted' : 'denied', 'default');
-  function allowed() { return choice === true && !gpc; }
+  consent(allowed() ? 'granted' : 'denied', 'default');
+  function allowed() { return choice !== false && !gpc; }
   function loadDeferred() {
     if (!allowed()) return;
     document.querySelectorAll('script[type="application/x-dt-consent"]').forEach(function (placeholder) {
@@ -57,7 +67,7 @@
       });
     });
   }
-  if (choice !== true) clearOptionalStorage();
+  if (!allowed()) clearOptionalStorage();
   function close() {
     panel.hidden = true;
     if (previousFocus && previousFocus.focus) previousFocus.focus();
@@ -90,10 +100,15 @@
     panel = document.createElement('section');
     panel.className = 'dt-cookie-panel'; panel.hidden = true;
     panel.setAttribute('aria-label', 'Cookie preferences');
-    panel.innerHTML = '<h2>Cookie preferences</h2><p>Optional cookies help us measure visits, ads and calls through Google, HubSpot and CallRail. Calculators and forms work without them.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Accept</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on. Switching optional tracking off reloads this page; submit any completed form first.</p><button type="button" data-choice="save">Save preferences</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
+    panel.innerHTML = '<h2>Cookie preferences</h2><p>We use Google, HubSpot and CallRail to measure visits, ads and calls. Optional tracking is on by default unless you reject it or use Global Privacy Control. Calculators and forms work either way.</p><p>Turning tracking off reloads this page. Submit any completed form first.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Keep tracking</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on.</p><button type="button" data-choice="save">Save preferences</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
     document.body.appendChild(panel);
     manage = panel.querySelector('.dt-cookie-manage'); toggle = manage.querySelector('input');
     toggle.checked = allowed(); toggle.disabled = gpc;
+    if (storageUnavailable) {
+      var storageNotice = document.createElement('p');
+      storageNotice.textContent = 'Your browser cannot save preferences, so optional tracking starts off.';
+      panel.insertBefore(storageNotice, panel.querySelector('.dt-cookie-actions'));
+    }
     if (gpc) {
       var notice = document.createElement('p'); notice.textContent = 'Your Global Privacy Control signal keeps optional tracking off.'; manage.appendChild(notice);
       panel.querySelector('[data-choice="accept"]').disabled = true;
@@ -114,7 +129,7 @@
     reopen.addEventListener('click', show);
     // Outside the React root, so createRoot cannot remove the controls.
     document.body.appendChild(reopen);
-    if (choice === null) show();
+    if (choice === null || storageUnavailable) show();
     loadDeferred();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -10,6 +10,15 @@ function load() {
   new Function(attribution).call(window);
 }
 function click(choice: string) { (document.querySelector(`[data-choice="${choice}"]`) as HTMLButtonElement).click(); }
+function cookieRuntime() {
+  const browser: {
+    localStorage: Storage; navigator: Navigator; location: {hostname: string; reload: ReturnType<typeof vi.fn>}; dataLayer: unknown[];
+    DTConsent?: {isAllowed: () => boolean; whenAllowed: (callback: () => void) => void};
+  } = {localStorage: window.localStorage, navigator: window.navigator, location: {hostname: 'realdarrentsai.com', reload: vi.fn()}, dataLayer: []};
+  new Function('window', source)(browser);
+  document.dispatchEvent(new Event('DOMContentLoaded'));
+  return browser;
+}
 beforeEach(() => {
   document.body.innerHTML = '<form><input name="email"></form><script type="application/x-dt-consent" data-src="https://cdn.callrail.com/test.js"></script>';
   document.head.innerHTML = '';
@@ -18,16 +27,20 @@ beforeEach(() => {
   (window as unknown as Record<string, unknown>).dataLayer = [];
   Object.defineProperty(window.navigator, 'globalPrivacyControl', { value: false, configurable: true });
 });
-describe('optional tracking waits for a real consent choice', () => {
-  it('leaves scripts and persistent attribution off before a choice, with the lead attribution available in memory', () => {
+afterEach(() => vi.restoreAllMocks());
+describe('default-on tracking respects explicit opt-outs', () => {
+  it('starts tracking by default without fabricating a saved acceptance', () => {
     load();
-    expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull();
-    expect(document.querySelector('script[src*="callrail"]')).toBeNull();
-    expect(window.localStorage.getItem('dt_attr')).toBeNull();
+    expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1);
+    expect(document.querySelectorAll('script[src*="callrail"]')).toHaveLength(1);
+    expect(window.localStorage.getItem('dt_attr')).toContain('TESTONLY');
+    expect(window.localStorage.getItem('dt_cookie_preferences')).toBeNull();
+    expect((window as unknown as {dataLayer: IArguments[]}).dataLayer[0][2]).toMatchObject({ad_storage: 'granted', analytics_storage: 'granted'});
+    expect(document.querySelector('.dt-cookie-panel')!.textContent).toContain('on by default');
     expect(window.DT!.attr().clickId).toBe('TESTONLY');
     expect(document.querySelector('form input')).toBeTruthy();
   });
-  it('starts the existing GTM path and CallRail once on acceptance and retains attribution', () => {
+  it('does not duplicate the existing tag path when Keep tracking is pressed', () => {
     load(); click('accept');
     expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1);
     expect(document.querySelectorAll('script[src*="callrail"]')).toHaveLength(1);
@@ -36,10 +49,53 @@ describe('optional tracking waits for a real consent choice', () => {
     expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1);
   });
   it('rejects optional tracking without disabling any form', () => {
-    load(); click('reject');
-    expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull();
+    const browser = cookieRuntime();
+    window.localStorage.setItem('dt_attr', 'tracking');
+    document.cookie = '_ga=tracking; path=/';
+    click('reject');
+    expect(browser.DTConsent!.isAllowed()).toBe(false);
+    expect(browser.location.reload).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem('dt_attr')).toBeNull();
+    expect(document.cookie).not.toContain('_ga=');
     expect(JSON.parse(window.localStorage.getItem('dt_cookie_preferences')!).optional).toBe(false);
     expect((document.querySelector('form input') as HTMLInputElement).disabled).toBe(false);
+  });
+  it.each([0, 181])('honors a saved rejection from %s days ago before any vendor loads', (days) => {
+    window.localStorage.setItem('dt_cookie_preferences', JSON.stringify({optional: false, ts: Date.now() - days * 86400000}));
+    load();
+    expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull();
+    expect(document.querySelector('script[src*="callrail"]')).toBeNull();
+    expect(window.localStorage.getItem('dt_attr')).toBeNull();
+    expect(window.DT!.attr().clickId).toBe('TESTONLY');
+  });
+  it('re-enables tracking once when a previously rejecting visitor changes their choice', () => {
+    window.localStorage.setItem('dt_cookie_preferences', JSON.stringify({optional: false, ts: Date.now()}));
+    load(); click('accept'); click('accept');
+    expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1);
+    expect(document.querySelectorAll('script[src*="callrail"]')).toHaveLength(1);
+  });
+  it('Manage saves an opt-out and requests a reload', () => {
+    const browser = cookieRuntime(); click('manage');
+    (document.querySelector('.dt-cookie-manage input') as HTMLInputElement).checked = false;
+    click('save');
+    expect(browser.DTConsent!.isAllowed()).toBe(false);
+    expect(browser.location.reload).toHaveBeenCalledOnce();
+  });
+  it('defaults off if browser storage cannot save a rejection across reloads', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('storage blocked'); });
+    const browser = cookieRuntime();
+    expect(browser.DTConsent!.isAllowed()).toBe(false);
+    expect(document.querySelector('script[src*="callrail"]')).toBeNull();
+    expect(document.querySelector('.dt-cookie-panel')!.textContent).toContain('cannot save preferences');
+    click('reject');
+    expect(browser.location.reload).not.toHaveBeenCalled();
+  });
+  it('honors GPC on the first visit before any optional script or persistence', () => {
+    Object.defineProperty(window.navigator, 'globalPrivacyControl', {value: true, configurable: true});
+    load();
+    expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull();
+    expect(document.querySelector('script[src*="callrail"]')).toBeNull();
+    expect(window.localStorage.getItem('dt_attr')).toBeNull();
   });
   it('honors Global Privacy Control even if a previous choice accepted', () => {
     window.localStorage.setItem('dt_cookie_preferences', JSON.stringify({ optional: true, ts: Date.now() }));
