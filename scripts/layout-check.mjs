@@ -178,9 +178,6 @@ try {
         const card = page.locator('#dt-book-mount .dt-book-card');
         const bookingGoal = width === 320 ? 'not-sure' : 'equity';
         await card.locator('[data-q="bookingGoal"] [data-value="' + bookingGoal + '"]').click();
-        await card.locator('[data-book="state"]').selectOption('CA');
-        await card.locator('[data-q="propertyUse"] [data-value="primary"]').click();
-        await card.locator('[data-q="propertyType"] [data-value="single-family-condo"]').click();
         if (bookingGoal === 'not-sure') {
           await card.getByRole('button', { name: 'Continue', exact: true }).click();
           if (!await card.getByText('Please tell Darren a little about your situation.', { exact: true }).isVisible()) failures.push('Missing not-sure explanation gate');
@@ -189,6 +186,11 @@ try {
           if (noteLayout.sw > noteLayout.vw || noteLayout.small.length) failures.push('Not-sure explanation field does not fit a phone');
         }
         await card.getByRole('button', { name: 'Continue', exact: true }).click();
+        await card.locator('[data-book="state"]').selectOption('CA');
+        await card.locator('[data-q="propertyUse"] [data-value="primary"]').click();
+        await card.getByRole('button', { name: 'Continue', exact: true }).click();
+        await card.locator('[data-q="propertyType"] [data-value="single-family-condo"]').click();
+        await card.getByRole('button', { name: 'Continue', exact: true }).click();
         await card.locator('[data-q="mortgageCurrent"] [data-value="yes"]').click();
         await card.locator('[data-q="recentBankruptcyForeclosure"] [data-value="no"]').click();
         await card.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -196,6 +198,7 @@ try {
         await card.locator('[name="lastName"]').fill('Layout');
         await card.locator('[name="email"]').fill('layout@example.com');
         await card.locator('[name="phone"]').fill('7145550193');
+        await card.getByRole('button', { name: 'Review preferences', exact: true }).click();
         await card.locator('[name="privacy"]').check();
         await card.getByRole('button', { name: "See Darren's calendar", exact: true }).click();
         const frame = card.locator('iframe[title="Book a qualification call with Darren Tsai"]');

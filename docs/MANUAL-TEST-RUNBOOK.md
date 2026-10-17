@@ -283,31 +283,41 @@ separate implementations.
 
 ### Case 1.7 - Book a Call runs the prequal first
 
-Stub nothing: this case sends one real lead, so use a `zztest+` address and a
-555-01xx phone.
+For routine UI verification, intercept `/api/lead` locally and block external
+hosts. This exercises the real UI without writing a lead or making a booking.
+Run a live delivery check only with explicit authorization for a retained TEST
+record, a controlled inbox and a reserved 555-01xx phone. Do not book a real
+appointment as part of a layout or form check.
 
 1. On any page, click **"Book a Call"** (or tap any phone number).
 
 | Check | Expect |
 | --- | --- |
-| A small panel opens | Step 1 of 3: property use, property state, property type. No phone number, no calendar |
+| A wide panel opens | Four-stage timeline: Your goal, Your property, Your details, Pick a time. Only the goal choices appear initially; no phone number or calendar |
+| Continue after choosing a goal | State and property use, then property type, then the two knockout questions, in separate short sections |
+| Help choosing | A nonblank explanation is required before continuing; switching to another goal must not submit that explanation |
 | Property in NY, primary home | Goes to `/out-of-market-primary/`. Nothing reaches the Sheet |
 | Property in NY, rental | Goes to `/out-of-market-dscr/` |
 | Mobile home or land | A short decline, no calendar and no phone number |
 | Mortgage not current, or a bankruptcy/foreclosure in 4 years | A short decline, no calendar and no phone number. `booking_prequal_declined` fires |
-| CA primary, single family, current, no bankruptcy | Step 3 asks name, email, phone, the required privacy box and two optional SMS boxes |
-| Submit | Sheet `Leads` row, `Form ID` `booking-prequal`, with `Property Type`, `Mortgage Current`, `Recent Bankruptcy/Foreclosure` filled. `generate_lead` fires once |
-| After the save | The HubSpot calendar, prefilled with your name and email, plus a "Call" button showing a **CallRail pool number**. `booking_page_shown` fires |
-| `/book/` | The same three steps inline on the page |
-| Escape, or clicking outside | Closes the panel |
+| CA primary, single family, current, no bankruptcy | Contact details first, then a separate preferences screen. The required privacy acknowledgment and two optional SMS choices retain their existing wording; SMS choices start unchecked |
+| Submit | `Form ID` is `booking-prequal`; goal determines the targeted source/bucket, while `entrySource` retains the page. Screening answers, consent evidence and attribution are included. For an authorized live check, independently read back the target Sheet row and queued HubSpot delivery; an HTTP receipt alone does not prove CRM delivery |
+| After confirmed save | Google Calendar plus the "Prefer to talk now" Call link. No name/email in the iframe URL. `generate_lead` fires once and `booking_page_shown` is observation only. CallRail swaps the configured number when optional tracking is allowed and the swap script runs |
+| `/book/` | The same flow inline. Clicking its own booking links returns to the existing form instead of opening a second questionnaire |
+| Escape, Close or clicking outside | Closes the panel, releases body scroll and returns focus to the visible trigger. Reopening retains answers in memory; clearing known identity resets the cached draft |
+| Back or revisiting a completed stage | Retains entered details. Changing an earlier answer disables later stages until screening is completed again |
+| Slow save / repeated submit | One pending POST; stage navigation and repeated submit cannot bypass the in-flight guard |
+| Definitive email rejection | Returns to the editable email field, preserving the other answers; no calendar |
+| Unconfirmed server response | No claim that Darren received the request, no booking conversion, no calendar, and a warning against an immediate duplicate |
 
-**Then book a real slot.** `meeting_booked` should fire in Tag Assistant the
-moment HubSpot confirms. The message name it listens for is
-`meetingBookSucceeded`; if the event does not fire, record what the embed
-posted (DevTools > Console, `window.addEventListener('message', e => console.log(e.origin, e.data))`)
-and report it. Cancel the meeting in HubSpot afterwards.
+**Booking conversion remains a separate verification.** Google does not
+document a booking-success message for this embed. Loading it, opening it or
+receiving an arbitrary `postMessage` must not emit `meeting_booked`. Do not
+claim a completed appointment from a successful prequal. Provider/server
+confirmation and the account-level conversion configuration require their own
+review; no real booking is needed to validate this UI.
 
-Until Darren's meetings link replaces the placeholder in
+If the configured calendar is replaced by a placeholder in
 `public/booking-chooser.js`, a passing lead sees "Darren has your details" and
 the Call button instead of a calendar.
 
@@ -316,9 +326,9 @@ the Call button instead of a calendar.
    lead, not two.
 2. **Mortgage rate and term.** Step 2 collects both and they now reach the Sheet
    and the results screen. See case 1.4.
-3. **Booking was untracked.** "Book a Call" now opens a chooser, and the
-   calendar renders inline so a completed booking fires `calendly_booking`.
-   See case 1.7.
+3. **Booking was untracked.** The shared chooser now records confirmed prequal
+   receipt separately from showing Google's calendar. A confirmed appointment
+   is not inferred from the embed. See case 1.7.
 4. **A lost lead with no alert.** If the site cannot reach the Sheet, Darren now
    gets a rescue email on every path that loses a lead, not just some of them.
 5. **Double submit, properly.** The greyed-out button was not enough: two clicks
@@ -333,8 +343,9 @@ the Call button instead of a calendar.
    visitor's own figure wherever there is one.
 8. **Every contact lead labelled MortgageCalculator.** One source per page now.
    See case 1.5.
-9. **A forged booking could be counted.** The origin check on Calendly's message
-   was a substring, so `calendly.com.attacker.example` passed it. Exact match now.
+9. **A forged booking could be counted.** Earlier providers used message-origin
+   checks. The current Google flow accepts no client message as proof of a
+   completed booking.
 10. **The payment schedule ended a year early.** Yearly rows were blocks of twelve
    from payment one, so a loan starting in September counted twelve payments into
    its first calendar year. The last year of the table now matches the Payoff Date

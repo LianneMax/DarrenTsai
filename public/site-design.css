@@ -80,6 +80,31 @@ html{scroll-padding-top:115px}.site-design .document-title{padding-top:55px;padd
 @media(max-width:768px){.site-design .nav-inner{height:72px}.site-design .nav-mobile-menu{top:72px}.site-design .nav .btn{font-size:13px}.site-design .nav-dropdown-menu{color:#223d55}}
 @media(max-width:600px){.site-design .equity-opening{grid-template-columns:1fr;gap:25px;padding-top:30px;padding-bottom:28px}.site-design .equity-opening h1{font-size:32px}.site-design .equity-opening .dcp-path{grid-template-columns:1fr 1fr;gap:9px}.site-design .equity-opening .dcp-chip{padding:13px;min-height:100px}.site-design .equity-opening .dcp-chip strong{font-size:13px}.site-design .equity-opening .dcp-chip small{font-size:10px}.site-design .equity-page-illustration{height:250px}.site-design .equity-page-illustration .product-loan{top:110px}.site-design .closing .design-light{grid-column:auto;grid-row:auto}.site-design .other-goals a{font-size:14px}.site-design .design-primary.large{font-size:14px}.site-design .personal-intro>a{font-size:11px}.site-design .benefits .house-options{height:200px}}
 @media(prefers-reduced-motion:reduce){.site-design *, .site-design *::before,.site-design *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* The concept's broad nav flex rule made the shared header shrink to its
+   contents, joining the credential line to About Me. Reserve brand space and
+   collapse before tablet links crowd. Body clipping must not create a second
+   scrolling container, which would keep the sticky header off the viewport. */
+body.site-design{overflow-x:clip}
+.site-design .nav{display:block}
+.site-design .nav-inner{width:100%;max-width:1200px;gap:32px;height:80px}
+.site-design .nav-logo{flex:none}
+.site-design .nav-logo-text{min-width:0}
+.site-design .nav-logo-title{white-space:nowrap}
+.site-design .nav-links{margin-left:auto;gap:24px;flex:none;font-size:14px}
+.site-design .nav-link{font-size:14px;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
+.site-design .nav-dropdown-trigger{gap:8px}
+.site-design .nav-links>.btn{min-height:44px;padding:10px 18px;font-size:14px;line-height:1.4;white-space:nowrap}
+.site-design .nav-hamburger{width:44px;height:44px}
+.site-design .nav-mobile-overlay{z-index:999}
+.site-design .nav-mobile-menu{z-index:1001}
+@media(max-width:1024px){
+  .site-design .nav-inner{height:72px;gap:20px}
+  .site-design .nav-links{display:none}
+  .site-design .nav-hamburger{display:flex;margin-left:auto}
+  .site-design .nav-mobile-overlay,.site-design .nav-mobile-menu{display:flex}
+  .site-design .nav-mobile-menu{top:84px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 100px);overflow-y:auto;overscroll-behavior:contain}
+}
 .site-design .review-bottom .review-dots{display:flex;gap:2px}.site-design .review-bottom .review-dots button{display:grid;place-items:center;width:27px;height:32px;padding:0;border:0;background:none}.site-design .review-bottom .review-dots button::before{content:'';width:6px;height:6px;border-radius:50%;background:#c4d7df}.site-design .review-bottom .review-dots button[aria-current=true]::before{background:#223d55;transform:scale(1.5)}.site-design .review-bottom>span{font-size:12px;color:#526676}.site-design .review-full-dialog{border:0;border-radius:16px;padding:0;width:calc(100% - 32px);max-width:660px;max-height:90dvh;color:#223d55;box-shadow:0 20px 90px #142b4440}.site-design .review-full-dialog::backdrop{background:#122b3c88}.site-design .review-dialog-top{display:flex;align-items:center;justify-content:space-between;padding:17px 27px;border-bottom:1px solid #e6ebf0;font-size:13px}.site-design .review-dialog-top button{border:0;background:none;padding:7px;cursor:pointer}.site-design .review-initials{color:#fff}
 
 /* Static pages isolate the shared footer so their calculator and consent styles retain their original cascade. */

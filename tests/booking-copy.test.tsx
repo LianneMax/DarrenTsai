@@ -28,15 +28,21 @@ async function contactStep(url: string) {
   const booking = (window as unknown as { DTBooking: { mount: (el: Element) => void } }).DTBooking;
   booking.mount(document.getElementById('m')!);
   const card = () => document.querySelector('#m .dt-book-card')!;
-  const intro = card().querySelector('.dt-book-sub')!.textContent;
+  const intro = card().querySelector('.dt-book-guide-note')!.textContent;
   const tap = (q: string, v: string) => (card().querySelector(`[data-q="${q}"] [data-value="${v}"]`) as HTMLElement).click();
   tap('bookingGoal', 'equity');
+  (card().querySelector('.dt-book-next') as HTMLElement).click();
   const sel = card().querySelector('[data-book="state"]') as HTMLSelectElement;
   sel.value = 'CA'; sel.dispatchEvent(new Event('change'));
-  tap('propertyUse', 'primary'); tap('propertyType', 'single-family-condo');
+  tap('propertyUse', 'primary');
+  (card().querySelector('.dt-book-next') as HTMLElement).click();
+  tap('propertyType', 'single-family-condo');
   (card().querySelector('.dt-book-next') as HTMLElement).click();
   tap('mortgageCurrent', 'yes'); tap('recentBankruptcyForeclosure', 'no');
   (card().querySelector('.dt-book-next') as HTMLElement).click();
+  const form = card().querySelector('form') as HTMLFormElement;
+  for (const [name,value] of Object.entries({firstName:'Ada',lastName:'Lovelace',email:'ada@example.com',phone:'7145550123'})) (form.elements.namedItem(name) as HTMLInputElement).value=value;
+  form.dispatchEvent(new Event('submit',{cancelable:true}));
   return { intro, hero: document.querySelector('[data-booking-when]')!.textContent, button: card().querySelector('.dt-book-next')!.textContent };
 }
 

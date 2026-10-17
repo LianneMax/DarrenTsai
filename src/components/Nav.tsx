@@ -67,7 +67,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
 
   // Close menu on resize back to desktop
   useEffect(() => {
-    const handleResize = () => { if (window.innerWidth > 768) setMenuOpen(false); };
+    const handleResize = () => { if (window.innerWidth > 1024) setMenuOpen(false); };
     window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, []);

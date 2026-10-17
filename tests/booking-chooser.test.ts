@@ -48,15 +48,22 @@ function pickState(code: string) {
   sel.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function passSteps(use = 'primary', state = 'CA', goal = 'equity') {
-  tap('bookingGoal', goal);
-  if (card().querySelector('[data-q="propertyUse"]')) tap('propertyUse', use);
-  pickState(state);
-  tap('propertyType', 'single-family-condo');
-  if (goal === 'not-sure') {
+function selectGoal(value: string) {
+  tap('bookingGoal', value);
+  if (value === 'not-sure') {
     const note = card().querySelector('textarea') as HTMLTextAreaElement;
     note.value = 'I want to compare refinancing with using my equity.'; note.dispatchEvent(new Event('input'));
   }
+  next();
+}
+
+function passSteps(use = 'primary', state = 'CA', goal = 'equity') {
+  selectGoal(goal);
+  if (card().querySelector('[data-q="propertyUse"]')) tap('propertyUse', use);
+  pickState(state);
+  next();
+  tap('propertyType', 'single-family-condo');
+
   next();
   tap('mortgageCurrent', 'yes');
   tap('recentBankruptcyForeclosure', 'no');
@@ -70,6 +77,7 @@ function fillContact({ privacy = true } = {}) {
   (form.elements.namedItem('email') as HTMLInputElement).value = 'ada@example.com';
   (form.elements.namedItem('phone') as HTMLInputElement).value = '7145550123';
   (form.elements.namedItem('privacy') as HTMLInputElement).checked = privacy;
+  form.dispatchEvent(new Event('submit', { cancelable: true }));
   form.dispatchEvent(new Event('submit', { cancelable: true }));
 }
 
@@ -128,16 +136,18 @@ describe('step 1: property', () => {
     expect(card().querySelector('[data-q="bookingGoal"]')).not.toBeNull();
     expect(card().querySelector('[data-q="propertyUse"]')).toBeNull();
     tap('bookingGoal', 'equity');
+    expect(card().querySelector('[data-book="state"]')).toBeNull();
+    next();
     expect(card().querySelector('[data-q="propertyUse"]')).not.toBeNull();
     expect(card().querySelector('[data-book="state"]')).not.toBeNull();
-    expect(card().querySelector('[data-q="propertyType"]')).not.toBeNull();
+    expect(card().querySelector('[data-q="propertyType"]')).toBeNull();
     expect(card().querySelector('input[name="email"]')).toBeNull();
     expect(card().querySelector('a[href^="tel:"]')).toBeNull();
   });
 
   it('keeps the visitor on the step until all three are answered', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'primary');
     next();
     expect(errText()).toMatch(/answer each question/);
@@ -146,10 +156,9 @@ describe('step 1: property', () => {
 
   it('sends an unsupported primary-home state to /out-of-market-primary/, posting nothing', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'primary');
     pickState('NY');
-    tap('propertyType', 'single-family-condo');
     next();
     expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
     expect(leadFetch).not.toHaveBeenCalled();
@@ -157,19 +166,19 @@ describe('step 1: property', () => {
 
   it('sends an unsupported rental state to /out-of-market-dscr/', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'investment');
     pickState('NY');
-    tap('propertyType', 'single-family-condo');
     next();
     expect(assign).toHaveBeenCalledWith('/out-of-market-dscr/');
   });
 
   it('declines mobile homes and land with no calendar and no phone number', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'primary');
     pickState('CA');
+    next();
     tap('propertyType', 'mobile-land');
     next();
     expect(card().textContent).toMatch(/mobile homes or land/);
@@ -180,16 +189,17 @@ describe('step 1: property', () => {
 
   it('offers primary, second home and rental (policy v3)', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     const values = [...card().querySelectorAll('[data-q="propertyUse"] [data-value]')].map((b) => b.getAttribute('data-value'));
     expect(values).toEqual(['primary', 'second-home', 'investment']);
   });
 
   it('lets a second home in a licensed state through to the knockouts', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'second-home');
     pickState('HI');
+    next();
     tap('propertyType', 'single-family-condo');
     next();
     expect(card().querySelector('[data-q="mortgageCurrent"]')).not.toBeNull();
@@ -197,10 +207,9 @@ describe('step 1: property', () => {
 
   it('sends a second home anywhere else to /out-of-market-primary/', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'second-home');
     pickState('NV');
-    tap('propertyType', 'single-family-condo');
     next();
     expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
     expect(leadFetch).not.toHaveBeenCalled();
@@ -213,7 +222,7 @@ describe('step 1: the goal decides the property question (policy v3)', () => {
 
   it('equity asks about the home being borrowed against, with primary, second home or rental', () => {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     expect(qText()).toContain('Where is the home you’re borrowing against?');
     expect(uses()).toEqual(['primary', 'second-home', 'investment']);
     expect(qText()).not.toMatch(/not your current residence|where.*cash/i);
@@ -222,19 +231,21 @@ describe('step 1: the goal decides the property question (policy v3)', () => {
   it('DSCR and commercial ask only where the investment property is', () => {
     for (const goal of ['dscr', 'commercial']) {
       booking.open();
-      tap('bookingGoal', goal);
+      selectGoal(goal);
       expect(card().querySelector('[data-q="propertyUse"]')).toBeNull();
       expect(qText()).toMatch(goal === 'dscr' ? /Where is the investment property\?/ : /Where is the property\?/);
       booking.close();
+      booking.identify({});
     }
   });
 
   it('own-home and not-sure ask primary or second home only', () => {
     for (const goal of ['own-home', 'not-sure']) {
       booking.open();
-      tap('bookingGoal', goal);
+      selectGoal(goal);
       expect(uses()).toEqual(['primary', 'second-home']);
       booking.close();
+      booking.identify({});
     }
   });
 
@@ -246,7 +257,7 @@ describe('step 1: the goal decides the property question (policy v3)', () => {
     note.value = '   '; note.dispatchEvent(new Event('input')); next();
     expect(errText()).toContain('tell Darren');
     expect(leadFetch).not.toHaveBeenCalled();
-    tap('bookingGoal', 'equity'); expect(card().querySelector('textarea')).toBeNull();
+    selectGoal('equity'); expect(card().querySelector('textarea')).toBeNull();
   });
 
   it('flags commercial and not-sure for Darren, and posts the goal', async () => {
@@ -261,9 +272,10 @@ describe('step 1: the goal decides the property question (policy v3)', () => {
 describe('step 2: the two knockouts', () => {
   function toStep2() {
     booking.open();
-    tap('bookingGoal', 'equity');
+    selectGoal('equity');
     tap('propertyUse', 'primary');
     pickState('CA');
+    next();
     tap('propertyType', '2-4-units');
     next();
   }
@@ -404,7 +416,8 @@ describe('step 3: save the lead, then the calendar', () => {
     await flush();
     await flush();
     expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
-    expect(card().textContent).toMatch(/No need to submit again/);
+    expect(card().textContent).toMatch(/avoid a duplicate/);
+    expect(card().textContent).not.toMatch(/your details reached Darren/);
   });
 
   it('prefills the contact step from an earlier form', () => {
@@ -427,6 +440,88 @@ describe('Google booking conversion truth', () => {
 });
 
 describe('the panel', () => {
+  it('reuses the inline journey when a visitor clicks Book a Call on /book/', () => {
+    Object.defineProperty(window,'location',{configurable:true,value:{...window.location,pathname:'/book/'}});
+    const mount=document.createElement('main'); mount.id='dt-book-mount'; document.body.appendChild(mount); booking.mount(mount);
+    tap('bookingGoal','equity'); next(); pickState('CA');
+    booking.open();
+    expect(document.querySelector('.dt-book-overlay')).toBeNull();
+    expect((card().querySelector('[data-book="state"]') as HTMLSelectElement).value).toBe('CA');
+  });
+  it('returns mobile drawer launches to the visible menu control', () => {
+    document.body.innerHTML='<button class="nav-hamburger">Open menu</button><div class="nav-mobile-menu"><button id="drawer-book">Book a Call</button></div>';
+    (document.querySelector('#drawer-book') as HTMLButtonElement).focus();
+    booking.open(); booking.close();
+    expect(document.activeElement).toBe(document.querySelector('.nav-hamburger'));
+  });
+  it('retains the current stage and answers after close and reopen, and restores the trigger focus', () => {
+    const trigger = document.createElement('button'); document.body.appendChild(trigger); trigger.focus();
+    booking.open(); selectGoal('equity'); pickState('CA'); tap('propertyUse', 'primary');
+    booking.close();
+    expect(document.activeElement).toBe(trigger);
+    expect(document.body.classList.contains('dt-booking-open')).toBe(false);
+    booking.open();
+    expect((card().querySelector('[data-book="state"]') as HTMLSelectElement).value).toBe('CA');
+    expect(card().querySelector('[data-q="propertyUse"] [data-value="primary"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.body.classList.contains('dt-booking-open')).toBe(true);
+  });
+
+  it('preserves contact details and consent choices when going back, without posting', () => {
+    booking.open(); passSteps();
+    const form = card().querySelector('form') as HTMLFormElement;
+    for (const [key,value] of Object.entries({firstName:'Ada',lastName:'Lovelace',email:'ada@example.com',phone:'7145550123'})) (form.elements.namedItem(key) as HTMLInputElement).value=value;
+    form.dispatchEvent(new Event('submit',{cancelable:true}));
+    (form.elements.namedItem('smsInfo') as HTMLInputElement).checked=true;
+    (card().querySelector('.dt-book-back') as HTMLButtonElement).click();
+    expect((form.elements.namedItem('email') as HTMLInputElement).value).toBe('ada@example.com');
+    expect((card().querySelector('.dt-book-contact-details') as HTMLElement).hidden).toBe(false);
+    form.dispatchEvent(new Event('submit',{cancelable:true}));
+    expect((form.elements.namedItem('smsInfo') as HTMLInputElement).checked).toBe(true);
+    expect((form.elements.namedItem('smsMarketing') as HTMLInputElement).checked).toBe(false);
+    expect(leadFetch).not.toHaveBeenCalled();
+  });
+
+  it('invalidates later stages when a property answer changes', () => {
+    booking.open(); passSteps();
+    (card().querySelector('[data-stage="1"]') as HTMLButtonElement).click();
+    pickState('NY');
+    expect((card().querySelector('[data-stage="2"]') as HTMLButtonElement).disabled).toBe(true);
+    next();
+    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
+    expect(leadFetch).not.toHaveBeenCalled();
+  });
+
+  it('blocks duplicate submission and stage changes while saving, including after reopening', async () => {
+    leadFetch=vi.fn(()=>new Promise(()=>{}));
+    booking.open(); passSteps(); fillContact();
+    const form=card().querySelector('form') as HTMLFormElement;
+    form.dispatchEvent(new Event('submit',{cancelable:true}));
+    expect(leadFetch).toHaveBeenCalledTimes(1);
+    expect([...card().querySelectorAll('.dt-book-progress button')].every(b=>(b as HTMLButtonElement).disabled)).toBe(true);
+    booking.close(); booking.open();
+    expect((card().querySelector('.dt-book-next') as HTMLButtonElement).disabled).toBe(true);
+    expect(card().querySelector('iframe')).toBeNull();
+  });
+
+  it('returns to the editable email field on a definitive server email rejection', async () => {
+    leadFetch=vi.fn(()=>Promise.resolve({ok:false,status:422,json:()=>Promise.resolve({field:'email',message:'Email domain does not exist.'})}));
+    booking.open(); passSteps(); fillContact(); await flush(); await flush();
+    const email=card().querySelector('[name="email"]') as HTMLInputElement;
+    expect(document.activeElement).toBe(email);
+    expect(email.closest('[hidden]')).toBeNull();
+    expect(email.value).toBe('ada@example.com');
+    expect(errText()).toBe('Email domain does not exist.');
+    expect(card().querySelector('iframe')).toBeNull();
+  });
+
+  it('does not send a guidance note after switching to a known goal', async () => {
+    booking.open(); tap('bookingGoal','not-sure');
+    const note=card().querySelector('textarea') as HTMLTextAreaElement;
+    note.value='A private question'; note.dispatchEvent(new Event('input'));
+    passSteps(); fillContact(); await flush();
+    expect(leadBody().message).toBeUndefined();
+  });
+
   it('closes on Escape and does not stack a second copy', () => {
     booking.open();
     booking.open();
@@ -493,6 +588,7 @@ describe('contact checks (16 Oct 2026)', () => {
     const phone = field(form, 'phone');
     phone.value = '7145550123'; phone.dispatchEvent(new Event('input', { bubbles: true }));
     field(form, 'privacy').checked = true;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     await flush();
     expect(leadBody().phone).toBe('(714) 555-0123');

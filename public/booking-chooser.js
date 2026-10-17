@@ -16,11 +16,9 @@
  * attribution.js and email-suggest.js.
  *
  * ORDER, which is the point of the file:
- *   1. property use (primary, second home, rental), property state (service-area
- *      policy v3), property type
- *   2. Darren's two knockouts: mortgage current, and no bankruptcy or
- *      foreclosure in the last 4 years
- *   3. contact details, the required privacy box and the two optional SMS boxes
+ *   1. goal, on its own screen
+ *   2. property use/state, then type, then the two knockout questions
+ *   3. contact details, then the required privacy and optional SMS choices
  *   4. POST /api/lead. Only after a confirmed receipt: the calendar,
  *      plus a Call button.
  * An unsupported state goes to /out-of-market-primary/ or /out-of-market-dscr/.
@@ -105,6 +103,7 @@
   var SMS_LINKS = ' View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a>';
 
   var overlay = null;
+  var savedOverlay = null;
   var lastFocus = null;
 
   /**
@@ -260,10 +259,13 @@
     style.id = STYLE_ID;
     style.appendChild(document.createTextNode(css));
     document.head.appendChild(style);
+    var sheet = document.querySelector('link[href="/booking-chooser.css"]') || document.createElement('link');
+    sheet.rel = 'stylesheet'; sheet.href = '/booking-chooser.css';
+    document.head.appendChild(sheet);
   }
 
   /**
-   * One visitor's answers, for the life of one open flow. Never stored: only
+   * One visitor's answers, retained in memory when its panel closes. Never stored: only
    * the name and email go to sessionStorage, through identify().
    */
   function newAnswers() {
@@ -303,145 +305,162 @@
     var answers = newAnswers();
     var source = pageSource();
     var ctx = source + ' ' + FORM_ID;
-
-    function setErr(msg) { var el = card.querySelector('.dt-book-err'); if (el) el.textContent = msg || ''; }
-    function closeLink() { return inline ? '' : '<button type="button" class="dt-book-link dt-book-close">Close</button>'; }
-    function wireClose() { var c = card.querySelector('.dt-book-close'); if (c) c.addEventListener('click', close); }
-
-    /**
-     * Step 1. The goal comes first and decides which property is asked about
-     * and which rule applies (policy v3, 15 Oct 2026): for an equity loan, the
-     * home being borrowed against (where the cash goes is not asked); for DSCR
-     * or commercial, the investment property; otherwise the home they will
-     * live in. Commercial and "Not sure yet" are flagged for Darren.
-     */
-    function stepProperty() {
-      card.classList.remove('dt-cal');
-      var goal = answers.bookingGoal;
-      var html =
-        '<p class="dt-book-step">Step 1 of 3</p>' +
-        '<h2 class="dt-book-title">Book a Call</h2>' +
-        '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property ' + COPY.when + '.</p>' +
-        '<p class="dt-book-q">What would you like help with?</p>' +
-        choiceGroup('bookingGoal', GOAL_OPTIONS, goal);
-      if (goal === 'not-sure') {
-        html += '<label class="dt-book-field" for="dt-book-situation">Tell Darren a little about your situation (required)</label>' +
-          '<textarea class="dt-book-situation" id="dt-book-situation" rows="3" maxlength="2000" required aria-describedby="dt-book-situation-help">' + esc(answers.situation) + '</textarea>' +
-          '<p class="dt-book-calendar-help" id="dt-book-situation-help">A sentence or two about your goal or question helps Darren prepare. Please leave out account numbers and other sensitive details.</p>';
+    var stage = 0;
+    var reached = 0;
+    var busy = false;
+    var contactView = null;
+    var contact = { firstName: '', lastName: '', email: '', phone: '', privacy: false, smsInfo: false, smsMarketing: false };
+    if (knownLead) {
+      var names = (knownLead.name || '').split(/\s+/);
+      contact.firstName = names.shift() || '';
+      contact.lastName = names.join(' ');
+      contact.email = knownLead.email || '';
+    }
+    card.classList.add('dt-book-shell');
+    var checkIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
+    card.innerHTML = (inline ? '' : '<div class="dt-book-header"><a class="dt-book-brand" href="/" aria-label="Darren Tsai Home"><img src="/darren-avatar.png" width="44" height="44" alt=""><span><strong>Darren Tsai</strong><small>Senior Loan Officer · Saxton Mortgage</small></span></a><span class="dt-book-duration">15-minute conversation</span><button type="button" class="dt-book-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>') +
+      '<div class="dt-book-layout"><aside class="dt-book-guide"><div class="dt-book-intro"><h1>Book a call<br> with Darren.</h1><p>A few questions to help Darren prepare for your conversation.</p></div><nav class="dt-book-progress" aria-label="Booking progress"><ol></ol></nav><p class="dt-book-guide-note">This checks whether Darren can help with your property ' + COPY.when + '. It is not a loan application.</p></aside><section class="dt-book-panel" aria-label="Booking questions"></section></div><p class="dt-book-status" role="status" aria-live="polite"></p>';
+    var panel = card.querySelector('.dt-book-panel');
+    var progress = card.querySelector('.dt-book-progress');
+    var status = card.querySelector('.dt-book-status');
+    function setErr(msg) { var el = panel.querySelector('.dt-book-err'); if (el) el.textContent = msg || ''; }
+    function wireClose() { var c = card.querySelector('.dt-book-close'); if (c) c.onclick = close; }
+    function closeLink() { return ''; }
+    function rememberContact() {
+      var form = panel.querySelector('form');
+      if (!form) return;
+      for (var key in contact) if (Object.prototype.hasOwnProperty.call(contact, key) && form.elements[key]) {
+        contact[key] = typeof contact[key] === 'boolean' ? form.elements[key].checked : form.elements[key].value;
       }
-      if (goal) {
-        var uses = window.DTServiceArea.uses(ctx, goal);
+    }
+    function draw(stageIndex, part, title, intro, html, label, back) {
+      stage = stageIndex; reached = Math.max(reached, stage);
+      panel.innerHTML = '<div class="dt-book-meta"><span>' + ['Your goal', 'Your property', 'Your details', BOOKING_READY ? 'Pick a time' : 'Your request'][stage] + '</span><span>' + esc(part || 'Step ' + (stage + 1) + ' of 4') + '</span></div>' +
+        '<h2 class="dt-book-title" tabindex="-1">' + esc(title) + '</h2>' + (intro ? '<p class="dt-book-sub">' + esc(intro) + '</p>' : '') + html +
+        (label ? '<p class="dt-book-err" role="alert"></p><div class="dt-book-actions">' + (back ? '<button type="button" class="dt-book-link dt-book-back">Back</button>' : '<span class="dt-book-action-note">You can change your answers.</span>') + '<button type="button" class="dt-book-next">' + esc(label) + '</button></div>' : '');
+      updateProgress(); wireClose(); focusPanel();
+      if (back) panel.querySelector('.dt-book-back').onclick = back;
+    }
+    function focusPanel() {
+      var heading = panel.querySelector('.dt-book-title');
+      if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+      if (panel.scrollIntoView) panel.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }
+    function updateProgress() {
+      var labels = ['Your goal', 'Your property', 'Your details', BOOKING_READY ? 'Pick a time' : 'Your request'];
+      var descriptions = ['What you have in mind', 'A short property check', 'How to reach you', 'Your conversation'];
+      var html = '';
+      for (var i = 0; i < labels.length; i++) html += '<li class="' + (i === stage ? 'current' : i < stage ? 'done' : '') + '"><button type="button" data-stage="' + i + '"' + (i > reached || stage === 3 || busy ? ' disabled' : '') + (i === stage ? ' aria-current="step"' : '') + '><span class="dt-book-marker">' + (i < stage ? checkIcon : i + 1) + '</span><span><strong>' + labels[i] + '</strong><small>' + (i < stage ? 'Completed' : descriptions[i]) + '</small></span></button></li>';
+      progress.querySelector('ol').innerHTML = html;
+      status.textContent = 'Step ' + (stage + 1) + ' of 4: ' + labels[stage];
+    }
+    progress.addEventListener('click', function (e) {
+      var button = e.target.closest('[data-stage]');
+      if (!button || button.disabled || busy) return;
+      var target = Number(button.getAttribute('data-stage'));
+      if (target === stage) return;
+      rememberContact();
+      if (target === 0) stepGoal();
+      if (target === 1) stepProperty();
+      if (target === 2) stepContact();
+    });
+    function changed() { reached = Math.min(reached, stage); setErr(''); updateProgress(); }
+    function stepGoal() {
+      var hints = ['Use the value you’ve built in your home', 'Discuss a DSCR loan', 'For a primary or second home; self-employed welcome', 'Talk through a different property scenario', 'Tell Darren what you have in mind'];
+      var labels = ['Access home equity', 'Investment property', 'Buy or refinance a home', 'Commercial or custom', 'Help choosing'];
+      var goals = '<div class="dt-book-choices dt-book-goals" role="group" aria-label="Your goal" data-q="bookingGoal">';
+      for (var i = 0; i < GOAL_OPTIONS.length; i++) goals += '<button type="button" class="dt-book-choice" data-value="' + GOAL_OPTIONS[i][0] + '" aria-pressed="' + (answers.bookingGoal === GOAL_OPTIONS[i][0]) + '"><strong>' + labels[i] + '</strong><small>' + hints[i] + '</small></button>';
+      goals += '</div><div class="dt-book-situation-wrap"' + (answers.bookingGoal === 'not-sure' ? '' : ' hidden') + '><label class="dt-book-field" for="dt-book-situation">Tell Darren a little about your situation (required)</label><textarea class="dt-book-situation" id="dt-book-situation" rows="3" maxlength="2000" aria-describedby="dt-book-situation-help">' + esc(answers.situation) + '</textarea><p class="dt-book-calendar-help" id="dt-book-situation-help">A sentence or two about your goal or question helps Darren prepare. Please leave out account numbers and other sensitive details.</p></div>';
+      draw(0, '', 'What would you like to discuss?', 'Start with the option that’s closest to your plans.', goals, 'Continue');
+      wireChoices(panel, answers, function () {
+        panel.querySelector('.dt-book-situation-wrap').hidden = answers.bookingGoal !== 'not-sure';
+        var uses = window.DTServiceArea.uses(ctx, answers.bookingGoal);
         if (uses.indexOf(answers.propertyUse) === -1) answers.propertyUse = uses.length === 1 ? uses[0] : '';
-        var w = GOAL_WORDING[goal];
-        var useOpts = [];
-        if (uses.indexOf('primary') !== -1) useOpts.push(['primary', 'Primary home']);
-        if (uses.indexOf('second-home') !== -1) useOpts.push(['second-home', 'Second home']);
-        if (uses.indexOf('investment') !== -1) useOpts.push(['investment', 'Rental']);
-        var states = window.DTServiceArea.states();
-        var stateOpts = '<option value="">Choose a state</option>';
-        for (var i = 0; i < states.length; i++) {
-          stateOpts += '<option value="' + states[i][0] + '"' + (answers.propertyState === states[i][0] ? ' selected' : '') + '>' + esc(states[i][1]) + '</option>';
-        }
-        html +=
-          '<label class="dt-book-field">' + w.state + '<select data-book="state">' + stateOpts + '</select></label>' +
-          (useOpts.length > 1 ? '<p class="dt-book-q">' + w.use + '</p>' + choiceGroup('propertyUse', useOpts, answers.propertyUse) : '') +
-          '<p class="dt-book-q">What type of property is it?</p>' +
-          choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType);
-      }
-      html +=
-        '<p class="dt-book-err" role="alert"></p>' +
-        '<button type="button" class="dt-book-next">Continue</button>' +
-        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
-      card.innerHTML = html;
-      wireChoices(card, answers, function () {
-        setErr('');
-        // A new goal asks a different property question.
-        if (answers.bookingGoal !== goal) stepProperty();
+        changed();
       });
-      var stateSel = card.querySelector('[data-book="state"]');
-      if (stateSel) stateSel.addEventListener('change', function (e) { answers.propertyState = e.target.value; setErr(''); });
-      var situation = card.querySelector('#dt-book-situation');
-      if (situation) situation.addEventListener('input', function () { answers.situation = situation.value; situation.removeAttribute('aria-invalid'); setErr(''); });
-      wireClose();
-      card.querySelector('.dt-book-next').addEventListener('click', function () {
-        if (answers.bookingGoal === 'not-sure' && !answers.situation.trim()) {
-          setErr('Please tell Darren a little about your situation.');
-          situation.setAttribute('aria-invalid', 'true'); situation.focus(); return;
-        }
+      var situation = panel.querySelector('#dt-book-situation');
+      situation.addEventListener('input', function () { answers.situation = situation.value; situation.removeAttribute('aria-invalid'); changed(); });
+      panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.bookingGoal) { setErr('Please choose what you would like help with.'); return; }
-        if (!answers.propertyUse || !answers.propertyState || !answers.propertyType) {
-          setErr('Please answer each question to continue.');
-          return;
-        }
+        if (answers.bookingGoal === 'not-sure' && !answers.situation.trim()) { setErr('Please tell Darren a little about your situation.'); situation.setAttribute('aria-invalid', 'true'); situation.focus(); return; }
+        stepProperty();
+      };
+    }
+    function stepProperty() {
+      var uses = window.DTServiceArea.uses(ctx, answers.bookingGoal);
+      if (uses.indexOf(answers.propertyUse) === -1) answers.propertyUse = uses.length === 1 ? uses[0] : '';
+      var w = GOAL_WORDING[answers.bookingGoal];
+      var states = window.DTServiceArea.states();
+      var stateOpts = '<option value="">Choose a state</option>';
+      for (var i = 0; i < states.length; i++) stateOpts += '<option value="' + states[i][0] + '"' + (answers.propertyState === states[i][0] ? ' selected' : '') + '>' + esc(states[i][1]) + '</option>';
+      var options = [['primary', 'Primary home'], ['second-home', 'Second home'], ['investment', 'Rental']].filter(function (o) { return uses.indexOf(o[0]) !== -1; });
+      draw(1, 'Property · 1 of 3', 'A little about your property.', 'These answers check which property rules apply.', '<label class="dt-book-field">' + w.state + '<select data-book="state">' + stateOpts + '</select></label>' + (uses.length > 1 ? '<h3 class="dt-book-q">' + w.use + '</h3>' + choiceGroup('propertyUse', options, answers.propertyUse) : '<p class="dt-book-fact">Property use: <strong>Investment</strong></p>'), 'Continue', stepGoal);
+      wireChoices(panel, answers, changed);
+      panel.querySelector('[data-book="state"]').onchange = function (e) { answers.propertyState = e.target.value; changed(); };
+      panel.querySelector('.dt-book-next').onclick = function () {
+        if (!answers.propertyUse || !answers.propertyState) { setErr('Please answer each question to continue.'); return; }
         var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal);
-        if (area === 'out-of-market') {
-          // Darren's redirect pages: plain words, NMLS lookup, the calculators,
-          // and no booking or contact buttons.
-          window.location.assign(outOfMarketPage(answers.propertyUse));
-          return;
-        }
+        if (area === 'out-of-market') { window.location.assign(outOfMarketPage(answers.propertyUse)); return; }
         if (area !== 'supported') { setErr('Please choose the property state.'); return; }
+        stepType();
+      };
+    }
+    function stepType() {
+      draw(1, 'Property · 2 of 3', 'What type of property is it?', '', choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType), 'Continue', stepProperty);
+      wireChoices(panel, answers, changed);
+      panel.querySelector('.dt-book-next').onclick = function () {
+        if (!answers.propertyType) { setErr('Please choose the property type.'); return; }
         if (answers.propertyType === 'mobile-land') { decline('property-type'); return; }
         stepHistory();
-      });
+      };
     }
-
     function stepHistory() {
-      card.innerHTML =
-        '<p class="dt-book-step">Step 2 of 3</p>' +
-        '<h2 class="dt-book-title">Two quick questions</h2>' +
-        '<p class="dt-book-q">Is your mortgage current?</p>' +
-        choiceGroup('mortgageCurrent', [['yes', 'Yes'], ['no', 'No'], ['no-mortgage', 'No mortgage yet']], answers.mortgageCurrent) +
-        '<p class="dt-book-q">Any bankruptcy or foreclosure in the last 4 years?</p>' +
-        choiceGroup('recentBankruptcyForeclosure', [['no', 'No'], ['yes', 'Yes']], answers.recentBankruptcyForeclosure) +
-        '<p class="dt-book-err" role="alert"></p>' +
-        '<button type="button" class="dt-book-next">Continue</button>' +
-        '<div class="dt-book-bar"><button type="button" class="dt-book-link dt-book-back">&#8592; Back</button>' + closeLink() + '</div>';
-      wireChoices(card, answers, function () { setErr(''); });
-      wireClose();
-      card.querySelector('.dt-book-back').addEventListener('click', stepProperty);
-      card.querySelector('.dt-book-next').addEventListener('click', function () {
+      draw(1, 'Property · 3 of 3', 'Two quick questions.', '', '<h3 class="dt-book-q">Is your mortgage current?</h3>' + choiceGroup('mortgageCurrent', [['yes', 'Yes'], ['no', 'No'], ['no-mortgage', 'No mortgage yet']], answers.mortgageCurrent) + '<h3 class="dt-book-q">Any bankruptcy or foreclosure in the last 4 years?</h3>' + choiceGroup('recentBankruptcyForeclosure', [['no', 'No'], ['yes', 'Yes']], answers.recentBankruptcyForeclosure), 'Continue', stepType);
+      wireChoices(panel, answers, changed);
+      panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.mortgageCurrent || !answers.recentBankruptcyForeclosure) { setErr('Please answer both to continue.'); return; }
         if (answers.mortgageCurrent === 'no') { decline('mortgage'); return; }
         if (answers.recentBankruptcyForeclosure === 'yes') { decline('bankruptcy-foreclosure'); return; }
         stepContact();
-      });
+      };
     }
-
     function stepContact() {
-      var first = '';
-      var last = '';
-      if (knownLead && knownLead.name) {
-        var parts = knownLead.name.split(/\s+/);
-        first = parts.shift() || '';
-        last = parts.join(' ');
-      }
-      card.innerHTML =
-        '<p class="dt-book-step">Step 3 of 3</p>' +
-        '<h2 class="dt-book-title">Where should Darren reach you?</h2>' +
-        '<form novalidate>' +
-        '<div class="dt-book-row">' +
-        '<label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(first) + '"></label>' +
-        '<label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(last) + '"></label>' +
-        '</div>' +
-        '<label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(knownLead && knownLead.email) + '"></label>' +
-        '<label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required></label>' +
-        '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
-        '<label class="dt-book-check"><input type="checkbox" name="smsInfo"> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
-        '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
+      draw(2, 'Contact details', 'Where should Darren reach you?', 'Your contact details stay here while you review your answers.', '<form novalidate><div class="dt-book-contact-details"><div class="dt-book-row"><label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(contact.firstName) + '"></label><label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(contact.lastName) + '"></label></div><label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(contact.email) + '"></label><label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required value="' + esc(contact.phone) + '"></label></div><div class="dt-book-consents" hidden>' +
+        '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
+        '<h3 class="dt-book-q">Text messages (optional)</h3>' +
+        '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
+        '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
         '<p class="dt-book-note dt-book-note-sms">Text messages are optional and not a condition of purchase or of submitting this form.</p>' +
-        '<p class="dt-book-note">Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>' +
-        '<p class="dt-book-err" role="alert"></p>' +
-        '<button type="submit" class="dt-book-next">' + esc(COPY.submit) + '</button>' +
-        '</form>' +
-        '<div class="dt-book-bar"><button type="button" class="dt-book-link dt-book-back">&#8592; Back</button>' + closeLink() + '</div>';
-      wireClose();
-      card.querySelector('.dt-book-back').addEventListener('click', stepHistory);
-      var form = card.querySelector('form');
-      // Formats as it is typed, so what is posted is (XXX) XXX-XXXX.
+        '<p class="dt-book-note">Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
+      var form = panel.querySelector('form');
+      var consentVisible = false;
+      contactView = function (show) {
+        consentVisible = show;
+        form.querySelector('.dt-book-contact-details').hidden = show;
+        form.querySelector('.dt-book-consents').hidden = !show;
+        panel.querySelector('.dt-book-title').textContent = show ? 'Review your preferences.' : 'Where should Darren reach you?';
+        panel.querySelector('.dt-book-sub').textContent = show ? 'Text messages are optional. Both choices start unchecked.' : 'Your contact details stay here while you review your answers.';
+        panel.querySelector('.dt-book-meta span:last-child').textContent = show ? 'Contact preferences' : 'Contact details';
+        form.querySelector('.dt-book-next').textContent = show ? COPY.submit : 'Review preferences';
+        setErr(''); focusPanel();
+      };
       form.elements.phone.addEventListener('input', function (e) { e.target.value = formatPhone(e.target.value); });
+      form.addEventListener('input', rememberContact);
+      form.addEventListener('change', rememberContact);
+      form.querySelector('.dt-book-back').onclick = function () {
+        if (busy) return;
+        rememberContact();
+        if (consentVisible) contactView(false); else stepHistory();
+      };
       form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (busy) return;
+        rememberContact();
+        var f = form.elements;
+        if (!f.firstName.value.trim() || !f.lastName.value.trim() || !f.email.value.trim() || !f.phone.value.trim()) { setErr('Please fill in your name, email and phone.'); return; }
+        if (!validEmail(f.email.value)) { contactView(false); setErr('Please enter a valid email address.'); f.email.focus(); return; }
+        if (!validPhone(f.phone.value)) { contactView(false); setErr('Please enter a valid US phone number.'); f.phone.focus(); return; }
+        if (!consentVisible) { contactView(true); return; }
         submit(form);
       });
     }
@@ -453,6 +472,8 @@
       if (!validEmail(val('email'))) { setErr('Please enter a valid email address.'); f.email.focus(); return; }
       if (!validPhone(val('phone'))) { setErr('Please enter a valid US phone number.'); f.phone.focus(); return; }
       if (!f.privacy.checked) { setErr('Please acknowledge the Privacy Policy and Terms to continue.'); f.privacy.focus(); return; }
+      if (busy) return;
+      busy = true; updateProgress();
       setErr('');
       var btn = form.querySelector('.dt-book-next');
       btn.disabled = true;
@@ -482,6 +503,7 @@
       for (k in lead) if (Object.prototype.hasOwnProperty.call(lead, k)) body[k] = lead[k];
 
       var fail = function (message) {
+        busy = false; updateProgress();
         btn.disabled = false;
         btn.textContent = COPY.submit;
         setErr(message);
@@ -512,12 +534,13 @@
             return;
           }
           if (r.status === 422 && r.body && r.body.field === 'prequal') { decline('server'); return; }
-          if ((r.status === 422 || r.status === 429) && r.body && r.body.message) { fail(r.body.message); return; }
-          // Anything else was rescued by email server-side, so the visitor must
-          // not be pushed to resubmit. But a receipt we cannot confirm is not a
-          // qualified booking either, so no calendar.
-          card.innerHTML = '<h2 class="dt-book-title">Thanks, your details reached Darren</h2>' +
-            '<p class="dt-book-sub">We could not confirm the booking step, so Darren will reach out to set a time. No need to submit again.</p>' +
+          if ((r.status === 422 || r.status === 429) && r.body && r.body.message) { fail(r.body.message); if (r.body.field === 'email' && contactView) { contactView(false); btn.textContent = 'Review preferences'; setErr(r.body.message); form.elements.email.focus(); } return; }
+          // A server error can mean a delayed write or a rescue attempt. It
+          // cannot prove delivery, so do not claim Darren received anything or
+          // encourage an immediate duplicate submission. No calendar is shown.
+          busy = false; stage = 3; updateProgress();
+          panel.innerHTML = '<h2 class="dt-book-title">We couldn’t confirm your request</h2>' +
+            '<p class="dt-book-sub">Darren may already have your details. To avoid a duplicate, please do not submit again immediately. You can refresh this page and try again later.</p>' +
             '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
           wireClose();
         }, function () {
@@ -526,29 +549,21 @@
     }
 
     function showCalendar(lead) {
-      renderCalendar(card, lead, '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>');
-      wireClose();
+      stage = 3; reached = 3; busy = false;
+      updateProgress();
+      renderCalendar(panel, lead, '');
+      focusPanel();
     }
-
     function decline(reason) {
-      card.classList.remove('dt-cal');
-      var why = reason === 'property-type'
-        ? 'Darren does not finance mobile homes or land, so a call would not be the best use of your time.'
-        : 'Based on your answers, a call with Darren is not the right next step just yet.';
-      // No calendar and no phone number, on purpose.
-      card.innerHTML = '<h2 class="dt-book-title">Thanks for checking</h2>' +
-        '<p class="dt-book-sub">' + why + ' You are welcome to keep exploring your numbers with the free calculators.</p>' +
-        '<a class="dt-book-call" href="/">Explore the calculators</a>' +
-        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
-      wireClose();
+      busy = false;
+      var why = reason === 'property-type' ? 'Darren does not finance mobile homes or land, so a call would not be the best use of your time.' : 'Based on your answers, a call with Darren is not the right next step just yet.';
+      draw(1, 'Property check', 'Thanks for checking', why + ' You are welcome to keep exploring your numbers with the free calculators.', '<a class="dt-book-call" href="/">Explore the calculators</a>', 'Review answers', stepType);
+      reached = 1; updateProgress();
+      panel.querySelector('.dt-book-next').onclick = stepProperty;
       track('booking_prequal_declined', { reason: reason, page_path: window.location.pathname });
     }
-
-    window.DTServiceArea.whenReady(stepProperty, function () {
-      card.innerHTML = '<h2 class="dt-book-title">Book a Call</h2>' +
-        '<p class="dt-book-sub">The property check could not load. Please refresh the page and try again.</p>' +
-        '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
-      wireClose();
+    window.DTServiceArea.whenReady(stepGoal, function () {
+      draw(0, '', 'Book a Call', 'The property check could not load. Please refresh the page and try again.', '', '');
     });
   }
 
@@ -589,16 +604,23 @@
     if (!overlay) return;
     var node = overlay;
     overlay = null;
+    savedOverlay = node;
     node.classList.remove('dt-open');
+    if (node.parentNode) node.parentNode.removeChild(node);
+    document.body.classList.remove('dt-booking-open');
     document.removeEventListener('keydown', onKey);
-    window.setTimeout(function () {
-      if (node.parentNode) node.parentNode.removeChild(node);
-    }, 150);
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    if (lastFocus && lastFocus.isConnected && lastFocus.focus) lastFocus.focus();
   }
 
   function onKey(e) {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    if (e.key !== 'Tab' || !overlay) return;
+    var nodes = overlay.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])');
+    var visible = Array.prototype.filter.call(nodes, function (el) { return el.getClientRects().length && !el.closest('[hidden]'); });
+    if (!visible.length) return;
+    var first = visible[0], last = visible[visible.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !overlay.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !overlay.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
   }
 
   function loadingCard(card) {
@@ -608,25 +630,41 @@
   /** Opens the flow in a panel. Every booking and Call button lands here. */
   function open() {
     if (overlay) return;
+    // /book/ already owns this same flow. Footer links must return to its
+    // existing answers instead of opening a second questionnaire over it.
+    var inline = document.getElementById('dt-book-mount');
+    if (/^\/book\/?$/.test(window.location.pathname) && inline) {
+      var heading = inline.querySelector('.dt-book-title');
+      if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+      if (inline.scrollIntoView) inline.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
     if (!window.DTServiceArea) { window.location.assign('/book/'); return; }
     injectStyles();
     lastFocus = document.activeElement;
-    overlay = document.createElement('div');
+    // Mobile booking closes its navigation drawer. Returning focus to that
+    // now-hidden trigger strands keyboard users, so restore the visible menu.
+    if (lastFocus && lastFocus.closest && lastFocus.closest('.nav-mobile-menu')) lastFocus = document.querySelector('.nav-hamburger') || lastFocus;
+    var resume = !!savedOverlay;
+    overlay = savedOverlay || document.createElement('div');
+    savedOverlay = null;
     overlay.className = 'dt-book-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Book a Call');
-    overlay.innerHTML = '<div class="dt-book-card"></div>';
+    if (!resume) overlay.innerHTML = '<div class="dt-book-card"></div>';
     var card = overlay.querySelector('.dt-book-card');
-    loadingCard(card);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    if (!resume) loadingCard(card);
+    if (!resume) overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     document.addEventListener('keydown', onKey);
     document.body.appendChild(overlay);
-    start(card, false);
+    document.body.classList.add('dt-booking-open');
+    if (!resume) start(card, false);
     window.setTimeout(function () {
-      if (overlay) overlay.classList.add('dt-open');
-      var first = card.querySelector('button, select, input');
-      if (first && first.focus) first.focus();
+      if (!overlay || !overlay.contains(card)) return;
+      overlay.classList.add('dt-open');
+      var first = card.querySelector('.dt-book-panel .dt-book-title') || card.querySelector('button, select, input');
+      if (!overlay.contains(document.activeElement) && first && first.focus) first.focus();
     }, 10);
   }
 
@@ -656,7 +694,7 @@
    * in the next one's contact step.
    */
   function identify(lead) {
-    if (!lead || (!lead.email && !lead.name)) { knownLead = null; writeLead(null); return; }
+    if (!lead || (!lead.email && !lead.name)) { knownLead = null; savedOverlay = null; writeLead(null); return; }
     knownLead = {};
     if (lead.name) knownLead.name = String(lead.name).trim();
     if (lead.email) knownLead.email = String(lead.email).trim();
