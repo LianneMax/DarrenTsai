@@ -114,9 +114,10 @@ describe('the mortgage calculator opens empty', () => {
     expect(CALCULATOR).toContain('{hasLoan && <AmortizationTable');
   });
 
-  it('prefills the Contact modal only once the calculator holds something', () => {
+  it('routes the calculator review through screened booking', () => {
     const app = read('src/MortgageCalculatorApp.tsx');
-    expect(app).toContain('prefillNumbers={inputs.loanAmount > 0 && inputs.annualRate > 0}');
+    expect(app).toContain('useBookingEntry');
+    expect(app).not.toContain('<ContactModal');
   });
 });
 
@@ -162,7 +163,7 @@ describe('success copy matches what was actually sent', () => {
       expect(src, `${page} still hard-codes the claim`).not.toContain(
         '<p class="lf-success-body">Your numbers were sent with your request. Darren will be in touch.</p>',
       );
-      expect(src, `${page} does not vary its copy`).toContain("cLoanAmount').value.trim()");
+      expect(src, page).not.toContain('id="contactOverlay"');
     }
   });
 });
@@ -172,12 +173,12 @@ describe('the goals example fits the page it is on', () => {
   // property") showed on /fha/, which is first-time buyers, and on the two
   // investor pages.
   it.each([
-    ['public/fha/index.html', 'First home'],
-    ['public/dscr/index.html', 'rental in Phoenix'],
-    ['public/realestateinvesting/index.html', 'out-of-state rental'],
-  ])('%s', (page, expected) => {
+    'public/fha/index.html',
+    'public/dscr/index.html',
+    'public/realestateinvesting/index.html',
+  ])('%s retires the old generic goals prompt', (page) => {
     const src = read(page);
-    expect(src).toContain(expected);
+    expect(src).not.toContain('id="contactOverlay"');
     expect(src).not.toContain('save for a rental property');
   });
 });

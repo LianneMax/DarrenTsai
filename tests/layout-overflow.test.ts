@@ -82,7 +82,7 @@ describe('the header buttons fit the narrowest common phone', () => {
   // each by an inline style, which no media query can reach.
   it.each([DSCR, FHA])('%s sizes them from their text, not a fixed inline width', (page) => {
     const html = read(page);
-    for (const id of ['openContactBtn', 'openBookingBtn']) {
+    for (const id of ['openBookingBtn']) {
       const tag = new RegExp('<button[^>]*id="' + id + '"[^>]*>').exec(html);
       expect(tag, id + ' moved').not.toBeNull();
       expect(tag![0], id + ' still carries an inline width').not.toMatch(/width:\s*\d/);

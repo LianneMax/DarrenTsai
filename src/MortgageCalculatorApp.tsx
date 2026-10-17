@@ -1,24 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Nav from './components/Nav';
+import { useBookingEntry } from './hooks/useBookingEntry';
 import Calculator from './components/Calculator';
-import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 import { useMortgageInputs } from './hooks/useMortgageInputs';
 
-// The homepage carries one CTA (debt consolidation), so the amortization
-// calculator that used to sit below it lives here on its own page instead.
-// Same component, same inputs, same contact modal.
+// Calculator opt-ins retain their own bucket; personal contact uses screened booking.
 export default function MortgageCalculatorApp() {
   const { inputs, setInputs, summary } = useMortgageInputs();
-  const [contactOpen, setContactOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = contactOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [contactOpen]);
-
-  const openContact = () => setContactOpen(true);
-  const closeContact = () => setContactOpen(false);
+  const openContact = useBookingEntry();
 
   // The same queue used by the other pre-rendered entries. Replaying on the
   // real mounted element preserves booking/contact behavior and tracking.
@@ -41,18 +31,7 @@ export default function MortgageCalculatorApp() {
       </main>
       <Footer />
 
-      {contactOpen && <ContactModal
-          currentInputs={inputs}
-          onClose={closeContact}
-          leadSource="mortgage-calculator-contact"
-          title="Want Darren to Review Your Numbers?"
-          subtitle="No credit pull. No pressure. Just your real numbers, reviewed by a licensed pro."
-          formId="mortgage-calculator-contact-modal"
-          // Only once the calculator holds the visitor's own numbers. With the
-          // inputs opening empty this is exactly "was the calculator used".
-          prefillNumbers={inputs.loanAmount > 0 && inputs.annualRate > 0}
-          nextStep="He has the numbers from your schedule, so the call can start with your actual payment."
-        />}
+
     </>
   );
 }

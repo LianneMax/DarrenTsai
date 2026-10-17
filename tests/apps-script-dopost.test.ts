@@ -259,7 +259,7 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     // SOURCE_SCHEMAS['constructor'] is Object, which is truthy and has no tab.
     const res = post(h, { source: 'constructor', email: 'proto@example.com' });
     expect(res.success).toBe(true);
-    expect(h.rowOf('Leads')).toMatchObject({ Source: 'constructor', Email: 'proto@example.com' });
+    expect(h.rowOf('Needs Guidance')).toMatchObject({ Source: 'needs-guidance', Email: 'proto@example.com' });
   });
 
   /**
@@ -368,8 +368,8 @@ describe('each funnel writes to its own tab, under its own headers', () => {
       loanAmount: '500000', termYears: '30', annualRate: '6.5',
       message: 'Lower my payment', target: '3000', timeline: '3 months', ...ATTR,
     });
-    expect(h.rowOf('Leads')).toMatchObject({
-      Source: 'MortgageCalculator',
+    expect(h.rowOf('Needs Guidance')).toMatchObject({
+      Source: 'needs-guidance',
       'Loan Amount': '500000',
       'Term (Years)': '30',
       'Rate (%)': '6.5',
@@ -387,8 +387,8 @@ describe('each funnel writes to its own tab, under its own headers', () => {
       propertyUse: 'primary', propertyState: 'CA', propertyType: 'single-family-condo',
       mortgageCurrent: 'no-mortgage', recentBankruptcyForeclosure: 'no', ...ATTR,
     });
-    expect(h.rowOf('Leads')).toMatchObject({
-      Source: 'book-contact', 'Form ID': 'booking-prequal', 'Licensed?': 'Yes',
+    expect(h.rowOf('Needs Guidance')).toMatchObject({
+      Source: 'needs-guidance', 'Form ID': 'booking-prequal', 'Licensed?': 'Yes',
       'Property Type': 'single-family-condo', 'Mortgage Current': 'no-mortgage',
       'Recent Bankruptcy/Foreclosure': 'no',
     });
@@ -399,7 +399,7 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     // alignment test is what makes the missing route visible.
     const res = post(h, { source: 'brand-new-funnel', email: 'new@example.com', state: 'CA' });
     expect(res.success).toBe(true);
-    expect(h.rowOf('Leads')).toMatchObject({ Source: 'brand-new-funnel' });
+    expect(h.rowOf('Needs Guidance')).toMatchObject({ Source: 'needs-guidance' });
   });
 
   /**
@@ -417,8 +417,8 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     });
     expect(res.success).toBe(true);
     expect(h.tabs.has('HELOC vs HEI')).toBe(false);
-    expect(h.rowOf('Leads')).toMatchObject({
-      Source: 'heloc-hei',
+    expect(h.rowOf('Needs Guidance')).toMatchObject({
+      Source: 'needs-guidance',
       Email: 'equity@example.com',
       'Licensed?': 'Yes',
       'UTM Source': 'google', // attribution survives the fall-through
@@ -527,7 +527,7 @@ describe('failures are reported, not swallowed', () => {
   it('an empty POST body is handled as an empty lead, not a crash', () => {
     const res = h.doPost({ postData: { contents: '' } }) as { __body: string };
     expect(JSON.parse(res.__body).success).toBe(true);
-    expect(h.tabs.has('Leads')).toBe(true);
+    expect(h.tabs.has('Needs Guidance')).toBe(true);
   });
 });
 
@@ -573,7 +573,7 @@ describe('triage columns', () => {
       ['dscr', 'DSCR'],
       ['fha', 'FHA'],
       ['real-estate-investing', 'Real Estate Investing'],
-      ['MortgageCalculator', 'Leads'],
+      ['MortgageCalculator', 'Needs Guidance'],
       ['QualifyForm', 'Qualify'],
     ] as const) {
       const fresh = load();

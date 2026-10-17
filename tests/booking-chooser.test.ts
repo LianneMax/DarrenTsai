@@ -314,7 +314,7 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(leadFetch).toHaveBeenCalledTimes(1);
     expect(leadFetch.mock.calls[0][0]).toBe('/api/lead');
     expect(leadBody()).toMatchObject({
-      formId: 'booking-prequal', source: 'home-contact', email: 'ada@example.com',
+      formId: 'booking-prequal', source: 'home-equity', email: 'ada@example.com',
       bookingGoal: 'equity', reviewFlag: '',
       propertyUse: 'primary', propertyState: 'CA', state: 'CA', propertyType: 'single-family-condo',
       mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no', privacyAcknowledged: true,
@@ -355,7 +355,7 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(events.filter((e) => e === 'generate_lead')).toHaveLength(1);
     expect(events).toContain('booking_page_shown');
     const lead = track.mock.calls.find((c) => c[0] === 'generate_lead')![1];
-    expect(lead).toEqual({ lead_source: 'home-contact', form_id: 'booking-prequal', page_path: '/' });
+    expect(lead).toEqual({ lead_source: 'home-equity', form_id: 'booking-prequal', page_path: '/' });
     expect(JSON.stringify(track.mock.calls)).not.toMatch(/ada|Lovelace|7145550123/i);
   });
 
@@ -369,7 +369,7 @@ describe('step 3: save the lead, then the calendar', () => {
     await flush();
     expect(userData).toHaveBeenCalledWith(expect.objectContaining({ email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' }));
     const lead = track.mock.calls.find((c) => c[0] === 'generate_lead')![1];
-    expect(lead).toEqual({ lead_source: 'home-contact', form_id: 'booking-prequal', page_path: '/', user_data: { email: 'ada@example.com', phone_number: '+17145550123' } });
+    expect(lead).toEqual({ lead_source: 'home-equity', form_id: 'booking-prequal', page_path: '/', user_data: { email: 'ada@example.com', phone_number: '+17145550123' } });
     // Only generate_lead carries it.
     for (const [event, params] of track.mock.calls) if (event !== 'generate_lead') expect(JSON.stringify(params)).not.toContain('ada@');
   });

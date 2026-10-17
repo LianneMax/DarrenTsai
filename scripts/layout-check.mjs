@@ -35,7 +35,7 @@ import { spawn } from 'node:child_process';
 
 const PORT = 4173;
 const BASE = `http://localhost:${PORT}`;
-const PAGES = ['/', '/about/', '/home-equity/?goal=payoff', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/book/'];
+const PAGES = ['/', '/about/', '/home-equity/?goal=payoff', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/book/', '/privacy-policy/', '/legal/', '/out-of-market-primary/', '/out-of-market-dscr/'];
 
 /**
  * 320 to 414 are phones, 320 and 360 being where R8-4 was found (360px is the
@@ -130,11 +130,45 @@ try {
       const r = await page.evaluate(measure);
       checks++;
 
+      // The shared heading rule once overrode the closing band's inherited
+      // white text. Overflow checks passed while the headline lost contrast.
+      // Measure the rendered color so that CSS cascade regression fails here.
+      const closingColors = await page.locator('.closing h2').evaluateAll(
+        nodes => nodes.map(node => getComputedStyle(node).color),
+      );
+      if (closingColors.some(color => color !== 'rgb(255, 255, 255)')) {
+        failures.push(`${width}px ${path}: closing headline must be white, got ${closingColors.join(', ')}`);
+      }
+
       if (r.sw > r.vw) {
         failures.push(`${width}px ${path}: page is ${r.sw}px wide on a ${r.vw}px screen. ${r.over.join(', ')}`);
       }
       if (phone && r.small.length) {
         failures.push(`${width}px ${path}: fields under 16px (iOS zooms on focus): ${r.small.join(', ')}`);
+      }
+      if (await page.locator('#contactOverlay, .modal-overlay[aria-labelledby="modal-title"]').count()) failures.push(`${path}: retired contact form still mounted`);
+      // Check real CTA behavior as well as dimensions: the old equity link
+      // reloaded this page and the contact action opened an unrelated form.
+      if (width === 1280 && path !== '/book/') {
+        const book = page.getByRole('button', { name: 'Book a Call', exact: true });
+        for (const button of await book.all()) {
+          if (!await button.isVisible()) continue;
+          await button.click();
+          await page.locator('.dt-book-overlay .dt-book-card [data-q="bookingGoal"]').waitFor({ state: 'visible' });
+          const actionColor = await page.locator('.dt-book-overlay .dt-book-next').evaluate(node => getComputedStyle(node).color);
+          if (actionColor !== 'rgb(255, 255, 255)') failures.push(`${path}: booking action text must be white, got ${actionColor}`);
+          await page.locator('.dt-book-overlay').getByRole('button', { name: 'Close', exact: true }).click();
+          checks++;
+        }
+        if (path === '/home-equity/') {
+          let navigations = 0;
+          const countNavigation = () => { navigations++; };
+          page.on('domcontentloaded', countNavigation);
+          await page.getByRole('link', { name: 'Find my starting point' }).click();
+          if (!page.url().endsWith('#equity') || navigations) failures.push('Equity starting point reloads instead of reaching the calculator');
+          page.off('domcontentloaded', countNavigation);
+          checks++;
+        }
       }
       // Exercise the real screened flow with a local receipt, never a live lead
       // or appointment. Google is blocked like every external host; the frame

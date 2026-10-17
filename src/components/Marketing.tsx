@@ -63,7 +63,7 @@ export function MarketingBenefits({ onOpenContact }: { onOpenContact: () => void
 }
 
 export function MarketingOptions() {
-  return <section className="options-section" id="options"><div className="wrap options-grid"><div><h2>One goal.<br />A few ways to get there.</h2><p>Start with an overview. Open an option when you want a little more detail.</p><a className="design-primary" href="/home-equity/">Find my starting point <ArrowIcon /></a></div><div className="product-list">
+  return <section className="options-section" id="options"><div className="wrap options-grid"><div><h2>Understand your<br />home equity options.</h2><p>Start with an overview. Open an option when you want a little more detail.</p><a className="design-primary" href="/home-equity/#equity">Find my starting point <ArrowIcon /></a></div><div className="product-list">
     <details open><summary>Home equity line of credit <span>HELOC</span></summary><p>A revolving line secured by your home. Access funds as needed, subject to the lender’s terms. Rates and payments may vary.</p></details>
     <details><summary>Fixed home equity loan</summary><p>A lump sum secured by your home with a fixed rate and scheduled payments. Your existing mortgage remains in place.</p></details>
     <details><summary>Cash-out refinance</summary><p>Replace your existing mortgage with a new, larger loan. Consider the effect on your entire mortgage, closing costs and repayment term.</p></details>
@@ -81,17 +81,17 @@ export function MarketingFaq({ onOpenContact, outlined = false }: { onOpenContac
       setCategory(categories[n]); document.getElementById(`category-${n}`)?.focus();
     }}>{name}</button>)}</div>
     <div id="faq-answers" role="tabpanel" aria-labelledby={`category-${categories.indexOf(category)}`} tabIndex={0}>{FAQ[category].map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
-    </div><div className={`faq-bottom${outlined ? ' faq-bottom-outlined' : ''}`}><div className="faq-prompt"><h3>Have a question about your situation?</h3><p>Talk through your goals and the options you’re considering.</p></div><button className="design-primary" onClick={onOpenContact}>Talk to Darren <ArrowIcon /></button></div></section>;
+    </div><div className={`faq-bottom${outlined ? ' faq-bottom-outlined' : ''}`}><div className="faq-prompt"><h3>Have a question about your situation?</h3><p>Talk through your goals and the options you’re considering.</p></div><button className="design-primary" onClick={onOpenContact}>Book a Call <ArrowIcon /></button></div></section>;
 }
 
 export function MarketingClosing({ onOpenContact, about = false }: { onOpenContact?: () => void; about?: boolean }) {
-  return <section className="closing"><div className="wrap"><h2>{about ? 'Let’s put your questions first.' : 'Start with a clearer picture.'}</h2><p>{about ? 'Start with a useful estimate or a conversation.' : 'Your numbers. Your goals. A next step that makes sense to you.'}</p>{about ? <button className="design-light" onClick={onOpenContact}>Talk to Darren <ArrowIcon /></button> : <a className="design-light" href="/home-equity/">Explore my home equity <ArrowIcon /></a>}</div></section>;
+  return <section className="closing"><div className="wrap"><h2>{about ? 'Let’s put your questions first.' : 'Start with a clearer picture.'}</h2><p>{about ? 'Start with a useful estimate or a conversation.' : 'Your numbers. Your goals. A next step that makes sense to you.'}</p>{about ? <button className="design-light" onClick={onOpenContact}>Book a Call <ArrowIcon /></button> : <a className="design-light" href="/home-equity/">Explore my home equity <ArrowIcon /></a>}</div></section>;
 }
 
 export function AboutHero() {
   return <section className="about-hero wrap"><div className="about-portrait"><img src="/darren-320.webp" srcSet="/darren-240.webp 240w, /darren-320.webp 320w, /darren.jpg 640w" sizes="(max-width: 600px) 320px, 420px" width="480" height="480" alt="Darren Tsai" />
     <div className="portrait-credentials"><div className="portrait-credential"><i aria-hidden="true" /><div><strong>Senior Loan Officer</strong><span>Saxton Mortgage</span></div></div><div className="portrait-credential"><i aria-hidden="true" /><div><strong>California Real Estate</strong><span>Broker &amp; Investor</span></div></div></div></div>
-    <div className="about-copy"><h1>I’m Darren Tsai.</h1><p>I help homeowners and investors make sure their current mortgage structure still makes sense. No pushy sales tactics, just straight talk about your options and the data to back it up.</p><p>I&apos;m an investor myself. Whether you&apos;re looking at a rental property, your home equity or a new mortgage, I start with the numbers and help you understand the tradeoffs.</p><div className="about-credentials">NMLS #2438102 · CA DRE Broker #02103705<br />Licensed in AZ · CA · FL · HI · OR · PA · TN · TX</div><div className="hero-actions"><a className="design-primary large" href="/?contact=1">Talk to Darren <ArrowIcon /></a><a href="/home-equity/">Start with your numbers</a></div></div></section>;
+    <div className="about-copy"><h1>I’m Darren Tsai.</h1><p>I help homeowners and investors make sure their current mortgage structure still makes sense. No pushy sales tactics, just straight talk about your options and the data to back it up.</p><p>I&apos;m an investor myself. Whether you&apos;re looking at a rental property, your home equity or a new mortgage, I start with the numbers and help you understand the tradeoffs.</p><div className="about-credentials">NMLS #2438102 · CA DRE Broker #02103705<br />Licensed in AZ · CA · FL · HI · OR · PA · TN · TX</div><div className="hero-actions"><a className="design-primary large" href="/book/">Book a Call <ArrowIcon /></a><a href="/home-equity/">Start with your numbers</a></div></div></section>;
 }
 
 export function AboutApproach() {

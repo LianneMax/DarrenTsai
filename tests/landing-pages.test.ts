@@ -16,8 +16,8 @@ describe.each(PAGES)('/%s submit errors', (page) => {
     expect(html).not.toMatch(/\balert\(/);
   });
 
-  it('shows an inline error on both the main form and the contact modal', () => {
-    expect(html.match(/className = 'submit-error'/g) ?? []).toHaveLength(2);
+  it('shows an inline error on the remaining guide form', () => {
+    expect(html.match(/className = 'submit-error'/g) ?? []).toHaveLength(1);
   });
 
   it('tells a visitor not to resubmit when the server responded (lead was rescued)', () => {
@@ -46,13 +46,13 @@ describe.each(PAGES)('/%s submit errors', (page) => {
 describe.each(PAGES)('/%s email rejection', (page) => {
   const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
 
-  it('reads the message off a 422 in both form handlers', () => {
-    expect(html.match(/if \(res\.status === 422 \|\| res\.status === 429\)/g) ?? []).toHaveLength(2);
-    expect(html.match(/fix\.field === 'email'/g) ?? []).toHaveLength(2);
+  it('reads the message off a 422 in the guide form handler', () => {
+    expect(html.match(/if \(res\.status === 422 \|\| res\.status === 429\)/g) ?? []).toHaveLength(1);
+    expect(html.match(/fix\.field === 'email'/g) ?? []).toHaveLength(1);
   });
 
   it('prefers that message over the do-not-resubmit copy', () => {
-    expect(html.match(/errEl\.textContent = visitorMessage \? visitorMessage/g) ?? []).toHaveLength(2);
+    expect(html.match(/errEl\.textContent = visitorMessage \? visitorMessage/g) ?? []).toHaveLength(1);
   });
 
   it('re-enables the button so the corrected address can be sent', () => {
@@ -77,11 +77,9 @@ describe('/fha/ review button', () => {
     expect(FHA_PAGE).toContain("window.openContactModal({ formId: 'fha-payment-review', title: 'Have Darren Review My Payment' });");
   });
 
-  it('posts whichever form id opened it, and the modal\'s own by default', () => {
-    expect(FHA_PAGE).toContain("var DEFAULT_FORM_ID = 'fha-contact-modal';");
-    expect(FHA_PAGE).toContain('formIdNow = (opts && opts.formId) || DEFAULT_FORM_ID;');
-    expect(FHA_PAGE).toContain('{ formId: formIdNow }, window.DTCompliance');
-    expect(FHA_PAGE).toContain('form_id: formIdNow,');
+  it('routes reviews into the shared screened booking flow', () => {
+    expect(FHA_PAGE).not.toContain('id="contactOverlay"');
+    expect(FHA_PAGE).toContain('window.DTBooking.open()');
   });
 
   it('prefills the loan and rate only once the estimate shows a payment', () => {
@@ -97,11 +95,11 @@ describe('/fha/ review button', () => {
  * Darren" copy, which is only true because other failures are rescued.
  */
 describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ on a rate-limited post', (page) => {
-  it('shows the endpoint\'s message on both of its forms', () => {
+  it('shows the endpoint\'s message on its guide form', () => {
     const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
-    expect(html.split('if (res.status === 422 || res.status === 429) {').length - 1).toBe(2);
+    expect(html.split('if (res.status === 422 || res.status === 429) {').length - 1).toBe(1);
     // phone since 16 Oct 2026: lead.mts refuses a non-US number with a message too.
-    expect(html.split("(fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')").length - 1).toBe(2);
+    expect(html.split("(fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')").length - 1).toBe(1);
   });
 });
 
@@ -114,8 +112,8 @@ describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ phone formatting', (
   const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
   const fns = [...html.matchAll(/function (formatUSPhone|formatPhone)\(raw\) \{[\s\S]*?\n {2}\}/g)].map((m) => m[0]);
 
-  it('has a formatter on both of its forms', () => {
-    expect(fns).toHaveLength(2);
+  it('has a formatter on its guide form', () => {
+    expect(fns).toHaveLength(1);
   });
 
   it.each([

@@ -323,7 +323,35 @@ function safeCell(v) {
 function appendSafeRow(sheet, row) {
   sheet.appendRow(row.map(safeCell));
 }
+function reviewDetailValues(d) {
+  return {
+    'Loan Amount': d.loanAmount || '', 'Term (Years)': d.termYears || '',
+    'Rate (%)': d.annualRate || '', 'Goals': d.message || '',
+    'Target Outcome': d.target || '', 'Timeline': d.timeline || ''
+  };
+}
+
 const SOURCE_SCHEMAS = {
+  'mortgage-review': {
+    tab: 'Mortgage Review',
+    details: ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'],
+    detailValues: reviewDetailValues
+  },
+  'home-purchase-refinance': {
+    tab: 'Home Purchase & Refinance',
+    details: ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'],
+    detailValues: reviewDetailValues
+  },
+  'commercial': {
+    tab: 'Commercial',
+    details: ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'],
+    detailValues: reviewDetailValues
+  },
+  'needs-guidance': {
+    tab: 'Needs Guidance',
+    details: ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'],
+    detailValues: reviewDetailValues
+  },
   'dscr': {
     tab: 'DSCR',
     // 'Down Payment' is the percent the slider sat at ("25%"), as it always
@@ -452,24 +480,125 @@ const SOURCE_SCHEMAS = {
   }
 };
 
-// Everything without a schema of its own: the contact modal on every page (see
-// CONTACT_SOURCES), the generic calculator form, and any source this file has
-// never heard of, which must still land somewhere rather than be lost.
-//
-// `|| ''` here, not cell(): no contact form asks for a term and the loan and
-// rate are optional, so a 0 on this tab was never an answer.
-const LEADS_SCHEMA = {
-  tab: 'Leads',
-  defaultSource: 'SimpleMortgageCalculator',
-  details: ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'],
-  detailValues: function (d) {
-    return {
-      'Loan Amount': d.loanAmount || '', 'Term (Years)': d.termYears || '',
-      'Rate (%)': d.annualRate || '', 'Goals': d.message || '',
-      'Target Outcome': d.target || '', 'Timeline': d.timeline || ''
-    };
+// Unknown intent has an explicit review bucket. Keep the LEADS_SCHEMA symbol
+// for schema/migration compatibility; no new write may recreate the Leads tab.
+const LEADS_SCHEMA = SOURCE_SCHEMAS['needs-guidance'];
+
+/** Same goal routing as the browser and Netlify, pinned together by tests. */
+function bookingBucket(goal, entry) {
+  if (goal === 'equity') return entry === 'adu-contact' || entry === 'adu' ? 'adu' : 'home-equity';
+  if (goal === 'dscr') return 'dscr';
+  if (goal === 'commercial') return 'commercial';
+  if (goal === 'own-home') return entry === 'fha-contact' || entry === 'fha' ? 'fha'
+    : entry === 'mortgage-calculator-contact' || entry === 'mortgage-review' ? 'mortgage-review' : 'home-purchase-refinance';
+  return 'needs-guidance';
+}
+
+/** Old open tabs remain accepted, but never recreate the retired Leads tab. */
+function targetedSource(data) {
+  if (data.formId === 'booking-prequal') return bookingBucket(data.bookingGoal, data.entrySource || data.source);
+  const legacy = {
+    'home-equity-contact': 'home-equity', 'debt-consolidation-contact': 'DebtConsolidation',
+    'adu-contact': 'adu', 'dscr-contact': 'dscr', 'fha-contact': 'fha',
+    'rei-contact': 'real-estate-investing', 'mortgage-calculator-contact': 'mortgage-review'
+  };
+  return Object.prototype.hasOwnProperty.call(legacy, data.source) ? legacy[data.source]
+    : Object.prototype.hasOwnProperty.call(SOURCE_SCHEMAS, data.source) ? data.source : 'needs-guidance';
+}
+
+/**
+ * Copy the retired generic tab by header, retaining every original cell in the
+ * destination snapshot. No queue jobs or confirmation emails run during this
+ * migration. Repeated runs use the original submission id (or a stable legacy
+ * id) and verify existing copies, rather than creating duplicate lead rows.
+ *
+ * Run without arguments first. Delete only after the new web-app deployment
+ * has been verified and its routing readiness property set by the operator.
+ * Otherwise the old writer could recreate Leads after a successful migration.
+ */
+function migrateLegacyLeads(deleteAfterVerification, bucketOverrides) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const legacy = ss.getSheetByName('Leads');
+    if (!legacy) return { copied: 0, verified: 0, deleted: false };
+    if (deleteAfterVerification && PropertiesService.getScriptProperties().getProperty('LEAD_BUCKET_ROUTING_READY') !== '2026-10-17-v1') {
+      throw new Error('Verify the deployed bucket writer before deleting Leads');
+    }
+    const before = legacy.getDataRange().getValues();
+    const headers = before[0].map(String);
+    if (new Set(headers).size !== headers.length || headers.indexOf('Email') === -1 || headers.indexOf('Source') === -1) {
+      throw new Error('Legacy header names need review before migration');
+    }
+    let copied = 0;
+    let verified = 0;
+    for (let i = 1; i < before.length; i++) {
+      if (before[i].every(function (v) { return v === '' || v === null; })) continue;
+      const original = byHeader(headers, before[i]);
+      let data = {};
+      try { data = JSON.parse(original['Submission Snapshot'] || '{}'); } catch { /* historical rows have no snapshot */ }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+      data.source = original.Source || data.source || '';
+      data.formId = original['Form ID'] || data.formId || '';
+      data.bookingGoal = original['Booking Goal'] || data.bookingGoal || '';
+      data.entrySource = data.entrySource || data.source;
+      const override = bucketOverrides && bucketOverrides[i + 1];
+      if (override && (override.expectedRow !== JSON.stringify(before[i]) || !Object.prototype.hasOwnProperty.call(SOURCE_SCHEMAS, override.source))) {
+        throw new Error('Legacy bucket override needs review at row ' + (i + 1));
+      }
+      const source = override ? override.source : targetedSource(data);
+      const schema = SOURCE_SCHEMAS[source];
+      const id = original['Submission ID'] || 'legacy-leads-row-' + (i + 1);
+      const target = ss.getSheetByName(schema.tab) || createSheetWithHeaders(ss, schema.tab, schema.headers);
+      const values = schema.values(data);
+      // Common columns preserve exact historical consent, attribution and triage.
+      schema.headers.forEach(function (h) { if (Object.prototype.hasOwnProperty.call(original, h)) values[h] = original[h]; });
+      values.Timestamp = original.Timestamp || data.timestamp || '';
+      values.Source = source;
+      values['Submission ID'] = id;
+      values['Submission Snapshot'] = JSON.stringify({
+        ...leadSnapshot(data), source: source,
+        legacyRecord: { sheet: 'Leads', row: i + 1, cells: original }
+      });
+      // Unsubscribe? is managed separately from the schema. Keeping it only
+      // inside a snapshot would make the live opt-out reader miss a refusal
+      // after Leads is deleted, so retain its native column as well.
+      const writeHeaders = schema.headers.slice();
+      if (Object.prototype.hasOwnProperty.call(original, 'Unsubscribe?')) {
+        if (writeHeaders.indexOf('Unsubscribe?') === -1) writeHeaders.push('Unsubscribe?');
+        values['Unsubscribe?'] = original['Unsubscribe?'];
+      }
+      let rows = target.getDataRange().getValues();
+      let live = rows[0].map(String);
+      let matches = rows.slice(1).filter(function (row) { return row[live.indexOf('Submission ID')] === id; });
+      if (!matches.length) {
+        appendByHeader(ss, target, schema.tab, writeHeaders, values);
+        copied++;
+        rows = target.getDataRange().getValues();
+        live = rows[0].map(String);
+        matches = rows.slice(1).filter(function (row) { return row[live.indexOf('Submission ID')] === id; });
+      }
+      if (matches.length !== 1) throw new Error('Legacy migration identity collision at row ' + (i + 1));
+      const stored = byHeader(live, matches[0]);
+      writeHeaders.forEach(function (h) {
+        // Compare the readback, not the input array, including escaped text.
+        const expected = values[h] === undefined || values[h] === null ? '' : values[h];
+        const actual = stored[h];
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+          throw new Error('Legacy migration readback differs at row ' + (i + 1) + ', column ' + h);
+        }
+      });
+      verified++;
+    }
+    SpreadsheetApp.flush();
+    if (JSON.stringify(legacy.getDataRange().getValues()) !== JSON.stringify(before)) throw new Error('Leads changed during migration; deletion refused');
+    if (deleteAfterVerification) ss.deleteSheet(legacy);
+    return { copied: copied, verified: verified, deleted: !!deleteAfterVerification };
+  } finally {
+    lock.releaseLock();
   }
-};
+}
 
 /**
  * Completes a schema: its full header list in the standard order, `values(d)`
@@ -516,7 +645,7 @@ const DEBT_CONSOLIDATION_HEADERS = SOURCE_SCHEMAS['DebtConsolidation'].headers;
 
 /** Every lead tab's schema, once each: what the audit and the migration walk. */
 function leadTabSchemas() {
-  return Object.keys(SOURCE_SCHEMAS).map(function (key) { return SOURCE_SCHEMAS[key]; }).concat([LEADS_SCHEMA]);
+  return Object.keys(SOURCE_SCHEMAS).map(function (key) { return SOURCE_SCHEMAS[key]; });
 }
 
 // Newsletter is a different shape: email only, no name or phone, and no
@@ -1265,8 +1394,11 @@ const CONFIRMATION_CONTEXTS = {
 
 function confirmationContext(data) {
   const source = data && data.source;
+  if (data.formId === 'booking-prequal') return 'contact';
+  if (source === 'mortgage-review') return Number(data.loanAmount) > 0 ? 'mortgage-review' : 'contact';
   if (Object.prototype.hasOwnProperty.call(CONFIRMATION_CONTEXTS, source)) return CONFIRMATION_CONTEXTS[source];
   if (source === 'mortgage-calculator-contact' && Number(data.loanAmount) > 0) return 'mortgage-review';
+  if (data.formId === 'booking-prequal' || ['needs-guidance', 'commercial', 'home-purchase-refinance'].indexOf(source) !== -1) return 'contact';
   if (Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, source)) return 'contact';
   return '';
 }
@@ -1298,6 +1430,11 @@ function sendContactConfirmation(ss, data) {
 
 /** Run whichever guide applies to this lead (at most one does). */
 function sendGuideFor(ss, data) {
+  // Product classification is not a guide request. A DSCR booking used to have
+  // a contact source; moving its bucket must not start emailing an unasked PDF.
+  if (data.formId === 'booking-prequal' || Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, data.entrySource)) {
+    return sendContactConfirmation(ss, data);
+  }
   const results = [sendDscrGuide(ss, data), sendReiGuide(ss, data), sendFhaGuide(ss, data), sendContactConfirmation(ss, data)];
   for (let i = 0; i < results.length; i++) {
     if (results[i] && results[i].outcome !== 'skipped') return results[i];
@@ -1365,6 +1502,11 @@ function doPost(e) {
       }
       if (difference) return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
         .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (data.source !== 'newsletter' && data.source !== 'QualifyForm') {
+      const originalSource = data.source;
+      data.source = targetedSource(data);
+      if (originalSource !== data.source) data.entrySource = data.entrySource || originalSource;
     }
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 

@@ -24,7 +24,7 @@ const BASE = { lastName: 'Lee', email: 'ava@example.com', phone: '(714) 555-0100
 
 describe('formula-like text is written as text', () => {
   it.each([
-    ['the generic Leads tab', { ...BASE, source: 'fha-contact', firstName: ATTACK, message: '@SUM(A1:A9)' }, 'Leads'],
+    ['the generic Leads tab', { ...BASE, source: 'fha-contact', firstName: ATTACK, message: '@SUM(A1:A9)' }, 'FHA'],
     ['the Debt Consolidation tab', { ...BASE, source: 'DebtConsolidation', firstName: ATTACK }, 'Debt Consolidation'],
     ['a SOURCE_SCHEMAS tab', { ...BASE, source: 'adu', firstName: ATTACK, projectPurpose: '+HYPERLINK("x")' }, 'ADU'],
   ])('on %s', (_name, payload, tab) => {
@@ -39,9 +39,9 @@ describe('formula-like text is written as text', () => {
 
   it('leaves ordinary values exactly as they were', () => {
     const { rowOf } = post({ ...BASE, source: 'fha-contact', firstName: 'Ava', phone: '+1 714 555 0100', loanAmount: 392755, message: '-5% down? Is that possible' });
-    const row = rowOf('Leads');
+    const row = rowOf('FHA');
     expect(row['First Name']).toBe('Ava');
     expect(row['Phone']).toBe('+1 714 555 0100');
-    expect(row['Loan Amount']).toBe(392755);
+    expect(JSON.parse(String(row['Submission Snapshot'])).loanAmount).toBe(392755);
   });
 });

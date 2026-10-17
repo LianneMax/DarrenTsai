@@ -83,10 +83,8 @@
 
   /**
    * source per page, so a booking lead lands under the same label as that
-   * page's contact modal: the Apps Script already routes every one of these to
-   * the Leads tab (CONTACT_SOURCES), and the service-area policy reads the
-   * source for its home-equity and FHA/DSCR context. /book/ and any page not
-   * listed post 'book-contact'.
+   * entry page context. This is retained as entrySource; the chosen goal
+   * determines source after screening, so bookings use targeted Sheet/CRM buckets.
    */
   var PAGE_SOURCES = {
     '/': 'home-contact',
@@ -185,6 +183,16 @@
     });
   }
 
+  // The goal owns the product bucket; entrySource retains the originating page.
+  function bookingBucket(goal, entry) {
+    if (goal === 'equity') return entry === 'adu-contact' || entry === 'adu' ? 'adu' : 'home-equity';
+    if (goal === 'dscr') return 'dscr';
+    if (goal === 'commercial') return 'commercial';
+    if (goal === 'own-home') return entry === 'fha-contact' || entry === 'fha' ? 'fha'
+      : entry === 'mortgage-calculator-contact' || entry === 'mortgage-review' ? 'mortgage-review' : 'home-purchase-refinance';
+    return 'needs-guidance';
+  }
+
   function pageSource() {
     var path = window.location.pathname || '/';
     if (path.charAt(path.length - 1) !== '/') path += '/';
@@ -199,7 +207,7 @@
       'overflow-y:auto;}' +
       '.dt-book-overlay.dt-open{opacity:1;}' +
       '.dt-book-card{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-sizing:border-box;' +
-      'box-shadow:0 20px 60px rgba(15,32,45,.28);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;' +
+      'box-shadow:0 20px 60px rgba(15,32,45,.28);font-family:inherit;' +
       'transform:translateY(8px);transition:transform .15s ease;margin:auto;color:#0f202d;}' +
       '.dt-book-overlay.dt-open .dt-book-card{transform:none;}' +
       '.dt-book-inline .dt-book-card{box-shadow:none;border:1px solid #e6ebf0;transform:none;margin:0 auto;}' +
@@ -231,7 +239,7 @@
       '.dt-book-note-sms{font-size:12.5px;line-height:18px;color:#5b6573;}' +
       '.dt-book-err{margin:12px 0 0;font-size:14px;line-height:20px;color:#b42318;}' +
       '.dt-book-err:empty{display:none;}' +
-      '.dt-book-next{display:block;width:100%;margin-top:18px;min-height:48px;padding:12px 16px;border:0;border-radius:10px;' +
+      '.dt-book-card .dt-book-next{display:block;width:100%;margin-top:18px;min-height:48px;padding:12px 16px;border:0;border-radius:10px;' +
       'background:#1a7f99;color:#fff;font:inherit;font-size:16px;font-weight:600;cursor:pointer;}' +
       '.dt-book-next:hover{background:#146b82;}' +
       '.dt-book-next:focus-visible,.dt-book-calendar-link:focus-visible{outline:3px solid #1a7f99;outline-offset:3px;}' +
@@ -312,7 +320,7 @@
       var goal = answers.bookingGoal;
       var html =
         '<p class="dt-book-step">Step 1 of 3</p>' +
-        '<h2 class="dt-book-title">Talk to Darren</h2>' +
+        '<h2 class="dt-book-title">Book a Call</h2>' +
         '<p class="dt-book-sub">Three quick steps, mostly taps. They check that Darren can help with your property ' + COPY.when + '.</p>' +
         '<p class="dt-book-q">What would you like help with?</p>' +
         choiceGroup('bookingGoal', GOAL_OPTIONS, goal);
@@ -452,7 +460,7 @@
       var lead = {
         firstName: val('firstName'), lastName: val('lastName'), email: val('email'), phone: val('phone'),
         state: answers.propertyState,
-        source: source, formId: FORM_ID, magnet: 'Booking prequal',
+        source: bookingBucket(answers.bookingGoal, source), entrySource: source, formId: FORM_ID, magnet: 'Booking prequal',
         bookingGoal: answers.bookingGoal, reviewFlag: REVIEW_GOALS.indexOf(answers.bookingGoal) !== -1 ? 'Yes' : '',
         propertyUse: answers.propertyUse, propertyState: answers.propertyState,
         serviceAreaResult: 'supported', serviceAreaVersion: window.DTServiceArea.version(),
@@ -490,7 +498,7 @@
             // lead the server confirmed. user_data is attached only after
             // consent (DT.userData), for the Google tag to hash as enhanced
             // conversions; it is never a GA4 event parameter.
-            var conversion = { lead_source: source, form_id: FORM_ID, page_path: window.location.pathname };
+            var conversion = { lead_source: lead.source, form_id: FORM_ID, page_path: window.location.pathname };
             var ud;
             try { ud = window.DT && window.DT.userData ? window.DT.userData(lead) : undefined; } catch (e3) { ud = undefined; }
             if (ud) conversion.user_data = ud;
@@ -537,7 +545,7 @@
     }
 
     window.DTServiceArea.whenReady(stepProperty, function () {
-      card.innerHTML = '<h2 class="dt-book-title">Talk to Darren</h2>' +
+      card.innerHTML = '<h2 class="dt-book-title">Book a Call</h2>' +
         '<p class="dt-book-sub">The property check could not load. Please refresh the page and try again.</p>' +
         '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
       wireClose();
@@ -594,7 +602,7 @@
   }
 
   function loadingCard(card) {
-    card.innerHTML = '<h2 class="dt-book-title">Talk to Darren</h2><p class="dt-book-sub">Loading the property check...</p>';
+    card.innerHTML = '<h2 class="dt-book-title">Book a Call</h2><p class="dt-book-sub">Loading the property check...</p>';
   }
 
   /** Opens the flow in a panel. Every booking and Call button lands here. */
@@ -607,7 +615,7 @@
     overlay.className = 'dt-book-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-label', 'Talk to Darren');
+    overlay.setAttribute('aria-label', 'Book a Call');
     overlay.innerHTML = '<div class="dt-book-card"></div>';
     var card = overlay.querySelector('.dt-book-card');
     loadingCard(card);
@@ -654,6 +662,13 @@
     if (lead.email) knownLead.email = String(lead.email).trim();
     writeLead(knownLead);
   }
+
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest && event.target.closest('a[href="/book/"]');
+    if (!link || event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
+    event.preventDefault();
+    open();
+  });
 
   // preload is kept so existing callers do not break; nothing is worth
   // fetching before the prequal passes.

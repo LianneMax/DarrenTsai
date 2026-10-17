@@ -184,7 +184,7 @@ describe('the pre-rendered /adu/ shell', () => {
     // Checkout line endings can differ; changes to the script itself must not.
     expect(script('adu/index.html')?.replace(/\r\n/g, '\n'))
       .toBe(script('index.html')?.replace(/\r\n/g, '\n'));
-    expect(read('src/AduApp.tsx')).toContain('leadSource="adu-contact"');
+    expect(read('src/AduApp.tsx')).toContain('useBookingEntry');
   });
 
   it('has /yt/adu and /yt/adu-c short links, as 302s with their UTMs', () => {

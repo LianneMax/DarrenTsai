@@ -104,7 +104,7 @@ describe('the nav (revamp phase 6)', () => {
   it('gives an ad landing page only Contact, Book a Call and the way home', async () => {
     const nav = await navOf(true);
     expect([...nav.matchAll(/href="([^"]+)"/g)].map((m) => m[1]).sort()).toEqual(['/', '/']);
-    expect(nav).toContain('>Contact<');
+    expect(nav).not.toContain('>Contact<');
     expect(nav).toContain('Book a Call');
   });
 

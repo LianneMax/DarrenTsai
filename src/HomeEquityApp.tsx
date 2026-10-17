@@ -1,31 +1,14 @@
-import { useEffect, useState } from 'react';
-import type { MortgageInputs } from './types/mortgage';
-import { loadInputs } from './hooks/useMortgageInputs';
+import { useEffect } from 'react';
 import Nav from './components/Nav';
+import { useBookingEntry } from './hooks/useBookingEntry';
 import HomeEquityCalculator from './components/HomeEquityCalculator';
-import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 import { MobileActionBar } from './components/PageParts';
 import { MarketingOptions, MarketingFaq } from './components/Marketing';
 
-// /home-equity/ (frontend revamp, phase 3). The same shell as
-// DebtConsolidationApp: the nav, the page, the footer, and the contact modal
-// behind the nav's "Contact" button, which posts its own source so a modal lead
-// from this page is filed and tagged as home equity rather than as a generic
-// contact. The page's own lead is HomeEquityCalculator's, source 'home-equity'.
+// Calculator opt-ins retain their own bucket; personal contact uses screened booking.
 export default function HomeEquityApp() {
-  // The contact modal prefills its loan fields from the mortgage calculator's
-  // stored inputs, read once and read-only, exactly as the homepage does.
-  const [inputs] = useState<MortgageInputs>(loadInputs);
-  const [contactOpen, setContactOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = contactOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [contactOpen]);
-
-  const openContact  = () => setContactOpen(true);
-  const closeContact = () => setContactOpen(false);
+  const openContact = useBookingEntry();
 
   // Replay a click made on the pre-rendered nav before React loaded (queued by
   // the inline script in home-equity/index.html), as App.tsx does for
@@ -53,15 +36,7 @@ export default function HomeEquityApp() {
       <Footer />
       <MobileActionBar target="equity" label={<><span className="hv-equity">Check My Home Equity</span><span className="hv-payoff">See My Comparison</span></>} />
 
-      {contactOpen && <ContactModal
-          currentInputs={inputs}
-          onClose={closeContact}
-          leadSource="home-equity-contact"
-          title="Talk to Darren"
-          subtitle="No credit pull. No pressure. Four fields and a licensed loan officer gets back to you."
-          formId="home-equity-contact-modal"
-          nextStep="In the meantime, the estimate on this page shows your equity snapshot."
-        />}
+
     </>
   );
 }

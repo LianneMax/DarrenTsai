@@ -71,7 +71,7 @@ describe('no response time is promised', () => {
     }
     for (const page of ['dscr', 'fha', 'realestateinvesting']) {
       const html = read(`public/${page}/index.html`);
-      expect(html, page).toContain('Darren will be in touch.');
+      expect(html, page).not.toContain('id="contactOverlay"');
       expect(html, page).not.toContain('reach out');
     }
   });

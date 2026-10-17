@@ -141,23 +141,22 @@ describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ dropdowns', (page) =
 
   it('both copies follow the field instead of closing on scroll', () => {
     expect(html).not.toContain('function onScroll');
-    expect(html.match(/function follow\(e\) \{/g)).toHaveLength(2);
+    expect(html.match(/function follow\(e\) \{/g)).toHaveLength(1);
     expect(html).toContain('if (!positionPanel()) close();');
-    expect(html).toContain('if (!position()) close();');
-    expect(html.match(/window\.addEventListener\('scroll', follow, true\);/g)).toHaveLength(2);
-    expect(html.match(/window\.removeEventListener\('scroll', follow, true\);/g)).toHaveLength(2);
-    expect(html.match(/window\.visualViewport\.addEventListener\('resize', follow\);/g)).toHaveLength(2);
+    expect(html.match(/window\.addEventListener\('scroll', follow, true\);/g)).toHaveLength(1);
+    expect(html.match(/window\.removeEventListener\('scroll', follow, true\);/g)).toHaveLength(1);
+    expect(html.match(/window\.visualViewport\.addEventListener\('resize', follow\);/g)).toHaveLength(1);
   });
 
   it('both open upwards when that side has more room, within the room they have', () => {
-    expect(html.match(/if \(below >= 260 \|\| below >= above\) \{/g)).toHaveLength(2);
-    expect(html.match(/panel\.style\.bottom = \(window\.innerHeight - r\.top \+ 6\) \+ 'px';/g)).toHaveLength(2);
-    expect(html.match(/panel\.style\.maxHeight = Math\.max\(above, 140\) \+ 'px';/g)).toHaveLength(2);
+    expect(html.match(/if \(below >= 260 \|\| below >= above\) \{/g)).toHaveLength(1);
+    expect(html.match(/panel\.style\.bottom = \(window\.innerHeight - r\.top \+ 6\) \+ 'px';/g)).toHaveLength(1);
+    expect(html.match(/panel\.style\.maxHeight = Math\.max\(above, 140\) \+ 'px';/g)).toHaveLength(1);
   });
 
   it('neither raises the keyboard on a touch screen', () => {
-    expect(html.match(/if \(finePointer\(\)\) setTimeout\(/g)).toHaveLength(2);
-    expect(html.match(/searchEl\.focus\(\{ preventScroll: true \}\)/g)).toHaveLength(2);
+    expect(html.match(/if \(finePointer\(\)\) setTimeout\(/g)).toHaveLength(1);
+    expect(html.match(/searchEl\.focus\(\{ preventScroll: true \}\)/g)).toHaveLength(1);
     expect(html).not.toMatch(/searchEl\.focus\(\)/);
   });
 

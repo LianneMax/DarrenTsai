@@ -41,6 +41,10 @@ const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS 
 
 /** source -> [tab, the funnel's own columns], as docs/lead-sheet-schema.md lists them. */
 const DETAILS: Record<string, [string, string[]]> = {
+  'mortgage-review': ['Mortgage Review', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
+  'home-purchase-refinance': ['Home Purchase & Refinance', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
+  'commercial': ['Commercial', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
+  'needs-guidance': ['Needs Guidance', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
   'dscr': ['DSCR', [
     'Purchase Price', 'Down Payment', 'Loan Amount', 'Rate', 'Monthly Rent', 'Annual Tax',
     'Annual Insurance', 'Monthly HOA', 'Monthly P&I', 'Monthly PITIA', 'DSCR',
@@ -113,7 +117,7 @@ describe('every lead tab is the standard order', () => {
   });
 
   it('Leads, the catch-all, is the same shape', () => {
-    expect(gas.LEADS_SCHEMA.tab).toBe('Leads');
+    expect(gas.LEADS_SCHEMA.tab).toBe('Needs Guidance');
     expect(gas.LEADS_SCHEMA.headers).toEqual([...PREFIX, ...LEADS_DETAILS, ...CONSENT, ...ATTR, ...TRIAGE]);
     expect(gas.LEAD_HEADERS).toBe(gas.LEADS_SCHEMA.headers);
     expect(gas.DEBT_CONSOLIDATION_HEADERS).toBe(gas.SOURCE_SCHEMAS['DebtConsolidation'].headers);
@@ -121,7 +125,7 @@ describe('every lead tab is the standard order', () => {
 
   it('covers every tab, so a new one cannot slip past unpinned', () => {
     expect(Object.keys(gas.SOURCE_SCHEMAS).sort()).toEqual(Object.keys(DETAILS).sort());
-    expect(gas.leadTabSchemas()).toHaveLength(Object.keys(DETAILS).length + 1);
+    expect(gas.leadTabSchemas()).toHaveLength(Object.keys(DETAILS).length);
   });
 
   it.each(gas.leadTabSchemas().map((s) => [s.tab, s.headers] as const))(

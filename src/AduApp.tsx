@@ -1,29 +1,13 @@
-import { useEffect, useState } from 'react';
-import type { MortgageInputs } from './types/mortgage';
-import { loadInputs } from './hooks/useMortgageInputs';
+import { useEffect } from 'react';
 import Nav from './components/Nav';
+import { useBookingEntry } from './hooks/useBookingEntry';
 import AduCalculator from './components/AduCalculator';
-import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 import { MobileActionBar } from './components/PageParts';
 
-// /adu/ (frontend revamp, phase 5). The same shell as HomeEquityApp: nav, page,
-// footer, and a contact modal that posts its own source, 'adu-contact', so a
-// modal lead from this page is filed and tagged as ADU rather than as a generic
-// contact. The page's own lead is AduCalculator's, source 'adu'.
+// Calculator opt-ins retain their own bucket; personal contact uses screened booking.
 export default function AduApp() {
-  // The contact modal prefills its loan fields from the mortgage calculator's
-  // stored inputs, read once and read-only, exactly as the homepage does.
-  const [inputs] = useState<MortgageInputs>(loadInputs);
-  const [contactOpen, setContactOpen] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = contactOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [contactOpen]);
-
-  const openContact  = () => setContactOpen(true);
-  const closeContact = () => setContactOpen(false);
+  const openContact = useBookingEntry();
 
   // Replay a click made on the pre-rendered nav before React loaded (queued by
   // the inline script in adu/index.html), as App.tsx does for
@@ -49,15 +33,7 @@ export default function AduApp() {
       <Footer />
       <MobileActionBar target="project" label="Explore My Project" />
 
-      {contactOpen && <ContactModal
-          currentInputs={inputs}
-          onClose={closeContact}
-          leadSource="adu-contact"
-          title="Talk to Darren"
-          subtitle="No credit pull. No pressure. Four fields and a licensed loan officer gets back to you."
-          formId="adu-contact-modal"
-          nextStep="In the meantime, the snapshot on this page connects your budget to a funding plan."
-        />}
+
     </>
   );
 }

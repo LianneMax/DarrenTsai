@@ -54,11 +54,11 @@ describe('persistent email opt-out', () => {
     const harness = loadGas<{ SpreadsheetApp: { openById: (id: string) => unknown }; markLeadEmailUnsubscribed: (ss: unknown, email: string) => void; leadEmailUnsubscribed: (ss: unknown, email: string) => boolean }>({
       exports: ['SpreadsheetApp', 'markLeadEmailUnsubscribed', 'leadEmailUnsubscribed'],
     });
-    harness.tabs.set('Leads', { name: 'Leads', rows: [['Email', 'Name'], [email, 'One'], ['another@example.com', 'Two'], [email.toUpperCase(), 'Three']] });
+    harness.tabs.set('Needs Guidance', { name: 'Needs Guidance', rows: [['Email', 'Name'], [email, 'One'], ['another@example.com', 'Two'], [email.toUpperCase(), 'Three']] });
     const spreadsheet = harness.gas.SpreadsheetApp.openById('test');
     harness.gas.markLeadEmailUnsubscribed(spreadsheet, email);
     harness.gas.markLeadEmailUnsubscribed(spreadsheet, email);
-    expect(harness.tabs.get('Leads')!.rows).toEqual([['Email', 'Name', 'Unsubscribe?'], [email, 'One', true], ['another@example.com', 'Two'], [email.toUpperCase(), 'Three', true]]);
+    expect(harness.tabs.get('Needs Guidance')!.rows).toEqual([['Email', 'Name', 'Unsubscribe?'], [email, 'One', true], ['another@example.com', 'Two'], [email.toUpperCase(), 'Three', true]]);
     expect(harness.gas.leadEmailUnsubscribed(spreadsheet, email)).toBe(true);
     expect(harness.gas.leadEmailUnsubscribed(spreadsheet, 'another@example.com')).toBe(false);
   });
@@ -70,7 +70,7 @@ describe('persistent email opt-out', () => {
         URL: 'https://example.invalid/guide', KEY: 'guide-test',
       }, fetch: url => { calls.push(url); return { getResponseCode: () => 200, getContentText: () => '{"suppressed":true}' }; },
     });
-    harness.tabs.set('Leads', { name: 'Leads', rows: [['Email', 'Unsubscribe?'], [email, true]] });
+    harness.tabs.set('Needs Guidance', { name: 'Needs Guidance', rows: [['Email', 'Unsubscribe?'], [email, true]] });
     expect(harness.gas.postGuide(harness.gas.SpreadsheetApp.openById('test'), 'guide', 'URL', 'KEY', { email }).outcome).toBe('skipped');
     expect(calls).toEqual(['https://realdarrentsai.com/api/stop-email']);
   });

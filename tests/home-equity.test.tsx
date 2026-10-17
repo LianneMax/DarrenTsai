@@ -313,8 +313,8 @@ describe('the pre-rendered /home-equity/ shell', () => {
 
   it('posts its contact modal under its own source', () => {
     const app = read('src/HomeEquityApp.tsx');
-    expect(app).toContain('leadSource="home-equity-contact"');
-    expect(app).toContain('formId="home-equity-contact-modal"');
+    expect(app).toContain('useBookingEntry');
+    expect(app).not.toContain('<ContactModal');
   });
 });
 

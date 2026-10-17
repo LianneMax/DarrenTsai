@@ -152,7 +152,7 @@ describe('the DSCR calculator does not arrive pre-filled either', () => {
   it('sends a blank term, not 30', () => {
     // R3-9. No Contact form on this site asks for a term.
     expect(DSCR).not.toContain('termYears: 30,');
-    expect(DSCR).toContain("termYears: '',");
+    expect(DSCR).not.toContain('id="contactOverlay"');
   });
 });
 
@@ -359,21 +359,21 @@ describe('a waiting page does not describe what it is waiting for', () => {
     for (const [page, src] of [['dscr', DSCR], ['fha', FHA], ['rei', REI]] as const) {
       expect(src, `${page} still claims numbers in its heading`).not.toContain('Want Darren to Review Your Numbers?');
       expect(src, `${page} still claims numbers in its subtitle`).not.toContain('Just your real numbers');
-      expect(src).toContain('Talk to Darren');
+      expect(src).toContain('Book a Call');
     }
     // The React modal takes it as a prop, and only /mortgage-calculator/ keeps
     // the numbers wording, because there the form really does carry them.
     const APP = read('src/App.tsx');
     const CALC_APP = read('src/MortgageCalculatorApp.tsx');
-    expect(APP).toContain('title="Talk to Darren"');
-    expect(CALC_APP).toContain('title="Want Darren to Review Your Numbers?"');
+    expect(APP).toContain('useBookingEntry');
+    expect(CALC_APP).toContain('useBookingEntry');
   });
 
   it('R5-8: sends blank, not 0, for a blank loan and rate', () => {
     for (const [page, src] of [['dscr', DSCR], ['fha', FHA], ['rei', REI]] as const) {
       expect(src, `${page} still sends a 0 loan`).not.toMatch(/cLoanAmount'\)\.value\.replace\(\/\[\^0-9\.\]\/g, ''\)\) \|\| 0/);
       expect(src, `${page} still sends a 0 rate`).not.toContain("parseFloat(el('cRate').value) || 0");
-      expect(src).toContain("parseFloat(el('cRate').value) || ''");
+      expect(src).not.toContain('id="contactOverlay"');
     }
   });
 });

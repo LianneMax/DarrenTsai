@@ -36,8 +36,8 @@ describe('the palette is the static pages\' palette', () => {
 describe('the header and the buttons', () => {
   it('has the static pages\' pair: Contact outlined, Book a Call slate', () => {
     const nav = read('src/components/Nav.tsx');
-    expect(nav).toContain('className="btn btn-outline-teal btn-sm" data-early="nav-contact"');
-    expect(nav).toContain('className="btn btn-teal btn-sm" data-early="nav-book"');
+    expect(nav).toContain('className="btn btn-teal btn-sm" data-early="nav-contact"');
+    expect(nav).toContain('className="btn btn-outline-teal btn-sm"');
   });
 
   it('uses no pink button outside the contact form, whose static twin is pink too', () => {

@@ -1,30 +1,13 @@
-import { useEffect, useState } from 'react';
-import type { MortgageInputs } from './types/mortgage';
-import { loadInputs } from './hooks/useMortgageInputs';
+import { useEffect } from 'react';
 import Nav from './components/Nav';
+import { useBookingEntry } from './hooks/useBookingEntry';
 import { HomeHero } from './components/HomeHub';
 import { MarketingBenefits, MarketingOptions, MarketingFaq, MarketingClosing } from './components/Marketing';
 import Reviews from './components/Education';
-import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 
 export default function App() {
-  // The homepage is the goal hub (revamp phase 4): it sends each visitor to the
-  // page for their goal and hosts no calculator of its own. The debt calculator
-  // lives at /debt-consolidation/, the amortization one at /mortgage-calculator/.
-  // The contact modal still prefills its loan fields, so the stored inputs are
-  // read once here (read-only: only the calculator page writes them).
-  const [inputs] = useState<MortgageInputs>(loadInputs);
-  const [contactOpen, setContactOpen] = useState(false);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    document.body.style.overflow = contactOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [contactOpen]);
-
-  const openContact  = () => setContactOpen(true);
-  const closeContact = () => setContactOpen(false);
+  const openContact = useBookingEntry();
 
   // Replay a click made on the pre-rendered nav or hero before React loaded
   // (queued by the inline script in index.html). Clicking the matching live
@@ -32,7 +15,6 @@ export default function App() {
   // tracked exactly as a normal click. take() empties the queue, so StrictMode's
   // second effect run in development replays nothing.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('contact') === '1') setContactOpen(true);
     const early = (window as { __dtEarlyClick?: { take: () => string | null } }).__dtEarlyClick;
     const key = early?.take();
     if (!key) return;
@@ -54,15 +36,7 @@ export default function App() {
       </main>
       <Footer />
 
-      {contactOpen && <ContactModal
-          currentInputs={inputs}
-          onClose={closeContact}
-          leadSource="home-contact"
-          title="Talk to Darren"
-          subtitle="No credit pull. No pressure. Four fields and a licensed loan officer gets back to you."
-          formId="home-contact-modal"
-          nextStep="In the meantime, each goal card on this page leads to an estimate of its own."
-        />}
+
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses } from '../../src/utils/serviceArea';
+import { bookingBucket } from '../../src/utils/bookingBucket';
 // Netlify Function: lead
 //
 // The single server-side entry point for every lead on the site. All eight
@@ -670,6 +671,12 @@ export default async (req: Request, context: Context) => {
     const area = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || ''), goal);
     if (area !== 'supported') return jsonResponse(422, { field: 'propertyState', message: area === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
     if (!prequalPasses(payload)) return jsonResponse(422, { field: 'prequal', message: 'A call is not available for these answers.' });
+    // A page-contact source used to send every booking to generic Leads.
+    // Preserve that entry context, but classify only after server screening.
+    if (goal !== undefined) {
+      payload.entrySource = payload.entrySource || payload.source;
+      payload.source = bookingBucket(goal, payload.entrySource);
+    }
   }
 
   // Honeypot: a hidden field no human fills in. Return 200 so bots learn

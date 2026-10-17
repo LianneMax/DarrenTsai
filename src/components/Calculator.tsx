@@ -302,7 +302,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
             )}
 
             <a
-              href="#contact"
+              href="/book/"
               data-early="calc-contact"
               onClick={scrollToContact}
               className="btn btn-teal btn-full calc-cta"
@@ -312,7 +312,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
                 <path d="M22 7H2v5h20V7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Want Darren to review these numbers?
+              Book a Call
             </a>
           </div>
         </div>

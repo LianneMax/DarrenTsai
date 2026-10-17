@@ -1,5 +1,36 @@
 # Lead Sheet schema (proposal, 8 Oct 2026, revised)
 
+## Targeted booking buckets
+
+Personal-contact actions now use `booking-prequal`, with the same screening and
+consent as `/book/`. The chosen goal determines `source`: `home-equity`, `adu`
+(equity from the ADU page), `dscr`, `fha` (own-home from FHA), `mortgage-review`,
+`home-purchase-refinance`, `commercial`, or `needs-guidance`. `entrySource` and
+the original page remain in the snapshot for attribution. Guide/calculator
+opt-ins retain their existing routes. A product bucket does not request a guide.
+
+The added tabs are Mortgage Review, Home Purchase & Refinance, Commercial and
+Needs Guidance. The last is an explicit review queue for unknown intent, not a
+guessed product. Existing contact sources remain accepted for stale browser tabs
+and are classified by the writer. New submissions never create a generic Leads tab.
+
+To retire an existing Leads tab, deploy and verify the bucket writer first.
+Run `migrateLegacyLeads()` to copy and read back every row without deleting.
+The migration keeps original IDs, consent, TEST flags and attribution; its
+snapshot also retains every original cell, including extra legacy columns.
+An optional second argument maps reviewed row numbers to `{source, expectedRow}`;
+`expectedRow` must equal the JSON of that exact original row, preventing a stale
+manual classification from being applied to a different record.
+
+Only after deployed routing is verified, set Script Property
+`LEAD_BUCKET_ROUTING_READY=2026-10-17-v1` and invoke
+`migrateLegacyLeads(true, sameOverrides)` with the same reviewed overrides.
+Deletion refuses missing readiness, duplicate IDs, mismatched destination
+readback, or a source tab that changes during migration. Repeated runs verify
+existing copies. This operation sends no CRM submissions, guide or confirmation
+emails; existing HubSpot contacts must be reclassified separately without deleting
+their history or changing subscription consent. Account evidence stays local.
+
 ## Additive evidence extensions
 
 The header-aware writer also records privacy acknowledgment, separate informational

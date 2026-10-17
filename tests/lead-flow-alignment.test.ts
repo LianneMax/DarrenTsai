@@ -117,7 +117,7 @@ describe('every lead the site sends has somewhere to land', () => {
 
   it('routes every funnel source explicitly, with only the contact modal falling through', () => {
     const unrouted = [...SITE_SOURCES].filter((s) => !ROUTES.has(s)).sort();
-    expect(unrouted).toEqual(CONTACT_SOURCES);
+    expect(unrouted).toEqual([]);
   });
 
   it('gives every contact source an entry in CONTACT_SOURCES', () => {
@@ -145,7 +145,7 @@ describe('every lead the site sends has somewhere to land', () => {
     // home-equity interest has its own page and source now, 'home-equity'
     // (revamp phase 3), which is where /yt/heloc and /yt/equity point.
     const unused = [...ROUTES.keys()].filter((s) => !SITE_SOURCES.has(s)).sort();
-    expect(unused).toEqual(['QualifyForm', 'newsletter', 'self-employed']);
+    expect(unused).toEqual(['QualifyForm', 'commercial', 'home-purchase-refinance', 'mortgage-review', 'needs-guidance', 'newsletter', 'self-employed']);
   });
 
   /**
@@ -236,7 +236,7 @@ describe('the Sheet tabs the script relies on', () => {
     expect(GAS).toContain("ss.getSheetByName('Qualify') || createSheetWithHeaders(ss, 'Qualify', QUALIFY_HEADERS)");
     const schemaTabs = [...GAS.matchAll(/^\s+tab: '([^']+)',$/gm)].map((m) => m[1]);
     expect(schemaTabs).toEqual([
-      'DSCR', 'Self-Employed', 'FHA', 'Real Estate Investing', 'Debt Consolidation', 'Home Equity', 'ADU', 'Leads',
+      'Mortgage Review', 'Home Purchase & Refinance', 'Commercial', 'Needs Guidance', 'DSCR', 'Self-Employed', 'FHA', 'Real Estate Investing', 'Debt Consolidation', 'Home Equity', 'ADU',
     ]);
   });
 

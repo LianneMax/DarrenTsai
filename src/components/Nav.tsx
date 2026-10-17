@@ -157,9 +157,9 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
               </div>
             </div>
             </>}
-            {/* The static pages' pair: Contact outlined, Book a Call solid slate. */}
-            <button onClick={handleContactClick} className="btn btn-outline-teal btn-sm" data-early="nav-contact">Contact</button>
-            {landing ? <button onClick={openBooking} className="btn btn-teal btn-sm" data-early="nav-book">Book a Call</button> : <a href="/home-equity/" className="btn btn-teal btn-sm">Explore my options</a>}
+            {/* One personal-contact action, always the screened booking flow. */}
+            <button onClick={handleContactClick} className="btn btn-teal btn-sm" data-early="nav-contact">Book a Call</button>
+            {!landing && <a href="/home-equity/" className="btn btn-outline-teal btn-sm">Explore my options</a>}
           </div>
 
           {/* Hamburger button — mobile only */}
@@ -196,7 +196,6 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
             <a key={c.href} href={c.href} className="nav-mobile-link nav-mobile-sublink" tabIndex={drawerTab}>{c.label}</a>
           ))}
         </>}
-        <button onClick={handleContactClick} className="nav-mobile-link nav-mobile-link--btn" tabIndex={drawerTab}>Contact</button>
         <button onClick={handleBookClick} className="btn btn-teal btn-full" style={{ marginTop: 8 }} tabIndex={drawerTab}>Book a Call</button>
       </div>
     </>
