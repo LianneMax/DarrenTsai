@@ -1,0 +1,30 @@
+.adu-revamp .adu-house-explorer{margin:0;min-width:0;background:var(--adu-surface);border-radius:16px;overflow:hidden;padding:0 22px 18px;isolation:isolate}
+.adu-house-stage{position:relative;aspect-ratio:1.64;isolation:isolate;margin:0 -22px 0;overflow:hidden}
+.adu-house-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transform:translateY(4px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1);pointer-events:none;user-select:none}
+.adu-house-image.is-current,.adu-house-image.is-fallback{opacity:1;transform:translateY(0)}
+.adu-house-image.adu-house-original{inset:0 auto 0 12.5%;width:75%;object-position:center}
+.adu-house-image.adu-house-garage{width:75%;inset:2% auto 0 19.5%}
+.adu-house-current{position:absolute;left:20px;top:17px;display:flex;align-items:center;gap:8px;color:var(--adu-ink);font-size:13px;line-height:1.5;font-weight:500;z-index:2;background:var(--adu-surface);padding:5px 9px;border-radius:5px}
+.adu-house-current i{width:7px;height:7px;border-radius:50%;background:#23875d;flex:none}
+.adu-revamp .adu-tour-toggle{position:absolute;top:12px;right:14px;width:44px;height:44px;display:grid;place-items:center;border:1px solid #c7d7df;border-radius:50%;background:#fff;color:var(--adu-ink);cursor:pointer;z-index:2;transition:background .15s}
+.adu-tour-toggle svg{width:21px;height:21px}.adu-tour-toggle:disabled{opacity:.6;cursor:default}
+.adu-house-description{min-height:85px;padding:6px 0 13px}.adu-house-description strong{font-size:20px;line-height:1.35;font-weight:550;letter-spacing:-.02em;display:block;color:var(--adu-ink)}
+.adu-house-description p{font-size:14px;line-height:1.6;margin:7px 0 0;color:var(--adu-muted)}
+.adu-house-timeline{display:flex;list-style:none;padding:0;margin:10px 0 0;isolation:isolate}
+.adu-house-timeline li{position:relative;flex:1;min-width:0}
+.adu-house-timeline li:not(:last-child)::before,.adu-house-timeline li:not(:last-child)::after{content:'';position:absolute;height:2px;top:22px;left:50%;width:100%;z-index:-1;background:#c7d9e1}
+.adu-house-timeline li:not(:last-child)::after{background:var(--adu-accent);transform:scaleX(0);transform-origin:left}
+.adu-house-timeline li.is-past::after{transform:scaleX(1)}
+.adu-house-timeline li.is-active::after{animation:adu-tour-progress 5.6s linear forwards;animation-play-state:paused}
+.adu-house-timeline[data-playing=true] li.is-active::after{animation-play-state:running}
+.adu-revamp .adu-house-timeline button{min-height:44px;width:100%;padding:0;border:0;background:transparent;color:var(--adu-ink);display:grid;place-items:center;cursor:pointer}
+.adu-house-timeline button span{display:grid;place-items:center;min-width:30px;height:30px;border-radius:50%;background:#e0ebf0;font-size:13px;font-variant-numeric:tabular-nums;transition:background .18s,color .18s}
+.adu-house-timeline .is-active button span{background:var(--adu-accent);color:#fff}.adu-house-timeline .is-past button span{background:#cee5ec;color:#164e61}
+@keyframes adu-tour-progress{to{transform:scaleX(1)}}
+.adu-house-explorer figcaption{font-size:11px;line-height:1.6;color:var(--adu-muted);margin-top:14px;max-width:59ch}
+.adu-house-unavailable{font-size:13px!important}
+@media(hover:hover){.adu-house-timeline button:hover span{background:#c9e2eb}.adu-house-timeline .is-active button:hover span{background:#176d84}.adu-tour-toggle:not(:disabled):hover{background:#e2f0f4}}
+@media(max-width:900px) and (min-width:601px){.adu-house-stage{aspect-ratio:1.5}.adu-house-description strong{font-size:19px}.adu-house-explorer figcaption{font-size:12px}}
+@media(max-width:600px){.adu-revamp .adu-house-explorer{padding:0 16px 18px;margin-top:25px}.adu-house-stage{margin-inline:-16px;aspect-ratio:1.42}.adu-house-current{left:12px;top:12px;font-size:12px}.adu-revamp .adu-tour-toggle{right:10px;top:9px}.adu-house-description{min-height:100px;padding-top:4px}.adu-house-description strong{font-size:20px}.adu-house-description p{font-size:14px}.adu-house-explorer figcaption{font-size:13px;margin-top:15px}}
+@media(prefers-reduced-motion:reduce){.adu-house-image{transform:none!important;transition:none!important}}
+.adu-house-explorer figcaption{font-size:13px}

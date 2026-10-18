@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildAduLead, aduNumbers } from '../src/utils/adu';
-import AduPage, { AduPageHero, StepAduProject, StepAduContact, AduRecap, type AduPageView } from '../src/components/AduViews';
+import AduPage, { AduPageHero, StepAduProject, StepAduSnapshot, StepAduContact, AduRecap, type AduPageView } from '../src/components/AduViews';
 import { loadGas, recordingFetch, type FetchCall } from './helpers/gas-harness';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
@@ -89,7 +89,7 @@ function view(over: Partial<AduPageView> = {}): AduPageView {
     homeValue: '', setHomeValue: noop, mtgBalance: '', setMtgBalance: noop,
     projectCost: '', setProjectCost: noop, toFinance: '', setToFinance: noop,
     hv: 0, mb: 0, cost: 0, fin: 0, hasHome: false, equity: 0, ltv: 0, cltv: 0, gap: 0,
-    purpose: '', setPurpose: noop,
+    purpose: '', setPurpose: noop, propertyUse: '', setPropertyUse: noop, errorMsg: null,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop, usState: '', setUsState: noop,
     sending: false, submitted: false, submitLead: noop, openBooking: noop,
@@ -104,10 +104,11 @@ const filled = view({
 });
 
 describe('what the page says', () => {
-  it('the hero is the only <h1>, carries no phone number and needs no JavaScript', () => {
+  it('the hero is the only <h1>, carries no phone number and offers a native anchor before JavaScript', () => {
     const hero = html(<AduPageHero />);
     expect(hero.match(/<h1\b/g)).toHaveLength(1);
-    expect(hero).not.toMatch(/tel:|<button\b/);
+    expect(hero).not.toMatch(/tel:/);
+    expect(hero).toContain('/house-3d.webp');
     expect(hero).toContain('href="#project"');
   });
 
@@ -122,19 +123,19 @@ describe('what the page says', () => {
   });
 
   it('says what the financing leaves of the budget, or adds beyond it', () => {
-    expect(html(<StepAduProject v={filled} />)).toContain('remaining $100,000 of the budget needs a separate plan');
-    expect(html(<StepAduProject v={{ ...filled, gap: -25000 }} />)).toContain('$25,000 more than the estimated project cost');
+    expect(html(<StepAduSnapshot v={filled} />)).toMatch(/remaining <strong>\$100,000<\/strong> of the budget needs a separate plan/);
+    expect(html(<StepAduSnapshot v={{ ...filled, gap: -25000 }} />)).toContain('$25,000</strong> more than the estimated project cost');
   });
 
   it('keeps financing and feasibility apart, and quotes no payment or approval', () => {
-    const page = html(<StepAduProject v={filled} />);
+    const page = html(<StepAduSnapshot v={filled} />);
     expect(page).toContain('Financing does not confirm the ADU can be built or rented.');
     expect(page).not.toMatch(/\/mo\b|you qualify|pre-?approved|\bAPR\b/i);
   });
 
   it('flags an amount past the 85% CLTV lenders commonly use', () => {
-    expect(html(<StepAduProject v={filled} />)).not.toContain('above the 85%');
-    expect(html(<StepAduProject v={{ ...filled, cltv: 90.1 }} />)).toContain('above the 85% combined loan-to-value');
+    expect(html(<StepAduSnapshot v={filled} />)).not.toContain('above the 85%');
+    expect(html(<StepAduSnapshot v={{ ...filled, cltv: 90.1 }} />)).toContain('above the 85% combined loan-to-value');
   });
 
   it('asks only for contact details, and says the request confirms no permit', () => {

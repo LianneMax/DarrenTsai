@@ -34,6 +34,11 @@ import { AboutHero } from './components/Marketing';
 
 const noop = () => {};
 
+/** Static entries use this same navigation markup; site-navigation.js owns their interactions. */
+export function renderNavigation(): string {
+  return renderToStaticMarkup(<Nav onOpenContact={noop} alwaysSolid />);
+}
+
 export function renderAboutShell(): string {
   return renderToStaticMarkup(<><Nav onOpenContact={noop} alwaysSolid /><main><AboutHero /></main></>);
 }
@@ -65,11 +70,10 @@ export function renderMortgageShell(): string {
 export function renderEquityShell(): string {
   return renderToStaticMarkup(
     <>
-      <Nav onOpenContact={noop} alwaysSolid landing />
+      <Nav onOpenContact={noop} alwaysSolid />
       <div className="page-top-spacer" />
       <main>
-        <section className="dcp">
-          <EquityPageHero />
+        <section className="dcp equity-estimate-surface equity-revamp"><div className="equity-opening-surface"><EquityPageHero /></div>
         </section>
       </main>
     </>,
@@ -80,11 +84,10 @@ export function renderEquityShell(): string {
 export function renderAduShell(): string {
   return renderToStaticMarkup(
     <>
-      <Nav onOpenContact={noop} alwaysSolid landing />
+      <Nav onOpenContact={noop} alwaysSolid />
       <div className="page-top-spacer" />
       <main>
-        <section className="dcp">
-          <AduPageHero />
+        <section className="dcp adu-revamp"><AduPageHero />
         </section>
       </main>
     </>,

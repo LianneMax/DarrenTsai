@@ -223,13 +223,13 @@ export interface ContactView {
  * state, nothing else (no best time to call, no "how did you hear": tracked
  * attribution answers the second, and both came off the debt form on 8 Oct).
  */
-export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }: {
-  v: ContactView; title: string; lead?: string; caption: string; submitLabel: string; onBack: () => void;
+export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack, propertyAlreadyAsked = false, formId = 'home-equity-calculator' }: {
+  v: ContactView; title: string; lead?: string; caption: string; submitLabel: string; onBack: () => void; propertyAlreadyAsked?: boolean; formId?: string;
 }) {
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">{title}</h2>
-      <ServiceAreaFields formId={typeof window !== "undefined" && window.location.pathname.startsWith("/adu") ? "adu-calculator" : "home-equity-calculator"} onStateChange={v.setUsState} />
+      {!propertyAlreadyAsked && <ServiceAreaFields formId={formId} onStateChange={v.setUsState} />}
       <p className="dcp-lead">
         {lead ?? 'Your estimate is a starting point. A personal review helps you understand which options may fit your goals. No hard pull, no obligation.'}
       </p>
@@ -272,7 +272,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack }
       </div>
 
 {caption && <p className="dcp-caption">{caption}</p>}
-      <ComplianceDisclosure formId={typeof window !== "undefined" && window.location.pathname.startsWith("/adu") ? "adu-calculator" : "home-equity-calculator"} />
+      <ComplianceDisclosure formId={formId} />
 
       <StepNav
         back="← Back" onBack={onBack}

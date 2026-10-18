@@ -1,4 +1,5 @@
 import ServiceAreaFields from './ServiceAreaFields';
+import JourneyTimeline from './JourneyTimeline';
 import ComplianceDisclosure from './ComplianceDisclosure';
 /**
  * The "Pay off high-interest debt" comparison on /home-equity/ (moved from the
@@ -113,7 +114,7 @@ export interface DebtPageView {
 /** The loan-to-value many lenders stop a cash-out refinance at. Said, not enforced. */
 const CASH_OUT_LIMIT = 80;
 
-const STEPS = ['Your Debts', 'Your Home', 'Comparison', 'Talk to Darren'];
+const STEPS = [['Your debts','Start with your payments'],['Your home','The home behind the plan'],['Comparison','Understand the tradeoffs'],['Talk to Darren','A personal next step']] as const;
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
 
@@ -671,23 +672,9 @@ export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtP
           <li><Check /> Results before contact</li>
         </ul>
 
-        {!v.submitted && (
-          <div className="dcp-steps">
-            {STEPS.map((label, i) => {
-              const n = i + 1;
-              const done = v.step > n;
-              return (
-                <button key={n} type="button" onClick={() => v.goStep(n)}
-                  className={`dcp-step${v.step === n ? ' dcp-step-active' : ''}${done ? ' dcp-step-done' : ''}`}
-                  aria-current={v.step === n ? 'step' : undefined}>
-                  <span className="dcp-step-num">{done ? <Check /> : n}</span>
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
+        <div className={v.submitted?'':'equity-journey-layout'}>
+        {!v.submitted&&<JourneyTimeline steps={STEPS} current={v.step} disabled={v.sending} onStep={v.goStep}/>}
+        <div className="equity-journey-content">
         {v.submitted && <DebtRecap v={v} />}
         {!v.submitted && v.step === 1 && <StepDebts v={v} />}
         {!v.submitted && v.step === 2 && <StepHome v={v} />}
@@ -695,6 +682,7 @@ export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtP
         {!v.submitted && v.step === 4 && <StepContact v={v} />}
 
         <div className="dcp-disclosure">{v.disclosure}</div>
+        </div></div>
       </div>
 
       {overlays}

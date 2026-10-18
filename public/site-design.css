@@ -109,3 +109,29 @@ body.site-design{overflow-x:clip}
 
 /* Static pages isolate the shared footer so their calculator and consent styles retain their original cascade. */
 .site-design .site-footer{font-family:Outfit,Arial,sans-serif;line-height:1.55;text-align:left;padding-top:60px;padding-bottom:40px}
+
+/* Shared shell and callouts follow the approved homepage across all entries. */
+:root{--site-footer-background:#e7f0f3;--hero-elevation:0 12px 24px -14px rgb(34 61 85 / 23%)}
+.site-footer-surface{background:var(--site-footer-background)}
+.site-design .site-footer-surface .site-footer{background:transparent}
+.site-design .site-footer-surface .site-footer :is(p,a:not(.brand)){font-size:13px;line-height:1.8}
+.site-design nav.nav .nav-inner{width:min(1200px,calc(100% - 48px));max-width:1200px;margin-inline:auto;padding-inline:0}
+.site-design nav.nav{background:#fff}
+.site-design .nav-mobile-menu .btn-teal{background:#1a7f99;color:#fff}
+.site-design .nav-links .btn-outline-teal:hover,.site-design .nav-links .btn-outline-teal:focus-visible{background:#fff;color:#223d55;box-shadow:none}
+.site-design .nav-links .btn-outline-teal::after{display:none}
+.site-design .faq .faq-bottom{background:#466a7a;color:#fff;border:0}
+.site-design .faq .faq-bottom .faq-prompt h3{color:#fff}
+.site-design .faq .faq-bottom .faq-prompt p{color:#e4eff3}
+.site-design .faq .faq-bottom .design-primary{background:#fff;color:#223d55;flex:none}
+.site-design .faq .faq-bottom .design-primary:hover{background:#edf5f7}
+.site-design .closing-callout-section{padding-block:0 60px}
+.site-design .closing-callout-section .faq-bottom{margin-top:0}
+.site-design.equity-design .equity-opening-surface{background:#fff;position:relative;z-index:1;box-shadow:var(--hero-elevation);margin-bottom:40px}
+.site-design.equity-design .equity-estimate-surface{background:#fff}
+.site-design.equity-design .equity-estimate-surface #equity{background:#fff}
+
+@media(max-width:600px){.site-design nav.nav .nav-inner{width:calc(100% - 36px)}.site-design.equity-design .equity-opening-surface{margin-bottom:30px}.site-design .closing-callout-section{padding-bottom:36px}}
+
+/* The mobile action remains legible under the shared anchor color. */
+.site-design a.dcp-mobile-bar-cta{color:#fff;background:#1a7f99}

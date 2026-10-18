@@ -108,9 +108,9 @@ describe('the nav (revamp phase 6)', () => {
     expect(nav).toContain('Book a Call');
   });
 
-  it('is the landing nav on exactly the two ad pages', () => {
+  it('uses the full shared navigation on every React page', () => {
     for (const f of ['src/HomeEquityApp.tsx', 'src/AduApp.tsx']) {
-      expect(read(f), f).toContain('<Nav onOpenContact={openContact} alwaysSolid landing />');
+      expect(read(f), f).toContain('<Nav onOpenContact={openContact} alwaysSolid />');
     }
     for (const f of ['src/App.tsx', 'src/MortgageCalculatorApp.tsx']) expect(read(f), f).not.toMatch(/<Nav[^>]*landing/);
   });

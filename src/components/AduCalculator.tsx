@@ -7,7 +7,7 @@ import { openBooking } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { aduNumbers, buildAduLead } from '../utils/adu';
 import AduPage, { type AduPageView } from './AduViews';
-import { ErrorDialog } from './PageParts';
+import { serviceArea, OUT_OF_MARKET_MESSAGE } from '../utils/serviceArea';
 
 const emailSchema = z.string().email();
 
@@ -33,6 +33,7 @@ export default function AduCalculator() {
   const [projectCost, setProjectCost] = useState('');
   const [toFinance, setToFinance] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [propertyUse, setPropertyUse] = useState('');
 
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
@@ -67,22 +68,21 @@ export default function AduCalculator() {
    * snapshot and the budget gap are made of them, and the lead is not much use
    * to Darren without the project's cost and the amount to finance.
    */
-  const ready = hasHome && cost > 0 && fin > 0 && !!purpose;
-  const gateMessage = !hasHome
-    ? 'Enter your home value and your mortgage balance (0 if the home is paid off), so the snapshot is about your home and not an example.'
-    : !(cost > 0 && fin > 0)
-      ? 'Enter the estimated project cost and the amount you would like to finance.'
-      : 'Choose what you are planning, so Darren knows where to start.';
-
   const goStep = (n: number) => {
-    if (n > step && !ready) {
-      setErrorMsg(gateMessage);
-      return;
+    if (inFlight.current || n < 1 || n > 4) return;
+    if (n > step) {
+      if (!purpose || cost <= 0 || fin <= 0) {
+        setErrorMsg('Choose your project and enter its estimated cost and the amount you would like to finance.'); return;
+      }
+      if (n >= 3 && !hasHome) {
+        setErrorMsg('Enter your home value and mortgage balance. Enter 0 if your home is paid off.'); return;
+      }
+      if ((n >= 3 && (!propertyUse || !usState)) || (n >= 4 && serviceArea(propertyUse, usState, 'adu') !== 'supported')) {
+        setErrorMsg(!propertyUse || !usState ? 'Choose how you use the home and the state it is in.' : OUT_OF_MARKET_MESSAGE); return;
+      }
     }
-    setStep(n);
-    setTimeout(() => {
-      document.getElementById('project')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 0);
+    setErrorMsg(null); setStep(n);
+    setTimeout(() => document.getElementById('project')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'}), 0);
   };
 
   const submitLead = async () => {
@@ -103,10 +103,10 @@ export default function AduCalculator() {
 
     inFlight.current = true;
     setSending(true);
-    const result = await postLead(buildAduLead({
+    const result = await postLead({ ...buildAduLead({
       firstName: fname, lastName: lname, phone, email, state: usState,
       homeValue: hv, mortgageBalance: mb, projectCost: cost, amountToFinance: fin, purpose,
-    }));
+    }), propertyUse, propertyState: usState });
     if (!result.ok) {
       inFlight.current = false;
       setSending(false);
@@ -129,7 +129,7 @@ export default function AduCalculator() {
     step, goStep,
     homeValue, setHomeValue, mtgBalance, setMtgBalance, projectCost, setProjectCost, toFinance, setToFinance,
     hv, mb, cost, fin, hasHome, equity, ltv, cltv, gap,
-    purpose, setPurpose,
+    purpose, setPurpose, propertyUse, setPropertyUse, errorMsg,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, usState, setUsState,
     sending, submitted, submitLead: () => { void submitLead(); }, openBooking,
@@ -155,7 +155,6 @@ export default function AduCalculator() {
   return (
     <AduPage
       v={view}
-      overlays={<ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} id="adu-error-title" />}
       disclosure={disclosure}
     />
   );

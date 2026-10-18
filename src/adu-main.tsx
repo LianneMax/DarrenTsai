@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './adu.css'
 import AduApp from './AduApp.tsx'
 
 createRoot(document.getElementById('root')!).render(

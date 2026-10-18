@@ -130,3 +130,7 @@ body.booking-page{background:#f5f8fa}
   .booking-page #dt-book-mount{margin-top:18px;padding:0}
 }
 @media(prefers-reduced-motion:reduce){.dt-book-overlay,.dt-book-shell{transition:none!important;transform:none!important;scroll-behavior:auto!important}}
+
+/* Keep question groups distinct, and the calendar action legible on its teal surface. */
+.dt-book-shell .dt-book-title+.dt-book-choices{margin-top:24px}
+.dt-book-card a.dt-book-calendar-link,.dt-book-card a.dt-book-calendar-link:visited{color:#fff}

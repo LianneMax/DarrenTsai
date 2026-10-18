@@ -59,7 +59,7 @@ describe('approved UI keeps real actions and ZIP recovery',()=>{
   expect(shell).not.toContain('tel:');expect(shell).toContain('Senior Loan Officer');expect(shell).toContain('Broker &amp; Investor');
  });
  it('eligible static pages contain the exact shared footer, including disclosures',()=>{
-  const expected=renderToStaticMarkup(<Footer/>);
+  const expected=renderToStaticMarkup(<Footer/>).match(/<footer\b[\s\S]*?<\/footer>/)?.[0];
   for(const page of ['dscr','fha','realestateinvesting','book','legal','privacy-policy']){
    const html=readFileSync(`public/${page}/index.html`,'utf8');
    expect(html.match(/<footer\b[\s\S]*?<\/footer>/)?.[0],page).toBe(expected);

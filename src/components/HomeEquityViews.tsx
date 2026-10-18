@@ -1,4 +1,5 @@
 import { useZipLookup } from '../hooks/useZipLookup';
+import JourneyTimeline from './JourneyTimeline';
 import ZipFeedback from './ZipFeedback';
 /**
  * What /home-equity/ looks like.
@@ -72,7 +73,7 @@ export interface EquityPageView {
   submitLead: () => void;
 }
 
-const STEPS = ['Your Home', 'Your Goal', 'Talk to Darren'];
+const STEPS = [['Your home','Value, mortgage and property'],['Your goal','What you have in mind'],['Talk to Darren','A personal next step']] as const;
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
@@ -406,15 +407,15 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
   if (path === 'payoff') {
     return (
       <section className="dcp">
-        <EquityPageHero path={path} onPath={onPath} />
+        <div className="equity-opening-surface"><EquityPageHero path={path} onPath={onPath} /></div>
         {payoff}
         {overlays}
       </section>
     );
   }
   return (
-    <section className="dcp">
-      <EquityPageHero path={path} onPath={onPath} />
+    <section className="dcp equity-estimate-surface equity-revamp">
+      <div className="equity-opening-surface"><EquityPageHero path={path} onPath={onPath} /></div>
 
       <div id="equity" className="dcp-flow">
         <ul className="dcp-trust">
@@ -423,23 +424,10 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
           <li><Check /> Personal guidance</li>
         </ul>
 
-        {!done && (
-          <div className="dcp-steps">
-            {STEPS.map((label, i) => {
-              const n = i + 1;
-              const past = v.step > n;
-              return (
-                <button key={n} type="button" onClick={() => v.goStep(n)}
-                  className={`dcp-step${v.step === n ? ' dcp-step-active' : ''}${past ? ' dcp-step-done' : ''}`}
-                  aria-current={v.step === n ? 'step' : undefined}>
-                  <span className="dcp-step-num">{past ? <Check /> : n}</span>
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
+        <div className={done?'':'equity-journey-layout'}>
+        {!done&&<JourneyTimeline steps={STEPS} current={v.step} disabled={v.sending} onStep={v.goStep}/>}
+        <div className="equity-journey-content">
+        {!done && <p className="equity-stage-state">{v.step} of 3</p>}
         {v.submitted && <EquityRecap v={v} />}
         {!v.submitted && v.declined && <EquityDeclined v={v} />}
         {!done && v.step === 1 && <StepEquityHome v={v} />}
@@ -449,6 +437,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
         {/* Product education follows the calculator in the shared options section. */}
 
         <div className="dcp-disclosure">{disclosure}</div>
+        </div></div>
       </div>
 
       {overlays}

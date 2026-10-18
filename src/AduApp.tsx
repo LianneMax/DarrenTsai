@@ -22,7 +22,7 @@ export default function AduApp() {
 
   return (
     <>
-      <Nav onOpenContact={openContact} alwaysSolid landing />
+      <Nav onOpenContact={openContact} alwaysSolid />
 
       {/* Offsets the fixed nav, which the hero does on the homepage. */}
       <div className="page-top-spacer" />

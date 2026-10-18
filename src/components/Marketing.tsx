@@ -71,8 +71,8 @@ export function MarketingOptions() {
   </div></div></section>;
 }
 
-export function MarketingFaq({ onOpenContact, outlined = false }: { onOpenContact: () => void; outlined?: boolean }) {
-  const categories = Object.keys(FAQ);
+export function MarketingFaq({ onOpenContact, outlined = false, groups = FAQ, promptTitle = 'Have a question about your situation?', promptDescription = 'Talk through your goals and the options you’re considering.' }: { onOpenContact: () => void; outlined?: boolean; groups?: Record<string, string[][]>; promptTitle?: string; promptDescription?: string }) {
+  const categories = Object.keys(groups);
   const [category, setCategory] = useState(categories[0]);
   return <section className="wrap faq" id="questions"><div className="section-intro"><h2>Questions, answered.</h2><p>A little understanding makes the next step easier.</p></div><div className="faq-layout">
     <div role="tablist" aria-label="Question categories" className="faq-tabs">{categories.map((name, i) => <button key={name} role="tab" id={`category-${i}`} aria-selected={category === name} aria-controls="faq-answers" tabIndex={category === name ? 0 : -1} onClick={() => setCategory(name)} onKeyDown={e => {
@@ -80,11 +80,12 @@ export function MarketingFaq({ onOpenContact, outlined = false }: { onOpenContac
       e.preventDefault(); const n = e.key === 'Home' ? 0 : e.key === 'End' ? categories.length - 1 : (i + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1) + categories.length) % categories.length;
       setCategory(categories[n]); document.getElementById(`category-${n}`)?.focus();
     }}>{name}</button>)}</div>
-    <div id="faq-answers" role="tabpanel" aria-labelledby={`category-${categories.indexOf(category)}`} tabIndex={0}>{FAQ[category].map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
-    </div><div className={`faq-bottom${outlined ? ' faq-bottom-outlined' : ''}`}><div className="faq-prompt"><h3>Have a question about your situation?</h3><p>Talk through your goals and the options you’re considering.</p></div><button className="design-primary" onClick={onOpenContact}>Book a Call <ArrowIcon /></button></div></section>;
+    <div id="faq-answers" role="tabpanel" aria-labelledby={`category-${categories.indexOf(category)}`} tabIndex={0}>{groups[category].map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
+    </div><div className={`faq-bottom${outlined ? ' faq-bottom-outlined' : ''}`}><div className="faq-prompt"><h3>{promptTitle}</h3><p>{promptDescription}</p></div><button className="design-primary" onClick={onOpenContact}>Book a Call <ArrowIcon /></button></div></section>;
 }
 
 export function MarketingClosing({ onOpenContact, about = false }: { onOpenContact?: () => void; about?: boolean }) {
+  if(about) return <section className="wrap faq closing-callout-section"><div className="faq-bottom"><div className="faq-prompt"><h3>Let’s put your questions first.</h3><p>Start with a useful estimate or a conversation.</p></div><button className="design-primary" onClick={onOpenContact}>Book a Call <ArrowIcon /></button></div></section>;
   return <section className="closing"><div className="wrap"><h2>{about ? 'Let’s put your questions first.' : 'Start with a clearer picture.'}</h2><p>{about ? 'Start with a useful estimate or a conversation.' : 'Your numbers. Your goals. A next step that makes sense to you.'}</p>{about ? <button className="design-light" onClick={onOpenContact}>Book a Call <ArrowIcon /></button> : <a className="design-light" href="/home-equity/">Explore my home equity <ArrowIcon /></a>}</div></section>;
 }
 

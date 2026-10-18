@@ -72,7 +72,8 @@ describe('the steps are gated', () => {
 
   it('gates the pill tabs too, not only the Continue buttons', () => {
     // The tabs jump straight to any step and were the easier way past this.
-    expect(VIEWS).toMatch(/onClick=\{\(\) => v\.goStep\(n\)\}/);
+    expect(VIEWS).toContain('onStep={v.goStep}');
+    expect(readFileSync(resolve(__dirname, '../src/components/JourneyTimeline.tsx'), 'utf8')).toContain('onClick={()=>onStep(i+1)}');
   });
 });
 
