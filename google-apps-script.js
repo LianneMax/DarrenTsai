@@ -857,6 +857,54 @@ function plainNumber(value) {
   return cleaned && !isNaN(parseFloat(cleaned)) ? cleaned : '';
 }
 
+function hubspotLoanAmount(value) {
+  if (value === null || value === undefined) return '';
+  const text = String(value).trim();
+  // A range, negative amount or placeholder is not a loan amount. Stripping
+  // arbitrary characters would turn "$75k-150k" into 75150 and overwrite a
+  // known CRM answer. Accept only a positive number or formatted currency.
+  if (!/^\$?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(text)) return '';
+  const amount = Number(text.replace(/[$,]/g, ''));
+  return isFinite(amount) && amount > 0 ? String(amount) : '';
+}
+
+/**
+ * Internal option values verified against the API form's loan_type property,
+ * 19 Oct 2026. Labels differ for Cash-Out Refinance and ADU/Renovation.
+ * An interest is not a program selection: HEI, "not sure" and a generic
+ * booking goal stay blank rather than being guessed into one of four loans.
+ */
+function hubspotLoanType(data) {
+  const options = {
+    'HELOC': 'HELOC',
+    'Fixed home equity loan': 'Home Equity Loan',
+    'Home Equity Loan': 'Home Equity Loan',
+    'Cash-out refinance': 'Cash Out Refinance',
+    'Cash-Out Refinance': 'Cash Out Refinance',
+    'Cash Out Refinance': 'Cash Out Refinance',
+    'ADU/Renovation': 'ADU',
+    'ADU': 'ADU'
+  };
+  const picked = data.source === 'home-equity' ? data.preference : data.loanType;
+  if (Object.prototype.hasOwnProperty.call(options, picked)) return options[picked];
+  // This is the form's project category, not a claim of construction approval.
+  return data.source === 'adu' && data.formId === 'adu-calculator' ? 'ADU' : '';
+}
+
+function hubspotDetailValue(data, key) {
+  if (key === 'submissionSnapshot') return leadSnapshot(data);
+  if (key === 'loanType') return hubspotLoanType(data);
+  if (key === 'loanAmount') {
+    // ADU asks for an exact amount to finance; equity now asks only a cash
+    // range. Never substitute home value, available equity or a range midpoint.
+    const value = data.loanAmount === undefined || data.loanAmount === null || data.loanAmount === ''
+      ? (data.source === 'adu' && data.formId === 'adu-calculator' ? data.amountToFinance : '')
+      : data.loanAmount;
+    return hubspotLoanAmount(value);
+  }
+  return data[key];
+}
+
 // ── HubSpot ─────────────────────────────────────────────────────────────────
 //
 // The CRM. The Sheet stays the record of every lead; HubSpot is where Darren
@@ -968,7 +1016,7 @@ function hubspotFields(data) {
   Object.keys(mapping).forEach(function (key) {
     const name = mapping[key];
     if (typeof name !== 'string' || (!/^rdt_[a-z0-9_]+$/.test(name) && ['loan_amount', 'loan_type', 'property_use', 'lead_source_detail'].indexOf(name) < 0)) return;
-    const value = key === 'submissionSnapshot' ? leadSnapshot(data) : key === 'loanAmount' ? plainNumber(data.loanAmount) : data[key];
+    const value = hubspotDetailValue(data, key);
     if (/^sms.*Consent$/.test(key) && value !== true) return; // no new opt-in is not a subscription revocation
     add(name, typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
   });
