@@ -178,23 +178,26 @@ describe('the FHA estimator agrees with the page around it', () => {
     expect(FHA).toContain('FHA PAYMENT ESTIMATOR');
   });
 
-  it('uses the upfront MIP the explainer quotes', () => {
+  it('uses the upfront MIP disclosed in the assumptions', () => {
     expect(FHA).toContain('var UFMIP_RATE = 0.0175;');
-    expect(FHA).toContain('Upfront MIP is 1.75%');
+    const page = new DOMParser().parseFromString(FHA, 'text/html');
+    const cell = [...page.querySelectorAll('.assumptions-cell')].find(el => el.querySelector('.k')?.textContent === 'Upfront MIP');
+    expect(cell?.querySelector('.v')?.textContent).toBe('1.75%, financed');
   });
 
   it('uses the two annual MIP tiers the explainer quotes', () => {
     expect(FHA).toContain('var MIP_HIGH_LTV = 0.0055;');
     expect(FHA).toContain('var MIP_LOW_LTV = 0.0050;');
-    expect(FHA).toContain('annual MIP rises from 0.50% to 0.55%');
+    const page = new DOMParser().parseFromString(FHA, 'text/html');
+    const cell = [...page.querySelectorAll('.assumptions-cell')].find(el => el.querySelector('.k')?.textContent === 'Annual MIP');
+    expect(cell?.querySelector('.v')?.textContent).toBe('0.50% to 0.55%');
   });
 
-  it('charges MIP on the financed balance, like the worked example', () => {
-    // $386,650 at 0.50% is $161 a month, which is the figure in the explainer.
-    // On the base loan it would be $158, and the page would disagree with
-    // itself two sections apart.
+  it('charges MIP on the financed balance disclosed beside the assumptions', () => {
+    // The long worked example was removed when the page was condensed. Keep
+    // checking that the actual calculation and the visible disclosure agree.
     expect(FHA).toContain('var mip = totalLoan * mipRate / 12;');
-    expect(FHA).toContain('MIP adds $161');
+    expect(FHA).toContain('Annual MIP uses the starting financed balance.');
   });
 
   it('knows the minimum down payment it advertises', () => {

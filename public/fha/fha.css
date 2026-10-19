@@ -1,0 +1,150 @@
+/* FHA presentation only. The original estimator, field IDs, guide payload,
+   screening, disclosures and calculator assumptions remain in index.html. */
+.fha-page { --text-muted:#526676; color:var(--navy); }
+.fha-page main .container-1080 { max-width:1168px; padding-inline:24px; }
+.fha-page :is(h1,h2,h3) { text-wrap:balance; }
+.fha-page :is(a,button,input,select):focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+.fha-page ::selection { background:#cdebf1; color:var(--navy); }
+.fha-page .hero { position:relative; z-index:1; padding:48px 0; background:#fff; box-shadow:var(--hero-elevation,0 9px 25px #223d5510); }
+.fha-page .hero-inner { grid-template-columns:1.15fr 1fr; gap:64px; }
+.fha-page .hero .anim { animation:none; }
+.fha-page .hero-left { color:var(--navy); text-align:left; }
+.fha-page .hero-title { color:var(--navy); font-size:clamp(34px,3.5vw,46px); font-weight:550; line-height:1.17; letter-spacing:-.03em; margin:0 0 23px; }
+.fha-page .hero-title em { color:var(--accent); font-style:normal; }
+.fha-page .hero-eyebrow { color:var(--text-muted); font-size:14px; font-weight:450; text-transform:none; letter-spacing:0; margin-bottom:18px; }
+.fha-page .hero-sub { color:var(--text-muted); font-size:18px; line-height:1.8; max-width:48ch; margin-inline:0; }
+.fha-page .hero-cta-row { gap:16px 23px; margin:0 0 28px; justify-content:flex-start; }
+.fha-page .hero-cta-note { color:var(--text-muted); font-size:14px; font-weight:400; }
+.fha-page .hero-stats-divider { background:var(--line); margin-bottom:22px; }
+.fha-page .hero-stats { gap:34px; justify-content:flex-start; }
+.fha-page .hero-stat-value { color:var(--navy); font-size:23px; font-weight:550; }
+.fha-page .hero-stat-label { color:var(--text-muted); font-size:14px; text-transform:none; letter-spacing:0; font-weight:400; }
+.fha-page .hero-carousel-wrap { padding:18px 20px 16px; background:#f0f5f7; border-radius:16px; max-width:440px; }
+.fha-page .carousel-dots { margin-top:12px; }
+.fha-page .carousel-dots button { width:32px; height:32px; }
+.fha-page .carousel-dots button::before { left:12px; top:12px; background:#b6ced7; }
+.fha-page .carousel-dots button.on::before { background:var(--accent); }
+.fha-page .hero-divider { display:none; }
+.fha-page .licensed-strip { background:#fff; box-shadow:none; }
+.fha-page .licensed-strip-inner { justify-content:center; gap:16px; padding-block:22px; }
+.fha-page .licensed-item { color:var(--text-muted); font-size:14px; }
+.fha-page .licensed-divider { height:16px; background:var(--line); }
+.fha-page .fha-calc-section { padding:48px 0 64px; scroll-margin-top:105px; }
+.fha-page .fha-calc-head { margin-bottom:30px; max-width:730px; }
+.fha-page .fha-calc-head h2,.fha-page .explainer-left h2 { color:var(--navy); font-size:clamp(29px,3vw,38px); font-weight:550; letter-spacing:-.025em; line-height:1.2; }
+.fha-page .fha-calc-head>p:not(.section-label),.fha-page .explainer-lede { font-size:17px; line-height:1.8; color:var(--text-muted); }
+.fha-page .section-label { color:var(--navy); font-size:17px; font-weight:500; line-height:1.5; letter-spacing:0; text-transform:none; }
+.fha-page .fha-calc-grid { grid-template-columns:1fr 1fr; gap:28px; align-items:stretch; }
+.fha-page .fha-calc-grid>.card { box-shadow:none; border-radius:16px; border-color:#dfe7ec; }
+.fha-page .fha-calc-grid>.card:first-child { background:#f0f5f7; border-color:transparent; }
+.fha-page .card-section { padding:28px; }
+.fha-page .card-section>.section-label { font-size:25px; font-weight:550; letter-spacing:-.025em; margin-bottom:25px; }
+.fha-page .grid { gap:22px 16px; }
+.fha-page .field label { font-size:16px; line-height:1.5; font-weight:450; margin-bottom:9px; }
+.fha-page .input-shell { border-color:#b9cbd6; border-radius:8px; background:#fff; }
+.fha-page .input-shell input { min-height:49px; font-size:18px; font-variant-numeric:tabular-nums; color:var(--navy); caret-color:var(--accent); }
+.fha-page .input-shell input::placeholder { color:#617482; opacity:1; }
+.fha-page .input-shell:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px #1a7f9920; }
+.fha-page .field .hint { display:block; margin:3px 0 0; font-size:14px; }
+.fha-page .fha-calc-grid .field label { min-height:49px; }
+.fha-page .input-shell:has(.email-hint) { flex-wrap:wrap; }
+.fha-page .input-shell .email-hint { flex-basis:100%; padding:0 14px 10px; }
+.fha-page .fha-waiting { background:#f0f5f7; border-radius:10px; padding:22px; color:var(--text-muted); font-size:17px; line-height:1.8; }
+.fha-page .fha-out-num { color:var(--navy); font-weight:550; font-size:42px; letter-spacing:-.03em; }
+.fha-page .fha-out-unit { color:var(--text-muted); font-size:15px; }
+.fha-page .fha-row { gap:16px; font-size:16px; padding:13px 0; }
+.fha-page .fha-row .k { color:var(--text-muted); }
+.fha-page .fha-row .v { color:var(--navy); font-weight:500; font-variant-numeric:tabular-nums; }
+.fha-page .fha-row.total { margin-top:10px; }
+.fha-page .fha-note { font-size:14px; line-height:1.75; color:var(--text-muted); }
+.fha-page .cta { min-height:46px; padding:13px 21px; border-radius:8px; font-size:16px; font-weight:550; }
+.fha-page .cta.solid-accent { background:var(--accent); color:#fff; }
+.fha-page .cta.solid-accent:hover { background:#146b82; box-shadow:none; transform:none; }
+.fha-page .explainer-section { background:#f2f6f8; padding:64px 0; }
+.fha-page .explainer-grid { grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:60px; align-items:start; }
+.fha-page .explainer-numbered { display:block; }
+.fha-page .explainer-item { display:grid; grid-template-columns:36px minmax(0,1fr); gap:0 16px; padding:22px 0; border-bottom:1px solid #dce5ea; }
+.fha-page .explainer-num { grid-row:1/3; font-size:17px; line-height:1.5; font-weight:500; color:var(--accent); margin:0; }
+.fha-page .explainer-item-title { font-size:18px; line-height:1.45; font-weight:500; white-space:normal; margin:0 0 9px; color:var(--navy); }
+.fha-page .explainer-item-body { font-size:16px; line-height:1.8; margin:0; color:var(--text-muted); text-align:left; }
+.fha-page .explainer-form { position:static; }
+.fha-page .lead-form { padding:28px; border:0; box-shadow:none; background:#fff; }
+.fha-page .lead-form:hover { box-shadow:none; }
+.fha-page .lead-form h3 { font-size:25px; font-weight:550; letter-spacing:-.025em; margin-bottom:14px; }
+.fha-page .lead-form p { color:var(--text-muted); line-height:1.75; font-size:16px; }
+.fha-page .lead-form-fields .field { margin-bottom:21px; }
+.fha-page .lead-form .compliance-disclosure { margin:20px 0 24px; }
+.fha-page .lead-form .compliance-disclosure p { font-size:14px; line-height:1.7; }
+.fha-page .cselect-panel { z-index:1100; }
+.fha-page .assumptions-section { padding:64px 0; }
+.fha-page .assumptions-panel { padding:28px; background:#f0f5f7; border:0; border-radius:16px; box-shadow:none; }
+.fha-page .assumptions-grid { gap:24px 28px; margin-top:26px; }
+.fha-page .assumptions-cell .k { font-size:14px; letter-spacing:0; text-transform:none; margin-bottom:8px; color:var(--text-muted); }
+.fha-page .assumptions-cell .v { font-size:17px; font-weight:500; color:var(--navy); }
+.fha-page .assumptions-footnote { font-size:14px; line-height:1.75; color:var(--text-muted); }
+.fha-page .cta-panel-section { padding:0 0 64px; }
+.fha-page .cta-panel { border-radius:12px; padding:30px; gap:24px; background:#466a7a; }
+.fha-page .cta-panel-rule { display:none; }
+.fha-page .cta-panel-copy h2 { color:#fff; font-size:25px; font-weight:550; letter-spacing:-.025em; }
+.fha-page .cta-panel-copy p { color:#fff; font-size:16px; line-height:1.75; }
+.fha-page .cta-panel .cta { background:#fff; color:var(--navy); }
+.fha-page .cta-panel .cta:hover { background:#e9f2f5; color:var(--navy); }
+.fha-page .cta-panel-copy { max-width:65ch; }
+.fha-page.fha-tool-active .mobile-sticky-bar { visibility:hidden; pointer-events:none; }
+.fha-page .fha-download-section { padding:0 0 52px; }
+.fha-download-band { display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.fha-page .fha-download-band h2 { font-size:25px; font-weight:550; letter-spacing:-.025em; margin:0 0 9px; }
+.fha-download-band p { font-size:17px; line-height:1.7; color:var(--text-muted); margin:0; }
+/* Use the actual shared FAQ typography and accordions, as equity and ADU do. */
+.fha-page .fha-faq-section { padding-block:60px 45px; background:#fff; color:var(--text-dark); line-height:1.7; }
+.fha-page .fha-faq-section .section-intro h2 { color:var(--text-dark); font-size:clamp(30px,3.2vw,43px); }
+.fha-page .fha-faq-section summary { color:var(--navy); line-height:1.55; }
+@media(max-width:600px) { .fha-page .fha-faq-section summary { line-height:1.4; } }
+.fha-page .fha-faq-list .assumptions-grid { margin:0 0 22px; }
+.fha-guide-overlay { position:fixed; inset:0; z-index:1100; display:flex; align-items:center; justify-content:center; padding:24px; background:#122b3c99; backdrop-filter:blur(4px); }
+.fha-guide-overlay[hidden],.fha-guide-panel [hidden] { display:none!important; }
+.fha-guide-panel { width:min(1080px,100%); max-height:calc(100dvh - 48px); overflow-y:auto; overscroll-behavior:contain; border-radius:16px; background:#f5f8fa; box-shadow:0 24px 80px #142b4440; scrollbar-width:thin; scrollbar-color:#a9bdc7 #f5f8fa; }
+.fha-guide-header { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px 28px; border-bottom:1px solid #dfe7ec; background:#fff; }
+.fha-page .fha-guide-header h2 { font-size:25px; font-weight:550; letter-spacing:-.025em; margin:0; }
+.fha-guide-header button { display:grid; place-items:center; border:0; border-radius:50%; width:44px; height:44px; flex:none; background:#f0f5f7; color:var(--navy); cursor:pointer; }
+.fha-guide-header button:hover { background:#dfeef2; }
+.fha-guide-layout { display:grid; grid-template-columns:240px minmax(0,1fr); gap:28px; padding:28px; align-items:start; }
+.fha-guide-sidebar { padding:10px 0; }
+.fha-guide-sidebar>p { color:var(--text-muted); font-size:17px; line-height:1.7; margin:0 0 30px; }
+.fha-guide-timeline { list-style:none; padding:0; margin:0; }
+.fha-guide-timeline li { display:flex; position:relative; gap:13px; min-height:80px; color:var(--text-muted); }
+.fha-guide-timeline li:not(:last-child)::after { content:''; position:absolute; left:17px; top:35px; bottom:0; width:1px; background:#d9e3e9; }
+.fha-guide-timeline li>span { display:grid; place-items:center; flex:none; width:35px; height:35px; border-radius:50%; background:#e8eef2; font-size:15px; }
+.fha-guide-timeline strong { display:block; padding-top:3px; font-size:17px; font-weight:500; }
+.fha-guide-timeline small { display:block; font-size:14px; line-height:1.6; margin-top:5px; }
+.fha-guide-timeline [aria-current]>span { background:var(--accent); color:#fff; }
+.fha-guide-timeline [aria-current] strong { color:var(--navy); font-weight:550; }
+.fha-guide-timeline .done>span { background:#d9eee4; color:#24744d; }
+.fha-guide-person { display:flex; align-items:center; gap:10px; margin-top:20px; }
+.fha-guide-person img { border-radius:50%; flex:none; }
+.fha-guide-person p { font-size:14px; line-height:1.7; color:var(--text-muted); }
+.fha-guide-body { min-width:0; padding:28px; background:#fff; border-radius:14px; }
+.fha-page .fha-guide-step { padding:0; }
+.fha-page .fha-guide-step h3 { color:var(--navy); font-size:27px; font-weight:550; line-height:1.25; letter-spacing:-.025em; margin:0 0 16px; }
+.fha-guide-step h3:focus { outline:none; }
+.fha-guide-step>p { font-size:17px; line-height:1.8; color:var(--text-muted); margin:0 0 28px; }
+.fha-guide-step .field { margin-bottom:24px; min-width:0; }
+.fha-guide-step .field .hint { display:inline; margin:0 0 0 6px; }
+.fha-guide-step [data-service-area] { border:0; padding:0; margin-top:28px; }
+.fha-guide-step [data-service-area] legend { margin-bottom:18px; }
+.fha-guide-step [data-service-area] select { margin-bottom:22px; }
+.fha-guide-actions { display:flex; align-items:center; gap:20px; border-top:1px solid #d9e3e9; margin-top:28px; padding-top:22px; }
+.fha-guide-actions>span { font-size:14px; color:var(--text-muted); margin-left:auto; }
+.fha-guide-actions>button:not(.cta) { border:0; background:none; color:var(--text-muted); font:inherit; min-height:44px; cursor:pointer; }
+.fha-guide-saved .fha-guide-sidebar { display:none; }
+.fha-guide-saved .fha-guide-layout { grid-template-columns:1fr; max-width:740px; margin:auto; }
+.fha-page .fha-guide-overlay .cselect-trigger { min-height:49px; }
+.fha-page .cselect-panel { z-index:1200; }
+.fha-page.fha-guide-open { overflow:hidden; }
+.fha-page.fha-guide-open .mobile-sticky-bar { visibility:hidden; }
+@media(max-width:900px) { .fha-guide-layout { grid-template-columns:1fr; gap:18px; padding:24px; } .fha-guide-sidebar { padding:0; } .fha-guide-sidebar>p,.fha-guide-person { display:none; } .fha-guide-timeline { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); } .fha-guide-timeline li { display:block; min-height:66px; } .fha-guide-timeline li:not(:last-child)::after { left:35px; right:0; top:17px; bottom:auto; height:1px; width:auto; } .fha-guide-timeline li>span { position:relative; z-index:1; } .fha-guide-timeline strong { font-size:14px; margin-top:6px; } .fha-guide-timeline small { display:none; } }
+@media(max-width:600px) { .fha-download-band { flex-direction:column; align-items:flex-start; } .fha-page .fha-faq-section { padding-block:36px; } .fha-guide-overlay { padding:0; } .fha-guide-panel { width:100%; height:100dvh; max-height:100dvh; border-radius:0; } .fha-guide-header { padding:18px 20px; } .fha-page .fha-guide-header h2 { font-size:22px; } .fha-guide-layout { padding:20px 16px; } .fha-guide-body { padding:22px 20px; } .fha-page .fha-guide-step h3 { font-size:24px; } .fha-guide-step .form-row-2 { grid-template-columns:1fr; } .fha-guide-actions { gap:12px; } }
+@media(max-width:520px) { .fha-page .fha-calc-grid .field label { min-height:0; } }
+@media(max-width:1080px) { .fha-page .explainer-grid { grid-template-columns:1fr; gap:36px; } .fha-page .explainer-form { order:0; } }
+@media(max-width:820px) { .fha-page .hero-inner { grid-template-columns:1fr; gap:32px; } .fha-page .hero-right { justify-content:center; } .fha-page .hero-carousel-wrap { max-width:360px; } .fha-page .licensed-strip-inner { flex-direction:row; flex-wrap:wrap; justify-content:flex-start; } .fha-page .fha-calc-grid { grid-template-columns:1fr; } .fha-page .cta-panel { align-items:flex-start; } }
+@media(max-width:600px) { .fha-page main .container-1080 { padding-inline:20px; } .fha-page .hero { padding:32px 0 38px; } .fha-page .hero-title { font-size:35px; } .fha-page .hero-sub { font-size:17px; } .fha-page .hero-stats { gap:24px; } .fha-page .hero-stat-value { font-size:21px; } .fha-page .hero-stat-label { font-size:13px; } .fha-page .hero-carousel-wrap { max-width:300px; } .fha-page .fha-calc-section,.fha-page .explainer-section,.fha-page .assumptions-section { padding-block:40px; } .fha-page .card-section,.fha-page .lead-form,.fha-page .assumptions-panel { padding:22px 20px; } .fha-page .fha-row { font-size:15px; } .fha-page .cta-panel-section { padding-bottom:40px; } .fha-page .cta-panel { padding:26px 22px; } }

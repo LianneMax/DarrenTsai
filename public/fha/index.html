@@ -918,8 +918,8 @@
   }
 </style>
 <link rel="stylesheet" href="/compliance.css"><script src="/compliance.js" defer></script><link rel="stylesheet" href="/footer-compliance.css"><link rel="stylesheet" href="/site-navigation.css"><link rel="stylesheet" href="/site-design.css" />
-<script src="/site-navigation.js" defer></script></head>
-<body>
+<script src="/site-navigation.js" defer></script><link rel="stylesheet" href="/fha/fha.css"><script src="/fha/fha.js" defer></script></head>
+<body class="fha-page">
 <!-- Google Tag Manager (noscript) -->
 <!-- End Google Tag Manager (noscript) -->
 
@@ -930,18 +930,11 @@
 <header class="hero">
   <div class="hero-inner container-1080">
     <div class="hero-left">
-      <span class="hero-eyebrow anim anim-1">Free FHA Mortgage Calculator</span>
-      <h1 class="hero-title anim anim-2">Know your real FHA payment before you shop.</h1>
-      <p class="hero-sub anim anim-3">Mortgage insurance, taxes, and homeowners insurance included, not the payment most calculators show you. Run it right here, then get the spreadsheet version emailed if you want to keep playing with it.</p>
+      <h1 class="hero-title">See your FHA payment.<br><em>Before you shop.</em></h1>
+      <p class="hero-sub">Bring the price, down payment and property costs together. Start with an estimate, then talk through your next step.</p>
       <div class="hero-cta-row anim anim-4">
         <a href="#fha-calculator" class="cta solid-accent">Work out my payment</a>
         <span class="hero-cta-note">No email needed. No credit pull.</span>
-      </div>
-      <div class="hero-stats-divider anim anim-4"></div>
-      <div class="hero-stats anim anim-4">
-        <div class="hero-stat"><span class="hero-stat-value">3.5%</span><span class="hero-stat-label">Minimum down</span></div>
-        <div class="hero-stat"><span class="hero-stat-value">580</span><span class="hero-stat-label">FICO floor typical</span></div>
-        <div class="hero-stat"><span class="hero-stat-value">8 states</span><span class="hero-stat-label">Licensed to lend</span></div>
       </div>
     </div>
     <div class="hero-right">
@@ -992,103 +985,6 @@
   </div>
 </div>
 
-<!-- EXPLAINER + LEAD FORM -->
-<section class="explainer-section reveal" id="get-fha-estimate">
-  <div class="container-1080">
-    <div class="explainer-grid">
-      <div class="explainer-left">
-        <p class="section-label">How FHA works</p>
-        <h2>Four things decide your FHA payment.</h2>
-        <p class="explainer-lede">These are the numbers underwriting actually runs. Here is what moves each one.</p>
-        <div class="explainer-numbered">
-          <div class="explainer-item">
-            <div class="explainer-num">01</div>
-            <p class="explainer-item-title">Down payment tier</p>
-            <p class="explainer-item-body">On a $400,000 purchase, 5% down is $20,000 and leaves a $380,000 loan. Below 5% down, annual MIP rises from 0.50% to 0.55%.</p>
-          </div>
-          <div class="explainer-item">
-            <div class="explainer-num">02</div>
-            <p class="explainer-item-title">Upfront MIP is added to the loan</p>
-            <p class="explainer-item-body">Upfront MIP is 1.75%, or $6,650, financed straight into the loan, so the real balance becomes $386,650.</p>
-          </div>
-          <div class="explainer-item">
-            <div class="explainer-num">03</div>
-            <p class="explainer-item-title">Escrow, HOA, and monthly MIP</p>
-            <p class="explainer-item-body">Principal and interest is $2,572. Taxes add $410, MIP adds $161, insurance adds $125, and HOA adds $350, pushing the payment to $3,618.</p>
-          </div>
-          <div class="explainer-item">
-            <div class="explainer-num">04</div>
-            <p class="explainer-item-title">Both debt to income ratios</p>
-            <p class="explainer-item-body">Front end DTI weighs housing cost against income. Back end DTI adds car, student, card, and support payments. Both have to pass.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="explainer-form">
-        <div class="lead-form">
-          <div class="lead-form-fields" id="formFields">
-            <p class="section-label">Free estimate</p>
-            <h3>Get the Free Calculator</h3>
-            <p>Principal, interest, mortgage insurance, taxes, and insurance, in one number you can actually use.</p>
-            <div class="form-row-2">
-              <div class="field">
-                <label for="mName">Full Name</label>
-                <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Homebuyer"></div>
-                <span class="field-error" id="mNameError"></span>
-              </div>
-              <div class="field">
-                <label for="mEmail">Email</label>
-                <div class="input-shell" id="mEmailShell"><input type="email" id="mEmail" placeholder="jane@email.com"></div>
-                <span class="field-error" id="mEmailError"></span>
-              </div>
-            </div>
-            <div class="form-row-2">
-              <div class="field">
-                <label for="mPhone">Phone <span class="hint">US numbers only</span></label>
-                <div class="input-shell" id="mPhoneShell"><input type="tel" id="mPhone" placeholder="(555) 555-5555" maxlength="14"></div>
-                <span class="field-error" id="mPhoneError"></span>
-              </div>
-              <div class="field">
-                <label for="mState">State</label>
-                <div class="input-shell" id="mStateShell">
-                  <select id="mState">
-                    <option value="">Select your state</option>
-                  </select>
-                </div>
-                <span class="field-error" id="mStateError"></span>
-                <span class="lf-hint" id="mStateHint" hidden></span>
-              </div>
-            </div>
-            <div class="field">
-              <label for="mCredit">Credit Score (Estimate)</label>
-              <div class="input-shell" id="mCreditShell">
-                <select id="mCredit">
-                  <option value="">Select a range</option>
-                  <option value="740+">740+</option>
-                  <option value="700-739">700 to 739</option>
-                  <option value="660-699">660 to 699</option>
-                  <option value="620-659">620 to 659</option>
-                  <option value="under-620">Under 620</option>
-                  <option value="not-sure">Not sure</option>
-                </select>
-              </div>
-              <span class="field-error" id="mCreditError"></span>
-            </div>
-            <button class="cta solid-accent" id="submitLead" style="width:100%;justify-content:center;">Get the Free Calculator</button>
-            <div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="fha-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="fha-magnet"> <span>By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><label class="sms-choice"><input type="checkbox" data-sms-form="fha-magnet"> <span>By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><p class="sms-details">Text messages are optional and not a condition of purchase or of submitting this form.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
-          </div>
-          <div class="lead-success" id="leadSuccess">
-            <div class="check">✓</div>
-            <h3>You're all set.</h3>
-            <p>Check your email for the FHA calculator spreadsheet. Darren will be in touch.</p>
-            <button type="button" class="cta outline" style="width:100%;margin-top:18px;" id="openLeadBookingBtn">Book a Free Strategy Call</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ON-PAGE FHA PAYMENT ESTIMATOR -->
 <!--
   The calculator this page is named after.
@@ -1105,9 +1001,8 @@
 <section class="fha-calc-section reveal" id="fha-calculator">
   <div class="container-1080">
     <div class="fha-calc-head">
-      <p class="section-label">FHA payment estimator</p>
-      <h2>Your real FHA payment, right here.</h2>
-      <p>Principal, interest, both mortgage insurance premiums, taxes and insurance. No email needed, nothing to download.</p>
+      <h2>Your payment, at a glance.</h2>
+      <p>Enter your numbers. No email needed.</p>
     </div>
 
     <div class="fha-calc-grid">
@@ -1166,7 +1061,7 @@
             <div class="fha-row total"><span class="k">Total monthly payment</span><span class="v" id="fhaTotalRow">$0</span></div>
           </div>
 
-          <p class="fha-note">Estimate only, on a 30-year fixed FHA loan. FHA charges annual MIP on the average outstanding balance; this uses the starting balance, so the real figure drifts slightly below it over time. Not a rate lock or a quote.</p>
+          <p class="fha-note">Estimate only, based on a 30-year fixed FHA loan and starting-balance MIP. Not a rate lock or quote.</p>
           <button type="button" class="cta solid-accent" id="fhaCalcCta" style="width:100%;justify-content:center;margin-top:16px;">Have Darren Review My Payment</button>
         </div>
       </div>
@@ -1174,12 +1069,9 @@
   </div>
 </section>
 
-<!-- WHAT THE ESTIMATE ASSUMES -->
-<section class="assumptions-section reveal">
-  <div class="container-1080">
-    <div class="assumptions-panel">
-      <p class="section-label" style="margin:0;">What the estimate assumes</p>
-      <div class="assumptions-grid">
+<section class="fha-download-section" id="get-fha-estimate"><div class="container-1080 fha-download-band"><div><h2>Want a copy to keep?</h2><p>Get the FHA calculator spreadsheet by email.</p></div><button type="button" class="cta solid-accent" data-fha-guide>Get the Free Calculator <span aria-hidden="true">↗</span></button></div></section>
+
+<div class="site-design"><section class="wrap faq fha-faq-section" aria-labelledby="fha-faq-title"><div class="section-intro"><h2 id="fha-faq-title">Questions, answered.</h2><p>A little understanding makes the next step easier.</p></div><div class="fha-faq-list"><details><summary>What does this estimate include?</summary><p>Principal and interest, mortgage insurance, property tax, home insurance and HOA. Add your own tax and insurance amounts for a fuller monthly estimate.</p></details><details><summary>What assumptions does the calculator use?</summary><div class="assumptions-grid">
         <div class="assumptions-cell"><div class="k">Loan type</div><div class="v">30-year fixed FHA</div></div>
         <div class="assumptions-cell"><div class="k">Term</div><div class="v">360 payments</div></div>
         <div class="assumptions-cell"><div class="k">Upfront MIP</div><div class="v">1.75%, financed</div></div>
@@ -1188,11 +1080,7 @@
         <div class="assumptions-cell"><div class="k">Property tax</div><div class="v">Escrowed</div></div>
         <div class="assumptions-cell"><div class="k">HOA dues</div><div class="v">Your amount</div></div>
         <div class="assumptions-cell"><div class="k">Income basis</div><div class="v">Salary or hourly</div></div>
-      </div>
-      <p class="assumptions-footnote">Illustration only, based on a current market range. Actual figures are determined by underwriting.</p>
-    </div>
-  </div>
-</section>
+      </div><p class="fha-note">Annual MIP uses the starting financed balance. FHA charges it on the average outstanding balance, so the actual amount changes over time. These are estimates, not a rate lock or quote.</p></details><details><summary>What else affects my options?</summary><p>A lender reviews your credit, down payment and debts compared with income. Darren can review your situation and any available down payment assistance.</p></details></div></section></div>
 
 <!-- CALL CTA PANEL -->
 <section class="cta-panel-section reveal">
@@ -1200,17 +1088,17 @@
     <div class="cta-panel">
       <div class="cta-panel-copy">
         <div class="cta-panel-rule"></div>
-        <h2>Still want a person to check the math?</h2>
-        <p>Book a 15-minute call. We will look at your actual numbers, your credit range, and what down payment assistance you may qualify for.</p>
+        <h2>Have a question about your situation?</h2>
+        <p>Talk through your payment and next steps with Darren.</p>
       </div>
-      <button type="button" id="ctaBookingBtn" class="cta solid-accent">Book a 15-min call</button>
+      <button type="button" id="ctaBookingBtn" class="cta solid-accent">Book a Call</button>
     </div>
   </div>
 </section>
 
 <!-- MOBILE STICKY BAR -->
 <div class="mobile-sticky-bar" id="mobileStickyBar">
-  <a href="#get-fha-estimate" class="cta solid-accent">Get the free calculator</a>
+  <button type="button" class="cta solid-accent" data-fha-guide>Get the free calculator</button>
   <!-- A real tel: link, as on /dscr/ and /realestateinvesting/. This said "Call"
        and opened Calendly, which is the wrong promise on the one device where
        dialling is the native action. CallRail swaps the number; attribution.js
@@ -1218,6 +1106,69 @@
   <a href="tel:+17148875432" class="cta outline">Call</a>
 </div>
 
+<div class="fha-guide-overlay" id="fhaGuideOverlay" hidden>
+ <div class="fha-guide-panel" role="dialog" aria-modal="true" aria-labelledby="fha-guide-title" tabindex="-1">
+  <div class="fha-guide-header"><h2 id="fha-guide-title">Get the FHA calculator.</h2><button type="button" id="fhaGuideClose" aria-label="Close calculator request"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="fha-guide-layout">
+   <aside class="fha-guide-sidebar"><p>A spreadsheet to explore your numbers, with personal guidance from Darren.</p><ol class="fha-guide-timeline" aria-label="Calculator request steps"><li aria-current="step"><span>1</span><div><strong>Your details</strong><small>Where to send it</small></div></li><li><span>2</span><div><strong>Your property</strong><small>Check the service area</small></div></li><li><span>3</span><div><strong>Your preferences</strong><small>Review and send</small></div></li></ol><div class="fha-guide-person"><img src="/darren-96.webp" width="40" height="40" alt=""><p>Talk it through with Darren.</p></div></aside>
+   <div class="fha-guide-body">
+    <div class="lead-form-fields" id="formFields">
+     <section class="fha-guide-step" data-fha-step="0" aria-labelledby="fha-details-title"><h3 id="fha-details-title" tabindex="-1">Where should we send it?</h3><p>Get the spreadsheet by email. Darren can follow up about your plans.</p><div class="form-row-2">
+              <div class="field">
+                <label for="mName">Full Name</label>
+                <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Homebuyer"></div>
+                <span class="field-error" id="mNameError"></span>
+              </div>
+              <div class="field">
+                <label for="mEmail">Email</label>
+                <div class="input-shell" id="mEmailShell"><input type="email" id="mEmail" placeholder="jane@email.com"></div>
+                <span class="field-error" id="mEmailError"></span>
+              </div>
+            </div>
+<div class="form-row-2">
+              <div class="field">
+                <label for="mPhone">Phone <span class="hint">US numbers only</span></label>
+                <div class="input-shell" id="mPhoneShell"><input type="tel" id="mPhone" placeholder="(555) 555-5555" maxlength="14"></div>
+                <span class="field-error" id="mPhoneError"></span>
+              </div>
+              <div class="field">
+                <label for="mState">State</label>
+                <div class="input-shell" id="mStateShell">
+                  <select id="mState">
+                    <option value="">Select your state</option>
+                  </select>
+                </div>
+                <span class="field-error" id="mStateError"></span>
+                <span class="lf-hint" id="mStateHint" hidden=""></span>
+              </div>
+            </div></section>
+     <section class="fha-guide-step" data-fha-step="1" aria-labelledby="fha-property-title" hidden><h3 id="fha-property-title" tabindex="-1">A little about the home.</h3><p>This checks service area, not loan approval.</p><div class="field">
+              <label for="mCredit">Credit Score (Estimate)</label>
+              <div class="input-shell" id="mCreditShell">
+                <select id="mCredit">
+                  <option value="">Select a range</option>
+                  <option value="740+">740+</option>
+                  <option value="700-739">700 to 739</option>
+                  <option value="660-699">660 to 699</option>
+                  <option value="620-659">620 to 659</option>
+                  <option value="under-620">Under 620</option>
+                  <option value="not-sure">Not sure</option>
+                </select>
+              </div>
+              <span class="field-error" id="mCreditError"></span>
+            </div><fieldset class="compliance-disclosure" data-service-area="fha-magnet" data-service-area-loading="true"><p role="status">Loading the property service-area check…</p></fieldset></section>
+     <section class="fha-guide-step" data-fha-step="2" aria-labelledby="fha-preferences-title" hidden><h3 id="fha-preferences-title" tabindex="-1">Your preferences.</h3><p>Review and send. Text messages are optional.</p><div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required="" data-privacy-form="fha-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="fha-magnet"> <span>By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><label class="sms-choice"><input type="checkbox" data-sms-form="fha-magnet"> <span>By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><p class="sms-details">Text messages are optional and not a condition of purchase or of submitting this form.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms &amp; Legal Disclosures</a></p></div><button class="cta solid-accent" id="submitLead" style="width:100%;justify-content:center;">Get the Free Calculator</button></section>
+     <div class="fha-guide-actions"><button type="button" id="fhaGuideBack" hidden>Back</button><span id="fhaGuideCount" aria-live="polite">Step 1 of 3</span><button type="button" class="cta solid-accent" id="fhaGuideNext">Continue</button></div>
+    </div><div class="lead-success" id="leadSuccess">
+            <div class="check">✓</div>
+            <h3>You're all set.</h3>
+            <p>Check your email for the FHA calculator spreadsheet. Darren will be in touch.</p>
+            <button type="button" class="cta outline" style="width:100%;margin-top:18px;" id="openLeadBookingBtn">Book a Free Strategy Call</button>
+          </div>
+   </div>
+  </div>
+ </div>
+</div>
 <!-- FOOTER (mirrors the main-site Footer component) -->
 </main>
 
@@ -1494,7 +1445,7 @@
 
   const $ = (id) => document.getElementById(id);
 
-  // ---------------- Inline lead form logic (no modal) ----------------
+  // The stepped guide groups these same fields; only the final action posts.
   const formFields = $('formFields');
   const leadSuccess = $('leadSuccess');
 
@@ -1714,6 +1665,23 @@
     ['Name','Email','Phone','State','Credit'].forEach(f => setError(f, ''));
   }
 
+  // Continue and final submission share these rules. Credit is asked on the
+  // property step; the final handler checks it with every original field.
+  function validateFhaLeadDetails(includeCredit = true) {
+    clearErrors();
+    const name = $('mName').value.trim(), email = $('mEmail').value.trim(), phone = $('mPhone').value.trim();
+    const phoneDigits = phone.replace(/\D/g, ''), state = $('mState').value, creditScore = $('mCredit').value;
+    let valid = true;
+    if (!name) { setError('Name', 'Required'); valid = false; }
+    if (!email) { setError('Email', 'Required'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
+    if (!phone) { setError('Phone', 'Required'); valid = false; }
+    else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
+    if (!state) { setError('State', 'Required'); valid = false; }
+    if (includeCredit && !creditScore) { setError('Credit', 'Required'); valid = false; }
+    return valid;
+  }
+
   $('submitLead').addEventListener('click', async () => {
     clearErrors();
     const name = $('mName').value.trim();
@@ -1723,15 +1691,7 @@
     const state = stateSelect.value;
     const creditScore = $('mCredit').value;
 
-    let valid = true;
-    if (!name) { setError('Name', 'Required'); valid = false; }
-    if (!email) { setError('Email', 'Required'); valid = false; }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
-    if (!phone) { setError('Phone', 'Required'); valid = false; }
-    else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
-    if (!state) { setError('State', 'Required'); valid = false; }
-    if (!creditScore) { setError('Credit', 'Required'); valid = false; }
-    if (!valid) return;
+    if (!validateFhaLeadDetails()) return;
 
     const firstSpace = name.indexOf(' ');
     const firstName = firstSpace === -1 ? name : name.slice(0, firstSpace);
