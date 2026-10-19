@@ -31,7 +31,7 @@ export default function App() {
         <MarketingBenefits onOpenContact={openContact} />
         <MarketingOptions />
         <Reviews />
-        <MarketingFaq onOpenContact={openContact} outlined />
+        <MarketingFaq onOpenContact={openContact} />
         <MarketingClosing />
       </main>
       <Footer />

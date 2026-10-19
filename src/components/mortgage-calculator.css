@@ -68,7 +68,7 @@
 .mortgage-calculator .input-group:last-child { margin-bottom: 0; }
 .mortgage-calculator .input-label {
   color: var(--mortgage-ink);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   font-weight: 450;
   margin-bottom: 9px;
@@ -85,7 +85,7 @@
   caret-color: var(--accent);
 }
 .mortgage-calculator .form-input::placeholder { color: #617482; opacity: 1; }
-.mortgage-calculator :is(.input-prefix, .input-suffix) { color: #617482; font-size: 16px; }
+.mortgage-calculator :is(.input-prefix, .input-suffix) { color: #617482; font-size: 18px; }
 .mortgage-calculator :is(input, select, button, a, summary):focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 4px;
@@ -96,7 +96,7 @@
   border-radius: 12px;
   background: var(--mortgage-surface);
   color: var(--mortgage-muted);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.8;
   margin: 0;
   min-height: 146px;
@@ -113,7 +113,7 @@
 }
 .mortgage-calculator .stat-label {
   color: var(--mortgage-muted);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.6;
   font-weight: 400;
   letter-spacing: 0;
@@ -127,7 +127,7 @@
   overflow: visible;
   overflow-wrap: anywhere;
 }
-.mortgage-calculator .apr-assumption { color: var(--mortgage-muted); font-size: 12px; line-height: 1.6; }
+.mortgage-calculator .apr-assumption { color: var(--mortgage-muted); font-size: 14px; line-height: 1.6; }
 .mortgage-calculator .apr-number { font-size: 23px; font-weight: 550; }
 .mortgage-calculator .apr-estimate .apr-info { border: 0; padding: 0; margin: 0; }
 .mortgage-calculator .apr-estimate .apr-info summary {
@@ -140,12 +140,12 @@
   line-height: 1;
 }
 .mortgage-calculator .apr-estimate .apr-info summary::after { content: none; }
-.mortgage-calculator .apr-tooltip { font-size: 13px; color: var(--mortgage-muted); line-height: 1.65; }
+.mortgage-calculator .apr-tooltip { font-size: 15px; color: var(--mortgage-muted); line-height: 1.65; }
 .mortgage-calculator .insight-callout {
   border: 0;
   margin-top: 25px;
   background: var(--mortgage-surface);
-  font-size: 14px;
+  font-size: 16px;
   padding: 17px;
   line-height: 1.7;
 }
@@ -170,7 +170,7 @@
   margin: 0 0 9px;
   text-wrap: balance;
 }
-.mortgage-conversation p { color: #fff; font-size: 13px; line-height: 1.75; margin: 0; }
+.mortgage-conversation p { color: #fff; font-size: 15px; line-height: 1.75; margin: 0; }
 .mortgage-calculator .mortgage-conversation .calc-cta {
   background: #fff;
   color: var(--mortgage-ink);
@@ -178,7 +178,7 @@
   width: auto;
   margin: 0;
   min-height: 46px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   padding: 12px 19px;
   gap: 16px;
@@ -190,15 +190,15 @@
 .mortgage-calculator .chart-wrapper .card-heading>svg { display: none; }
 .mortgage-calculator .chart-legend { color: var(--mortgage-muted); gap: 14px 24px; }
 .mortgage-calculator .table-wrapper { padding-top: 6px; }
-.mortgage-calculator .table-toggle { min-height: 49px; font-size: 14px; }
+.mortgage-calculator .table-toggle { min-height: 49px; font-size: 16px; }
 .mortgage-calculator .schedule-toolbar { gap: 20px; }
 .mortgage-calculator .table-scroll { box-shadow: none; border: 1px solid var(--mortgage-line); }
-.mortgage-calculator .amort-table th { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.mortgage-calculator .amort-table th { text-transform: none; letter-spacing: 0; font-size: 15px; }
 .mortgage-calculator .year-toggle { border: 0; background: transparent; color: var(--accent); min-width: 40px; min-height: 40px; font: inherit; font-size: 21px; cursor: pointer; }
 .mortgage-calculator .schedule-expand { padding: 0; border: 0; flex-shrink: 0; }
 .mortgage-calculator .mortgage-disclosure {
   color: var(--mortgage-muted);
-  font-size: 13px;
+  font-size: 15px;
   margin: 28px 0 0;
   line-height: 1.8;
   max-width: 75ch;
@@ -212,13 +212,13 @@
 @media (max-width: 600px) {
   .mortgage-intro { padding-block: 29px 30px; }
   .mortgage-intro h1 { font-size: 34px; }
-  .mortgage-intro .section-sub { font-size: 16px; }
+  .mortgage-intro .section-sub { font-size: 18px; }
   .mortgage-calculator .mortgage-workspace { padding-block: 32px; }
   .mortgage-calculator .card { padding: 23px 20px; }
   .mortgage-calculator .card-heading { font-size: 25px; margin-bottom: 23px; }
   .mortgage-calculator .stats-grid { gap: 24px 17px; }
   .mortgage-calculator .stat-value { font-size: 22px; }
-  .mortgage-calculator .mortgage-empty { padding: 21px; font-size: 15px; min-height: 0; }
+  .mortgage-calculator .mortgage-empty { padding: 21px; font-size: 17px; min-height: 0; }
   .mortgage-conversation { flex-wrap: wrap; padding: 21px; gap: 21px; }
   .mortgage-conversation h3 { font-size: 22px; }
   .mortgage-calculator .mortgage-conversation .calc-cta { width: 100%; }
@@ -226,8 +226,8 @@
   .mortgage-calculator .table-toggle { width: 100%; justify-content: center; padding-inline: 12px; }
   .mortgage-calculator .chart-wrapper { padding-inline: 12px; }
   .mortgage-calculator .chart-wrapper .card-heading { padding-inline: 8px; font-size: 23px; }
-  .mortgage-calculator .chart-legend { justify-content: flex-start; font-size: 12px; padding-inline: 8px; }
-  .mortgage-calculator .mortgage-disclosure { font-size: 12px; }
+  .mortgage-calculator .chart-legend { justify-content: flex-start; font-size: 14px; padding-inline: 8px; }
+  .mortgage-calculator .mortgage-disclosure { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .mortgage-calculator *, .mortgage-calculator *::before, .mortgage-calculator *::after {

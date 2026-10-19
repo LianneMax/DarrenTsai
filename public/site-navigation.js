@@ -48,6 +48,11 @@
     } else if (drawer.contains(target)) menu(false);
   });
   overlay.addEventListener('click', function () { menu(false); toggle.focus(); });
+  // Match the React header: a drawer opened on a tablet must not reappear
+  // with stale expanded state after visiting desktop width and shrinking back.
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 1024) menu(false);
+  }, { passive: true });
   document.addEventListener('click', function (event) { if (!dropdown.contains(event.target)) closeCalculator(); });
   host.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {

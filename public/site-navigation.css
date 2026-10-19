@@ -118,7 +118,7 @@
   transition: color 0.3s ease;
 }
 .static-navigation .nav-logo-title {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 400;
   color: var(--text-muted);
   line-height: 1.2;
@@ -149,7 +149,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--teal);
   background: var(--navy);
@@ -159,7 +159,7 @@
   align-items: center;
   gap: 28px;
 }
-.static-navigation .nav-links .btn-sm { padding: 6px 16px; font-size: 0.88rem; }
+.static-navigation .nav-links .btn-sm { padding: 6px 16px; font-size: 0.95rem; }
 .static-navigation .nav-links .btn-outline-teal { padding: 4px 14px; }
 .static-navigation .nav-link {
   font-size: 0.95rem;

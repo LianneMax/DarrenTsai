@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { FAQ } from '../data/faq';
+import EquityPropertyStory from './EquityPropertyStory';
 
 export function ArrowIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" /></svg>; }
 
 /** These are illustrations, never prefilled calculator inputs or lending offers. */
 export function HouseOptions({ large = false }: { large?: boolean }) {
+  if (large) return <EquityPropertyStory />;
   return <div className={`house-options${large ? ' equity-page-illustration' : ''}`}>
     <img className="house-render" src="/house-3d.webp" width="840" height="840" alt="Illustrative home in slate, teal and off-white" decoding="async" />
     <div className="floating-product product-heloc"><strong><i aria-hidden="true" />HELOC</strong><span>Flexible access</span></div>
@@ -23,7 +25,7 @@ function EquityIllustration() {
     <svg viewBox="0 0 480 300" role="img" aria-labelledby="equity-diagram-title equity-diagram-desc">
       <title id="equity-diagram-title">The two parts of your home’s value</title><desc id="equity-diagram-desc">An illustrative mortgage balance and estimated equity. These proportions are not a personal estimate.</desc>
       <defs><clipPath id="home-shape"><path d="M122 125 240 37 358 125V268H122Z" /></clipPath></defs>
-      <g clipPath="url(#home-shape)"><path fill="#8fd8ea" d="M100 25H380V270H100Z" /><rect fill="#466a7a" x="100" y={y} width="280" height={270 - y} /></g>
+      <g clipPath="url(#home-shape)"><path fill="#b9e3c6" d="M100 25H380V270H100Z" /><rect fill="#466a7a" x="100" y={y} width="280" height={270 - y} /></g>
       <path d="M96 144 240 37 384 144M122 125V268H358V125" fill="none" stroke="#223d55" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       <path d={`M122 ${y}H358`} stroke="#fff" strokeWidth="2" strokeDasharray="4 5" />
     </svg>

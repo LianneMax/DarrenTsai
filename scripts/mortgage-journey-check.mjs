@@ -28,7 +28,8 @@ async function open(width = 1440) {
   await page.waitForFunction(() => window.DTBooking);
   const reject = page.getByRole('button', { name: 'Reject optional', exact: true });
   if (await reject.isVisible()) {
-    await Promise.all([page.waitForEvent('domcontentloaded'), reject.click()]);
+    await reject.click();
+    await page.locator('.dt-cookie-panel').waitFor({state:'hidden'});
     await page.waitForFunction(() => window.DTBooking);
   }
   await page.evaluate(() => document.fonts.ready);

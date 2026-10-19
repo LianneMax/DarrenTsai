@@ -1,0 +1,80 @@
+/* One visual relationship per hero. Proportions are conceptual and never
+   populate a calculator. The controller pauses offscreen and in hidden tabs. */
+.property-story { margin:0; min-width:0; padding:16px 22px 20px; border-radius:16px; background:#f0f5f7; color:#223d55; }
+.property-story-stage { position:relative; min-width:0; height:280px; }
+.property-story-stage>img { display:block; width:100%; height:100%; object-fit:contain; margin:auto; }
+.property-story-label { position:absolute; display:flex; align-items:flex-start; gap:9px; padding:13px 16px; background:#fff; border-radius:8px; box-shadow:0 5px 18px #223d5510; }
+.property-story-label > i { width:7px; height:7px; background:#28815b; border-radius:50%; margin-top:8px; flex:none; }
+.property-story-label strong { display:block; font-size:16px; line-height:1.4; font-weight:550; }
+.property-story-label small { display:block; font-size:14px; line-height:1.5; color:#526676; margin-top:4px; }
+.story-rent { top:16px; left:-4px; }
+.story-payment { bottom:6px; right:-5px; }
+.property-story figcaption { color:#526676; font-size:14px; line-height:1.6; margin:17px 0 0; text-align:center; }
+.property-story-toggle { position:absolute; top:0; right:-4px; display:grid; place-items:center; min-width:44px; height:44px; border:1px solid #c7d9e1; border-radius:50%; background:#fff; color:#223d55; cursor:pointer; }
+.property-story-toggle[hidden] { display:none; }
+.property-story-toggle:hover { background:#e0eef2; }
+.property-story-toggle:focus-visible { outline:3px solid #1a7f99; outline-offset:3px; }
+.property-story-toggle svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; stroke-linecap:round; }
+.property-story .story-play { display:none; }
+.property-story[data-user-paused=true] .story-pause { display:none; }
+.property-story[data-user-paused=true] .story-play { display:block; }
+/* Preserve the house's rendered size while trimming the transparent space
+   below the asset, bringing its balance/equity bar closer to the home. */
+.property-story-equity .property-story-stage { height:230px; }
+.property-story-equity .property-story-stage>img { position:absolute; inset:0 0 auto; height:280px; }
+.property-story-value { position:absolute; top:12px; left:0; padding:11px 15px; border-radius:8px; background:#fff; font-size:16px; line-height:1.5; box-shadow:0 5px 18px #223d5510; }
+.property-story-value-bar { display:grid; grid-template-columns:1fr 1fr; border-radius:8px; overflow:hidden; margin-top:14px; isolation:isolate; }
+.property-story-value-bar>span,.property-story-value-bar>strong { display:grid; place-items:center; text-align:center; padding:13px 10px; font-size:15px; line-height:1.5; font-weight:500; }
+.property-story-value-bar>span { background:#466a7a; color:#fff; }
+.property-story-value-bar>strong { background:#24744d; color:#fff; }
+@media(max-width:600px) { .property-story { padding:14px 16px 18px; } .property-story-stage { height:270px; } .property-story-label { padding:11px 12px; gap:7px; } .property-story-label strong { font-size:15px; } .property-story-label small { font-size:13px; } .story-rent { top:14px; left:0; } .story-payment { right:0; bottom:0; } .property-story-toggle { right:0; } .property-story-flow { font-size:15px; gap:12px; } .property-story-value { font-size:15px; } .property-story-value-bar>span,.property-story-value-bar>strong { font-size:14px; } }
+/* Name the loan itself in the rental visual, alongside its rent/payment story. */
+.property-story-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; }
+.dscr-page .property-story-heading h2 { font-size:23px; line-height:1.3; font-weight:550; letter-spacing:-.025em; margin:0; color:#223d55; text-align:left; }
+.property-story-heading .property-story-toggle { position:static; flex:none; }
+@media(max-width:600px) { .dscr-page .property-story-heading h2 { font-size:21px; } }
+@media(max-width:600px) { .property-story-equity .property-story-stage { height:220px; } .property-story-equity .property-story-stage>img { height:270px; } }
+/* Rent drops from its badge into the payment badge's jar. Both contributions
+   are conceptual, never a computed coverage or approval result. */
+.property-story-rental .property-story-stage { isolation:isolate; height:320px; }
+.property-story-rental .property-story-stage>img { position:absolute; inset:0 0 auto; height:280px; }
+@media(max-width:600px) { .property-story-rental .property-story-stage { height:310px; } .property-story-rental .property-story-stage>img { height:270px; } }
+.property-story-rental .property-story-label { z-index:1; }
+.rent-money-symbol { display:grid; place-items:center; height:38px; flex:none; color:#24744d; }
+.rent-money-symbol svg,.rent-cash-transfer svg,.equity-transfer svg { width:32px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.rent-cash-transfer { display:block; visibility:hidden; position:absolute; z-index:2; left:0; top:0; width:32px; height:24px; color:#24744d; transform-origin:16px 12px; animation:rent-cash-transfer 6s ease-in-out infinite both; }
+.property-story[data-deposit-ready=true] .rent-cash-transfer { visibility:visible; }
+.rent-cash-transfer svg { position:absolute; left:0; top:0; }
+.payment-vessel { display:block; width:32px; height:38px; margin:3px 0; flex:none; position:relative; border:2px solid #466a7a; border-radius:5px 5px 9px 9px; background:#fff; }
+.payment-vessel::before { content:''; position:absolute; top:-5px; left:2px; right:2px; height:5px; border:2px solid #466a7a; background:#f0f5f7; border-radius:2px; }
+.payment-vessel-window { position:absolute; inset:3px; border-radius:2px 2px 5px 5px; overflow:hidden; }
+.payment-vessel-fill { display:block; position:absolute; inset:0; background:#24744d; transform:scaleY(.12); transform-origin:bottom; animation:payment-jar-fill 6s ease-in-out infinite both; }
+@keyframes rent-cash-transfer {
+ 0%,6%,48% { transform:translate(var(--rent-start-x),var(--rent-start-y)) scale(1); opacity:0; }
+ 12%,54% { transform:translate(var(--rent-start-x),var(--rent-start-y)) scale(1); opacity:1; }
+ /* First drop beside the home, then turn right below it into the jar. The
+    taller stage leaves a clear lane without shrinking or moving the house. */
+ 26%,68% { transform:translate(var(--rent-start-x),var(--rent-end-y)) scale(.65); opacity:1; }
+ 40%,82% { transform:translate(var(--rent-end-x),var(--rent-end-y)) scale(.65); opacity:1; }
+ 46%,88%,100% { transform:translate(var(--rent-end-x),var(--rent-end-y)) scale(.65); opacity:0; }
+}
+@keyframes payment-jar-fill { 0%,40%{transform:scaleY(.12)} 48%,82%{transform:scaleY(.48)} 90%,96%{transform:scaleY(.9)} 100%{transform:scaleY(.12)} }
+/* Equity leaves the green segment and follows one of three rails, then the
+   matching goal receives it. All destinations stay readable when paused. */
+.equity-routing { position:relative; height:70px; overflow:hidden; }
+.equity-routing-lines { display:block; width:100%; height:70px; fill:none; stroke:#b4cfc0; stroke-width:1.5; }
+.equity-transfer { display:block; position:absolute; inset:0; width:100%; height:70px; color:#24744d; opacity:0; animation:equity-route-transfer 12s cubic-bezier(.4,0,.2,1) infinite both; }
+.equity-transfer svg { position:absolute; left:75%; top:-10px; margin-left:-16px; background:#f0f5f7; }
+.equity-transfer-0 { --goal-offset:-58.3333%; }
+.equity-transfer-1 { --goal-offset:-25%; animation-delay:4s; }
+.equity-transfer-2 { --goal-offset:8.3333%; animation-delay:8s; }
+.property-story .equity-goal-examples { list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:0; margin:0; }
+.equity-goal-examples li { display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; color:#223d55; font-size:14px; line-height:1.5; }
+.equity-goal-emblem { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:#e2efe7; color:#24744d; animation:equity-goal-receive 12s ease-in-out infinite both; }
+.equity-goal-emblem svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.equity-goal-1 { animation-delay:4s; }.equity-goal-2 { animation-delay:8s; }
+@keyframes equity-route-transfer { 0%,3%{transform:translate(0,0);opacity:0} 6%{transform:translate(0,10px);opacity:1} 10%{transform:translate(0,22px);opacity:1} 20%{transform:translate(var(--goal-offset),22px);opacity:1} 27%{transform:translate(var(--goal-offset),68px);opacity:1} 30%,100%{transform:translate(var(--goal-offset),70px);opacity:0} }
+@keyframes equity-goal-receive { 0%,24%,34%,100%{background:#e2efe7;color:#24744d} 27%,31%{background:#24744d;color:#fff} }
+.property-story .story-motion { animation-play-state:paused; }
+.property-story[data-playing=true] .story-motion { animation-play-state:running; }
+@media(prefers-reduced-motion:reduce) { .property-story .story-motion { animation:none!important; } .rent-cash-transfer,.equity-transfer { display:none; } .payment-vessel-fill { transform:scaleY(.65); } }

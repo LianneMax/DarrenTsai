@@ -1,9 +1,9 @@
 /**
- * Optional tracking defaults on (Darren, confirmed by Max, 17 Oct 2026).
+ * Optional tracking requires an explicit opt-in (Max, 19 Oct 2026).
  * A banner alone would leave GTM, HubSpot's ads pixel and CallRail tracking
  * running after Reject. Gate the loaders instead, while keeping forms and
  * in-memory URL attribution available. Saved opt-outs and GPC override the
- * default; absence of a choice is not stored as an affirmative acceptance.
+ * opt-in; absence of a choice never starts optional vendors or persistence.
  * One optional category includes analytics and marketing together, because
  * the existing GTM container loads both. Do not offer a split we cannot honor.
  */
@@ -28,7 +28,12 @@
     }
   } catch (e) { storageUnavailable = true; choice = false; }
   var gpc = window.navigator.globalPrivacyControl === true;
-  if (gpc) choice = false;
+  if (gpc) {
+    choice = false;
+    // A GPC opt-out supersedes an earlier acceptance. Removing the browser
+    // signal later must not silently resurrect that withdrawn acceptance.
+    try { window.localStorage.setItem(KEY, JSON.stringify({optional:false, ts:Date.now()})); } catch (e) { /* The signal still applies in memory. */ }
+  }
   window.dataLayer = window.dataLayer || [];
   function consent(status, command) {
     // Use the consent API through dataLayer, never install a second gtag loader.
@@ -36,7 +41,7 @@
     enqueue('consent', command, { ad_storage: status, analytics_storage: status, ad_user_data: status, ad_personalization: status });
   }
   consent(allowed() ? 'granted' : 'denied', 'default');
-  function allowed() { return choice !== false && !gpc; }
+  function allowed() { return choice === true && !gpc; }
   function loadDeferred() {
     if (!allowed()) return;
     document.querySelectorAll('script[type="application/x-dt-consent"]').forEach(function (placeholder) {
@@ -85,11 +90,12 @@
       window.location.reload();
     } else loadDeferred();
   }
-  function show() {
+  function show(focusChoice) {
     previousFocus = document.activeElement;
     panel.hidden = false;
     manage.hidden = true;
-    panel.querySelector('button').focus();
+    panel.querySelector('.dt-cookie-reload-note').hidden = !allowed();
+    if (focusChoice !== false) panel.querySelector('button:not(:disabled)').focus();
   }
   window.DTConsent = {
     isAllowed: allowed,
@@ -100,7 +106,7 @@
     panel = document.createElement('section');
     panel.className = 'dt-cookie-panel'; panel.hidden = true;
     panel.setAttribute('aria-label', 'Cookie preferences');
-    panel.innerHTML = '<h2>Cookie preferences</h2><p>We use Google, HubSpot and CallRail to measure visits, ads and calls. Optional tracking is on by default unless you reject it or use Global Privacy Control. Calculators and forms work either way.</p><p>Turning tracking off reloads this page. Submit any completed form first.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Keep tracking</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on.</p><button type="button" data-choice="save">Save preferences</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
+    panel.innerHTML = '<h2>Your privacy, your choice.</h2><p>With your permission, Google, HubSpot and CallRail help us measure visits, ads and calls. Optional analytics and marketing stay off until you accept. Calculators and forms work either way.</p><p class="dt-cookie-reload-note" hidden>Turning tracking off reloads this page. Submit any completed form first.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Accept optional</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage preferences</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on. You can change your choice from the footer at any time.</p><button type="button" data-choice="save">Save preferences</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
     document.body.appendChild(panel);
     manage = panel.querySelector('.dt-cookie-manage'); toggle = manage.querySelector('input');
     toggle.checked = allowed(); toggle.disabled = gpc;
@@ -124,12 +130,24 @@
       else close();
     });
     panel.addEventListener('keydown', function (event) { if (event.key === 'Escape') close(); });
-    var reopen = document.createElement('button');
-    reopen.type = 'button'; reopen.className = 'dt-cookie-reopen'; reopen.textContent = 'Cookie preferences';
-    reopen.addEventListener('click', show);
-    // Outside the React root, so createRoot cannot remove the controls.
-    document.body.appendChild(reopen);
-    if (choice === null || storageUnavailable) show();
+    // Footer controls are rendered by React or static HTML. Delegation survives
+    // hydration; a fixed fallback keeps settings reachable before React mounts,
+    // without adding the old 72px empty strip below the footer.
+    document.body.addEventListener('click', function (event) {
+      if (event.target.closest('[data-dt-cookie-open]')) show();
+    });
+    if (!document.querySelector('[data-dt-cookie-open]')) {
+      var reopen = document.createElement('button');
+      reopen.type = 'button'; reopen.className = 'dt-cookie-reopen dt-cookie-fallback'; reopen.textContent = 'Cookie preferences';
+      reopen.setAttribute('data-dt-cookie-open', '');
+      document.body.appendChild(reopen);
+      var footerDocument = reopen.ownerDocument;
+      var footerObserver = new MutationObserver(function () {
+        if (footerDocument.querySelector('footer [data-dt-cookie-open]')) { reopen.remove(); footerObserver.disconnect(); }
+      });
+      footerObserver.observe(document.body, { childList: true, subtree: true });
+    }
+    if (choice === null || storageUnavailable) show(false);
     loadDeferred();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });

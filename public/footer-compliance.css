@@ -40,13 +40,13 @@
 }
 
 .footer-title {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--on-teal-muted);
   margin-bottom: 14px;
 }
 
 .footer-meta {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--on-teal-muted);
   margin-bottom: 4px;
 }
@@ -91,7 +91,7 @@
 }
 
 .footer-compliance a {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: var(--on-teal-muted);
   text-decoration: none;
   /* 24px tall tap target (WCAG 2.5.8) without moving the text. */
@@ -118,12 +118,12 @@
 }
 
 .footer-copy {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--on-teal-muted);
 }
 
 .footer-disclaimer {
-  font-size: 0.75rem;
+  font-size: 0.83rem;
   color: var(--on-teal-muted);
   text-align: left;
   line-height: 1.6;

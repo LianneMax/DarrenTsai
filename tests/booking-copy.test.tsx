@@ -128,12 +128,12 @@ describe('React forms format a US number the same way (16 Oct 2026)', () => {
   });
 });
 
-describe('consent sizes (16 Oct 2026)', () => {
-  it('sets the SMS line at the boxes 12.5px and keeps the mortgage disclosure at 11px', () => {
+describe('readable consent sizes (19 Oct 2026)', () => {
+  it('keeps SMS and disclosure copy readable in both consent stylesheets', () => {
     for (const f of ['public/compliance.css', 'src/index.css']) {
       const css = read(f);
-      expect(css, f).toContain('.compliance-disclosure p{margin:8px 0;font-size:11px;line-height:1.45}');
-      expect(css, f).toContain('.compliance-disclosure p.sms-details{font-size:12.5px;line-height:1.45}');
+      expect(css, f).toContain('.compliance-disclosure p{margin:8px 0;font-size:14px;line-height:1.45}');
+      expect(css, f).toContain('.compliance-disclosure p.sms-details{font-size:14.5px;line-height:1.45}');
     }
     expect(SOURCE).toContain(".dt-book-note-sms{font-size:12.5px;");
     expect(SOURCE).toContain(".dt-book-note{margin:12px 0 0;font-size:11px;");

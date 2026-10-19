@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/property-stories.css" />
+    <script src="/property-stories.js" defer></script>
     <link rel="stylesheet" href="/cookie-preferences.css" />
     <script src="/cookie-preferences.js"></script>
 <meta charset="UTF-8">
@@ -113,11 +115,11 @@
   .site-nav-avatar-fallback{
     display:none;position:absolute;inset:0;
     align-items:center;justify-content:center;
-    color:var(--white);font-weight:700;font-size:0.8rem;
+    color:var(--white);font-weight:700;font-size:0.88rem;
   }
   .site-nav-logo-text{display:flex;flex-direction:column;line-height:1.3;}
   .site-nav-name{font-weight:700;font-size:0.95rem;color:var(--text-dark);}
-  .site-nav-title{font-size:0.72rem;color:var(--text-muted);}
+  .site-nav-title{font-size:0.8rem;color:var(--text-muted);}
   .site-nav-actions{display:flex;align-items:center;gap:12px;flex-shrink:0;}
   /* The two buttons carried an inline width:104px, which put the header's
      right edge at 362px: "Book a Call" was clipped on a 360px phone, the most
@@ -131,7 +133,7 @@
   @media(max-width:400px){
     .site-nav-inner{padding:0 16px;gap:10px;}
     .site-nav-actions{gap:8px;}
-    .site-nav-actions .cta{width:auto;padding:6px 9px;font-size:0.78rem;}
+    .site-nav-actions .cta{width:auto;padding:6px 9px;font-size:0.86rem;}
   }
 
   /* ---------- Hero: solid teal block, two columns ---------- */
@@ -139,7 +141,7 @@
   .hero-inner{display:grid;grid-template-columns:1.1fr 0.9fr;gap:56px;align-items:center;}
   .hero-left{color:var(--white);}
   .hero-eyebrow{
-    display:block;font-family:'Outfit','Outfit Fallback',sans-serif;font-size:11px;font-weight:600;
+    display:block;font-family:'Outfit','Outfit Fallback',sans-serif;font-size:14px;font-weight:600;
     letter-spacing:.14em;text-transform:uppercase;color:var(--header-text);margin-bottom:16px;
   }
   .hero-title{
@@ -173,7 +175,7 @@
   }
   .dscr-ratio-row:last-child{border-bottom:none;}
   .dscr-ratio-row-label{font-weight:700;color:var(--white);font-size:0.95rem;white-space:nowrap;}
-  .dscr-ratio-row-desc{color:var(--header-text);font-size:0.88rem;text-align:right;}
+  .dscr-ratio-row-desc{color:var(--header-text);font-size:0.95rem;text-align:right;}
   .dscr-ratio-rule{width:96px;height:3px;background:var(--teal-deep);margin-top:20px;}
 
   .hero-divider{height:3px;width:100%;background:var(--teal-deep);}
@@ -192,7 +194,7 @@
   /* ---------- Section label (used inside the two body cards) ---------- */
   .section-label{
     font-family:'Outfit', 'Outfit Fallback', sans-serif;
-    font-size:0.78rem;
+    font-size:0.86rem;
     font-weight:600;
     letter-spacing:0.1em;
     text-transform:uppercase;
@@ -231,13 +233,13 @@
 
   .field label{
     display:block;
-    font-size:0.82rem;
+    font-size:0.9rem;
     font-weight:600;
     color:var(--navy);
     margin-bottom:8px;
   }
   .field .hint{
-    font-size:0.8rem;
+    font-size:0.88rem;
     color:var(--text-muted);
     font-weight:400;
     margin-left:4px;
@@ -329,7 +331,7 @@
        under 16px, and the visitor has to pinch back out in the middle of the
        form. Every other field on the site is already 16px. */
     width:100%;border:none;outline:none;background:var(--light-bg);border-radius:6px;
-    padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:16px;color:var(--text-dark);
+    padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:18px;color:var(--text-dark);
   }
   .cselect-options{max-height:220px;min-height:0;overflow-y:auto;padding:4px;overscroll-behavior:contain;}
   .cselect-option{
@@ -340,11 +342,11 @@
   .cselect-option .cselect-check{flex-shrink:0;opacity:0;color:var(--teal);}
   .cselect-option.selected{font-weight:600;}
   .cselect-option.selected .cselect-check{opacity:1;}
-  .cselect-empty{padding:14px 10px;text-align:center;font-size:0.85rem;color:var(--text-muted);}
+  .cselect-empty{padding:14px 10px;text-align:center;font-size:0.93rem;color:var(--text-muted);}
 
   .field-error{
     display:block;
-    font-size:0.8rem;
+    font-size:0.88rem;
     font-weight:500;
     color:#dc2626;
     margin-top:6px;
@@ -353,7 +355,7 @@
   /* ---------- Down payment slider ---------- */
   .dp-row{margin-top:22px;}
   .dp-row label{
-    font-size:0.875rem;font-weight:500;color:var(--navy);
+    font-size:0.95rem;font-weight:500;color:var(--navy);
     display:flex;justify-content:space-between;align-items:baseline;
     margin-bottom:10px;
   }
@@ -399,7 +401,7 @@
     align-items:center;
     padding:12px 16px;
     font-family:'Outfit', 'Outfit Fallback', sans-serif;
-    font-size:0.85rem;
+    font-size:0.93rem;
     color:var(--text-muted);
     background:var(--light-bg);
     border-bottom:1px solid var(--line);
@@ -434,7 +436,7 @@
      only 3.7:1 on teal, enough for the hero headline but not for small copy. */
   .rung.active .rate{color:var(--white);}
   .rung .tag{
-    font-size:0.65rem;
+    font-size:0.78rem;
     letter-spacing:.08em;
     text-transform:uppercase;
     padding:2px 6px;
@@ -463,7 +465,7 @@
   }
   .dscr-number .unit{
     font-family:'Outfit', 'Outfit Fallback', sans-serif;
-    font-size:0.85rem;
+    font-size:0.93rem;
     color:var(--text-muted);
     font-weight:500;
     display:block;
@@ -472,7 +474,7 @@
   }
   .status-pill{
     font-family:'Outfit', 'Outfit Fallback', sans-serif;
-    font-size:0.85rem;
+    font-size:0.93rem;
     font-weight:600;
     letter-spacing:.02em;
     padding:8px 14px;
@@ -509,7 +511,7 @@
     border-bottom:1px solid var(--line);
   }
   .pitia-cell .k{
-    font-size:11px;
+    font-size:14px;
     text-transform:uppercase;
     letter-spacing:.08em;
     font-weight:600;
@@ -518,7 +520,7 @@
   }
   .pitia-cell .v{
     font-family:'Outfit', 'Outfit Fallback', sans-serif;
-    font-size:15px;
+    font-size:17px;
     font-weight:700;
     color:var(--teal);
   }
@@ -615,13 +617,13 @@
   .dscr-card-result.is-waiting .pitia-breakdown,
   .dscr-card-result.is-waiting .microdisclaimer{display:none;}
   .microdisclaimer{
-    font-size:0.75rem;
+    font-size:0.83rem;
     color:var(--text-muted);
     margin-top:14px;
   }
 
   .dscr-rate-note{
-    font-size:0.75rem;
+    font-size:0.83rem;
     color:var(--text-muted);
     margin:10px 0 0;
   }
@@ -721,18 +723,18 @@
   .footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding-bottom:48px;}
   .footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .footer-name{font-family:'Outfit','Outfit Fallback',sans-serif;font-size:1.4rem;font-weight:700;color:var(--white);}
-  .footer-title{font-size:0.875rem;color:var(--on-teal-muted);margin:0 0 14px;}
-  .footer-meta{font-size:0.82rem;color:var(--on-teal-muted);margin:0 0 4px;}
+  .footer-title{font-size:0.95rem;color:var(--on-teal-muted);margin:0 0 14px;}
+  .footer-meta{font-size:0.9rem;color:var(--on-teal-muted);margin:0 0 4px;}
   .footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
   .footer-contact-link{display:flex;align-items:center;gap:8px;font-size:0.92rem;color:rgba(255,255,255,0.85);font-weight:400;text-decoration:none;transition:color .2s ease;}
   .footer-contact-link:hover{color:var(--white);}
   .footer-contact-link svg{color:rgba(255,255,255,0.85);flex-shrink:0;}
   .footer-linkedin{margin-top:4px;}
   .footer-bottom{border-top:1px solid rgba(255,255,255,0.18);padding:20px 0;display:flex;flex-direction:column;gap:12px;}
-  .footer-copy{font-size:0.82rem;color:var(--on-teal-muted);margin:0;}
-  .footer-disclaimer{font-size:0.75rem;line-height:1.6;text-align:left;margin:0;max-width:none;color:var(--on-teal-muted);}
+  .footer-copy{font-size:0.9rem;color:var(--on-teal-muted);margin:0;}
+  .footer-disclaimer{font-size:0.83rem;line-height:1.6;text-align:left;margin:0;max-width:none;color:var(--on-teal-muted);}
   .footer-compliance{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
-  .footer-compliance a{font-size:0.72rem;color:var(--on-teal-muted);text-decoration:none;transition:color .2s ease;display:inline-block;padding:5px 0;}
+  .footer-compliance a{font-size:0.8rem;color:var(--on-teal-muted);text-decoration:none;transition:color .2s ease;display:inline-block;padding:5px 0;}
   .footer-compliance a:hover{color:var(--white);}
   /* The separator dot belongs to the link before it (audit L9, 5 Oct). As its
      own flex item it could wrap onto the next line alone, so on a phone a
@@ -751,7 +753,7 @@
     background:var(--white);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,0.08);
     padding:10px 16px;gap:10px;align-items:center;
   }
-  .mobile-sticky-bar .cta{flex:1;padding:11px 14px;font-size:0.88rem;justify-content:center;}
+  .mobile-sticky-bar .cta{flex:1;padding:11px 14px;font-size:0.95rem;justify-content:center;}
 
   @media(max-width:820px){
     .hero{padding:40px 0;}
@@ -824,14 +826,14 @@
   .lf-close:hover{background:#e5e7eb;color:#223d55;}
   .lf-body{padding:16px 32px 32px;}
   .lf-sub{font-size:0.92rem;color:#6b7280;line-height:1.6;margin:0 0 24px;}
-  .lf-note{font-size:0.8rem;color:#6b7280;margin:0 0 20px;}
+  .lf-note{font-size:0.88rem;color:#6b7280;margin:0 0 20px;}
   .lf-note strong{color:#d2566d;}
   .lf-req{color:#d2566d;}
   .lf-group{margin-bottom:20px;}
   .lf-row-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px;}
   .lf-row-2 .lf-group{margin-bottom:0;}
-  .lf-label{display:block;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:0.875rem;font-weight:500;color:#223d55;margin-bottom:8px;}
-  .lf-optional{font-weight:400;color:#6b7280;font-size:0.8rem;}
+  .lf-label{display:block;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:0.95rem;font-weight:500;color:#223d55;margin-bottom:8px;}
+  .lf-optional{font-weight:400;color:#6b7280;font-size:0.88rem;}
   .lf-input{
     width:100%;padding:11px 16px;border:1.5px solid #d1d5db;border-radius:8px;
     font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:1rem;font-weight:400;
@@ -848,8 +850,8 @@
   .lf-suffix{position:absolute;right:14px;font-size:1rem;color:#6b7280;pointer-events:none;font-weight:500;}
   .lf-input.lf-has-prefix{padding-left:30px;}
   .lf-input.lf-has-suffix{padding-right:36px;}
-  .lf-error{display:block;font-size:0.8rem;color:#d2566d;margin-top:5px;font-weight:500;}
-  .lf-hint{display:block;font-size:0.8rem;color:#6b7280;margin-top:5px;line-height:1.5;}
+  .lf-error{display:block;font-size:0.88rem;color:#d2566d;margin-top:5px;font-weight:500;}
+  .lf-hint{display:block;font-size:0.88rem;color:#6b7280;margin-top:5px;line-height:1.5;}
   .lf-hint[hidden]{display:none;}
   .lf-submit{
     display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -860,7 +862,7 @@
   }
   .lf-submit:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(210,86,109,0.35);}
   .lf-submit:disabled{opacity:0.7;transform:none;cursor:not-allowed;}
-  .lf-footnote{font-size:0.75rem;color:#6b7280;margin:14px 0 0;text-align:center;line-height:1.6;}
+  .lf-footnote{font-size:0.83rem;color:#6b7280;margin:14px 0 0;text-align:center;line-height:1.6;}
   .lf-form.hide{display:none;}
   .lf-success{display:none;text-align:center;padding:20px 0;}
   .lf-success.show{display:block;}
@@ -918,7 +920,7 @@
        under 16px, and the visitor has to pinch back out in the middle of the
        form. Every other field on the site is already 16px. */
     width:100%;border:none;outline:none;background:#f5f7f9;border-radius:6px;
-    padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:16px;color:#1a1a2e;
+    padding:8px 10px;font-family:'Outfit', 'Outfit Fallback', sans-serif;font-size:18px;color:#1a1a2e;
   }
   .lf-cselect-options{max-height:220px;min-height:0;overflow-y:auto;padding:4px;overscroll-behavior:contain;}
   .lf-cselect-option{
@@ -929,7 +931,7 @@
   .lf-cselect-option .lf-cselect-check{flex-shrink:0;opacity:0;color:#d2566d;}
   .lf-cselect-option.selected{font-weight:600;}
   .lf-cselect-option.selected .lf-cselect-check{opacity:1;}
-  .lf-cselect-empty{padding:14px 10px;text-align:center;font-size:0.85rem;color:#6b7280;}
+  .lf-cselect-empty{padding:14px 10px;text-align:center;font-size:0.93rem;color:#6b7280;}
 
   @media(max-width:600px){
     .lf-header{padding:20px 20px 0;}
@@ -938,8 +940,10 @@
   }
 </style>
 <link rel="stylesheet" href="/compliance.css"><script src="/compliance.js" defer></script><link rel="stylesheet" href="/footer-compliance.css"><link rel="stylesheet" href="/site-navigation.css"><link rel="stylesheet" href="/site-design.css" />
-<script src="/site-navigation.js" defer></script></head>
-<body>
+<script src="/site-navigation.js" defer></script>
+<link rel="stylesheet" href="/dscr/dscr.css">
+</head>
+<body class="dscr-page">
 <!-- Google Tag Manager (noscript) -->
 <!-- End Google Tag Manager (noscript) -->
 
@@ -950,59 +954,41 @@
 <header class="hero">
   <div class="hero-inner container-1080">
     <div class="hero-left">
-      <span class="hero-eyebrow">DSCR Rent Coverage Check</span>
-      <h1 class="hero-title">See how your rent <em>actually</em> covers the monthly payment.</h1>
+      <h1 class="hero-title">Understand your <br><em>rental coverage.</em></h1>
       <p class="hero-sub">Enter your numbers below. This tool runs the same debt-service coverage math lenders use, so you know where you stand before you ever submit an application.</p>
-    </div>
-    <div class="dscr-ratio-panel">
-      <span class="hero-eyebrow">How the ratio works</span>
-      <p class="dscr-ratio-formula">Monthly <strong>rent</strong> divided by monthly <strong>PITIA</strong> equals your DSCR.</p>
-      <div class="dscr-ratio-rows">
-        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">Below 1.00</span><span class="dscr-ratio-row-desc">Rent misses the payment</span></div>
-        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.00 and above</span><span class="dscr-ratio-row-desc">Rent covers the estimated payment</span></div>
-        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.20 and above</span><span class="dscr-ratio-row-desc">Room to spare</span></div>
+      <div class="dscr-hero-actions">
+        <a class="cta" href="#dscr-calculator">Check my rental coverage <span aria-hidden="true">↗</span></a>
+        <a class="dscr-text-link" href="#dscr-explained">How does DSCR work? <span aria-hidden="true">↓</span></a>
       </div>
-      <div class="dscr-ratio-rule"></div>
     </div>
+    <figure class="property-story property-story-rental" data-house-story="rental">
+      <div class="property-story-heading"><h2>DSCR rental financing.</h2><button type="button" class="property-story-toggle" aria-label="Pause rental illustration" hidden><svg class="story-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg><svg class="story-play" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 10 7-10 7Z"/></svg></button></div>
+      <div class="property-story-stage">
+        <img src="/property-scenes/dscr-rental.webp" width="840" height="840" alt="Illustrative rental home with two entrances" fetchpriority="high">
+        <div class="property-story-label story-rent"><span class="rent-money-symbol" aria-hidden="true"><svg viewBox="0 0 32 24"><rect x="2" y="3" width="28" height="18" rx="3"/><circle cx="16" cy="12" r="4"/><path d="M6 7h2M24 17h2M6 17h2M24 7h2"/></svg></span><div><strong>Monthly rent</strong><small>Income from the rental</small></div></div>
+        <div class="property-story-label story-payment"><span class="payment-vessel" aria-hidden="true"><span class="payment-vessel-window"><i class="payment-vessel-fill story-motion"></i></span></span><div><strong>Loan payment</strong><small>Principal, interest, taxes,<br>insurance &amp; HOA</small></div></div>
+        <span class="rent-cash-transfer story-motion" aria-hidden="true"><svg viewBox="0 0 32 24"><rect x="2" y="3" width="28" height="18" rx="3"/><circle cx="16" cy="12" r="4"/><path d="M6 7h2M24 17h2M6 17h2M24 7h2"/></svg></span>
+      </div>
+      <figcaption>Financing for investment properties.<br>Illustration only. Your inputs determine your DSCR.</figcaption>
+    </figure>
   </div>
 </header>
-<div class="hero-divider" aria-hidden="true"></div>
-
-<!-- LICENSED-IN STRIP -->
-<div class="licensed-strip">
-  <div class="licensed-strip-inner container-1080">
-    <div class="licensed-item">Licensed in</div>
-    <div class="licensed-divider"></div>
-    <div class="licensed-item">AZ, CA, FL, HI, OR, PA, TN, TX</div>
-    <div class="licensed-divider"></div>
-    <div class="licensed-item">NMLS #2438102</div>
-    <div class="licensed-divider"></div>
-    <div class="licensed-item">CA DRE #02103705</div>
-    <div class="licensed-divider"></div>
-    <div class="licensed-item">
-      <svg width="18" height="18" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-        <defs>
-          <mask id="eho-mask-strip">
-            <rect width="60" height="60" fill="white"/>
-            <rect x="17" y="35" width="26" height="5" fill="black"/>
-            <rect x="17" y="44" width="26" height="5" fill="black"/>
-          </mask>
-        </defs>
-        <polygon points="30,5 56,28 4,28" fill="currentColor"/>
-        <rect x="10" y="28" width="40" height="27" fill="currentColor" mask="url(#eho-mask-strip)"/>
-      </svg>
-      Equal Housing Opportunity
-    </div>
-  </div>
+<div class="dscr-trust-strip container-1080" aria-label="About this tool">
+  <span>Educational estimate</span><span>Your property numbers</span><span>Personal guidance</span>
 </div>
 
-<div class="wrap">
+<section class="wrap dscr-calculator-section" id="dscr-calculator" aria-labelledby="dscr-calculator-heading">
+
+  <div class="dscr-section-intro">
+    <h2 id="dscr-calculator-heading">Your rental, <em>at a glance.</em></h2>
+    <p>Bring the rent and property costs together.</p>
+  </div>
 
   <div class="dscr-body-grid">
 
     <!-- INPUTS -->
-    <div class="dscr-card">
-      <p class="section-label">Property &amp; Loan Details</p>
+    <div class="dscr-card dscr-input-panel" role="region" aria-labelledby="dscr-input-heading">
+      <h3 class="section-label" id="dscr-input-heading">Property &amp; Loan Details</h3>
       <div class="grid">
         <div class="field">
           <label for="rent">Monthly Market Rent</label>
@@ -1052,8 +1038,8 @@
     </div>
 
     <!-- RESULTS -->
-    <div class="dscr-card dscr-card-result is-waiting" id="resultCard">
-      <p class="section-label">Your Result</p>
+    <div class="dscr-card dscr-card-result is-waiting" id="resultCard" role="region" aria-labelledby="dscr-result-heading">
+      <h3 class="section-label" id="dscr-result-heading">Your Result</h3>
       <!-- Shown until the visitor has given a rent and a price. The calculator
            used to load with a $2,400 rent against a $320,000 price and announce
            "Qualifies, 1.12" before anyone had typed anything, and three of the
@@ -1079,22 +1065,41 @@
         Get My DSCR Breakdown
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
+      <div class="dscr-result-alternative"><span>or</span><a class="cta dscr-book-alternative" href="/book/">Book a Call<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M7 7h10v10"/></svg></a></div>
     </div>
 
   </div>
 
-  <!-- CREDIBILITY -->
+</section>
+
+<section class="dscr-explainer" id="dscr-explained" aria-labelledby="dscr-ratio-heading">
+  <div class="wrap dscr-explainer-inner">
+    <div class="dscr-section-intro">
+      <h2 id="dscr-ratio-heading">The ratio. <br><em>The context.</em></h2>
+      <p class="dscr-ratio-formula">Monthly <strong>rent</strong> divided by monthly <strong>PITIA</strong> equals your DSCR.</p>
+      <p>PITIA includes principal, interest, taxes, insurance and HOA. A coverage ratio is not a loan approval.</p>
+    </div>
+    <div class="dscr-ratio-panel" aria-label="Understanding the coverage ratio">
+      <div class="dscr-ratio-rows">
+        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">Below 1.00</span><span class="dscr-ratio-row-desc">Rent misses the payment</span></div>
+        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.00 and above</span><span class="dscr-ratio-row-desc">Rent covers the estimated payment</span></div>
+        <div class="dscr-ratio-row"><span class="dscr-ratio-row-label">1.20 and above</span><span class="dscr-ratio-row-desc">Room to spare</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap dscr-next-section" aria-labelledby="dscr-next-heading">
   <div class="dscr-panel">
+    <img src="/darren-avatar.png" width="52" height="52" alt="Darren Tsai" loading="lazy">
     <p style="margin:0;font-size:0.95rem;line-height:1.6;color:var(--text-muted);">I'm a senior loan officer at Saxton Mortgage and an investor myself. This calculator compares rent with the estimated monthly payment, taxes, insurance and HOA. That's how I help clients buy rentals without providing every document under the sun.</p>
   </div>
 
   <!-- LOCK MODULE -->
   <div class="lock">
     <div class="lock-copy">
-      <div class="lock-rule"></div>
       <div class="lock-head">
-        <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="#c8e2e8" stroke-width="1.8"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <h2>Get Your Actual Rate &amp; Terms</h2>
+        <h2 id="dscr-next-heading">Put the numbers <br><em>in context.</em></h2>
       </div>
       <p>The rate shown above is a general market range for your down payment tier, not a quote. Your real rate depends on factors this calculator can't see:</p>
       <ol class="lock-numbered">
@@ -1109,12 +1114,19 @@
     </button>
   </div>
 
-</div>
+</section>
+
+<section class="wrap dscr-closing-section" aria-labelledby="dscr-conversation-heading">
+  <div class="dscr-conversation">
+    <div><h2 id="dscr-conversation-heading">Have a question about your situation?</h2><p>Talk through your goals and the options you’re considering.</p></div>
+    <a class="cta" href="/book/">Book a Call <span aria-hidden="true">↗</span></a>
+  </div>
+</section>
 
 </main>
 
 <!-- FOOTER -->
-<div class="site-design"><div class="site-footer-surface"><footer class="site-footer wrap"><div class="footer-top"><div class="footer-brand"><a class="brand" href="/">Darren Tsai</a><p>Senior Loan Officer · Saxton Mortgage<br/>Mortgage decisions, with personal guidance.</p><a href="/book/">Book a Call ↗</a><a href="tel:7148875432">(714) 887-5432</a><a href="mailto:darren@realdarrentsai.com">darren@realdarrentsai.com</a><a href="https://www.linkedin.com/in/soldwithtsai/" target="_blank" rel="noopener noreferrer">LinkedIn</a></div><div><h3>Explore your goal</h3><a href="/home-equity/">Home equity</a><a href="/home-equity/?goal=payoff">Pay off debt with equity</a><a href="/adu/">ADU &amp; renovation</a><a href="/fha/">Buy a home</a></div><div><h3>Tools &amp; resources</h3><a href="/mortgage-calculator/">Mortgage calculator</a><a href="/dscr/">DSCR calculator</a><a href="/fha/">FHA calculator</a><a href="/realestateinvesting/">Investing guide</a></div><div><h3>Information</h3><a href="/about/">About Darren</a><a href="/privacy-policy/">Privacy Policy</a><a href="/legal/">Legal</a><a href="/legal/#accessibility">Accessibility</a><a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Saxton disclosures</a></div></div><div class="legal"><p>Darren Tsai | NMLS #2438102 | CA DRE Broker #02103705 · Saxton Mortgage, LLC | NMLS #1717191<br/>Licensed in AZ · CA · FL · HI · OR · PA · TN · TX</p><p>Real Estate Broker, California Department of Real Estate. Loans made or arranged pursuant to California Department of Real Estate License. Real Darren Tsai is operated by Ren Marketing Group LLC, an independent marketing entity affiliated with Saxton Mortgage, LLC (NMLS #1717191) and Dream Home Development Corporation dba Saxton Mortgage (NMLS #2525913 / CA DRE #02205650).</p><p>This is not a commitment to lend. All loans are subject to credit approval, underwriting, and property valuation. Equal Housing Lender. Equal Housing Opportunity.</p><div><span>© 2026 Darren Tsai / Ren Marketing Group LLC. All rights reserved.</span><a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/2438102" target="_blank" rel="noopener noreferrer">Darren’s NMLS record</a><a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/1717191" target="_blank" rel="noopener noreferrer">NMLS Consumer Access</a></div></div></footer></div></div>
+<div class="site-design"><div class="site-footer-surface"><footer class="site-footer wrap"><div class="footer-top"><div class="footer-brand"><a class="brand" href="/">Darren Tsai</a><p>Senior Loan Officer · Saxton Mortgage<br/>Mortgage decisions, with personal guidance.</p><a href="/book/">Book a Call ↗</a><a href="tel:7148875432">(714) 887-5432</a><a href="mailto:darren@realdarrentsai.com">darren@realdarrentsai.com</a><a href="https://www.linkedin.com/in/soldwithtsai/" target="_blank" rel="noopener noreferrer">LinkedIn</a></div><div><h3>Explore your goal</h3><a href="/home-equity/">Home equity</a><a href="/home-equity/?goal=payoff">Pay off debt with equity</a><a href="/adu/">ADU &amp; renovation</a><a href="/fha/">Buy a home</a></div><div><h3>Tools &amp; resources</h3><a href="/mortgage-calculator/">Mortgage calculator</a><a href="/dscr/">DSCR calculator</a><a href="/fha/">FHA calculator</a><a href="/realestateinvesting/">Investing guide</a></div><div><h3>Information</h3><a href="/about/">About Darren</a><a href="/privacy-policy/">Privacy Policy</a><a href="/legal/">Legal</a><a href="/legal/#accessibility">Accessibility</a><a href="https://www.saxtonmortgage.com/legal" target="_blank" rel="noopener noreferrer">Saxton disclosures</a><button type="button" class="dt-cookie-reopen" data-dt-cookie-open="true">Cookie preferences</button></div></div><div class="legal"><p>Darren Tsai | NMLS #2438102 | CA DRE Broker #02103705 · Saxton Mortgage, LLC | NMLS #1717191<br/>Licensed in AZ · CA · FL · HI · OR · PA · TN · TX</p><p>Real Estate Broker, California Department of Real Estate. Loans made or arranged pursuant to California Department of Real Estate License. Real Darren Tsai is operated by Ren Marketing Group LLC, an independent marketing entity affiliated with Saxton Mortgage, LLC (NMLS #1717191) and Dream Home Development Corporation dba Saxton Mortgage (NMLS #2525913 / CA DRE #02205650).</p><p>This is not a commitment to lend. All loans are subject to credit approval, underwriting, and property valuation. Equal Housing Lender. Equal Housing Opportunity.</p><div><span>© 2026 Darren Tsai / Ren Marketing Group LLC. All rights reserved.</span><a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/INDIVIDUAL/2438102" target="_blank" rel="noopener noreferrer">Darren’s NMLS record</a><a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/1717191" target="_blank" rel="noopener noreferrer">NMLS Consumer Access</a></div></div></footer></div></div>
 
 <!-- MOBILE STICKY BAR -->
 <div class="mobile-sticky-bar" id="mobileStickyBar">
@@ -1124,18 +1136,31 @@
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal-panel">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="dscr-guide-title" tabindex="-1">
     <div class="modal-form" id="modalForm">
       <div class="modal-header">
-        <h3>Get your real rate</h3>
+        <h3 id="dscr-guide-title">Get your DSCR breakdown.</h3>
         <button class="modal-close-x" id="closeModal" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
       </div>
-      <div class="modal-body">
+      <div class="dscr-guide-layout">
+        <aside class="dscr-guide-sidebar" aria-label="Your breakdown steps">
+          <p>A few details to put your rental scenario in context.</p>
+          <ol class="dscr-guide-timeline">
+            <li aria-current="step"><span>1</span><div><strong>Your details</strong><small>Where to send your breakdown</small></div></li>
+            <li><span>2</span><div><strong>Your property</strong><small>Check the service area</small></div></li>
+            <li><span>3</span><div><strong>Your preferences</strong><small>Review and send</small></div></li>
+          </ol>
+          <div class="dscr-guide-person"><img src="/darren-96.webp" alt="" width="40" height="40"><p>Your numbers.<br>Personal guidance from Darren.</p></div>
+        </aside>
+        <div class="modal-body">
+        <section class="dscr-guide-step" data-guide-step="0" aria-labelledby="dscr-details-title">
+        <h4 id="dscr-details-title" tabindex="-1">Where should we send it?</h4>
         <p class="modal-sub">Tell us where to send it. A loan officer will follow up with your actual quote based on your full profile.</p>
+        <div class="dscr-guide-fields">
         <div class="field">
           <label for="mName">Full Name</label>
           <div class="input-shell" id="mNameShell"><input type="text" id="mName" placeholder="Jane Investor"></div>
@@ -1161,7 +1186,20 @@
           <span class="field-error" id="mStateError"></span>
           <span class="lf-hint" id="mStateHint" hidden></span>
         </div>
-        <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send Me My Rate</button><div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="dscr-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="dscr-magnet"> <span>By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><label class="sms-choice"><input type="checkbox" data-sms-form="dscr-magnet"> <span>By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><p class="sms-details">Text messages are optional and not a condition of purchase or of submitting this form.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
+        </div></section>
+        <section class="dscr-guide-step" data-guide-step="1" aria-labelledby="dscr-property-title">
+          <h4 id="dscr-property-title" tabindex="-1">The property behind your plan.</h4>
+          <p class="modal-sub">This checks where Darren can help with a rental property.</p>
+          <fieldset class="compliance-disclosure" data-service-area="dscr-magnet" data-service-area-loading="true"><p role="status">Loading the property service-area check…</p></fieldset>
+        </section>
+        <section class="dscr-guide-step" data-guide-step="2" aria-labelledby="dscr-preferences-title">
+          <h4 id="dscr-preferences-title" tabindex="-1">Your preferences.</h4>
+          <p class="modal-sub">Review the disclosures below. Text messages are optional.</p>
+        <div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="dscr-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="dscr-magnet"> <span>By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><label class="sms-choice"><input type="checkbox" data-sms-form="dscr-magnet"> <span>By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><p class="sms-details">Text messages are optional and not a condition of purchase or of submitting this form.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
+        <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send My DSCR Breakdown</button>
+        </section>
+        <div class="dscr-guide-actions"><button type="button" id="guideBack">Back</button><span id="guideStepCount" aria-live="polite">Step 1 of 3</span><button type="button" class="cta" id="guideNext">Continue</button></div>
+        </div>
       </div>
     </div>
     <div class="modal-success" id="modalSuccess">
@@ -1582,10 +1620,85 @@
     ['Name','Email','Phone','State'].forEach(f => setError(f, ''));
   }
 
+  function validateLeadDetails() {
+    clearErrors();
+    const name = $('mName').value.trim();
+    const email = $('mEmail').value.trim();
+    const phoneDigits = $('mPhone').value.replace(/\D/g, '');
+    const phone = $('mPhone').value.trim();
+    const state = stateSelect.value;
+    let valid = true;
+    if (!name) { setError('Name', 'Required'); valid = false; }
+    if (!email) { setError('Email', 'Required'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
+    if (!phone) { setError('Phone', 'Required'); valid = false; }
+    else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
+    if (!state) { setError('State', 'Required'); valid = false; }
+    return valid;
+
+  }
+
+  // Steps group the original form. Only the final consent action sends a lead;
+  // the same validation runs on Continue and again before the real submission.
+  let guideStep = 0;
+  let guideReturnFocus = null;
+  const guideSteps = [...document.querySelectorAll('[data-guide-step]')];
+  const guideTimeline = [...document.querySelectorAll('.dscr-guide-timeline li')];
+  function showGuideStep(step) {
+    guideStep = step;
+    guideSteps.forEach((panel, i) => { panel.hidden = i !== step; });
+    guideTimeline.forEach((item, i) => {
+      if (i === step) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
+      item.classList.toggle('done', i < step);
+    });
+    $('guideBack').hidden = step === 0;
+    $('guideNext').hidden = step === 2;
+    $('guideStepCount').textContent = 'Step ' + (step + 1) + ' of 3';
+    guideSteps[step].querySelector('h4').focus();
+  }
+  $('guideNext').addEventListener('click', () => {
+    if (guideStep === 0 && !validateLeadDetails()) {
+      const error = document.querySelector('#modalForm .input-shell.error');
+      if (error) error.querySelector('input,button').focus();
+      return;
+    }
+    if (guideStep === 1 && (!window.DTServiceArea || !window.DTServiceArea.validate('dscr-magnet', true))) return;
+    showGuideStep(guideStep + 1);
+  });
+  $('guideBack').addEventListener('click', () => showGuideStep(guideStep - 1));
+  function closeRateModal() {
+    overlay.classList.remove('open');
+    document.body.classList.remove('dscr-guide-open');
+    if (guideReturnFocus && guideReturnFocus.isConnected) guideReturnFocus.focus();
+  }
+  document.addEventListener('keydown', (event) => {
+    // The state picker renders outside the dialog and owns its keyboard events.
+    if (!overlay.classList.contains('open') || document.body.classList.contains('dt-booking-open')) return;
+    if (document.querySelector('.cselect-panel.open')) return;
+    if (event.key === 'Escape') { closeRateModal(); return; }
+    if (event.key !== 'Tab') return;
+    const controls = [...overlay.querySelectorAll('button,a[href],input,select,[tabindex="0"]')]
+      .filter(el => el.getClientRects().length && !el.disabled && el.tabIndex >= 0);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !controls.includes(document.activeElement))) {
+      event.preventDefault(); first.focus();
+    }
+  });
   function openRateModal() {
+    guideReturnFocus = document.activeElement;
+    document.body.classList.add('dscr-guide-open');
     overlay.classList.add('open');
     modalForm.classList.remove('hide');
     modalSuccess.classList.remove('show');
+    $('submitLead').disabled = false;
+    $('submitLead').textContent = 'Send My DSCR Breakdown';
+    clearErrors();
+    const staleError = modalForm.querySelector('.submit-error');
+    if (staleError) staleError.remove();
+    showGuideStep(0);
   }
   $('openModalBtn').addEventListener('click', openRateModal);
   $('resultGetRateBtn').addEventListener('click', openRateModal);
@@ -1593,9 +1706,9 @@
   // code path as #openModalBtn. Nav "Contact" opens the separate contact
   // modal below.
   $('stickyGetRateBtn').addEventListener('click', openRateModal);
-  $('closeModal').addEventListener('click', () => overlay.classList.remove('open'));
-  $('closeSuccess').addEventListener('click', () => overlay.classList.remove('open'));
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+  $('closeModal').addEventListener('click', closeRateModal);
+  $('closeSuccess').addEventListener('click', closeRateModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRateModal(); });
 
   // ---------------------------------------------------------
   // Every booking CTA lands here: the shared prequal in
@@ -1604,6 +1717,7 @@
   // (decided with Darren, 15 Oct 2026), so there is no direct link to it.
   // ---------------------------------------------------------
   function openBooking() {
+    if (overlay.classList.contains('open')) closeRateModal();
     if (window.DTBooking) {
       window.DTBooking.open();
       return;
@@ -1623,14 +1737,7 @@
     const phone = $('mPhone').value.trim();
     const state = stateSelect.value;
 
-    let valid = true;
-    if (!name) { setError('Name', 'Required'); valid = false; }
-    if (!email) { setError('Email', 'Required'); valid = false; }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
-    if (!phone) { setError('Phone', 'Required'); valid = false; }
-    else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
-    if (!state) { setError('State', 'Required'); valid = false; }
-    if (!valid) return;
+    if (!validateLeadDetails()) { showGuideStep(0); return; }
 
     const firstSpace = name.indexOf(' ');
     const firstName = firstSpace === -1 ? name : name.slice(0, firstSpace);
@@ -1733,9 +1840,12 @@
       } catch (e) { /* never let a convenience break a saved lead */ }
       modalForm.classList.add('hide');
       modalSuccess.classList.add('show');
+      const successHeading = modalSuccess.querySelector('h3');
+      successHeading.setAttribute('tabindex', '-1');
+      successHeading.focus();
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = 'Send Me My Rate';
+      btn.textContent = 'Send My DSCR Breakdown';
       // Inline, not a native dialog box: that freezes the page, and after a
       // server-side failure the lead has already been emailed to Darren, so
       // the visitor must not be pushed to resubmit and create a duplicate.

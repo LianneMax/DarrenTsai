@@ -113,7 +113,7 @@ describe('no width that depends on which font is showing', () => {
     const css = readFileSync(resolve(__dirname, '../public/cookie-preferences.css'), 'utf8');
     const rule = /\.dt-cookie-reopen \{[^}]*\}/.exec(css)![0];
     expect(rule).toContain("'Outfit Fallback'");
-    expect(rule).toMatch(/font: 12px\/16px/);
-    expect(rule).toContain('height: 32px');
+    expect(rule).toMatch(/font: 15px\/24px/);
+    expect(rule).toContain('height:44px');
   });
 });

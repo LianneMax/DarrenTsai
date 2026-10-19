@@ -84,7 +84,7 @@ const STEPS = [['Your home','Value, mortgage and property'],['Your goal','What y
  * fade-in, no phone number for CallRail to swap. The button is a real anchor.
  */
 export function EquityPageHero({path='equity',onPath}:{path?:EquityPath;onPath?:(p:EquityPath)=>void}) {
- return <div className="equity-opening wrap"><div><h1>What could your <em>home equity</em> help you do?</h1><PathSwitch path={path} onPath={onPath || (()=>{})}/><p className="intent-context"><span className="hv-equity">Enter your home value and mortgage balance below to see your estimated equity.</span><span className="hv-payoff">Start with your current debts below. Then compare using home equity to pay them off.</span></p></div><div><HouseOptions large/><p className="illustration-note">Different structures. The same home as security.</p></div></div>;
+ return <div className="equity-opening wrap"><div><h1>What could your <em>home equity</em> help you do?</h1><PathSwitch path={path} onPath={onPath || (()=>{})}/><p className="intent-context"><span className="hv-equity">Enter your home value and mortgage balance below to see your estimated equity.</span><span className="hv-payoff">Start with your current debts below. Then compare using home equity to pay them off.</span></p></div><div><HouseOptions large/></div></div>;
 }
 
 export type EquityPath = 'equity' | 'payoff';

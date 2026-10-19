@@ -1,20 +1,20 @@
 /* Home equity shares the ADU task layout; every question and server gate stays in its existing controller. */
 .equity-revamp .equity-journey-content{background:#fff;border:1px solid #dfe7ec;border-radius:16px;padding:25px 32px 30px}
 .equity-revamp .equity-journey-content>.dcp-panel{border:0;border-radius:0;padding:0;box-shadow:none;background:none}
-.equity-revamp .equity-stage-state{text-align:right;font-size:13px;color:#526676;margin:0 0 25px}
+.equity-revamp .equity-stage-state{text-align:right;font-size:15px;color:#526676;margin:0 0 25px}
 .equity-revamp .dcp-h2-lg{font-size:30px;font-weight:550;letter-spacing:-.025em;line-height:1.25;margin:0 0 12px}
-.equity-revamp .dcp-lead{font-size:16px;line-height:1.7;color:#526676;margin:0 0 26px}
+.equity-revamp .dcp-lead{font-size:18px;line-height:1.7;color:#526676;margin:0 0 26px}
 .equity-revamp .dcp-h3{font-size:20px;font-weight:550;letter-spacing:-.015em;margin:30px 0 18px}
 .equity-revamp .dcp-grid-2{gap:20px;margin-block:24px 0}
-.equity-revamp .input-label{font-size:14px;line-height:1.5;font-weight:450;display:block;margin-bottom:9px}
+.equity-revamp .input-label{font-size:16px;line-height:1.5;font-weight:450;display:block;margin-bottom:9px}
 .equity-revamp .form-input{font:400 16px/1.5 Outfit,Arial,sans-serif;min-height:51px;border:1px solid #b9cbd6;border-radius:8px;padding:12px 14px;background:#fff;color:#223d55;font-variant-numeric:tabular-nums}
 .equity-revamp .input-has-prefix{padding-left:31px}.equity-revamp .input-prefix{font:400 16px/1.5 Outfit,Arial,sans-serif;left:14px;color:#617482}
 .equity-revamp .dcp-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:0}
-.equity-revamp .dcp-chip{min-height:55px;padding:15px 17px;text-align:left;border-radius:10px;background:#f0f5f7;border-color:transparent;font-size:15px;line-height:1.5}
+.equity-revamp .dcp-chip{min-height:55px;padding:15px 17px;text-align:left;border-radius:10px;background:#f0f5f7;border-color:transparent;font-size:17px;line-height:1.5}
 .equity-revamp .dcp-chip[aria-pressed=true]{background:#e2f0f4;border-color:#1a7f99;color:#223d55}
 .equity-revamp .dcp-actions{margin-top:32px;padding-top:24px;border-top:1px solid #dfe7ec}
 .equity-revamp .dcp-disclosure{margin-top:32px}.equity-revamp .dcp-hint{line-height:1.7;margin-top:12px}
 .equity-revamp :is(button,input,select):focus-visible{outline:3px solid #1a7f99;outline-offset:4px}.equity-revamp ::selection{background:#cdebf1;color:#223d55}
-.equity-revamp .dcp-path .dcp-chip{background:#f0f5f7}.equity-revamp .dcp-path .dcp-chip[aria-pressed=true]{background:#223d55;color:#fff}
+.equity-revamp .dcp-path .dcp-chip{background:#f0f5f7}.equity-revamp .dcp-path .dcp-chip[aria-pressed=true]{background:#1a7f99;color:#fff}
 @media(hover:hover){.equity-revamp .dcp-chip:hover{background:#e5eef2}.equity-revamp .dcp-chip[aria-pressed=true]:hover{background:#d9eaf0}}
-@media(max-width:600px){.equity-revamp .equity-journey-content{padding:21px 18px 24px}.equity-revamp .dcp-h2-lg{font-size:26px}.equity-revamp .dcp-lead{font-size:15px}.equity-revamp .dcp-grid-2{grid-template-columns:1fr}.equity-revamp .dcp-chips{grid-template-columns:1fr}.equity-revamp .dcp-h3{font-size:19px}.equity-revamp .equity-stage-state{font-size:12px}}
+@media(max-width:600px){.equity-revamp .equity-journey-content{padding:21px 18px 24px}.equity-revamp .dcp-h2-lg{font-size:26px}.equity-revamp .dcp-lead{font-size:17px}.equity-revamp .dcp-grid-2{grid-template-columns:1fr}.equity-revamp .dcp-chips{grid-template-columns:1fr}.equity-revamp .dcp-h3{font-size:19px}.equity-revamp .equity-stage-state{font-size:14px}}

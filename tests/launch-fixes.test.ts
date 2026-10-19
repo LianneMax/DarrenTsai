@@ -194,7 +194,13 @@ describe('L3: landmarks, headings and the closed drawer', () => {
   });
 
   it('/dscr/ does not jump from the h1 to an h3 in the rate module', () => {
-    expect(read(DSCR)).toContain('<h2>Get Your Actual Rate &amp; Terms</h2>');
+    // Copy can change with the landing page; its heading hierarchy cannot.
+    const headings = [...read(DSCR).matchAll(/<h([1-3])\b[^>]*>/g)].map(match => Number(match[1]));
+    expect(headings[0]).toBe(1);
+    for (let i = 1; i < headings.length; i++) {
+      expect(headings[i]).toBeLessThanOrEqual(headings[i - 1] + 1);
+    }
+    expect(read(DSCR)).toMatch(/class="lock-head">\s*<h2\b/);
   });
 
   it('takes every link in the closed mobile drawer out of the tab order', () => {
