@@ -4,6 +4,7 @@ import { formatCurrency } from '../utils/formatters';
 import { useCountUp } from '../hooks/useCountUp';
 import AmortizationTable from './AmortizationTable';
 import AprEstimate from './AprEstimate';
+import './mortgage-calculator.css';
 
 // Keep recharts in its lazy chunk, outside the initial preload graph. The
 // empty calculator renders no chart; entering the visitor's own loan and rate
@@ -110,24 +111,22 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
   };
 
   return (
-    <section id="calculator" className="section section-light" aria-busy={preview || undefined}>
-      <div className="container">
+    <section id="calculator" className="mortgage-calculator" aria-busy={preview || undefined}>
         {/* This is the page's first screen. It must remain visible in the
             build-time HTML and after React replaces it, without waiting for
             IntersectionObserver or staggered transitions (10 Oct PSI audit). */}
-        <div className="section-header">
-          <h1 className="section-title" style={{ color: 'var(--teal)' }}>Mortgage Calculator</h1>
+        <header className="mortgage-intro">
+          <div className="container">
+          <h1>Mortgage Calculator</h1>
           <p className="section-sub">Estimate principal and interest and your payoff schedule. Taxes, insurance and fees are extra.</p>
-        </div>
+          </div>
+        </header>
 
-        <div className="calc-grid">
+      <div className="container mortgage-workspace">
+        <div className="calc-grid" data-ui="mortgage-estimate">
           {/* Input Panel */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <h2 className="card-heading">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <path d="M9 7h6M9 12h6M9 17h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+          <div className="card mortgage-input-panel" role="region" aria-labelledby="mortgage-loan-heading">
+            <h2 className="card-heading" id="mortgage-loan-heading">
               Loan Details
             </h2>
 
@@ -237,17 +236,13 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
           </div>
 
           {/* Results Summary */}
-          <div className="card card-results">
-            <h2 className="card-heading">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" strokeWidth="2"/>
-                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+          <div className="card card-results" role="region" aria-labelledby="mortgage-summary-heading">
+            <h2 className="card-heading" id="mortgage-summary-heading">
               Payment Summary
             </h2>
 
             {!hasLoan && (
-              <p className="section-sub" style={{ textAlign: 'left', margin: '4px 0 0' }}>
+              <p className="mortgage-empty">
                 Enter a loan amount and an interest rate and your payment, total interest
                 and payoff date appear here.
               </p>
@@ -258,8 +253,8 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
               <StatCard
                 label="Est. Principal &amp; Interest"
                 value={summary.monthlyPayment}
-                color="var(--rose)"
-                size="2.4rem"
+                color="var(--accent)"
+                size="clamp(2rem, 4vw, 2.8rem)"
               />
               <div className="stat-card">
                 <span className="stat-label">Estimated APR</span>
@@ -301,20 +296,20 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
             </div>
             )}
 
-            <a
-              href="/book/"
-              data-early="calc-contact"
-              onClick={scrollToContact}
-              className="btn btn-teal btn-full calc-cta"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M20 12V22H4V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M22 7H2v5h20V7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Book a Call
-            </a>
           </div>
+        </div>
+
+        <div className="mortgage-conversation">
+          <div><h3>Have a question about your situation?</h3><p>Talk through your goals and the options you’re considering.</p></div>
+          <a
+            href="/book/"
+            data-early="calc-contact"
+            onClick={scrollToContact}
+            className="btn btn-teal btn-full calc-cta"
+          >
+            Book a Call
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </a>
         </div>
 
         {/* Chart. The placeholder reserves the chart's height so loading it
@@ -329,10 +324,7 @@ export default function Calculator({ inputs, setInputs, summary, onOpenContact, 
         {hasLoan && <AmortizationTable schedule={summary.schedule} yearlyData={summary.yearlyData} />}
 
         {/* Legal footnote */}
-        <p style={{
-          fontSize: 11, color: 'var(--text-muted)', marginTop: 24, lineHeight: 1.6,
-          borderTop: '1px solid #e2e5ed', paddingTop: 14,
-        }}>
+        <p className="mortgage-disclosure">
           <em id="cost-assumptions"><strong>Cost assumptions:</strong> the payment shown is principal and
           interest only, on the amount, rate and term you entered. It excludes taxes, insurance and
           fees. Estimated APR assumes $0 upfront finance charges unless you enter them using the

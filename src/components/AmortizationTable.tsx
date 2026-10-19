@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import type { MonthlyRow, YearlySummary } from '../types/mortgage';
 import { formatCurrency } from '../utils/formatters';
 import { useScrollReveal } from '../hooks/useScrollReveal';
@@ -12,6 +12,7 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
   const [open, setOpen] = useState(false);
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
+  const scheduleId = useId();
   const ref = useScrollReveal<HTMLDivElement>(120);
 
   // Group monthly rows by calendar year. The summary carries its own slice
@@ -50,6 +51,7 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
         className="table-toggle btn btn-outline-navy"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
+        aria-controls={scheduleId}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
@@ -65,9 +67,11 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
         </svg>
       </button>
 
-      <div className="table-collapsible" style={{ maxHeight: open ? '9999px' : '0' }}>
+      {/* All 360 months exceed a fixed height cap. Native hidden keeps closed
+          controls out of keyboard focus; an uncapped open panel exposes every payment. */}
+      <div className="table-collapsible" id={scheduleId} hidden={!open} style={{ maxHeight: open ? 'none' : '0' }}>
         {/* Header bar */}
-        <div style={{
+        <div className="schedule-toolbar" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '12px 0 16px',
         }}>
@@ -76,10 +80,13 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
           </p>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--navy)', flexShrink: 0 }}>
             Expand all years
-            <div
+            <button
+              type="button"
+              className="schedule-expand"
               onClick={toggleAll}
               role="switch"
               aria-checked={allExpanded}
+              aria-label="Expand all years"
               style={{
                 width: 40, height: 22, borderRadius: 11, cursor: 'pointer',
                 background: allExpanded ? 'var(--teal)' : '#d1d5db',
@@ -91,7 +98,7 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
                 width: 16, height: 16, borderRadius: '50%', background: '#fff',
                 transition: 'left 0.25s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
               }} />
-            </div>
+            </button>
           </label>
         </div>
 
@@ -119,7 +126,12 @@ export default function AmortizationTable({ schedule, yearlyData }: Props) {
                       onClick={() => toggleYear(yearIdx)}
                     >
                       <td style={{ textAlign: 'center', color: 'var(--teal)', fontWeight: 700, fontSize: 16 }}>
-                        {isExpanded ? '−' : '+'}
+                        <button type="button" className="year-toggle"
+                          aria-label={`${isExpanded ? 'Hide' : 'Show'} monthly payments for ${group.summary.year}`}
+                          aria-expanded={isExpanded}
+                          onClick={e => { e.stopPropagation(); toggleYear(yearIdx); }}>
+                          {isExpanded ? '−' : '+'}
+                        </button>
                       </td>
                       <td className="year-label">
                         <span className="year-label-inner">

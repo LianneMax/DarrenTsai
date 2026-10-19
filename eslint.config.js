@@ -117,14 +117,13 @@ export default tseslint.config(
     },
   },
 
-  // ── The layout check, which is Node with one function that is not ─────────
+  // ── Browser checks, which are Node with page-evaluated functions ──────────
   //
-  // scripts/layout-check.mjs runs in Node and drives Playwright, but `measure`
-  // is serialised and evaluated inside the page, so it reads `document` and
-  // `getComputedStyle`. Both sets of globals are allowed here rather than
-  // sprinkling eslint-disable comments through the one function that needs it.
+  // These scripts drive Playwright from Node, but their measurement callbacks
+  // run inside the page and read browser globals. Keep both runtimes scoped to
+  // these verification files rather than disabling no-undef for every script.
   {
-    files: ['scripts/layout-check.mjs'],
+    files: ['scripts/layout-check.mjs', 'scripts/mortgage-journey-check.mjs'],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },
     },
