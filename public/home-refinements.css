@@ -1,0 +1,39 @@
+/* The hero shares the equity page's actual centered house and goal branches.
+   Its animated balance remains illustrative and never fills a lead form. */
+.site-design .home-diagram .property-story-home{background:none;padding:0;border-radius:0;margin:10px 0 0}
+.site-design .property-story-home .property-story-stage{height:195px}
+.site-design .property-story-home .property-story-stage>img{height:235px;object-fit:contain}
+.site-design .property-story-home .property-story-value{display:none}
+.site-design .property-story-home .property-story-value-bar{margin-top:8px;transition:grid-template-columns .1s linear}
+.site-design .property-story-home .property-story-value-bar>span,.site-design .property-story-home .property-story-value-bar>strong{padding:0;height:22px;min-width:0;position:relative}
+.site-design .property-story-home .property-story-value-bar>strong{background:#b9e3c6;color:#223d55}
+.site-design .home-balance-labels{display:flex;justify-content:space-between;gap:16px;font-size:14px;line-height:1.5;margin-top:12px;color:#223d55}
+.site-design .home-balance-labels strong{font-weight:500}
+.site-design .home-diagram .property-story-toggle svg{width:20px;height:20px;margin:0}
+.site-design .home-diagram .equity-routing-lines{height:100%;max-width:none;margin:0}
+.site-design .home-diagram .equity-transfer svg{width:32px;height:24px;margin:0}
+.site-design .home-diagram .equity-goal-emblem svg{width:22px;height:22px;margin:0}
+.site-design .property-story-home .equity-routing{height:70px}
+.site-design .property-story-home .equity-goal-examples{margin:0;list-style:none;padding:0}
+.site-design .property-story-home .equity-goal-examples li{font-size:13px;line-height:1.45}
+.site-design .home-diagram .diagram-control{margin-top:22px;padding:14px 15px 12px}
+.site-design .home-diagram .equity-equation{font-size:12px;padding-top:13px}
+.site-design .benefits .action-card{grid-template-rows:auto auto 240px auto}
+.site-design .benefits .mini,.site-design .benefits .house-options{height:240px}
+.site-design .benefits .equity-demo{box-sizing:border-box;display:flex;flex-direction:column;padding:20px;gap:0}
+.site-design .equity-demo .placeholder-line{margin:16px 0}
+.site-design .equity-demo .equity-track{flex:none}
+.site-design .equity-demo .mini-row{gap:12px;margin:12px 0 0;font-size:12px;line-height:1.5}
+.site-design .equity-demo small{display:block;margin-top:auto;padding-top:16px;font-size:13px;line-height:1.55}
+/* Three separate product labels stay clear of one another at every card width. */
+.site-design .benefits .house-options{display:grid;grid-template-columns:minmax(0,.6fr) minmax(0,1.4fr);align-items:center;gap:6px;padding:12px;box-sizing:border-box;overflow:visible}
+.site-design .benefits .house-options img.house-render{grid-column:1;grid-row:1/4;width:100%;height:170px;object-fit:contain}
+.site-design .benefits .house-options .floating-product{position:static;grid-column:2;width:100%;padding:7px 8px;min-width:0;box-sizing:border-box;transform:none!important}
+.site-design .benefits .house-options .floating-product strong{font-size:13px;line-height:1.4;gap:6px}
+.site-design .benefits .house-options .floating-product>span{font-size:12px;line-height:1.45}
+.site-design .other-goals{display:flex;align-items:center;flex-wrap:nowrap;gap:24px;max-width:100%;overflow-x:auto;padding:4px 0 14px;white-space:nowrap;scrollbar-width:thin;scrollbar-color:#b8ccd5 transparent;overscroll-behavior-x:contain}
+.site-design .other-goals>*{flex:none}
+.site-design .other-goals a{padding-block:8px}
+@media(min-width:601px) and (max-width:1000px){.site-design .benefits{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.site-design .property-story-home .property-story-stage{height:180px}.site-design .property-story-home .property-story-stage>img{height:220px}.site-design .home-diagram .diagram-control{margin-top:18px}.site-design .other-goals{gap:22px}.site-design .other-goals a{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.site-design .property-story-home .property-story-value-bar{transition:none}}

@@ -1,0 +1,42 @@
+/* Reading and recovery pages share the current landing-page identity. Legal
+   text and service-area restrictions remain in their original documents. */
+.information-page{background:#fff;color:#223d55;line-height:1.7}
+.information-page ::selection{background:#cdebf1;color:#223d55}
+.information-page :is(a,button):focus-visible{outline:3px solid #1a7f99;outline-offset:4px}
+.information-skip{position:fixed;top:10px;left:20px;z-index:2000;transform:translateY(-180%);background:#223d55;color:#fff;padding:10px 16px;border-radius:8px}
+.information-skip:focus{transform:translateY(0)}
+.information-page .review-hero{background:#fff;box-shadow:0 9px 25px #223d5510;position:relative;z-index:1}
+.information-page .review-hero .dcp-hero{background:transparent;border:0;color:#223d55;padding:0}
+.information-page .review-hero .dcp-hero-inner{display:block;max-width:1200px;margin:auto;padding:50px 40px 46px}
+.information-page .review-hero h1{color:#223d55;font-size:clamp(34px,3.5vw,46px);font-weight:550;line-height:1.17;letter-spacing:-.03em;margin:0 0 22px;max-width:24ch;text-wrap:balance}
+.information-page .review-hero h1 em{color:#1a7f99;font-style:normal;transform:none}
+.information-page .review-hero .lead{font-size:18px;line-height:1.8;color:#526676;max-width:68ch;margin:0}
+.information-layout{max-width:1200px;margin:0 auto;padding:48px 40px 72px;display:grid;grid-template-columns:235px minmax(0,1fr);gap:60px;align-items:start}
+.information-toc{position:sticky;top:118px;padding:22px;background:#eff5f7;border-radius:12px}
+.information-toc h2{font-size:18px;font-weight:550;margin:0 0 16px;color:#223d55}
+.information-toc a{display:block;font-size:16px;line-height:1.55;color:#36596a;padding:7px 0;text-decoration:none;text-underline-offset:4px}
+.information-toc a:hover{color:#14667a;text-decoration:underline}
+.information-page .review-body{line-height:1.8;color:#526676;min-width:0}
+.document-page .review-body{padding:0;max-width:72ch;margin:0}
+.information-page .review-body>.dcp-caption{font-size:15px;color:#526676;margin:0 0 20px}
+.information-page .review-body p,.information-page .review-body li{font-size:18px;line-height:1.8;margin:0 0 18px;overflow-wrap:break-word}
+.information-page .review-body section{padding:30px 0 12px;background:none;margin:0;border:0}
+.information-page .review-body h2{font-size:25px;line-height:1.3;font-weight:550;letter-spacing:-.02em;color:#223d55;margin:0 0 18px;text-wrap:balance}
+.information-page .review-body :is(section,h2)[id]{scroll-margin-top:120px}
+.information-page .review-body a{color:#14667a;text-decoration:underline;text-underline-offset:4px}
+.information-page .review-body li{padding-left:5px;margin-bottom:20px}
+.information-page .review-body :is(ol,ul){padding-left:24px}
+.service-area-page .review-body{max-width:1200px;margin:auto;padding:36px 40px 64px}
+.service-area-page .review-body section{max-width:72ch}
+.service-area-page .review-body section:first-child{padding-top:0}
+.not-found-content{max-width:1200px;min-height:55vh;margin:auto;padding:60px 40px 72px}
+.not-found-content h1{font-size:clamp(34px,3.5vw,46px);font-weight:550;line-height:1.17;letter-spacing:-.03em;margin:0 0 22px;text-wrap:balance}
+.not-found-content>p{font-size:18px;color:#526676;line-height:1.8;margin:0 0 32px;max-width:65ch}
+.not-found-content ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 36px;max-width:850px;padding:0;margin:0;list-style:none}
+.not-found-content li{border-bottom:1px solid #dbe5eb}
+.not-found-content a.card{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:20px 0;font-size:18px;line-height:1.5;color:#223d55;text-decoration:none;background:none;border:0;border-radius:0;box-shadow:none}
+.not-found-content a.card::after{content:'↗';color:#1a7f99;flex:none}
+.not-found-content a.card:hover{color:#14667a;text-decoration:underline;text-underline-offset:4px}
+@media(max-width:900px){.information-layout{grid-template-columns:1fr;gap:36px}.information-toc{position:static;display:flex;gap:8px 24px;flex-wrap:wrap}.information-toc h2{width:100%;margin-bottom:5px}.information-toc a{padding:4px 0}.document-page .review-body{max-width:75ch}}
+@media(max-width:600px){.information-page .review-hero .dcp-hero-inner{padding:34px 22px 32px}.information-page .review-hero h1{font-size:34px}.information-page .review-hero .lead{font-size:17px}.information-layout{padding:30px 22px 44px;gap:30px}.information-toc{padding:20px}.information-toc a{font-size:15px}.information-page .review-body h2{font-size:23px}.information-page .review-body section{padding-top:24px}.service-area-page .review-body{padding:30px 22px 44px}.not-found-content{padding:36px 22px 48px}.not-found-content ul{grid-template-columns:1fr}.not-found-content a.card{font-size:17px;padding:17px 0}}
+@media(prefers-reduced-motion:reduce){.information-page *{scroll-behavior:auto!important}}

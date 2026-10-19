@@ -36,7 +36,7 @@ describe('the pre-rendered homepage shell', () => {
     const shell = renderHomeShell();
     // The hero's calls to action are anchors, so neither needs a key: a link
     // works before React does.
-    for (const key of ['nav-book', 'nav-contact', 'nav-calc', 'nav-menu', 'nav-about', 'nav-reviews']) {
+    for (const key of ['nav-contact', 'nav-calc', 'nav-menu', 'nav-about', 'nav-reviews']) {
       expect(shell, key).toContain(`data-early="${key}"`);
     }
     // Every <button> in the shell is marked: a button does nothing without React.
@@ -44,6 +44,11 @@ describe('the pre-rendered homepage shell', () => {
     const visible = buttons.filter((b) => !/tabindex="-1"/.test(b)); // the closed drawer's
     expect(visible.length).toBeGreaterThan(0);
     for (const b of visible) expect(b).toContain('data-early=');
+    // Investing belongs with the tools; the single booking button stays in the
+    // header instead of being repeated inside the calculator dropdown.
+    const menu = new DOMParser().parseFromString(shell, 'text/html').querySelector('.nav-dropdown-menu');
+    expect(menu?.querySelector('a[href="/realestateinvesting/"]')?.textContent).toBe('Investing Guide');
+    expect(menu?.textContent).not.toContain('Book a Call');
   });
 
   it('carries no phone number for CallRail to swap and React to overwrite', async () => {

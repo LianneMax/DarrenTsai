@@ -624,7 +624,7 @@
   }
 
   function loadingCard(card) {
-    card.innerHTML = '<h2 class="dt-book-title">Book a Call</h2><p class="dt-book-sub">Loading the property check...</p>';
+    card.innerHTML = '<h2 class="dt-book-title">Book a Call</h2><p class="dt-book-sub dt-book-loading" role="status" aria-live="polite">Loading the property check...</p>';
   }
 
   /** Opens the flow in a panel. Every booking and Call button lands here. */

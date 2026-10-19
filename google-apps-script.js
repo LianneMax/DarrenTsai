@@ -1270,31 +1270,46 @@ function emailOptOutSheets(ss) {
   return names.filter(function (name, index) { return names.indexOf(name) === index; })
     .map(function (name) { return ss.getSheetByName(name); }).filter(Boolean);
 }
+function ensureEmailOptOutColumn(sheet) {
+  const headers = liveHeaders(sheet);
+  const emailColumn = headers.indexOf('Email');
+  if (emailColumn < 0) return null;
+  let unsubscribeColumn = headers.indexOf('Unsubscribe?');
+  if (unsubscribeColumn < 0) {
+    unsubscribeColumn = headers.length;
+    sheet.getRange(1, unsubscribeColumn + 1, 1, 1).setValues([['Unsubscribe?']]);
+    styleHeaderRange(sheet.getRange(1, unsubscribeColumn + 1, 1, 1));
+  }
+  return { email: emailColumn, unsubscribe: unsubscribeColumn };
+}
+function initializeEmailOptOutColumns(ss) {
+  const spreadsheet = ss || SpreadsheetApp.openById(SPREADSHEET_ID);
+  // 20 Oct 2026: the minute queue used a fake address to initialise columns.
+  // That scanned every email column under the same lock doPost needs, even
+  // with no pending opt-outs. A live ADU test timed out waiting for this lock.
+  // Header setup needs no lead rows; release between tabs so new leads can run.
+  emailOptOutSheets(spreadsheet).forEach(function (sheet) {
+    withSheetLock(function () { ensureEmailOptOutColumn(sheet); SpreadsheetApp.flush(); });
+  });
+}
 function markLeadEmailUnsubscribed(ss, email) {
   const address = String(email || '').trim().toLowerCase();
   if (!address) return;
   emailOptOutSheets(ss).forEach(function (sheet) {
-    const headers = liveHeaders(sheet);
-    const emailColumn = headers.indexOf('Email');
-    if (emailColumn < 0) return;
-    let unsubscribeColumn = headers.indexOf('Unsubscribe?');
-    if (unsubscribeColumn < 0) {
-      unsubscribeColumn = headers.length;
-      sheet.getRange(1, unsubscribeColumn + 1, 1, 1).setValues([['Unsubscribe?']]);
-      styleHeaderRange(sheet.getRange(1, unsubscribeColumn + 1, 1, 1));
-    }
-    if (sheet.getLastRow() < 2) return;
-    const emails = sheet.getRange(2, emailColumn + 1, sheet.getLastRow() - 1, 1).getValues();
-    emails.forEach(function (row, index) {
-      if (String(row[0] || '').trim().toLowerCase() === address) {
-        sheet.getRange(index + 2, unsubscribeColumn + 1, 1, 1).setValues([[true]]);
-      }
+    // A single tab is the critical section. Do not wrap this function in an
+    // outer script lock: doing so would retain the all-tabs contention again.
+    withSheetLock(function () {
+      const columns = ensureEmailOptOutColumn(sheet);
+      if (!columns || sheet.getLastRow() < 2) return;
+      const emails = sheet.getRange(2, columns.email + 1, sheet.getLastRow() - 1, 1).getValues();
+      emails.forEach(function (row, index) {
+        if (String(row[0] || '').trim().toLowerCase() === address) {
+          sheet.getRange(index + 2, columns.unsubscribe + 1, 1, 1).setValues([[true]]);
+        }
+      });
+      SpreadsheetApp.flush();
     });
   });
-}
-function initializeEmailOptOutColumns() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  withSheetLock(function () { markLeadEmailUnsubscribed(ss, '__column_setup__'); });
 }
 function leadEmailUnsubscribed(ss, email) {
   const address = String(email || '').trim().toLowerCase();
@@ -1320,10 +1335,10 @@ function syncEmailOptOuts(ss) {
     return JSON.parse(response.getContentText());
   }
   try {
-    withSheetLock(function () { markLeadEmailUnsubscribed(ss, '__column_setup__'); });
+    initializeEmailOptOutColumns(ss);
     const pending = request({ operation: 'pending' }).emails || [];
     pending.forEach(function (email) {
-      withSheetLock(function () { markLeadEmailUnsubscribed(ss, email); SpreadsheetApp.flush(); });
+      markLeadEmailUnsubscribed(ss, email);
       request({ operation: 'acknowledge', email: email });
     });
   } catch (err) {
@@ -1359,7 +1374,7 @@ function postGuide(ss, name, urlProp, keyProp, body) {
     if (code >= 200 && code < 300) {
       try {
         if (JSON.parse(text).suppressed === true) {
-          withSheetLock(function () { markLeadEmailUnsubscribed(ss, body.email); });
+          markLeadEmailUnsubscribed(ss, body.email);
           return { outcome: 'skipped', detail: name + ': recipient opted out' };
         }
       } catch { /* Older senders return a plain success body; keep compatibility. */ }

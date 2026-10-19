@@ -64,10 +64,10 @@
 .equity-routing { position:relative; height:70px; overflow:hidden; }
 .equity-routing-lines { display:block; width:100%; height:70px; fill:none; stroke:#b4cfc0; stroke-width:1.5; }
 .equity-transfer { display:block; position:absolute; inset:0; width:100%; height:70px; color:#24744d; opacity:0; animation:equity-route-transfer 12s cubic-bezier(.4,0,.2,1) infinite both; }
-.equity-transfer svg { position:absolute; left:75%; top:-10px; margin-left:-16px; background:#f0f5f7; }
-.equity-transfer-0 { --goal-offset:-58.3333%; }
-.equity-transfer-1 { --goal-offset:-25%; animation-delay:4s; }
-.equity-transfer-2 { --goal-offset:8.3333%; animation-delay:8s; }
+.equity-transfer svg { position:absolute; left:var(--equity-origin,75%); top:-10px; margin-left:-16px; background:#f0f5f7; }
+.equity-transfer-0 { --goal-offset:var(--equity-first,-58.3333%); }
+.equity-transfer-1 { --goal-offset:var(--equity-second,-25%); animation-delay:4s; }
+.equity-transfer-2 { --goal-offset:var(--equity-third,8.3333%); animation-delay:8s; }
 .property-story .equity-goal-examples { list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:0; margin:0; }
 .equity-goal-examples li { display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; color:#223d55; font-size:14px; line-height:1.5; }
 .equity-goal-emblem { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:#e2efe7; color:#24744d; animation:equity-goal-receive 12s ease-in-out infinite both; }

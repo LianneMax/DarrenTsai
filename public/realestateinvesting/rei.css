@@ -1,0 +1,120 @@
+.rei-guide-overlay { position:fixed; inset:0; z-index:1100; display:flex; align-items:center; justify-content:center; padding:24px; background:#122b3c99; backdrop-filter:blur(4px); }
+.rei-guide-overlay[hidden],.rei-guide-panel [hidden] { display:none!important; }
+.rei-guide-panel { width:min(1080px,100%); max-height:calc(100dvh - 48px); overflow-y:auto; overscroll-behavior:contain; border-radius:16px; background:#f5f8fa; box-shadow:0 24px 80px #142b4440; scrollbar-width:thin; scrollbar-color:#a9bdc7 #f5f8fa; }
+.rei-guide-header { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px 28px; border-bottom:1px solid #dfe7ec; background:#fff; }
+.rei-page .rei-guide-header h2 { font-size:25px; font-weight:550; letter-spacing:-.025em; margin:0; }
+.rei-guide-header button { display:grid; place-items:center; border:0; border-radius:50%; width:44px; height:44px; flex:none; background:#f0f5f7; color:var(--navy); cursor:pointer; }
+.rei-guide-header button:hover { background:#dfeef2; }
+.rei-guide-layout { display:grid; grid-template-columns:240px minmax(0,1fr); gap:28px; padding:28px; align-items:start; }
+.rei-guide-sidebar { padding:10px 0; }
+.rei-guide-sidebar>p { color:var(--text-muted); font-size:17px; line-height:1.7; margin:0 0 30px; }
+.rei-guide-timeline { list-style:none; padding:0; margin:0; }
+.rei-guide-timeline li { display:flex; position:relative; gap:13px; min-height:80px; color:var(--text-muted); }
+.rei-guide-timeline li:not(:last-child)::after { content:''; position:absolute; left:17px; top:35px; bottom:0; width:1px; background:#d9e3e9; }
+.rei-guide-timeline li>span { display:grid; place-items:center; flex:none; width:35px; height:35px; border-radius:50%; background:#e8eef2; font-size:15px; }
+.rei-guide-timeline strong { display:block; padding-top:3px; font-size:17px; font-weight:500; }
+.rei-guide-timeline small { display:block; font-size:14px; line-height:1.6; margin-top:5px; }
+.rei-guide-timeline [aria-current]>span { background:var(--accent); color:#fff; }
+.rei-guide-timeline [aria-current] strong { color:var(--navy); font-weight:550; }
+.rei-guide-timeline .done>span { background:#d9eee4; color:#24744d; }
+.rei-guide-person { display:flex; align-items:center; gap:10px; margin-top:20px; }
+.rei-guide-person img { border-radius:50%; flex:none; }
+.rei-guide-person p { font-size:14px; line-height:1.7; color:var(--text-muted); }
+.rei-guide-body { min-width:0; padding:28px; background:#fff; border-radius:14px; }
+.rei-page .rei-guide-step { padding:0; }
+.rei-page .rei-guide-step h3 { color:var(--navy); font-size:27px; font-weight:550; line-height:1.25; letter-spacing:-.025em; margin:0 0 16px; }
+.rei-guide-step h3:focus { outline:none; }
+.rei-guide-step>p { font-size:17px; line-height:1.8; color:var(--text-muted); margin:0 0 28px; }
+.rei-guide-step .field { margin-bottom:24px; min-width:0; }
+.rei-guide-step .field .hint { display:inline; margin:0 0 0 6px; }
+.rei-guide-step [data-service-area] { border:0; padding:0; margin-top:28px; }
+.rei-guide-step [data-service-area] legend { margin-bottom:18px; }
+.rei-guide-step [data-service-area] select { margin-bottom:22px; }
+.rei-guide-actions { display:flex; align-items:center; gap:20px; border-top:1px solid #d9e3e9; margin-top:28px; padding-top:22px; }
+.rei-guide-actions>span { font-size:14px; color:var(--text-muted); margin-left:auto; }
+.rei-guide-actions>button:not(.cta) { border:0; background:none; color:var(--text-muted); font:inherit; min-height:44px; cursor:pointer; }
+.rei-guide-saved .rei-guide-sidebar { display:none; }
+.rei-guide-saved .rei-guide-layout { grid-template-columns:1fr; max-width:740px; margin:auto; }
+.rei-page .rei-guide-overlay .cselect-trigger { min-height:49px; }
+.rei-page .cselect-panel { z-index:1200; }
+.rei-page.rei-guide-open { overflow:hidden; }
+.rei-page.rei-guide-open .mobile-sticky-bar { visibility:hidden; }
+@media(max-width:900px) { .rei-guide-layout { grid-template-columns:1fr; gap:18px; padding:24px; } .rei-guide-sidebar { padding:0; } .rei-guide-sidebar>p,.rei-guide-person { display:none; } .rei-guide-timeline { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); } .rei-guide-timeline li { display:block; min-height:66px; } .rei-guide-timeline li:not(:last-child)::after { left:35px; right:0; top:17px; bottom:auto; height:1px; width:auto; } .rei-guide-timeline li>span { position:relative; z-index:1; } .rei-guide-timeline strong { font-size:14px; margin-top:6px; } .rei-guide-timeline small { display:none; } }
+@media(max-width:600px) { .rei-download-band { flex-direction:column; align-items:flex-start; } .rei-page .rei-faq-section { padding-block:36px; } .rei-guide-overlay { padding:0; } .rei-guide-panel { width:100%; height:100dvh; max-height:100dvh; border-radius:0; } .rei-guide-header { padding:18px 20px; } .rei-page .rei-guide-header h2 { font-size:22px; } .rei-guide-layout { padding:20px 16px; } .rei-guide-body { padding:22px 20px; } .rei-page .rei-guide-step h3 { font-size:24px; } .rei-guide-step .form-row-2 { grid-template-columns:1fr; } .rei-guide-actions { gap:12px; } }
+
+/* The case-study page is a download landing page, not a new calculator. Its
+   original numbers, source, receipt handling and service-area policy stay put. */
+.rei-page{--text-muted:#526676;color:#223d55}
+.rei-page main .container-1080{max-width:1168px;padding-inline:24px}
+.rei-page :is(h1,h2,h3){text-wrap:balance}
+.rei-page :is(a,button,input,select):focus-visible{outline:3px solid #1a7f99;outline-offset:4px}
+.rei-page ::selection{background:#cdebf1;color:#223d55}
+.rei-page .hero{position:relative;z-index:1;background:#fff;padding:48px 0;box-shadow:0 9px 25px #223d5510}
+.rei-page .hero-inner{grid-template-columns:1.2fr 1fr;gap:60px;align-items:center}
+.rei-page .hero .anim{animation:none;opacity:1;transform:none}
+.rei-page .hero-title{font-size:clamp(34px,3.5vw,46px);font-weight:550;line-height:1.17;letter-spacing:-.03em;color:#223d55;margin:0 0 24px}
+.rei-page .hero-title em{color:#1a7f99;font-style:normal;transform:none}
+.rei-page .hero-sub{font-size:18px;line-height:1.8;color:#526676;margin:0 0 28px;font-weight:400}
+.rei-page .hero-cta-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.rei-page .cta{box-shadow:none!important;border-radius:8px;padding:13px 22px!important;font-weight:550;font-size:16px;min-height:44px;background:#1a7f99;color:#fff}
+.rei-page .cta:hover{background:#146b82;color:#fff}
+.rei-page .hero-cta-note{font-size:15px;font-weight:400;color:#526676}
+.rei-page .hero-stat-card{padding:30px;background:#eff5f7;border-radius:14px;box-shadow:none}
+.rei-page .hero-stat-num{font-size:36px;line-height:1.2;font-weight:550;color:#223d55;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.rei-page .hero-stat-label{font-size:16px;line-height:1.6;color:#526676}
+.rei-page .hero-stat-rule{margin:20px 0;color:#466a7a}
+.rei-page .hero-stat-grid{padding-top:20px;margin-top:22px;gap:20px}
+.rei-page .hero-stat-grid-label{font-size:15px;color:#526676;font-weight:400}
+.rei-page .hero-stat-grid-value{font-size:19px;color:#223d55;font-weight:550}
+.rei-page .hero-stat-note{font-size:16px;line-height:1.7;color:#526676;margin:22px 0 0}
+.rei-page .chapters-section{padding:64px 0;background:#fff}
+.rei-page .chapters-grid{grid-template-columns:.95fr 1.2fr;gap:64px}
+.rei-page .chapters-copy h2{font-size:clamp(30px,3vw,38px);font-weight:550;letter-spacing:-.025em;line-height:1.25;color:#223d55}
+.rei-page .chapters-copy .lede{font-size:18px;line-height:1.8;color:#526676}
+.rei-page .chapter-cells{display:block;background:none;border-radius:0}
+.rei-page .chapter-cell{display:grid;grid-template-columns:32px 1fr;gap:4px 16px;padding:20px 0;border:0;border-bottom:1px solid #dbe5eb;background:none;border-radius:0}
+.rei-page .chapter-cell:first-child{padding-top:0}
+.rei-page .chapter-cell:last-child{border:0;padding-bottom:0}
+.rei-page .chapter-num{grid-row:span 2;font-size:15px;font-weight:500;color:#14667a;margin:2px 0 0}
+.rei-page .chapter-title{font-size:20px;font-weight:550;line-height:1.4;margin:0;color:#223d55}
+.rei-page .chapter-desc{font-size:17px;line-height:1.75;margin:0;color:#526676}
+.rei-page .download-band{background:#eff5f7;padding:44px 0}
+.rei-page .download-grid{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:40px}
+.rei-page .download-left{display:block}
+.rei-page .download-copy-card{background:none;padding:0;border:0;box-shadow:none}
+.rei-page .download-copy-card h3{font-size:28px;font-weight:550;color:#223d55;letter-spacing:-.025em;margin:0 0 16px}
+.rei-page .download-copy-card>p{font-size:18px;line-height:1.8;color:#526676;max-width:65ch;margin:0}
+.rei-page .download-spec-card{display:flex;gap:18px 30px;flex-wrap:wrap;background:none;padding:24px 0 0;border:0;box-shadow:none}
+.rei-page .spec-row{display:block;padding:0;border:0;font-size:15px;line-height:1.6}
+.rei-page .spec-label{display:block;color:#526676;font-weight:400}
+.rei-page .spec-value{color:#223d55;font-weight:500}
+.rei-page .rei-download-action{padding:0;background:none;box-shadow:none;border:0}
+.rei-page .playbook-section{padding:60px 0;background:#fff}
+.rei-page .playbook{background:#fff;border:0;border-radius:0;padding:0;color:#223d55}
+.rei-page .playbook-grid{grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+.rei-page .playbook-rule{display:none}
+.rei-page .playbook-copy h3{font-size:30px;line-height:1.25;letter-spacing:-.025em;font-weight:550;color:#223d55}
+.rei-page .playbook-copy>p{font-size:18px;line-height:1.8;color:#526676}
+.rei-page .playbook-copy .cta{margin-top:10px}
+.rei-page .playbook-row{padding:22px 0;border-color:#dbe5eb;gap:16px}
+.rei-page .playbook-row .num{color:#14667a;font-size:15px}
+.rei-page .playbook-row .title{font-size:20px;color:#223d55;font-weight:550;line-height:1.4}
+.rei-page .playbook-row .desc{font-size:17px;line-height:1.75;color:#526676;margin-top:8px}
+.rei-page .rei-guide-step input{font-size:18px;min-height:49px}
+.rei-page .rei-guide-step .input-shell:has(.email-hint){flex-wrap:wrap}
+.rei-page .rei-guide-step .input-shell .email-hint{flex-basis:100%;padding:0 14px 10px}
+.rei-page .rei-guide-step .field-label-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.rei-page .rei-guide-step .field-label-row .hint{font-size:13px}
+.rei-page .rei-guide-step .cta{width:100%}
+.rei-page .rei-guide-step .form-note{font-size:14px;line-height:1.6;color:#526676}
+.rei-page.rei-tool-active .mobile-sticky-bar{visibility:hidden;pointer-events:none}
+.rei-page .rei-closing{padding:0 0 55px;background:#fff}
+.rei-closing-band{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:30px;background:#466a7a;border-radius:12px}
+.rei-page .rei-closing-band h2{font-size:25px;line-height:1.3;font-weight:550;letter-spacing:-.025em;color:#fff;margin:0 0 12px}
+.rei-page .rei-closing-band p{font-size:17px;line-height:1.7;color:#fff;margin:0}
+.rei-page .rei-closing-band .cta{background:#fff;color:#223d55;flex:none}
+.rei-page .rei-closing-band .cta:hover{background:#e9f2f5;color:#223d55}
+@media(max-width:700px){.rei-closing-band{flex-direction:column;align-items:flex-start;padding:26px}.rei-page .rei-closing{padding-bottom:40px}}
+@media(max-width:900px){.rei-page .hero-inner,.rei-page .chapters-grid,.rei-page .playbook-grid{grid-template-columns:1fr;gap:34px}.rei-page .hero-stat-card{max-width:600px;width:100%}.rei-page .download-grid{grid-template-columns:1fr;gap:25px}}
+@media(max-width:600px){.rei-page main .container-1080{padding-inline:22px}.rei-page .hero{padding:32px 0 38px}.rei-page .hero-title{font-size:35px}.rei-page .hero-sub{font-size:17px}.rei-page .hero-stat-card{padding:24px}.rei-page .hero-stat-num{font-size:32px}.rei-page .chapters-section,.rei-page .playbook-section{padding:40px 0}.rei-page .download-band{padding:34px 0}.rei-page .chapter-title,.rei-page .playbook-row .title{font-size:19px}.rei-page .playbook-grid{gap:24px}.rei-page .hero-stat-grid{grid-template-columns:1fr 1fr;gap:14px}.rei-page .download-spec-card{gap:14px 24px}}
+@media(prefers-reduced-motion:reduce){.rei-page *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

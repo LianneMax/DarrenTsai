@@ -34,6 +34,7 @@ const CALCULATORS = [
   { href: '/mortgage-calculator/', label: 'Mortgage Calculator' },
   { href: '/dscr/', label: 'DSCR' },
   { href: '/fha/', label: 'FHA Calculator' },
+  { href: '/realestateinvesting/', label: 'Investing Guide' },
 ];
 
 export default function Nav({ onOpenContact, alwaysSolid = false, landing = false }: Props) {
@@ -153,7 +154,6 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
                 {CALCULATORS.map((c) => (
                   <a key={c.href} href={c.href} onClick={() => setCalcOpen(false)} className="nav-dropdown-item">{c.label}</a>
                 ))}
-                <button onClick={openBooking} className="nav-dropdown-item" data-early="nav-book">Book a Call</button>
               </div>
             </div>
             </>}

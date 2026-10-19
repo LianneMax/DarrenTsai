@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FAQ } from '../data/faq';
 import EquityPropertyStory from './EquityPropertyStory';
 
@@ -18,20 +18,27 @@ export function HouseOptions({ large = false }: { large?: boolean }) {
 function EquityIllustration() {
   const [share, setShare] = useState(40);
   const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
-  const y = 268 - 231 * share / 100;
-  return <div className="home-diagram">
+  const illustration = useRef<HTMLDivElement>(null);
+  const userAdjusted = useRef(false);
+  useEffect(() => {
+    setReady(true);
+    let elapsed = 0;
+    // The shared controller owns pause, visibility and reduced-motion state.
+    // Keep the slider's numeric value and bar together; a manual change takes
+    // control and stops the automatic example instead of fighting the visitor.
+    const timer = window.setInterval(() => {
+      const story = illustration.current?.querySelector('[data-house-story]');
+      if (userAdjusted.current || story?.getAttribute('data-playing') !== 'true' || document.hidden) return;
+      elapsed += 100;
+      setShare(Math.round(40 + 20 * Math.sin(elapsed / 1800)));
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <div className="home-diagram" ref={illustration}>
     <p className="diagram-heading">See your home a little differently.</p>
-    <svg viewBox="0 0 480 300" role="img" aria-labelledby="equity-diagram-title equity-diagram-desc">
-      <title id="equity-diagram-title">The two parts of your home’s value</title><desc id="equity-diagram-desc">An illustrative mortgage balance and estimated equity. These proportions are not a personal estimate.</desc>
-      <defs><clipPath id="home-shape"><path d="M122 125 240 37 358 125V268H122Z" /></clipPath></defs>
-      <g clipPath="url(#home-shape)"><path fill="#b9e3c6" d="M100 25H380V270H100Z" /><rect fill="#466a7a" x="100" y={y} width="280" height={270 - y} /></g>
-      <path d="M96 144 240 37 384 144M122 125V268H358V125" fill="none" stroke="#223d55" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d={`M122 ${y}H358`} stroke="#fff" strokeWidth="2" strokeDasharray="4 5" />
-    </svg>
-    <div className="diagram-legend"><span><i className="mortgage-key" />Mortgage balance</span><span><i className="equity-key" />Estimated equity</span></div>
+    <EquityPropertyStory mortgageShare={share} compact />
     <div className="diagram-control"><label htmlFor="equity-explorer">Explore the balance <output htmlFor="equity-explorer">{share}% mortgage</output></label>
-      <input id="equity-explorer" type="range" min="10" max="90" value={share} disabled={!ready} onChange={e => setShare(Number(e.target.value))} aria-describedby="diagram-note" aria-valuetext={`${share}% illustrative mortgage share, ${100 - share}% estimated equity share`} />
+      <input id="equity-explorer" type="range" min="10" max="90" value={share} disabled={!ready} onChange={e => { userAdjusted.current = true; setShare(Number(e.target.value)); }} aria-describedby="diagram-note" aria-valuetext={`${share}% illustrative mortgage share, ${100 - share}% estimated equity share`} />
       <p id="diagram-note">Illustration only. Your inputs determine your estimate.</p></div>
     <div className="equity-equation"><span>Home value</span><span aria-hidden="true">−</span><span>Mortgage balance</span><span aria-hidden="true">=</span><strong>Estimated equity</strong></div>
   </div>;

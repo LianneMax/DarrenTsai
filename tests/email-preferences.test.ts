@@ -74,6 +74,40 @@ describe('persistent email opt-out', () => {
     expect(harness.gas.postGuide(harness.gas.SpreadsheetApp.openById('test'), 'guide', 'URL', 'KEY', { email }).outcome).toBe('skipped');
     expect(calls).toEqual(['https://realdarrentsai.com/api/stop-email']);
   });
+  it('initialises opt-out headers without scanning leads and releases the lock between tabs', () => {
+    type Sheet = { getRange: (...args: number[]) => unknown };
+    const harness = loadGas<{
+      SpreadsheetApp: { openById: (id: string) => { getSheetByName: (name: string) => Sheet | null } };
+      LockService: { getScriptLock: () => { waitLock: (ms: number) => void; releaseLock: () => void } };
+      initializeEmailOptOutColumns: (ss: unknown) => void;
+      markLeadEmailUnsubscribed: (ss: unknown, address: string) => void;
+    }>({exports:['SpreadsheetApp','LockService','initializeEmailOptOutColumns','markLeadEmailUnsubscribed']});
+    for (const name of ['Needs Guidance','Mortgage Review']) harness.tabs.set(name,{name,rows:[['Email','Name'],[email,'One'],['someone@example.com','Two']]});
+    const sections: Set<string>[] = [];
+    let held: Set<string> | undefined;
+    let headerOnly = true;
+    harness.gas.LockService.getScriptLock = () => ({
+      waitLock: () => { expect(held).toBeUndefined(); held = new Set(); sections.push(held); },
+      releaseLock: () => { held = undefined; },
+    });
+    const original = harness.gas.SpreadsheetApp.openById('test');
+    const spreadsheet = {getSheetByName(name: string) {
+      const sheet = original.getSheetByName(name);
+      if (!sheet) return null;
+      return {...sheet,getRange(...args: number[]) {
+        expect(held).toBeDefined(); held!.add(name);
+        if (headerOnly) expect(args[0], 'header setup must not read lead rows').toBe(1);
+        return sheet.getRange(...args);
+      }};
+    }};
+    harness.gas.initializeEmailOptOutColumns(spreadsheet);
+    expect(sections).toHaveLength(2);
+    headerOnly = false;
+    harness.gas.markLeadEmailUnsubscribed(spreadsheet,email);
+    expect(sections).toHaveLength(4);
+    expect(sections.every(section => section.size === 1)).toBe(true);
+    for (const tab of harness.tabs.values()) expect(tab.rows).toEqual([['Email','Name','Unsubscribe?'],[email,'One',true],['someone@example.com','Two']]);
+  });
   it('uses opaque stable links without email addresses and GET scanners cannot unsubscribe', async () => {
     const link = await unsubscribeLinkFor(email);
     expect(link).not.toContain(email); expect(await unsubscribeLinkFor(email)).toBe(link);
@@ -102,6 +136,28 @@ describe('persistent email opt-out', () => {
     const link = await unsubscribeLinkFor(email); state.down = true;
     expect((await unsubscribe(new Request(link, { method: 'POST' }))).status).toBe(503);
     expect((await handler(request(), {} as never)).status).toBe(500); expect(sent).toHaveLength(0);
+  });
+  it('keeps preference screens script-free, private and recoverable when storage is down', async () => {
+    const link = await unsubscribeLinkFor(email);
+    const confirmation = await unsubscribe(new Request(link));
+    const markup = await confirmation.text();
+    expect(markup).toContain('aria-labelledby="preference-title"');
+    expect(markup).toContain('method="post"');
+    expect(markup).not.toContain(email);
+    expect(markup).not.toContain('<script');
+    expect(confirmation.headers.get('Cache-Control')).toBe('no-store');
+    expect(confirmation.headers.get('Referrer-Policy')).toBe('no-referrer');
+    expect(confirmation.headers.get('Content-Security-Policy')).toContain("default-src 'none'");
+    expect(confirmation.headers.get('Content-Security-Policy')).toContain("form-action 'self'");
+    state.down = true;
+    const failed = await unsubscribe(new Request(link, {method:'POST'}));
+    const failure = await failed.text();
+    expect(failed.status).toBe(503);
+    expect(failure).toContain('Try again</a>');
+    expect(failure).toContain('We could not save your choice yet');
+    expect(failure).not.toContain('You are unsubscribed');
+    expect(failure).not.toContain(email);
+    expect(sent).toHaveLength(0);
   });
   it('adds the live footer link and standard one-click headers to outgoing email', async () => {
     expect((await handler(request(), {} as never)).status).toBe(200);

@@ -1,0 +1,10 @@
+/* Shared visual states only. A receipt's text and visibility are still owned
+   by the form that knows whether its request was confirmed or refused. */
+.submit-error:not(:empty),.error-banner,.dt-book-card .dt-book-err:not(:empty){padding:14px 16px;border:0;border-radius:10px;background:#fff2f0;color:#a52d20;line-height:1.6!important;text-align:left!important;font-size:16px!important;margin-top:16px!important;overflow-wrap:break-word}
+.field-error:not(:empty){display:block;margin-top:6px;font-size:14px;line-height:1.5;color:#a52d20}
+[data-service-area] .service-area-warning{border-left:0;padding:14px 16px;border-radius:10px;line-height:1.7;color:#36596a;background:#eff5f7}
+.lead-success h3{font-size:28px;line-height:1.25;letter-spacing:-.025em}
+.lead-success>p{font-size:18px;line-height:1.8;color:#526676}
+.dt-book-card .dt-book-loading{font-size:18px;line-height:1.8;color:#526676;margin:20px 0}
+button:disabled{cursor:wait}
+@media(max-width:600px){.lead-success h3{font-size:25px}.lead-success>p{font-size:17px}}
