@@ -27,6 +27,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const SOURCE = readFileSync(resolve(__dirname, '../../google-apps-script.js'), 'utf8');
+// Explicit fixture credential, never an automatic bypass in loadGas(). Tests
+// exercising public doPost must configure and supply the same private key.
+export const TEST_PROXY_KEY = 'test-only-lead-proxy-key';
 
 /**
  * `formats` is the number format of each cell, row by row, and is only ever set

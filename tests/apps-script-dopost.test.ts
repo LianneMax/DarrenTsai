@@ -12,7 +12,7 @@
  * value up under its header, never by column index, which is the whole point.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadGas, type Tab } from './helpers/gas-harness';
+import { loadGas, TEST_PROXY_KEY, type Tab } from './helpers/gas-harness';
 
 type Harness = {
   doPost: (e: { postData: { contents: string } }) => unknown;
@@ -36,6 +36,7 @@ function load(): Harness {
   // around: doPost must reach no network at all.
   const { gas, tabs, rowOf } = loadGas<{ doPost: Harness['doPost'] }>({
     exports: ['doPost'],
+    props: { LEAD_PROXY_KEY: TEST_PROXY_KEY },
     onMail: (m) => mail.push(m),
     fetch: (url) => {
       http.push(String(url));
@@ -47,11 +48,64 @@ function load(): Harness {
 }
 
 function post(h: Harness, payload: Record<string, unknown>) {
-  const res = h.doPost({ postData: { contents: JSON.stringify(payload) } }) as { __body: string };
+  const res = h.doPost({ postData: { contents: JSON.stringify({ ...payload, _proxyKey: TEST_PROXY_KEY }) } }) as { __body: string };
   return JSON.parse(res.__body) as { success: boolean; error?: string };
 }
 
 describe('server-hop authentication', () => {
+  type AuthRuntime = {
+    doPost: Harness['doPost'];
+    SpreadsheetApp: { openById: (...args: unknown[]) => unknown };
+    LockService: { getScriptLock: () => unknown };
+  };
+  function isolatedAuth(props: Record<string, string>) {
+    const mail: unknown[] = [];
+    const http: string[] = [];
+    const h = loadGas<AuthRuntime>({ exports: ['doPost', 'SpreadsheetApp', 'LockService'], props,
+      onMail: value => mail.push(value), fetch: url => { http.push(url); throw new Error('No anonymous network'); } });
+    let sheetAccess = 0;
+    let lockAccess = 0;
+    h.gas.SpreadsheetApp.openById = () => { sheetAccess++; throw new Error('Authentication must precede Sheet access'); };
+    h.gas.LockService.getScriptLock = () => { lockAccess++; throw new Error('Authentication must precede lock access'); };
+    return { ...h, mail, http, accesses: () => ({ sheet: sheetAccess, lock: lockAccess }) };
+  }
+  it.each([{}, { LEAD_PROXY_KEY: '', NETLIFY_CONTACT_CONFIRM_KEY: '' },
+    { LEAD_PROXY_KEY: '   ', NETLIFY_CONTACT_CONFIRM_KEY: '\t' }])('fails closed with no configured secret before Sheet, lock, queue, network or alerts (%j)', props => {
+    const h = isolatedAuth(props);
+    for (const supplied of [undefined, 'attacker-guessed-key']) {
+      const response = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'dscr', email: 'qa@example.com', _proxyKey: supplied }) } }) as { __body: string };
+      expect(JSON.parse(response.__body)).toEqual({ success: false, code: 'proxy_auth_not_configured', error: 'Lead endpoint authentication is not configured' });
+      expect(response.__body).not.toContain('attacker-guessed-key');
+    }
+    expect(h.accesses()).toEqual({ sheet: 0, lock: 0 });
+    expect(h.tabs.size).toBe(0); expect(h.http).toEqual([]); expect(h.mail).toEqual([]);
+  });
+  it('rejects wrong or absent credentials before even acquiring the lock', () => {
+    const h = isolatedAuth({ LEAD_PROXY_KEY: TEST_PROXY_KEY });
+    for (const key of [undefined, 'forged']) {
+      const response = h.gas.doPost({ postData: { contents: JSON.stringify({ email: 'qa@example.com', _proxyKey: key }) } }) as { __body: string };
+      expect(JSON.parse(response.__body)).toEqual({ success: false, error: 'Unauthorized' });
+    }
+    expect(h.accesses()).toEqual({ sheet: 0, lock: 0 });
+    expect(h.mail).toEqual([]);
+  });
+  it.each([
+    [{ LEAD_PROXY_KEY: TEST_PROXY_KEY }, TEST_PROXY_KEY],
+    [{ NETLIFY_CONTACT_CONFIRM_KEY: TEST_PROXY_KEY }, TEST_PROXY_KEY],
+    [{ LEAD_PROXY_KEY: TEST_PROXY_KEY, NETLIFY_CONTACT_CONFIRM_KEY: 'legacy-fallback' }, TEST_PROXY_KEY],
+  ] as const)('accepts explicitly configured dedicated or fallback credentials (%j)', (props, key) => {
+    const h = loadGas<{ doPost: Harness['doPost'] }>({ exports: ['doPost'], props });
+    const response = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'dscr', email: 'qa@example.com', _proxyKey: key }) } }) as { __body: string };
+    expect(JSON.parse(response.__body).success).toBe(true);
+    expect(h.tabs.get('DSCR')!.rows).toHaveLength(2);
+    expect(JSON.stringify([...h.tabs.values()])).not.toContain(key);
+  });
+  it('does not accept the fallback after a dedicated key is configured', () => {
+    const h = isolatedAuth({ LEAD_PROXY_KEY: TEST_PROXY_KEY, NETLIFY_CONTACT_CONFIRM_KEY: 'legacy-fallback' });
+    const response = h.gas.doPost({ postData: { contents: JSON.stringify({ email: 'qa@example.com', _proxyKey: 'legacy-fallback' }) } }) as { __body: string };
+    expect(JSON.parse(response.__body)).toEqual({ success: false, error: 'Unauthorized' });
+    expect(h.accesses()).toEqual({ sheet: 0, lock: 0 });
+  });
   it('rejects missing or forged credentials before writes and alerts', () => {
     const mail: unknown[] = [];
     const { gas, tabs } = loadGas<{ doPost: Harness['doPost'] }>({ exports: ['doPost'],
@@ -524,10 +578,10 @@ describe('failures are reported, not swallowed', () => {
     expect(h.mail).toEqual([]);
   });
 
-  it('an empty POST body is handled as an empty lead, not a crash', () => {
+  it('an empty unauthenticated POST cannot create an empty lead', () => {
     const res = h.doPost({ postData: { contents: '' } }) as { __body: string };
-    expect(JSON.parse(res.__body).success).toBe(true);
-    expect(h.tabs.has('Needs Guidance')).toBe(true);
+    expect(JSON.parse(res.__body)).toEqual({ success: false, error: 'Unauthorized' });
+    expect(h.tabs.size).toBe(0);
   });
 });
 

@@ -14,7 +14,7 @@
  * that disagree, drop a column a person added, or leave a half-built tab behind.
  */
 import { describe, it, expect } from 'vitest';
-import { loadGas, Formula, type Tab } from './helpers/gas-harness';
+import { loadGas, Formula, TEST_PROXY_KEY, type Tab } from './helpers/gas-harness';
 
 type Schema = { tab: string; headers: string[] };
 type Gas = {
@@ -28,6 +28,7 @@ type Gas = {
 function load() {
   const harness = loadGas<Gas>({
     exports: ['SOURCE_SCHEMAS', 'LEADS_SCHEMA', 'migrateLeadTabs', 'auditLeadTabs', 'doPost'],
+    props: { LEAD_PROXY_KEY: TEST_PROXY_KEY },
   });
   const seed = (name: string, rows: unknown[][], formats?: string[][]) => {
     const tab: Tab = { name, rows: rows.map((r) => [...r]), formats };
@@ -35,7 +36,7 @@ function load() {
     return tab;
   };
   const post = (payload: Record<string, unknown>) =>
-    harness.gas.doPost({ postData: { contents: JSON.stringify(payload) } });
+    harness.gas.doPost({ postData: { contents: JSON.stringify({ ...payload, _proxyKey: TEST_PROXY_KEY }) } });
   /** The one "(old ...)" tab left for `name`. */
   const oldTab = (name: string) => {
     const hits = [...harness.tabs.keys()].filter((k) => k.startsWith(`${name} (old `));
@@ -371,11 +372,11 @@ describe('what the migration will not do', () => {
 describe('the first lead after the migration', () => {
   it('lands in the new tab, under the new headers, with no drift notice', () => {
     const mail: unknown[] = [];
-    const harness = loadGas<Gas>({ exports: ['SOURCE_SCHEMAS', 'migrateLeadTabs', 'doPost'], onMail: (m) => mail.push(m) });
+    const harness = loadGas<Gas>({ exports: ['SOURCE_SCHEMAS', 'migrateLeadTabs', 'doPost'], props: { LEAD_PROXY_KEY: TEST_PROXY_KEY }, onMail: (m) => mail.push(m) });
     harness.tabs.set('Debt Consolidation', { name: 'Debt Consolidation', rows: [[...OLD.debt], rowFor(OLD.debt, DEBT_ROW)] });
     harness.gas.migrateLeadTabs();
     harness.gas.doPost({ postData: { contents: JSON.stringify({
-      source: 'DebtConsolidation', email: 'new@example.com', state: 'TX', monthlySavings: -80, formId: 'debt-savings-calculator',
+      source: 'DebtConsolidation', email: 'new@example.com', state: 'TX', monthlySavings: -80, formId: 'debt-savings-calculator', _proxyKey: TEST_PROXY_KEY,
     }) } });
 
     const tab = harness.tabs.get('Debt Consolidation')!;

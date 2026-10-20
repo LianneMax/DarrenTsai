@@ -8,14 +8,15 @@
  * real doPost against the stubbed runtime.
  */
 import { describe, it, expect } from 'vitest';
-import { loadGas, Formula } from './helpers/gas-harness';
+import { loadGas, Formula, TEST_PROXY_KEY } from './helpers/gas-harness';
 
 function post(payload: Record<string, unknown>) {
   const { gas, rowOf } = loadGas<{ doPost: (e: unknown) => { __body: string } }>({
     exports: ['doPost'],
+    props: { LEAD_PROXY_KEY: TEST_PROXY_KEY },
     fetch: () => { throw new Error('doPost must not make HTTP calls'); },
   });
-  const res = JSON.parse(gas.doPost({ postData: { contents: JSON.stringify(payload) } }).__body);
+  const res = JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ ...payload, _proxyKey: TEST_PROXY_KEY }) } }).__body);
   return { res, rowOf };
 }
 

@@ -11,7 +11,7 @@ import { resolve } from 'node:path';
 import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildAduLead, aduNumbers } from '../src/utils/adu';
 import AduPage, { AduPageHero, StepAduProject, StepAduSnapshot, StepAduContact, AduRecap, type AduPageView } from '../src/components/AduViews';
-import { loadGas, recordingFetch, type FetchCall } from './helpers/gas-harness';
+import { loadGas, recordingFetch, TEST_PROXY_KEY, type FetchCall } from './helpers/gas-harness';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 const noop = () => {};
@@ -46,9 +46,10 @@ describe('where it lands: the ADU tab', () => {
   function post(payload: Record<string, unknown>) {
     const { gas, rowOf, tabs } = loadGas<{ doPost: (e: unknown) => { __body: string } }>({
       exports: ['doPost'],
+      props: { LEAD_PROXY_KEY: TEST_PROXY_KEY },
       fetch: () => { throw new Error('doPost must not make HTTP calls'); },
     });
-    const res = JSON.parse(gas.doPost({ postData: { contents: JSON.stringify(payload) } }).__body);
+    const res = JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ ...payload, _proxyKey: TEST_PROXY_KEY }) } }).__body);
     return { res, rowOf, tabs };
   }
 

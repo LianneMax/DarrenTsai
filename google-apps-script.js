@@ -995,9 +995,11 @@ function hubspotFields(data) {
     : (data.firstClickIdType === 'gclid' ? data.firstClickId : '');
   add('hs_google_click_id', gclid);
 
-  add('rdt_first_utm_source', data.firstUtmSource);
-  add('rdt_first_utm_medium', data.firstUtmMedium);
-  add('rdt_first_utm_campaign', data.firstUtmCampaign);
+  // Forms API submission updates an existing contact too; it cannot prove a
+  // create-only write. Preserve that contact's authoritative original tuple,
+  // including its blank components. Full first-touch evidence remains in the
+  // Sheet and submission snapshot. Initialising new CRM originals awaits a
+  // supported authoritative CRM read/conditional-create capability.
   add('rdt_latest_utm_source', data.utm_source);
   add('rdt_latest_utm_medium', data.utm_medium);
   add('rdt_latest_utm_campaign', data.utm_campaign);
@@ -1021,7 +1023,9 @@ function hubspotFields(data) {
     add(name, typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
   });
 
-  return fields;
+  return fields.filter(function (field) {
+    return !/^rdt_first_/.test(field.name) && field.name !== 'hubspot_owner_id';
+  });
 }
 
 /** The submission context. hutk only when it has the shape HubSpot issues. */
@@ -1173,14 +1177,17 @@ function pushToHubSpot(ss, data) {
       }
     }
 
-    const outcome = classifyGuideResponse(res.code);
+    // A server failure can arrive after acceptance. The Forms API has no
+    // verified idempotency key here; email contact dedupe does not dedupe form
+    // history/workflows. Reconcile ambiguous acceptance instead of resending.
+    const outcome = res.code >= 500 ? 'uncertain' : classifyGuideResponse(res.code);
     const said = res.code + (outcome === 'sent' ? '' : ' ' + res.text) +
       (dropped.length ? ' (dropped: ' + dropped.join(', ') + ')' : '');
     logDebug(ss, 'pushToHubSpot: ' + said, data.email);
     return { outcome: outcome, detail: 'pushToHubSpot ' + said };
   } catch (err) {
     logDebug(ss, 'pushToHubSpot: threw ' + err.toString(), data.email);
-    return { outcome: 'retry', detail: 'pushToHubSpot threw ' + err.toString() };
+    return { outcome: 'uncertain', detail: 'pushToHubSpot acceptance unknown: ' + err.toString() };
   }
 }
 
@@ -1348,7 +1355,7 @@ function syncEmailOptOuts(ss) {
   }
 }
 
-function postGuide(ss, name, urlProp, keyProp, body) {
+function postGuide(ss, name, urlProp, keyProp, body, data) {
   const props = PropertiesService.getScriptProperties();
   if (leadEmailUnsubscribed(ss, body.email)) {
     recordEmailOptOut(body.email);
@@ -1360,6 +1367,10 @@ function postGuide(ss, name, urlProp, keyProp, body) {
     logDebug(ss, name + ': ' + urlProp + '/KEY not set', body.email);
     return { outcome: 'rejected', detail: name + ': ' + urlProp + '/KEY not set' };
   }
+  if (data && data._delivery) {
+    body.submissionId = data._delivery.id;
+    body.deliveryStartedAt = data._delivery.jobs.guide.startedAt;
+  }
   try {
     const resp = UrlFetchApp.fetch(url, {
       method: 'post',
@@ -1370,6 +1381,9 @@ function postGuide(ss, name, urlProp, keyProp, body) {
     });
     const code = resp.getResponseCode();
     const text = resp.getContentText().slice(0, 500);
+    let receipt = {};
+    try { receipt = JSON.parse(text); } catch { /* Legacy sender response. */ }
+    const keyed = receipt.deliveryProtocol === 'resend-key-v1' && receipt.submissionId === body.submissionId;
     logDebug(ss, name + ': url=' + url + ' response ' + code + ' ' + text, body.email);
     if (code >= 200 && code < 300) {
       try {
@@ -1379,10 +1393,13 @@ function postGuide(ss, name, urlProp, keyProp, body) {
         }
       } catch { /* Older senders return a plain success body; keep compatibility. */ }
     }
-    return { outcome: classifyGuideResponse(code), detail: name + ' ' + code + ' ' + text };
+    if (code === 409 || (code >= 500 && !keyed)) return { outcome: 'uncertain', detail: name + ' requires delivery reconciliation: ' + text };
+    return { outcome: classifyGuideResponse(code), retrySafe: keyed, detail: name + ' ' + code + ' ' + text };
   } catch (err) {
     logDebug(ss, name + ': threw ' + err.toString(), body.email);
-    return { outcome: 'retry', detail: name + ' threw ' + err.toString() };
+    const withinWindow = body.submissionId && body.deliveryStartedAt && data && data._delivery && data._delivery.jobs.guide.retrySafe === true &&
+      Date.now() - Date.parse(body.deliveryStartedAt) < 23 * 60 * 60 * 1000;
+    return { outcome: withinWindow ? 'retry' : 'uncertain', detail: name + ' acceptance unknown: ' + err.toString() };
   }
 }
 
@@ -1396,7 +1413,7 @@ function sendDscrGuide(ss, data) {
     downPayment: data.downPayment || '',
     rate: data.rate || '',
     loanAmount: data.loanAmount || '',
-  });
+  }, data);
 }
 
 function sendReiGuide(ss, data) {
@@ -1405,7 +1422,7 @@ function sendReiGuide(ss, data) {
     firstName: data.firstName || '',
     lastName: data.lastName || '',
     email: data.email || '',
-  });
+  }, data);
 }
 
 function sendFhaGuide(ss, data) {
@@ -1414,7 +1431,7 @@ function sendFhaGuide(ss, data) {
     firstName: data.firstName || '',
     lastName: data.lastName || '',
     email: data.email || '',
-  });
+  }, data);
 }
 
 /**
@@ -1488,7 +1505,7 @@ function sendContactConfirmation(ss, data) {
     body.goal = data.goal || '';
     body.projectPurpose = data.projectPurpose || '';
   }
-  return postGuide(ss, 'sendContactConfirmation', 'NETLIFY_CONTACT_CONFIRM_URL', 'NETLIFY_CONTACT_CONFIRM_KEY', body);
+  return postGuide(ss, 'sendContactConfirmation', 'NETLIFY_CONTACT_CONFIRM_URL', 'NETLIFY_CONTACT_CONFIRM_KEY', body, data);
 }
 
 /** Run whichever guide applies to this lead (at most one does). */
@@ -1529,11 +1546,64 @@ function alertFailure(subjectDetail, rawPayload) {
   }
 }
 
+/** Stable structural comparison, independent of JSON key order. Only transport
+ * credentials, the HubSpot browser cookie and internal bookkeeping are ignored.
+ * Client timestamps are evidence and must be frozen with the retry body. */
+function canonicalSubmission(data) {
+  function ordered(value) {
+    if (Array.isArray(value)) return value.map(ordered);
+    if (!value || typeof value !== 'object') return value;
+    const out = {};
+    Object.keys(value).sort().forEach(function (key) { out[key] = ordered(value[key]); });
+    return out;
+  }
+  const payload = {};
+  Object.keys(data).forEach(function (key) {
+    if (key !== 'submissionId' && key !== 'hutk' && key.charAt(0) !== '_') payload[key] = data[key];
+  });
+  return JSON.stringify(ordered(payload));
+}
+
+/** Called only under the capture lock. Header lookup preserves migrated tabs. */
+function capturedSubmission(ss, id) {
+  const schemas = leadTabSchemas();
+  for (let i = 0; i < schemas.length; i++) {
+    const sheet = ss.getSheetByName(schemas[i].tab);
+    if (!sheet || sheet.getLastRow() < 2) continue;
+    const headers = liveHeaders(sheet);
+    const idColumn = headers.indexOf('Submission ID');
+    if (idColumn < 0) continue;
+    const ids = sheet.getRange(2, idColumn + 1, sheet.getLastRow() - 1, 1).getValues();
+    for (let j = 0; j < ids.length; j++) {
+      if (String(ids[j][0]) !== id) continue;
+      const snapshotColumn = headers.indexOf('Submission Snapshot');
+      let payload = null;
+      try { payload = JSON.parse(String(sheet.getRange(j + 2, snapshotColumn + 1, 1, 1).getValues()[0][0])); }
+      catch { /* A damaged/legacy snapshot is never permission to overwrite it. */ }
+      return { payload: payload };
+    }
+  }
+  return null;
+}
+
+function queuedSubmission(ss, id) {
+  const sheet = ss.getSheetByName(FOLLOWUP_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const rows = sheet.getRange(2, FOLLOWUP_COL.payload, sheet.getLastRow() - 1, 1).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      const data = JSON.parse(String(rows[i][0]));
+      if (data && data.submissionId === id) return data;
+    } catch { /* Unreadable rows are preserved for the queue's terminal review. */ }
+  }
+  return null;
+}
+
 function doPost(e) {
   let raw = '{}';
   // Only the sheet write and the follow-up enqueue are serialised; no HTTP
   // happens inside doPost any more (see processFollowUps).
-  const lock = LockService.getScriptLock();
+  let lock = null;
   try {
     raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     let data;
@@ -1553,31 +1623,68 @@ function doPost(e) {
     // rollout the existing confirmation key is a compatible private fallback;
     // LEAD_PROXY_KEY permits independent rotation after both sides are ready.
     // Reject before Sheet access or alerts, and remove credentials from logs.
-    const proxyKey = PropertiesService.getScriptProperties().getProperty('LEAD_PROXY_KEY') ||
-      PropertiesService.getScriptProperties().getProperty('NETLIFY_CONTACT_CONFIRM_KEY');
+    const primaryKey = String(PropertiesService.getScriptProperties().getProperty('LEAD_PROXY_KEY') || '');
+    const fallbackKey = String(PropertiesService.getScriptProperties().getProperty('NETLIFY_CONTACT_CONFIRM_KEY') || '');
+    const proxyKey = primaryKey.trim() ? primaryKey : fallbackKey.trim() ? fallbackKey : '';
     const suppliedKey = typeof data._proxyKey === 'string' ? data._proxyKey : '';
     delete data._proxyKey;
     raw = JSON.stringify(data);
-    if (proxyKey) {
-      let difference = suppliedKey.length ^ proxyKey.length;
-      for (let i = 0; i < proxyKey.length; i++) {
-        difference |= proxyKey.charCodeAt(i) ^ (suppliedKey.charCodeAt(i) || 0);
-      }
-      if (difference) return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
-        .setMimeType(ContentService.MimeType.JSON);
+    // A missing secret is configuration failure, never a public/open mode.
+    // Keep the existing private fallback until both deployments have a verified
+    // dedicated key; failing closed must not accidentally rotate a live key.
+    if (!proxyKey) return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'proxy_auth_not_configured',
+      error: 'Lead endpoint authentication is not configured' })).setMimeType(ContentService.MimeType.JSON);
+    let difference = suppliedKey.length ^ proxyKey.length;
+    for (let i = 0; i < proxyKey.length; i++) {
+      difference |= proxyKey.charCodeAt(i) ^ (suppliedKey.charCodeAt(i) || 0);
     }
+    if (difference) return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+    // Private queue checkpoints are minted only by this script. An anonymous
+    // form must not inject completed jobs or a delivery lease into the queue.
+    Object.keys(data).forEach(function (key) { if (key.charAt(0) === '_') delete data[key]; });
     if (data.source !== 'newsletter' && data.source !== 'QualifyForm') {
       const originalSource = data.source;
       data.source = targetedSource(data);
       if (originalSource !== data.source) data.entrySource = data.entrySource || originalSource;
     }
+    lock = LockService.getScriptLock();
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-    lock.waitLock(20000);
+    // The proxy has a nine-second total budget. A twenty-second lock wait
+    // creates an unknown late save; do not queue behind a busy worker for longer
+    // than the caller can wait. The caller keeps its logical ID when retrying.
+    if (!lock.tryLock(1500)) return ContentService.createTextOutput(JSON.stringify({
+      success: false, code: 'capture_busy', message: 'Your request is still being processed. Please retry with the same submission.'
+    })).setMimeType(ContentService.MimeType.JSON);
 
     // Minted here rather than by the form, so every row has one whatever sent
     // it, and a replayed payload keeps the id it was first given.
     if (!data.submissionId) data.submissionId = Utilities.getUuid();
+    if (typeof data.submissionId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(data.submissionId)) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'invalid_submission_id',
+        field: 'submissionId', message: 'Please start a new submission.' })).setMimeType(ContentService.MimeType.JSON);
+    }
+    // The existing snapshot is the durable retry contract, including answers,
+    // consent and attribution. No new Sheet or positional schema is required.
+    // Look across routes: reusing an ID on another form is a conflict too.
+    const original = capturedSubmission(ss, data.submissionId);
+    const queued = queuedSubmission(ss, data.submissionId);
+    if (original || queued) {
+      if ((original && (!original.payload || canonicalSubmission(original.payload) !== canonicalSubmission(data))) ||
+        (queued && canonicalSubmission(queued) !== canonicalSubmission(data))) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'submission_conflict', field: 'submissionId',
+          message: 'This submission was already saved with different answers. Please start a new submission.' })).setMimeType(ContentService.MimeType.JSON);
+      }
+      // A crash after writing the lead but before enqueueing must not lose its
+      // promised work. enqueueFollowUp itself deduplicates the original ID.
+      if (original) {
+        enqueueFollowUp(ss, original.payload, JSON.stringify(original.payload));
+        SpreadsheetApp.flush();
+        return ContentService.createTextOutput(JSON.stringify({ success: true, submissionId: data.submissionId,
+          receipt: 'saved', replayed: true })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
 
     if (data.source === 'newsletter') {
       const sheet = getOrCreateSheet(ss, 'Newsletter', NEWSLETTER_HEADERS);
@@ -1624,13 +1731,14 @@ function doPost(e) {
     // Re-serialised so the queued payload carries the Submission ID the row was
     // just given. `raw` stays as received for the failure alert below.
     enqueueFollowUp(ss, data, JSON.stringify(data));
+    SpreadsheetApp.flush();
     lock.releaseLock();
     // Acquire the optional queue's lock only after the primary write releases
     // its own. Nested lock ownership must not shorten the primary critical section.
     try { enqueueCallRailSync(ss, data); } catch (err) { logDebug(ss, 'CallRail sync enqueue needs review: ' + err.toString(), data.email); }
 
     return ContentService
-      .createTextOutput(JSON.stringify({ success: true }))
+      .createTextOutput(JSON.stringify({ success: true, submissionId: data.submissionId, receipt: 'saved', replayed: !!queued }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -1642,7 +1750,7 @@ function doPost(e) {
       .createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   } finally {
-    try { lock.releaseLock(); } catch (e) { /* already released on the happy path */ }
+    if (lock) try { lock.releaseLock(); } catch (e) { /* already released on the happy path */ }
   }
 }
 
@@ -1931,7 +2039,6 @@ const FOLLOWUP_TAB = 'Follow-ups';
 const FOLLOWUP_HEADERS = ['Queued At', 'Status', 'Processed At', 'Error', 'Source', 'Email', 'Payload'];
 const FOLLOWUP_COL = { status: 2, processedAt: 3, error: 4, source: 5, email: 6, payload: 7 };
 const FOLLOWUP_MAX_RUN_MS = 4 * 60 * 1000; // stay well inside the 6 min execution cap
-const FOLLOWUP_RUNNING_KEY = 'followups_running';
 const GUIDE_MAX_ATTEMPTS = 6;
 
 /**
@@ -1995,7 +2102,8 @@ function nextFollowUpStatus(outcomes, attempt) {
     if (!Object.prototype.hasOwnProperty.call(outcomes, job)) return;
     const o = outcomes[job];
     if (o === 'sent' || o === 'skipped') return;
-    if (o === 'rejected') bad.push(job + '-rejected');
+    if (o === 'uncertain') bad.push(job + '-uncertain');
+    else if (o === 'rejected') bad.push(job + '-rejected');
     else if (attempt >= GUIDE_MAX_ATTEMPTS) bad.push(job + '-failed');
     else owed.push(job);
   });
@@ -2063,6 +2171,12 @@ function claimDecision(status, processedAt, now) {
 
 function enqueueFollowUp(ss, data, raw) {
   const sheet = getOrCreateSheet(ss, FOLLOWUP_TAB, FOLLOWUP_HEADERS);
+  if (data.submissionId && sheet.getLastRow() > 1) {
+    const payloads = sheet.getRange(2, FOLLOWUP_COL.payload, sheet.getLastRow() - 1, 1).getValues();
+    if (payloads.some(function (row) {
+      try { return JSON.parse(String(row[0])).submissionId === data.submissionId; } catch { return false; }
+    })) return;
+  }
   appendSafeRow(sheet, [
     new Date().toISOString(), 'pending', '', '', data.source || '', data.email || '', raw
   ]);
@@ -2088,104 +2202,136 @@ function withSheetLock(fn) {
  * GUIDE_MAX_ATTEMPTS, then 'guide-failed'; a permanent rejection (invalid
  * address, missing config) -> 'guide-rejected' with no retry. Both terminal
  * failures alert Darren, and the daily digest catches anything the 5 minute
- * alert throttle swallowed. Anything that throws is marked 'error' and alerted;
- * the Sheet row is safe either way.
+ * alert throttle swallowed. Unknown provider acceptance is held for review;
+ * interrupted workers retain their last flushed per-job checkpoint.
  *
- * Overlapping runs are prevented with a self-expiring cache key rather than the
- * script lock, so a crashed run heals itself after the TTL instead of wedging
- * the queue, and doPost is never blocked behind this.
+ * Overlapping workers re-read eligibility while holding a short write lock.
+ * Token-checked checkpoints prevent stale owners overwriting a new claim;
+ * network calls never hold the lock used by live lead capture.
  */
-function processFollowUps() {
-  const cache = CacheService.getScriptCache();
-  if (cache.get(FOLLOWUP_RUNNING_KEY)) return; // a previous run is still going
-  cache.put(FOLLOWUP_RUNNING_KEY, '1', 300);
+/** The existing Payload cell is a versioned journal, not a new tab/schema.
+ * Legacy statuses seed which work remains. Every provider call is preceded by
+ * a flushed in-flight checkpoint and followed by its own flushed result. */
+function deliveryJournal(data, status) {
+  if (data._delivery && data._delivery.version === 1) return data._delivery;
+  const owed = followUpJobs(status);
+  return { version: 1, id: data.submissionId || Utilities.getUuid(), jobs: {
+    hubspot: { state: owed.hubspot ? 'pending' : 'sent' },
+    guide: { state: owed.guide ? 'pending' : 'sent' }
+  } };
+}
 
-  const started = Date.now();
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(FOLLOWUP_TAB);
-    syncEmailOptOuts(ss);
-    if (!sheet || sheet.getLastRow() < 2) return;
-    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FOLLOWUP_HEADERS.length).getValues();
-
-    for (let i = 0; i < rows.length; i++) {
-      if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
-      const decision = claimDecision(
-        rows[i][FOLLOWUP_COL.status - 1],
-        rows[i][FOLLOWUP_COL.processedAt - 1],
-        Date.now()
-      );
-      if (!decision.claim) continue;
-      const priorAttempts = decision.attempts;
-      const rowNum = i + 2;
-      // Read before the claim overwrites it, and carried INTO the claim, so a
-      // run that dies mid-row leaves an orphan that still says what was owed.
-      const jobs = followUpJobs(rows[i][FOLLOWUP_COL.status - 1]);
-      const claimTag = jobs.guide && jobs.hubspot ? '' : (jobs.guide ? '-guide' : '-hubspot');
-
-      // Claim the row before any HTTP, so a crash mid-item can't re-run it.
-      // The attempt count goes into the claim, and the timestamp with it: the
-      // old bare 'processing' lost the count, and a run that died here left the
-      // row stuck forever with nothing to measure staleness against.
-      withSheetLock(function () {
-        sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 2)
-          .setValues([['processing' + claimTag + ':' + priorAttempts, new Date().toISOString()]]);
-        SpreadsheetApp.flush();
-      });
-
-      const raw = String(rows[i][FOLLOWUP_COL.payload - 1] || '{}');
-      try {
-        const data = JSON.parse(raw);
-        // No lock held here: this is seconds of HTTP, including a PDF render.
-        // There is no Bonzo job any more (retired 15 Oct 2026). A row queued
-        // before that deploy still owes only what its status names, so it
-        // finishes its HubSpot and guide work and is never sent to Bonzo.
-        // HubSpot and the guide each report an outcome, and each runs only
-        // while it is still owed (see nextFollowUpStatus).
-        const outcomes = {};
-        const results = {};
-        if (jobs.hubspot) { results.hubspot = pushToHubSpot(ss, data); outcomes.hubspot = results.hubspot.outcome; }
-        if (jobs.guide) { results.guide = sendGuideFor(ss, data); outcomes.guide = results.guide.outcome; }
-        const next = nextFollowUpStatus(outcomes, priorAttempts + 1);
-        const unfinished = ['hubspot', 'guide'].filter(function (job) {
-          return results[job] && results[job].outcome !== 'sent' && results[job].outcome !== 'skipped';
-        });
-        const detail = unfinished.map(function (job) { return results[job].detail || ''; }).join(' | ');
-        withSheetLock(function () {
-          sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3)
-            .setValues([[next.status, new Date().toISOString(), next.status === 'done' ? '' : detail]]);
-        });
-        if (next.alert) {
-          // One alert per row, naming each job that ended badly: alertFailure is
-          // throttled, so a second call here would usually be swallowed.
-          const lines = [];
-          const endedBadly = function (job) {
-            return next.bad.some(function (s) { return s.indexOf(job + '-') === 0; });
-          };
-          if (endedBadly('guide')) {
-            lines.push('guide email NOT delivered to ' + (data.email || '(no email)') + '. ' +
-              'The lead IS saved in the Sheet; send the guide by hand. Detail: ' + (results.guide.detail || ''));
-          }
-          if (endedBadly('hubspot')) {
-            lines.push('HubSpot did NOT receive ' + (data.email || '(no email)') + '. ' +
-              'The lead IS saved in the Sheet; add it to HubSpot by hand if it matters before this is fixed. Detail: ' +
-              (results.hubspot.detail || ''));
-          }
-          alertFailure(lines.join('\n\n') + ' [' + next.status + ']', raw);
-        }
-      } catch (err) {
-        withSheetLock(function () {
-          sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['error', new Date().toISOString(), err.toString()]]);
-        });
-        alertFailure('follow-up threw (Sheet row IS saved; HubSpot/guide may not have run): ' + err.toString(), raw);
+function claimFollowUp(sheet, rowNum) {
+  return withSheetLock(function () {
+    const row = sheet.getRange(rowNum, 1, 1, FOLLOWUP_HEADERS.length).getValues()[0];
+    const decision = claimDecision(row[FOLLOWUP_COL.status - 1], row[FOLLOWUP_COL.processedAt - 1], Date.now());
+    if (!decision.claim) return null;
+    let data;
+    try {
+      data = JSON.parse(String(row[FOLLOWUP_COL.payload - 1] || '{}'));
+      if (!data || typeof data !== 'object' || Array.isArray(data) ||
+        (data._delivery && (data._delivery.version !== 1 || !data._delivery.jobs ||
+          !data._delivery.jobs.hubspot || !data._delivery.jobs.guide))) throw new Error('Invalid queue payload');
+    } catch {
+      // No provider call has begun. Preserve the unreadable evidence, mark it
+      // terminal and let the digest report it, rather than alert every minute.
+      sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['error', new Date().toISOString(), 'Invalid queue payload; manual review required']]);
+      SpreadsheetApp.flush();
+      return null;
+    }
+    const journal = deliveryJournal(data, row[FOLLOWUP_COL.status - 1]);
+    ['hubspot', 'guide'].forEach(function (job) {
+      // A legacy orphan has no provider checkpoint. Its ambiguous previously
+      // running work cannot safely be replayed either.
+      if (decision.reason === 'orphan' && !data._delivery && journal.jobs[job].state === 'pending') {
+        journal.jobs[job] = { state: 'uncertain', detail: 'Legacy interrupted delivery; reconcile before retry' };
+      } else if (journal.jobs[job].state === 'inflight') {
+        const safeGuideRetry = job === 'guide' && journal.jobs[job].retrySafe === true && journal.jobs[job].startedAt &&
+          Date.now() - Date.parse(journal.jobs[job].startedAt) < 23 * 60 * 60 * 1000;
+        journal.jobs[job].state = safeGuideRetry ? 'retry' : 'uncertain';
+        journal.jobs[job].detail = safeGuideRetry ? '' : 'Provider result unknown; reconcile before retry';
       }
+    });
+    journal.token = Utilities.getUuid();
+    journal.attempt = decision.attempts + 1;
+    data._delivery = journal;
+    sheet.getRange(rowNum, FOLLOWUP_COL.status, 1, 3).setValues([['processing:' + decision.attempts, new Date().toISOString(), '']]);
+    sheet.getRange(rowNum, FOLLOWUP_COL.payload, 1, 1).setValues([[JSON.stringify(data)]]);
+    SpreadsheetApp.flush();
+    return { data: data, token: journal.token };
+  });
+}
+
+/** Locate by lease token, not stale row number: a person may sort/delete queue
+ * rows while HTTP is in flight. A stale worker can never overwrite a new claim. */
+function checkpointFollowUp(sheet, claim, job, result, finished) {
+  return withSheetLock(function () {
+    if (sheet.getLastRow() < 2) return false;
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FOLLOWUP_HEADERS.length).getValues();
+    for (let i = 0; i < rows.length; i++) {
+      let data;
+      try { data = JSON.parse(String(rows[i][FOLLOWUP_COL.payload - 1])); } catch { continue; }
+      if (!data._delivery || data._delivery.token !== claim.token) continue;
+      const journal = data._delivery;
+      if (job) journal.jobs[job] = result;
+      const outcomes = {};
+      const details = [];
+      ['hubspot', 'guide'].forEach(function (name) {
+        outcomes[name] = journal.jobs[name].state;
+        if (journal.jobs[name].detail) details.push(name + ': ' + journal.jobs[name].detail);
+      });
+      const next = nextFollowUpStatus(outcomes, journal.attempt);
+      // While the owner is active the status must stay unclaimable. Persisted
+      // per-job states tell an orphan recovery exactly what has already run.
+      const status = finished ? next.status : 'processing:' + (journal.attempt - 1);
+      if (finished) delete journal.token;
+      sheet.getRange(i + 2, FOLLOWUP_COL.payload, 1, 1).setValues([[JSON.stringify(data)]]);
+      sheet.getRange(i + 2, FOLLOWUP_COL.status, 1, 3).setValues([[status, new Date().toISOString(), status === 'done' ? '' : details.join(' | ')]]);
+      SpreadsheetApp.flush();
+      claim.data = data;
+      return { alert: finished && next.alert, status: status, detail: details.join(' | ') };
     }
-    if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {
-      try { processCallRailSync(ss); }
-      catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
+    return false;
+  });
+}
+
+function processFollowUps() {
+  const started = Date.now();
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(FOLLOWUP_TAB);
+  syncEmailOptOuts(ss);
+  if (!sheet || sheet.getLastRow() < 2) return;
+  const lastRow = sheet.getLastRow();
+  for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
+    if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
+    let claim;
+    try {
+      // Eligibility is re-read inside the short lock. Cache get/put cannot
+      // supply mutual exclusion and is no longer relied upon for correctness.
+      claim = claimFollowUp(sheet, rowNum);
+      if (!claim) continue;
+      for (const job of ['hubspot', 'guide']) {
+        const prior = claim.data._delivery.jobs[job];
+        if (prior.state !== 'pending' && prior.state !== 'retry') continue;
+        const running = { state: 'inflight', startedAt: prior.startedAt || new Date().toISOString(), retrySafe: prior.retrySafe === true };
+        if (!checkpointFollowUp(sheet, claim, job, running, false)) break;
+        const result = job === 'hubspot' ? pushToHubSpot(ss, claim.data) : sendGuideFor(ss, claim.data);
+        if (!checkpointFollowUp(sheet, claim, job, { state: result.outcome, detail: result.detail || '', startedAt: running.startedAt,
+          retrySafe: result.retrySafe === true || running.retrySafe }, false)) break;
+      }
+      const final = checkpointFollowUp(sheet, claim, null, null, true);
+      if (final && final.alert) alertFailure('Follow-up needs review (lead IS saved). Do not resend uncertain deliveries before reconciliation. [' +
+        final.status + '] ' + final.detail, JSON.stringify(leadSnapshot(claim.data)));
+    } catch (err) {
+      // Keep the last durable checkpoint. Turning it into a generic error would
+      // destroy which provider may have accepted the work before this crash.
+      alertFailure('Follow-up interrupted; lead IS saved. Reconcile provider acceptance before manual retry: ' + err.toString(),
+        claim ? JSON.stringify(leadSnapshot(claim.data)) : '{}');
     }
-  } finally {
-    try { cache.remove(FOLLOWUP_RUNNING_KEY); } catch (e) { /* TTL will clear it */ }
+  }
+  if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {
+    try { processCallRailSync(ss); }
+    catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
   }
 }
 
@@ -2255,7 +2401,7 @@ function processCallRailSync(ss) {
 // expires, every lead fails, Darren gets one email, and the rest are silent.
 // This runs once a day and reports everything, throttled by nothing.
 
-const GUIDE_DIGEST_STATUSES = ['guide-failed', 'guide-rejected', 'hubspot-failed', 'hubspot-rejected', 'error'];
+const GUIDE_DIGEST_STATUSES = ['guide-failed', 'guide-rejected', 'hubspot-failed', 'hubspot-rejected', 'guide-uncertain', 'hubspot-uncertain', 'error'];
 const DIGEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -2285,6 +2431,7 @@ function guideDigestRows(rows, now) {
 function formatGuideDigest(items) {
   // What went missing, per row, now that a row can fail two different ways.
   function missing(status) {
+    if (status.indexOf('uncertain') !== -1) return 'provider acceptance unknown; reconcile before resending';
     if (status.indexOf('hubspot-') === 0) return 'not in HubSpot';
     if (status.indexOf('guide-') === 0) return 'guide email not sent';
     return 'follow-up did not finish';
@@ -2294,7 +2441,7 @@ function formatGuideDigest(items) {
            (it.source ? '  (' + it.source + ')' : '') + '  ' + missing(it.status) + '\n    ' + it.error;
   });
   return 'These leads ARE saved in the Sheet. What did not happen is listed per row.\n' +
-         'Send a missing guide by hand; a lead missing from HubSpot can be added there by hand.\n\n' +
+         'Check provider acceptance before any manual resend or CRM re-entry, especially uncertain deliveries.\n\n' +
          lines.join('\n') + '\n';
 }
 

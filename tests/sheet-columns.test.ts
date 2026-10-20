@@ -24,7 +24,7 @@
  *     where a value goes, so the two cannot disagree about position.
  */
 import { describe, it, expect } from 'vitest';
-import { loadGas, type Tab } from './helpers/gas-harness';
+import { loadGas, TEST_PROXY_KEY, type Tab } from './helpers/gas-harness';
 
 const PREFIX = [
   'Timestamp', 'Submission ID', 'First Name', 'Last Name', 'Email', 'Phone', 'State',
@@ -93,6 +93,7 @@ type Mail = { to: string; subject: string; body: string };
 function load() {
   const mail: Mail[] = [];
   const harness = loadGas<Gas>({
+    props: { LEAD_PROXY_KEY: TEST_PROXY_KEY },
     exports: [
       'SOURCE_SCHEMAS', 'LEADS_SCHEMA', 'LEAD_HEADERS', 'DEBT_CONSOLIDATION_HEADERS',
       'QUALIFY_HEADERS', 'NEWSLETTER_HEADERS', 'leadTabSchemas', 'describeSheetDrift', 'doPost',
@@ -100,7 +101,7 @@ function load() {
     onMail: (m) => mail.push(m),
   });
   const post = (payload: Record<string, unknown>) => {
-    const res = harness.gas.doPost({ postData: { contents: JSON.stringify(payload) } }) as { __body: string };
+    const res = harness.gas.doPost({ postData: { contents: JSON.stringify({ ...payload, _proxyKey: TEST_PROXY_KEY }) } }) as { __body: string };
     return JSON.parse(res.__body) as { success: boolean; error?: string };
   };
   const seed = (tab: Tab) => harness.tabs.set(tab.name, tab);

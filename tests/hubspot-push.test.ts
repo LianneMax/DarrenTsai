@@ -182,9 +182,6 @@ describe('what is sent', () => {
       rdt_page_path: '/dscr/',
       rdt_gclid: 'GCLID-1',
       hs_google_click_id: 'GCLID-1',
-      rdt_first_utm_source: 'youtube',
-      rdt_first_utm_medium: 'video',
-      rdt_first_utm_campaign: 'dscr-explainer',
       rdt_latest_utm_source: 'google',
       rdt_latest_utm_medium: 'cpc',
       rdt_latest_utm_campaign: 'dscr-search',
@@ -304,14 +301,14 @@ describe('fields the form refuses', () => {
 });
 
 describe('failures go to the retry queue and the alert', () => {
-  it('a 5xx is retried later, without mailing the delivered guide again', () => {
+  it('a definitive 429 is retried later, without mailing the delivered guide again', () => {
     const h = load();
-    h.reply('hsforms.com', { code: 503 }, { code: 200 });
+    h.reply('hsforms.com', { code: 429 }, { code: 200 });
     h.queue(LEAD);
     h.processFollowUps();
 
     expect(h.statusOf().status).toBe('hubspot-retry:1');
-    expect(h.statusOf().error).toMatch(/pushToHubSpot 503/);
+    expect(h.statusOf().error).toMatch(/pushToHubSpot 429/);
     expect(guideCalls(h)).toHaveLength(1);
     expect(h.mail).toHaveLength(0); // not yet: it may well recover
 
@@ -333,23 +330,23 @@ describe('failures go to the retry queue and the alert', () => {
     expect(hubspotCalls(h)).toHaveLength(1);
     expect(h.statusOf().status).toBe('hubspot-rejected');
     expect(h.mail).toHaveLength(1);
-    expect(h.mail[0].body).toContain('HubSpot did NOT receive jane@example.com');
+    expect(h.mail[0].body).toContain('[hubspot-rejected]');
     expect(h.mail[0].body).toContain('Form not found');
   });
 
-  it('a throw is treated as retryable', () => {
+  it('a throw has unknown acceptance and is held for reconciliation', () => {
     const h = load();
     h.reply('hsforms.com', { code: THROW });
     h.queue(LEAD);
     h.processFollowUps();
-    expect(h.statusOf().status).toBe('hubspot-retry:1');
-    expect(h.statusOf().error).toContain('pushToHubSpot threw');
+    expect(h.statusOf().status).toBe('hubspot-uncertain');
+    expect(h.statusOf().error).toContain('pushToHubSpot acceptance unknown');
     expect(guideCalls(h)).toHaveLength(1); // the guide still went out
   });
 
   it('gives up after the last attempt, as hubspot-failed, and alerts', () => {
     const h = load();
-    h.reply('hsforms.com', { code: 503 });
+    h.reply('hsforms.com', { code: 429 });
     const last = h.GUIDE_MAX_ATTEMPTS - 1;
     h.queue(LEAD, `hubspot-retry:${last}`, new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     h.processFollowUps();
@@ -419,14 +416,14 @@ describe('which job a row still owes', () => {
     }
   });
 
-  it('recovers an orphaned HubSpot-only claim without re-sending the guide', () => {
+  it('holds a legacy orphaned HubSpot-only claim without re-sending either provider', () => {
     const stale = new Date(Date.now() - 11 * 60 * 1000).toISOString();
     h.queue(LEAD, 'processing-hubspot:1', stale);
     h.processFollowUps();
-    expect(hubspotCalls(h)).toHaveLength(1);
+    expect(hubspotCalls(h)).toHaveLength(0);
     expect(guideCalls(h)).toHaveLength(0);
     expect(bonzoCalls(h)).toHaveLength(0);
-    expect(h.statusOf().status).toBe('done');
+    expect(h.statusOf().status).toBe('hubspot-uncertain');
   });
 
   it('leaves a guide-only retry from before HubSpot existed as guide-only', () => {

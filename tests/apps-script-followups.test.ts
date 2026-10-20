@@ -74,6 +74,7 @@ let h: Harness;
 beforeEach(() => { h = load(); });
 
 const DSCR_LEAD = {
+  submissionId: 'followup-dscr-1',
   source: 'dscr', firstName: 'Jane', lastName: 'Investor', email: 'jane@example.com',
   phone: '7148821190', state: 'CA', dscr: '1.17', downPayment: '25%',
   loanAmount: '$240,000', rate: '7.00%',
@@ -137,8 +138,8 @@ describe('the happy path: guide once, row done, no Bonzo', () => {
 });
 
 describe('a guide that fails is retried', () => {
-  it('marks a 503 as a retry and says why, without alerting yet', () => {
-    h.reply('send-dscr-guide', 503, 'Resend unavailable');
+  it('marks an explicitly keyed-protocol 503 as a safe retry without alerting yet', () => {
+    h.reply('send-dscr-guide', 503, JSON.stringify({ deliveryProtocol: 'resend-key-v1', submissionId: DSCR_LEAD.submissionId, error: 'Resend unavailable' }));
     h.queue(DSCR_LEAD);
     h.processFollowUps();
 
@@ -165,14 +166,15 @@ describe('a guide that fails is retried', () => {
   });
 
   it('gives up after the last attempt, and alerts when it does', () => {
-    h.reply('send-dscr-guide', 503);
+    h.reply('send-dscr-guide', 503, JSON.stringify({ deliveryProtocol: 'resend-key-v1', submissionId: DSCR_LEAD.submissionId, error: 'Resend unavailable' }));
     h.queue(DSCR_LEAD, 'guide-retry:5', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString());
     h.processFollowUps();
 
     expect(h.statusOf().status).toBe('guide-failed');
     expect(h.mail).toHaveLength(1);
     expect(h.mail[0].body).toContain('jane@example.com');
-    expect(h.mail[0].body).toContain('send the guide by hand');
+    expect(h.mail[0].body).toContain('[guide-failed]');
+    expect(h.mail[0].body).toContain('before reconciliation');
   });
 
   it('never retries a permanent rejection, and alerts immediately', () => {
@@ -197,20 +199,33 @@ describe('a run that dies mid-flight does not strand the lead', () => {
     expect(h.statusOf().status).toBe('processing:0');
   });
 
-  it('recovers a row abandoned longer than the orphan window', () => {
+  it('holds a legacy abandoned row for reconciliation without resending', () => {
     h.queue(DSCR_LEAD, 'processing:0', new Date(Date.now() - 20 * 60 * 1000).toISOString());
     h.processFollowUps();
-    expect(guideCalls(h)).toHaveLength(1);
-    expect(h.statusOf().status).toBe('done');
+    expect(guideCalls(h)).toHaveLength(0);
+    expect(h.statusOf().status).toBe('guide-uncertain');
+    expect(h.mail[0].body).toContain('reconciliation');
   });
 
-  it('recovers a legacy bare "processing" row with no timestamp at all', () => {
+  it('holds a legacy bare "processing" row with no timestamp instead of guessing acceptance', () => {
     h.queue(DSCR_LEAD, 'processing', '');
     h.processFollowUps();
+    expect(h.statusOf().status).toBe('guide-uncertain');
+    expect(guideCalls(h)).toHaveLength(0);
+  });
+
+  it('recovers a checkpointed keyed guide orphan within its provider window using the original delivery identity', () => {
+    const startedAt = new Date(Date.now() - 20 * 60_000).toISOString();
+    h.queue({ ...DSCR_LEAD, _delivery: { version: 1, id: DSCR_LEAD.submissionId, token: 'abandoned-token', attempt: 1,
+      jobs: { hubspot: { state: 'sent' }, guide: { state: 'inflight', retrySafe: true, startedAt } } } }, 'processing:0', startedAt);
+    h.processFollowUps();
+    expect(guideCalls(h)).toHaveLength(1);
+    const body = JSON.parse(String(guideCalls(h)[0].options.payload));
+    expect(body).toMatchObject({ submissionId: DSCR_LEAD.submissionId, deliveryStartedAt: startedAt });
     expect(h.statusOf().status).toBe('done');
   });
 
-  it('marks a row that throws as error and alerts, without stopping the batch', () => {
+  it('preserves an unreadable row as terminal error for the digest without stopping the batch or alerting every minute', () => {
     h.queue({ source: 'dscr', email: 'bad@example.com' });
     // Corrupt the payload cell so JSON.parse inside the loop throws.
     h.tabs.get('Follow-ups')!.rows[1][6] = '{oops';
@@ -219,7 +234,13 @@ describe('a run that dies mid-flight does not strand the lead', () => {
 
     expect(h.statusOf(1).status).toBe('error');
     expect(h.statusOf(2).status).toBe('done'); // the second row still ran
-    expect(h.mail.some((m) => m.subject.includes('LEAD PIPELINE FAILURE'))).toBe(true);
+    expect(h.mail).toHaveLength(0);
+    expect(h.tabs.get('Follow-ups')!.rows[1][6]).toBe('{oops');
+    h.processFollowUps();
+    expect(h.mail).toHaveLength(0);
+    h.sendGuideDigest();
+    expect(h.mail).toHaveLength(1);
+    expect(h.mail[0].body).toContain('Invalid queue payload');
   });
 });
 
@@ -346,7 +367,11 @@ describe('the contact confirmation', () => {
     const c = configured();
     c.queue(CONTACT_LEAD);
     c.processFollowUps();
-    expect(Object.keys(bodyOf(c)).sort()).toEqual(['email', 'firstName', 'lastName', 'message']);
+    const body = bodyOf(c);
+    expect(Object.keys(body).sort()).toEqual(['deliveryStartedAt', 'email', 'firstName', 'lastName', 'message', 'submissionId']);
+    expect(body).toMatchObject({ email: CONTACT_LEAD.email, firstName: CONTACT_LEAD.firstName, lastName: CONTACT_LEAD.lastName, message: CONTACT_LEAD.message });
+    expect(typeof body.submissionId).toBe('string');
+    expect(Number.isFinite(Date.parse(body.deliveryStartedAt))).toBe(true);
   });
 
   it('sends the mortgage review email only when the calculator numbers came with it', () => {
@@ -395,11 +420,12 @@ describe('rows queued before Bonzo was retired', () => {
     expect(h.statusOf().status).toBe('done');
   });
 
-  it('finishes an orphaned first-pass row without a Bonzo call', () => {
+  it('holds an old ambiguous first-pass orphan for reconciliation and never calls Bonzo', () => {
     h.queue(DSCR_LEAD, 'processing:0', new Date(Date.now() - 60 * 60 * 1000).toISOString());
     h.processFollowUps();
     expect(bonzoCalls(h)).toHaveLength(0);
-    expect(h.statusOf().status).toBe('done');
+    expect(guideCalls(h)).toHaveLength(0);
+    expect(h.statusOf().status).toBe('guide-uncertain');
   });
 
   it('never creates a Bonzo job for any funnel', () => {

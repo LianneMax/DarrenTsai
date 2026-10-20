@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { bookingBucket } from '../src/utils/bookingBucket';
-import { loadGas, type Tab } from './helpers/gas-harness';
+import { loadGas, TEST_PROXY_KEY, type Tab } from './helpers/gas-harness';
 
 const cases = [
   ['equity', 'book-contact', 'home-equity'],
@@ -38,7 +38,7 @@ describe('booking bucket parity across all three runtimes', () => {
 function migrationHarness(ready = false) {
   const h = loadGas<Gas>({
     exports: ['migrateLegacyLeads', 'doPost'],
-    props: ready ? { LEAD_BUCKET_ROUTING_READY: '2026-10-17-v1' } : {},
+    props: { LEAD_PROXY_KEY: TEST_PROXY_KEY, ...(ready ? { LEAD_BUCKET_ROUTING_READY: '2026-10-17-v1' } : {}) },
   });
   const rows = [
     ['Source', 'Email', 'Submission ID', 'Form ID', 'Booking Goal', 'Goals', 'Click ID', 'Test?', 'SMS Marketing Consent', 'Submission Snapshot', 'Unexpected legacy column', 'Unsubscribe?'],
@@ -84,7 +84,7 @@ describe('retiring Leads preserves the record before deletion', () => {
     const h = migrationHarness(true);
     expect(h.gas.migrateLegacyLeads(true)).toEqual({ copied: 3, verified: 3, deleted: true });
     expect(h.tabs.has('Leads')).toBe(false);
-    const result = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'book-contact', formId: 'booking-prequal', bookingGoal: 'equity', email: 'new@example.com' }) } });
+    const result = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'book-contact', formId: 'booking-prequal', bookingGoal: 'equity', email: 'new@example.com', _proxyKey: TEST_PROXY_KEY }) } });
     expect(JSON.parse(result.__body).success).toBe(true);
     expect(h.rowOf('Home Equity', 2).Source).toBe('home-equity');
     expect(h.tabs.has('Leads')).toBe(false);

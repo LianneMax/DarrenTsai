@@ -359,7 +359,7 @@ describe('doPost replies before the slow follow-ups', () => {
 
   it('claims a row before doing HTTP, so a crashed run cannot send twice', () => {
     const src = processFollowUps();
-    expect(src.indexOf("'processing'")).toBeLessThan(src.indexOf('pushToHubSpot('));
+    expect(src.indexOf('claimFollowUp(')).toBeLessThan(src.indexOf('pushToHubSpot('));
   });
 
   /**
@@ -370,12 +370,15 @@ describe('doPost replies before the slow follow-ups', () => {
   it('does not hold the script lock across the HTTP calls', () => {
     const src = processFollowUps();
     expect(src).not.toMatch(/getScriptLock\(\)/);
-    expect(src, 'overlap guard should be the self-expiring cache key, not the script lock')
-      .toContain('FOLLOWUP_RUNNING_KEY');
+    expect(src).toContain('claimFollowUp(');
+    expect(src).toContain('checkpointFollowUp(');
   });
 
   it('serialises each sheet write against doPost via withSheetLock', () => {
-    expect(processFollowUps()).toContain('withSheetLock(');
+    const start = SOURCE.indexOf('function claimFollowUp');
+    const checkpoint = SOURCE.indexOf('function checkpointFollowUp');
+    expect(SOURCE.slice(start, checkpoint)).toContain('withSheetLock(');
+    expect(SOURCE.slice(checkpoint, SOURCE.indexOf('function processFollowUps'))).toContain('withSheetLock(');
   });
 
   it('keeps the payload as the last follow-up column', () => {
@@ -424,10 +427,11 @@ describe('guide email outcomes', () => {
     expect(gas.guideAttemptsFromStatus('')).toBe(0);
   });
 
-  it('marks a row done only through nextGuideStatus', () => {
-    const start = SOURCE.indexOf('function processFollowUps');
+  it('marks a row done only through nextFollowUpStatus', () => {
+    const start = SOURCE.indexOf('function checkpointFollowUp');
     const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
-    expect(src).not.toMatch(/setValues\(\[\['done'/); // done only via nextGuideStatus
+    expect(src).toContain('nextFollowUpStatus(');
+    expect(src).not.toMatch(/setValues\(\[\['done'/);
   });
 
   it('every guide sender reports an outcome instead of swallowing it', () => {
@@ -534,11 +538,11 @@ describe('a run that dies mid-guide', () => {
   });
 
   it('claims with the attempt count and a timestamp, not a bare processing', () => {
-    const start = SOURCE.indexOf('function processFollowUps');
+    const start = SOURCE.indexOf('function claimFollowUp');
     const src = SOURCE.slice(start, SOURCE.indexOf('\nfunction ', start + 1));
-    // claimTag names the job still owed ('-guide', '-hubspot', or '' for both),
-    // so an orphaned row still knows not to re-send a delivered guide.
-    expect(src).toContain("'processing' + claimTag + ':' + priorAttempts");
+    // Durable per-job checkpoints preserve what remains, independently of the
+    // processing lease's attempt counter and last activity timestamp.
+    expect(src).toContain("'processing:' + decision.attempts");
     expect(src).not.toMatch(/setValue\('processing'\)/);
     expect(src).toContain('claimDecision(');
   });
