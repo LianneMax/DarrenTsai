@@ -143,4 +143,21 @@ describe('explicit opt-in tracking respects privacy choices', () => {
       expect(html).not.toContain('googletagmanager.com/ns.html');
     }
   });
+  it.each(['none', 'reject', 'gpc', 'accept'])('keeps the accessibility phone on the existing consent-gated CallRail path: %s', (choice) => {
+    const html = readFileSync(resolve(__dirname, '../public/legal/index.html'), 'utf8');
+    const page = new DOMParser().parseFromString(html, 'text/html');
+    document.body.innerHTML = page.body.innerHTML;
+    const phone = document.querySelector('#accessibility')!.parentElement!.querySelector('a[href^="tel:"]');
+    expect(phone?.getAttribute('href')).toBe('tel:+17148875432');
+    expect(phone?.textContent).toBe('(714) 887-5432');
+    const placeholder = document.querySelector('script[type="application/x-dt-consent"][data-src*="cdn.callrail.com"]');
+    expect(placeholder).not.toBeNull();
+    expect(html).not.toMatch(/<script[^>]*\ssrc="[^"\n]*cdn.callrail/);
+    if (choice === 'gpc') Object.defineProperty(window.navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    cookieRuntime();
+    if (choice === 'reject' || choice === 'accept') click(choice);
+    const active = document.querySelectorAll('script[src*="cdn.callrail.com"]');
+    expect(active).toHaveLength(choice === 'accept' ? 1 : 0);
+    if (choice === 'accept') expect(active[0].getAttribute('src')).toBe(placeholder!.getAttribute('data-src'));
+  });
 });

@@ -16,21 +16,23 @@ export function HouseOptions({ large = false }: { large?: boolean }) {
   </div>;
 }
 
-/* Hero geometry, in the SVG's own units (viewBox 480 x 340). The three goal
+/* Hero geometry, in the SVG's own units (viewBox 480 x 390). The three goal
    columns below are an equal three-column grid, so their centres sit at 1/6,
    1/2 and 5/6 of the width: x = 80, 240 and 400 here. */
 const HOUSE_SHAPE = 'M122 125 240 37 358 125V268H122Z';
-const ROUTES = ['M240 268V300H80V340', 'M240 268V340', 'M240 268V300H400V340'];
-/** The mortgage level drifts between these y values; lower y is a larger mortgage. */
-const LEVELS = '170;132;196;150;170';
+const ROUTES = ['M240 268V300H80V364', 'M240 268V364', 'M240 268V300H400V364'];
+/** The split drifts gently around the middle; equity always occupies the base. */
+const LEVELS = '170;150;184;158;170';
 
 /**
  * The house is the bar (Max, 20 Oct): its outline is filled with the mortgage
- * from the ground up and equity above it, and the level drifts by itself. The
+ * above and equity below (Max, 20 Oct), and the level drifts by itself. The
  * old version drew a photo, a separate bar and a slider, and moved the branch
  * origin with the bar every 100ms while the CSS money animation was mid-flight,
  * so the note left the line it was travelling on. Here every note follows a
- * fixed SVG path (animateMotion), so it cannot leave its line.
+ * fixed SVG path (animateMotion), so it cannot leave its line. All three notes
+ * and destination highlights share the SVG clock: arrival, background-tab
+ * pauses and reduced motion cannot drift out of sync as separate CSS loops did.
  *
  * No slider and no pause button, both removed at Max's request. The motion is
  * decorative and stops itself: offscreen, in a hidden tab, and for anyone who
@@ -58,29 +60,44 @@ function EquityIllustration() {
   }, []);
   return <div className="home-diagram">
     <p className="diagram-heading">See your home a little differently.</p>
-    <svg ref={svg} className="home-equity-house" viewBox="0 0 480 340" role="img" aria-labelledby="equity-diagram-title equity-diagram-desc">
+    <svg ref={svg} className="home-equity-house" viewBox="0 0 480 390" role="img" aria-labelledby="equity-diagram-title equity-diagram-desc">
       <title id="equity-diagram-title">Your home’s value, split into mortgage balance and estimated equity</title>
-      <desc id="equity-diagram-desc">An illustrative house filled with a mortgage balance from the ground up and estimated equity above it, with equity branching to renovation, paying off debt and other goals. These proportions are not a personal estimate.</desc>
-      <defs><clipPath id="home-shape"><path d={HOUSE_SHAPE} /></clipPath></defs>
+      <desc id="equity-diagram-desc">An illustrative house with a striped mortgage balance above and green estimated equity below. Money travels together to renovation, paying off debt and other goals, which highlight on arrival. These proportions are not a personal estimate.</desc>
+      <defs>
+        <clipPath id="home-shape"><path d={HOUSE_SHAPE} /></clipPath>
+        <pattern id="home-mortgage-pattern" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+          <rect width="10" height="10" className="home-mortgage-color" /><path d="M0 0V10" stroke="#fff" strokeOpacity=".24" strokeWidth="3" />
+        </pattern>
+        <pattern id="home-equity-pattern" width="12" height="12" patternUnits="userSpaceOnUse">
+          <rect width="12" height="12" className="home-equity-color" /><circle cx="6" cy="6" r="1.1" fill="#fff" fillOpacity=".28" />
+        </pattern>
+      </defs>
       <g clipPath="url(#home-shape)">
-        <rect className="home-equity-fill" x="100" y="25" width="280" height="250" />
-        <rect className="home-mortgage-fill" x="100" y="170" width="280" height="160"><animate attributeName="y" values={LEVELS} dur="10s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1" /></rect>
-        <line className="home-level" x1="100" x2="380" y1="170" y2="170"><animate attributeName="y1" values={LEVELS} dur="10s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1" /><animate attributeName="y2" values={LEVELS} dur="10s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1" /></line>
+        <rect className="home-mortgage-fill" x="100" y="25" width="280" height="250" />
+        <rect className="home-equity-fill" x="100" y="170" width="280" height="160"><animate attributeName="y" values={LEVELS} dur="10s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1" /></rect>
       </g>
-      <g className="home-details"><rect x="222" y="222" width="36" height="46" rx="2" /><rect x="152" y="160" width="44" height="36" rx="2" /><rect x="284" y="160" width="44" height="36" rx="2" /><path d="M174 160v36M152 178h44M306 160v36M284 178h44" /></g>
+      <text className="home-house-label home-mortgage-label" x="240" y="138">Mortgage balance</text>
+      <text className="home-house-label home-equity-label" x="240" y="230">Estimated equity</text>
       <path className="home-outline" d="M96 144 240 37 384 144M122 125V268H358V125" />
       <path className="home-routes" d={ROUTES.join('')} />
-      {ROUTES.map((route, i) => <g key={route} className="home-note" opacity="0">
-        <g transform="translate(-14 -10.5) scale(.875)"><rect x="2" y="3" width="28" height="18" rx="3" /><circle cx="16" cy="12" r="4" /></g>
-        {/* One 12s loop per note, offset 4s apart: travel for the first 2.6s, then rest unseen. */}
-        <animateMotion path={route} dur="12s" begin={`${0.6 + i * 4}s`} repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.22;1" calcMode="linear" />
-        <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.03;.19;.22;1" dur="12s" begin={`${0.6 + i * 4}s`} repeatCount="indefinite" />
+      {ROUTES.map(route => <g key={route} className="home-note" opacity="0">
+        <g className="home-money-mark" transform="translate(-16 -12)"><rect x="2" y="3" width="28" height="18" rx="3" /><circle cx="16" cy="12" r="4" /><path d="M6 7h2M24 17h2M6 17h2M24 7h2" /></g>
+        <animateMotion path={route} dur="6s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.6;1" calcMode="linear" />
+        <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;.06;.6;.64;1" dur="6s" repeatCount="indefinite" />
+      </g>)}
+      {GOALS.map((goal, i) => <g key={goal.label} className="home-goal-emblem" transform={`translate(${80 + i * 160} 364)`} aria-hidden="true">
+        <circle className="home-goal-disc" r="24" fill="#e2efe7">
+          <animate attributeName="fill" values="#e2efe7;#e2efe7;#24744d;#24744d;#e2efe7;#e2efe7" keyTimes="0;.56;.64;.84;.94;1" dur="6s" repeatCount="indefinite" />
+        </circle>
+        <g className="home-goal-icon" transform="translate(-12 -12)" stroke="#24744d">
+          <animate attributeName="stroke" values="#24744d;#24744d;#fff;#fff;#24744d;#24744d" keyTimes="0;.56;.64;.84;.94;1" dur="6s" repeatCount="indefinite" />
+          {goal.icon}
+        </g>
       </g>)}
     </svg>
     <ul className="home-goal-row" aria-label="Example goals to discuss with Darren">
-      {GOALS.map(goal => <li key={goal.label}><span className="home-goal-emblem"><svg viewBox="0 0 24 24" aria-hidden="true">{goal.icon}</svg></span><span>{goal.label}</span></li>)}
+      {GOALS.map(goal => <li key={goal.label}>{goal.label}</li>)}
     </ul>
-    <div className="diagram-legend"><span><i className="mortgage-key" />Mortgage balance</span><span><i className="equity-key" />Estimated equity</span></div>
     <div className="equity-equation"><span>Home value</span><span aria-hidden="true">−</span><span>Mortgage balance</span><span aria-hidden="true">=</span><strong>Estimated equity</strong></div>
     <p className="diagram-note">Illustration only. Your inputs determine your estimate.</p>
   </div>;

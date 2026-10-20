@@ -181,12 +181,16 @@ try {
           const labels = [...box.querySelectorAll('.floating-product')].map((l) => l.getBoundingClientRect());
           return {
             inside: img.width > 60 && img.left >= outer.left - 0.5 && img.right <= outer.right + 0.5 && img.top >= outer.top - 0.5 && img.bottom <= outer.bottom + 0.5,
-            clear: labels.every((l) => img.right <= l.left + 0.5 || img.left >= l.right - 0.5 || img.bottom <= l.top + 0.5 || img.top >= l.bottom - 0.5),
+            centered: Math.abs(img.left + img.width / 2 - outer.left - outer.width / 2) < 1,
+            // Max now allows labels over the house. Keep their text clear of
+            // one another and leave the middle of the house visible.
+            clear: labels.every((label, i) => labels.every((other, j) => i === j || label.right <= other.left || label.left >= other.right || label.bottom <= other.top || label.top >= other.bottom)) && labels.every(label => !(label.left < img.left + img.width / 2 && label.right > img.left + img.width / 2 && label.top < img.top + img.height / 2 && label.bottom > img.top + img.height / 2)),
           };
         });
         checks++;
         if (!house.inside) failures.push(`${width}px /: tradeoffs house is outside its card or collapsed`);
-        if (!house.clear) failures.push(`${width}px /: tradeoffs house overlaps a product label`);
+          if (!house.centered) failures.push(`${width}px /: tradeoffs house is not centered`);
+          if (!house.clear) failures.push(`${width}px /: tradeoffs labels overlap each other or obscure the house center`);
         // A one-line strip that runs past the edge must say so.
         const strip = await page.locator('.other-goals').evaluate((e) => e.scrollWidth > e.clientWidth + 2);
         const arrow = await page.getByRole('button', { name: 'Show more goals', exact: true }).isVisible();
