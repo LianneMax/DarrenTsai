@@ -13,9 +13,15 @@ declare global {
     DT?: {
       attr: () => Record<string, string>;
       track: (event: string, params?: Record<string, unknown>) => unknown;
+      milestone?: (event: string, params: Record<string, unknown>) => unknown;
     };
     dataLayer?: unknown[];
   }
+}
+
+/** Consent-gated observations with a separate PII-free contract. */
+export function milestone(event: 'form_start' | 'form_step' | 'form_error', params: Record<string, unknown>): void {
+  try { window.DT?.milestone?.(event, params); } catch { /* Measurement never blocks the form. */ }
 }
 
 export function getAttribution(): Record<string, string> {

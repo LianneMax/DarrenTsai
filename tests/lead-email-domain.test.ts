@@ -62,7 +62,7 @@ beforeEach(() => {
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }));
   vi.stubGlobal('Netlify', {
-    env: { get: (k: string) => ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, RESEND_API_KEY: 're_test' })[k] },
+    env: { get: (k: string) => ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, LEAD_PROXY_KEY: 'private-test-key', RESEND_API_KEY: 're_test' })[k] },
   });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });

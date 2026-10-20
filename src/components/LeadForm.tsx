@@ -1,7 +1,7 @@
 import { calculateMortgage } from '../utils/mortgageCalc';
 import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { formatUsPhone } from '../utils/phone';
@@ -10,6 +10,7 @@ import { EMAIL, LICENSED_STATES, isLicensedState } from '../config';
 import StateSelect from './StateSelect';
 import CustomSelect from './CustomSelect';
 import { openBooking } from '../utils/booking';
+import { milestone } from '../utils/attribution';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 
@@ -101,7 +102,9 @@ export default function LeadForm({
   prefillNumbers = false,
   nextStep,
 }: Props) {
+  useEffect(() => { window.DTLead?.begin(formId); }, [formId]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>(() => ({
     firstName: '',
@@ -162,6 +165,7 @@ export default function LeadForm({
     }
     if (!form.state)           errs.state    = 'Required';
     setErrors(errs);
+    if (Object.keys(errs).length) milestone('form_error', {form_id:formId,error_code:'validation',field_category:'contact'});
     return Object.keys(errs).length === 0;
   };
 
@@ -170,6 +174,7 @@ export default function LeadForm({
     if (!validate()) return;
 
     setStatus('loading');
+    setFormError(null);
 
     const payload = {
       firstName: form.firstName.trim(),
@@ -201,7 +206,8 @@ export default function LeadForm({
     // the field, rather than the generic failure state, which tells them not to
     // resubmit. Nothing was saved in that case, so resubmitting is the fix.
     if (!result.ok && result.kind === 'fieldError') {
-      setErrors((prev) => ({ ...prev, [result.field]: result.message }));
+      if (['firstName', 'lastName', 'email', 'phone', 'state'].includes(result.field)) setErrors((prev) => ({ ...prev, [result.field]: result.message }));
+      else setFormError(result.message);
       setStatus('idle');
       return;
     }
@@ -240,20 +246,20 @@ export default function LeadForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} noValidate data-dt-form={formId}>
       <ServiceAreaFields formId={formId} />
       {/* Note */}
       <p className="modal-note">
         <strong>* Required</strong>: name, email, phone and state. The rest is optional.
       </p>
 
-      {status === 'error' && (
+      {(status === 'error' || formError) && (
         <div className="error-banner" role="alert">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
             <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          Something went wrong. Please email{' '}
+          {formError || 'We couldn’t confirm whether your request was saved. Keep this page open and retry here with the same details, or email'}{' '}
           <a href={`mailto:${EMAIL}`}>{EMAIL}</a> directly.
         </div>
       )}

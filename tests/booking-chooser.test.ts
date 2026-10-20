@@ -23,6 +23,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { prequalPasses } from '../src/utils/serviceArea';
 
+const REQUEST_SOURCE = readFileSync(resolve(__dirname, '../public/lead-request.js'), 'utf8');
 const SOURCE = readFileSync(resolve(__dirname, '../public/booking-chooser.js'), 'utf8');
 const AREA = readFileSync(resolve(__dirname, '../public/service-area.js'), 'utf8');
 const COMPLIANCE = readFileSync(resolve(__dirname, '../public/compliance.js'), 'utf8');
@@ -97,13 +98,14 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  delete window.DTLead; sessionStorage.clear(); new Function(REQUEST_SOURCE)();
   booking.close();
   booking.identify({});
   document.body.innerHTML = '';
   document.querySelectorAll('script[src*="MeetingsEmbed"]').forEach((s) => s.remove());
   track = vi.fn();
-  (window as unknown as { DT: unknown }).DT = { track, attr: () => ({ utm_source: 'youtube', pageUri: 'https://realdarrentsai.com/' }) };
-  leadFetch = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) }));
+  (window as unknown as { DT: unknown }).DT = { track, milestone: vi.fn(), attr: () => ({ utm_source: 'youtube', pageUri: 'https://realdarrentsai.com/' }) };
+  leadFetch = vi.fn((_url, init) => Promise.resolve(new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(init.body).submissionId}))));
   (window as unknown as { fetch: unknown }).fetch = (url: string, opts: unknown) => leadFetch(url, opts);
   assign = vi.fn();
   Object.defineProperty(window, 'location', { configurable: true, value: { ...window.location, pathname: '/', assign } });
@@ -344,7 +346,7 @@ describe('step 3: save the lead, then the calendar', () => {
     fillContact();
     await flush();
     expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
-    resolveLead({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    resolveLead(new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:leadBody().submissionId})));
     await flush();
     await flush();
     const container = card().querySelector('.dt-book-frame iframe')!;
@@ -367,7 +369,7 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(events.filter((e) => e === 'generate_lead')).toHaveLength(1);
     expect(events).toContain('booking_page_shown');
     const lead = track.mock.calls.find((c) => c[0] === 'generate_lead')![1];
-    expect(lead).toEqual({ lead_source: 'home-equity', form_id: 'booking-prequal', page_path: '/' });
+    expect(lead).toMatchObject({ lead_source: 'home-equity', form_id: 'booking-prequal', page_path: '/' });
     expect(JSON.stringify(track.mock.calls)).not.toMatch(/ada|Lovelace|7145550123/i);
   });
 
@@ -381,13 +383,13 @@ describe('step 3: save the lead, then the calendar', () => {
     await flush();
     expect(userData).toHaveBeenCalledWith(expect.objectContaining({ email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' }));
     const lead = track.mock.calls.find((c) => c[0] === 'generate_lead')![1];
-    expect(lead).toEqual({ lead_source: 'home-equity', form_id: 'booking-prequal', page_path: '/', user_data: { email: 'ada@example.com', phone_number: '+17145550123' } });
+    expect(lead).toMatchObject({ lead_source: 'home-equity', form_id: 'booking-prequal', page_path: '/', user_data: { email: 'ada@example.com', phone_number: '+17145550123' } });
     // Only generate_lead carries it.
     for (const [event, params] of track.mock.calls) if (event !== 'generate_lead') expect(JSON.stringify(params)).not.toContain('ada@');
   });
 
   it('shows no calendar when the server refuses the answers', async () => {
-    leadFetch = vi.fn(() => Promise.resolve({ ok: false, status: 422, json: () => Promise.resolve({ field: 'prequal' }) }));
+    leadFetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({field:'prequal'}), {status:422})));
     booking.open();
     passSteps();
     fillContact();
@@ -399,7 +401,7 @@ describe('step 3: save the lead, then the calendar', () => {
   });
 
   it('follows the server to the out-of-market page if its screening says no', async () => {
-    leadFetch = vi.fn(() => Promise.resolve({ ok: false, status: 422, json: () => Promise.resolve({ field: 'propertyState' }) }));
+    leadFetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({field:'propertyState'}), {status:422})));
     booking.open();
     passSteps();
     fillContact();
@@ -408,7 +410,7 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
   });
 
-  it('shows no calendar for a receipt it cannot confirm, and does not ask for a resubmit', async () => {
+  it('shows no calendar for an uncertain receipt and offers a safe same-inquiry retry', async () => {
     leadFetch = vi.fn(() => Promise.resolve({ ok: false, status: 502, json: () => Promise.resolve({}) }));
     booking.open();
     passSteps();
@@ -416,7 +418,7 @@ describe('step 3: save the lead, then the calendar', () => {
     await flush();
     await flush();
     expect(card().querySelector('.dt-book-frame iframe')).toBeNull();
-    expect(card().textContent).toMatch(/avoid a duplicate/);
+    expect(card().textContent).toMatch(/retry here with the same details/i);
     expect(card().textContent).not.toMatch(/your details reached Darren/);
   });
 
@@ -427,6 +429,19 @@ describe('step 3: save the lead, then the calendar', () => {
     const form = card().querySelector('form') as HTMLFormElement;
     expect((form.elements.namedItem('firstName') as HTMLInputElement).value).toBe('Ada');
     expect((form.elements.namedItem('email') as HTMLInputElement).value).toBe('ada@example.com');
+  });
+});
+
+describe('PII-free validation and policy observations', () => {
+  it('observes an invalid goal without posting or sending the error text', () => {
+    booking.open(); next();
+    expect(window.DT?.milestone).toHaveBeenCalledWith('form_error', {form_id:'booking-prequal',error_code:'validation',field_category:'property'});
+    expect(leadFetch).not.toHaveBeenCalled();
+  });
+  it('observes unsupported property policy separately from a technical failure', () => {
+    booking.open(); selectGoal('equity'); tap('propertyUse','primary'); pickState('NY'); next();
+    expect(window.DT?.milestone).toHaveBeenCalledWith('form_error', {form_id:'booking-prequal',error_code:'policy_exit',field_category:'property'});
+    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/'); expect(leadFetch).not.toHaveBeenCalled();
   });
 });
 
@@ -504,7 +519,7 @@ describe('the panel', () => {
   });
 
   it('returns to the editable email field on a definitive server email rejection', async () => {
-    leadFetch=vi.fn(()=>Promise.resolve({ok:false,status:422,json:()=>Promise.resolve({field:'email',message:'Email domain does not exist.'})}));
+    leadFetch=vi.fn(()=>Promise.resolve(new Response(JSON.stringify({field:'email',message:'Email domain does not exist.'}), {status:422})));
     booking.open(); passSteps(); fillContact(); await flush(); await flush();
     const email=card().querySelector('[name="email"]') as HTMLInputElement;
     expect(document.activeElement).toBe(email);

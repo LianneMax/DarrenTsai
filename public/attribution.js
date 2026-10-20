@@ -224,7 +224,44 @@
     return payload;
   }
 
-  window.DT = { attr: attr, track: track, userData: userData };
+  var milestonesSeen = {};
+  var forms = ['home-equity-calculator', 'debt-savings-calculator', 'adu-calculator', 'booking-prequal', 'dscr-magnet', 'fha-magnet', 'rei-magnet', 'home-contact-modal', 'mortgage-calculator-contact-modal', 'debt-consolidation-contact-modal', 'home-equity-contact-modal', 'adu-contact-modal', 'dscr-contact-modal', 'fha-contact-modal', 'rei-contact-modal'];
+  /**
+   * Friction measurements deliberately do not use track(): it adds the whole
+   * attribution snapshot and queues before GTM loads. These observations need
+   * explicit consent at the instant of interaction, an allowlist, and no
+   * replay of pre-consent activity after a visitor later accepts cookies.
+   */
+  function milestone(event, params) {
+    try {
+      if (!window.DTConsent || !window.DTConsent.isAllowed()) return;
+      if (['form_start', 'form_step', 'form_error'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
+      var path = window.location.pathname;
+      var paths = ['/', '/book/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/about/', '/reviews/', '/legal/', '/privacy-policy/'];
+      var out = { event: event, form_id: params.form_id, page_path: paths.indexOf(path) >= 0 ? path : '/other/' };
+      if (/^[1-6]$/.test(String(params.step_id || ''))) out.step_id = String(params.step_id);
+      if (['validation', 'policy_exit', 'network', 'uncertain', 'rejected', 'rate_limited', 'submission_conflict', 'receipt_invalid'].indexOf(params.error_code) >= 0) out.error_code = params.error_code;
+      if (['contact', 'property', 'consent', 'numbers', 'other'].indexOf(params.field_category) >= 0) out.field_category = params.field_category;
+      if (event === 'form_step' && !out.step_id) return;
+      if (event === 'form_error' && !out.error_code) return;
+      var key = event + ':' + out.form_id + ':' + (out.step_id || '');
+      if (event !== 'form_error' && milestonesSeen[key]) return;
+      if (event !== 'form_error') milestonesSeen[key] = true;
+      window.dataLayer.push(out);
+      return out;
+    } catch (e) { /* Analytics must never change validation or lead capture. */ }
+  }
+
+  window.DT = { attr: attr, track: track, userData: userData, milestone: milestone };
+  function started(e) {
+    var target = e.target;
+    if (target && target.closest && target.closest('.dt-book-close,.dt-book-back,[data-dt-dismiss]')) return;
+    var root = target && target.closest ? target.closest('[data-dt-form]') : null;
+    if (root && target.closest('input,select,textarea,button')) milestone('form_start', { form_id: root.getAttribute('data-dt-form') });
+  }
+  document.addEventListener('input', started, true);
+  document.addEventListener('change', started, true);
+  document.addEventListener('click', started, true);
 
   // Clicks that are conversions in their own right. Phone calls are plausibly
   // the dominant conversion for a broker and are otherwise invisible.

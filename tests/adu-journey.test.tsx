@@ -22,10 +22,11 @@ async function project(){await button('ADU for family');await input('adu-cost','
 async function home(state='CA',balance='350000'){await input('adu-value','650000');await input('adu-balance',balance);await input('adu-calculator-property-use','primary');await input('adu-calculator-property-state',state);await button('See my snapshot');}
 async function contact(){await button('Talk through my plan');await input('lead-fname','TEST');await input('lead-lname','Local Preview');await input('lead-email','test@example.com');await input('lead-phone','7145550191');}
 beforeEach(async()=>{
+  window.DTLead?.reset('adu-calculator');
   document.body.innerHTML='';host=document.createElement('div');document.body.append(host);root=createRoot(host);posted=[];
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener(){},removeEventListener(){}}));
   Element.prototype.scrollIntoView=vi.fn();
-  vi.stubGlobal('fetch',vi.fn(async(_url,init)=>{posted.push(JSON.parse(init.body));return new Response('{"ok":true}',{status:200});}));
+  vi.stubGlobal('fetch',vi.fn(async(_url,init)=>{const lead=JSON.parse(init.body);posted.push(lead);return new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:lead.submissionId,replayed:false}),{status:200});}));
   await act(async()=>root.render(<AduCalculator/>));
 });
 afterEach(async()=>{await act(async()=>root.unmount());vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});
@@ -102,7 +103,7 @@ describe('isolated ADU design journey',()=>{
     await act(async()=>ack.click());await button('Send my project');expect(posted).toHaveLength(1);
     const expected=buildAduLead({firstName:'TEST',lastName:'Local Preview',email:'test@example.com',phone:'(714) 555-0191',state:'CA',homeValue:650000,mortgageBalance:350000,projectCost:175000,amountToFinance:75000,purpose:'ADU for family'});
     const {timestamp:_,...stable}=expected;expect(posted[0]).toMatchObject(stable);
-    expect(posted[0]).toMatchObject({formId:'adu-calculator',source:'adu',propertyUse:'primary',propertyState:'CA',privacyAcknowledged:true,smsConsent:false,smsInformationalConsent:false,smsMarketingConsent:false});
+    expect(posted[0]).toMatchObject({submissionId:expect.stringMatching(/^[0-9a-f-]{36}$/),formId:'adu-calculator',source:'adu',propertyUse:'primary',propertyState:'CA',privacyAcknowledged:true,smsConsent:false,smsInformationalConsent:false,smsMarketingConsent:false});
     expect(text()).toContain('Your request has been received.');
   });
   it('keeps an editable request on a rejected email and never shows confirmation',async()=>{
@@ -112,6 +113,11 @@ describe('isolated ADU design journey',()=>{
   });
   it('never turns a connection failure into confirmation',async()=>{
     await project();await home();await contact();await act(async()=>host.querySelector<HTMLInputElement>('[data-privacy-form]')!.click());
-    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));await button('Send my project');expect(text()).toContain("couldn't save");expect(text()).not.toContain('Your request has been received.');
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));await button('Send my project');expect(text()).toContain("couldn't confirm whether your request was saved");expect(text()).not.toContain('Your request has been received.');
+    const originalBody=vi.mocked(fetch).mock.calls[0][1]!.body;
+    await button('Send my project');
+    expect(vi.mocked(fetch).mock.calls[1][1]!.body).toBe(originalBody);
+    expect(posted).toHaveLength(1);
+    expect(text()).toContain('Your request has been received.');
   });
 });

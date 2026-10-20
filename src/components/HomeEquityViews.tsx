@@ -417,7 +417,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
     <section className="dcp equity-estimate-surface equity-revamp">
       <div className="equity-opening-surface"><EquityPageHero path={path} onPath={onPath} /></div>
 
-      <div id="equity" className="dcp-flow">
+      <div id="equity" className="dcp-flow" data-dt-form="home-equity-calculator">
         <ul className="dcp-trust">
           <li><Check /> Educational estimate</li>
           <li><Check /> Mostly taps</li>

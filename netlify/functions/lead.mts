@@ -635,6 +635,15 @@ export default async (req: Request, context: Context) => {
     return jsonResponse(400, { error: "invalid json body" });
   }
 
+  // Old open tabs omit an ID. New clients keep one UUID and the exact body
+  // across uncertain retries; reject malformed explicit IDs before any write.
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return jsonResponse(400, { ok: false, receipt: 'rejected', error: 'invalid payload' });
+  const submissionId = payload.submissionId;
+  if (submissionId !== undefined && (typeof submissionId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(submissionId))) {
+    return jsonResponse(422, { ok: false, receipt: 'rejected', field: 'submissionId', code: 'invalid_submission_id', message: 'Please start a new request before sending.' });
+  }
+  const uncertain = (error: string) => jsonResponse(502, { ok: false, receipt: 'uncertain', ...(submissionId ? { submissionId } : {}), error });
+
   // Never let truthy strings (including "false") become permission to text.
   // Keep older clients' absent fields absent; invalid evidence must not lose a lead.
   normalizeSmsConsent(payload);
@@ -722,7 +731,18 @@ export default async (req: Request, context: Context) => {
   const hutk = readHutk(req.headers.get("cookie"));
   // The secret is added only on the server hop. Never trust a visitor-supplied
   // copy or include it in the rescue email, which continues to use raw.
-  const proxyKey = Netlify.env.get("LEAD_PROXY_KEY") || Netlify.env.get("CONTACT_CONFIRM_API_KEY");
+  const primaryProxyKey = Netlify.env.get('LEAD_PROXY_KEY') || '';
+  const compatibilityProxyKey = Netlify.env.get('CONTACT_CONFIRM_API_KEY') || '';
+  const proxyKey = primaryProxyKey.trim() ? primaryProxyKey : compatibilityProxyKey.trim() ? compatibilityProxyKey : '';
+  if (!proxyKey) {
+    // Fail closed if BOTH configured authentication paths are absent. Leaving
+    // the compatibility fallback in place avoids a key-rotation outage; never
+    // transmit an unauthenticated lead to a publicly reachable Apps Script URL.
+    // A definite configuration rejection is not an unknown save. Do not turn
+    // this public endpoint into a per-request email trigger during an outage.
+    console.error('Lead endpoint authentication is not configured; not forwarded');
+    return jsonResponse(503, { ok: false, receipt: 'rejected', ...(submissionId ? { submissionId } : {}), code: 'proxy_auth_not_configured', error: 'lead endpoint authentication is not configured' });
+  }
   delete payload._proxyKey;
   const forwarded = JSON.stringify({ ...payload, ...(hutk ? { hutk } : {}),
     ...(proxyKey ? { _proxyKey: proxyKey } : {}) });
@@ -747,25 +767,36 @@ export default async (req: Request, context: Context) => {
 
     if (!res.ok) {
       await rescueEmail(`Apps Script returned HTTP ${res.status}`, raw);
-      return jsonResponse(502, { ok: false, error: "upstream error" });
+      return uncertain('upstream error');
     }
 
     // Apps Script answers 200 with {success:false, error} when it caught an
     // exception internally, so a 2xx alone is not proof the lead was stored.
-    let parsed: { success?: boolean; error?: string } = {};
+    let parsed: { success?: boolean; error?: string; code?: string; field?: string; message?: string; submissionId?: string; receipt?: string; replayed?: boolean } = {};
     try {
       parsed = JSON.parse(text);
     } catch {
       await rescueEmail(`Apps Script returned unparseable body: ${text.slice(0, 500)}`, raw);
-      return jsonResponse(502, { ok: false, error: "upstream error" });
+      return uncertain('upstream error');
     }
 
     if (parsed.success !== true) {
+      if (parsed.code === 'proxy_auth_not_configured') {
+        console.error('Apps Script authentication is not configured; request rejected');
+        return jsonResponse(503, {ok:false,receipt:'rejected',...(submissionId ? {submissionId}:{}),code:'proxy_auth_not_configured',error:'lead endpoint authentication is not configured'});
+      }
+      if (parsed.code === 'submission_conflict') return jsonResponse(409, { ok: false, receipt: 'rejected', submissionId, code: parsed.code, field: 'submissionId', message: 'This request ID is already saved with different details. Please start a new request.' });
+      if (parsed.code === 'invalid_submission_id') return jsonResponse(422, { ok: false, receipt: 'rejected', submissionId, code: parsed.code, field: 'submissionId', message: 'Please start a new request before sending.' });
+      if (parsed.code === 'capture_busy') return jsonResponse(503, { ok: false, receipt: 'uncertain', submissionId, code: parsed.code, message: 'Your request is still being processed. Please retry with the same details.' });
       await rescueEmail(`Apps Script reported failure: ${parsed.error ?? "unknown"}`, raw);
-      return jsonResponse(502, { ok: false, error: "upstream error" });
+      return uncertain('upstream error');
     }
 
-    return jsonResponse(200, { ok: true });
+    if (submissionId && (parsed.submissionId !== submissionId || parsed.receipt !== 'saved')) {
+      await rescueEmail('Apps Script did not confirm this submission identity', raw, true);
+      return uncertain('receipt mismatch');
+    }
+    return jsonResponse(200, { ok: true, receipt: 'saved', ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true });
   } catch (err) {
     const name = (err as { name?: string } | null)?.name;
     const timedOut = timer.aborted || name === "TimeoutError" || name === "AbortError";
@@ -773,7 +804,7 @@ export default async (req: Request, context: Context) => {
       ? `Timed out after ${UPSTREAM_TIMEOUT_MS}ms`
       : `Request failed: ${String(err)}`;
     await rescueEmail(reason, raw, timedOut);
-    return jsonResponse(502, { ok: false, error: "upstream unreachable" });
+    return uncertain('upstream unreachable');
   }
 };
 

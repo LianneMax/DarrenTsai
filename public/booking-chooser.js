@@ -302,6 +302,8 @@
    * and only decides what Close means.
    */
   function start(card, inline) {
+    if (window.DTLead) window.DTLead.begin(FORM_ID);
+    card.setAttribute('data-dt-form', FORM_ID);
     var answers = newAnswers();
     var source = pageSource();
     var ctx = source + ' ' + FORM_ID;
@@ -323,9 +325,11 @@
     var panel = card.querySelector('.dt-book-panel');
     var progress = card.querySelector('.dt-book-progress');
     var status = card.querySelector('.dt-book-status');
-    function setErr(msg) { var el = panel.querySelector('.dt-book-err'); if (el) el.textContent = msg || ''; }
+    function observeError(code) {
+      try { if (window.DT && window.DT.milestone) window.DT.milestone('form_error', {form_id:FORM_ID,error_code:code,field_category:stage === 2 ? 'contact':'property'}); } catch (e) { /* Never affect the screening decision. */ }
+    }
+    function setErr(msg, observe) { if (msg && observe !== false) observeError('validation'); var el = panel.querySelector('.dt-book-err'); if (el) el.textContent = msg || ''; }
     function wireClose() { var c = card.querySelector('.dt-book-close'); if (c) c.onclick = close; }
-    function closeLink() { return ''; }
     function rememberContact() {
       var form = panel.querySelector('form');
       if (!form) return;
@@ -334,6 +338,7 @@
       }
     }
     function draw(stageIndex, part, title, intro, html, label, back) {
+      if (stageIndex > stage && window.DT && window.DT.milestone) window.DT.milestone('form_step', { form_id: FORM_ID, step_id: stage + 1 });
       stage = stageIndex; reached = Math.max(reached, stage);
       panel.innerHTML = '<div class="dt-book-meta"><span>' + ['Your goal', 'Your property', 'Your details', BOOKING_READY ? 'Pick a time' : 'Your request'][stage] + '</span><span>' + esc(part || 'Step ' + (stage + 1) + ' of 4') + '</span></div>' +
         '<h2 class="dt-book-title" tabindex="-1">' + esc(title) + '</h2>' + (intro ? '<p class="dt-book-sub">' + esc(intro) + '</p>' : '') + html +
@@ -400,7 +405,7 @@
       panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.propertyUse || !answers.propertyState) { setErr('Please answer each question to continue.'); return; }
         var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal);
-        if (area === 'out-of-market') { window.location.assign(outOfMarketPage(answers.propertyUse)); return; }
+        if (area === 'out-of-market') { observeError('policy_exit'); window.location.assign(outOfMarketPage(answers.propertyUse)); return; }
         if (area !== 'supported') { setErr('Please choose the property state.'); return; }
         stepType();
       };
@@ -506,11 +511,11 @@
         busy = false; updateProgress();
         btn.disabled = false;
         btn.textContent = COPY.submit;
-        setErr(message);
+        setErr(message, false);
       };
-      window.fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      window.DTLead.submit(FORM_ID, body)
         .then(function (res) {
-          if (res.ok) return { ok: true };
+          if (res.ok) return { ok: true, response: res };
           return res.json().then(function (j) { return { ok: false, status: res.status, body: j }; }, function () { return { ok: false, status: res.status, body: null }; });
         })
         .then(function (r) {
@@ -520,31 +525,28 @@
             // lead the server confirmed. user_data is attached only after
             // consent (DT.userData), for the Google tag to hash as enhanced
             // conversions; it is never a GA4 event parameter.
-            var conversion = { lead_source: lead.source, form_id: FORM_ID, page_path: window.location.pathname };
+            var conversion = Object.assign({}, window.DTLead.attribution(FORM_ID, r.response), { lead_source: lead.source, form_id: FORM_ID, page_path: window.location.pathname });
             var ud;
             try { ud = window.DT && window.DT.userData ? window.DT.userData(lead) : undefined; } catch (e3) { ud = undefined; }
             if (ud) conversion.user_data = ud;
-            track('generate_lead', conversion);
+            if (window.DTLead.claimConversion(FORM_ID, r.response)) track('generate_lead', conversion);
             showCalendar(lead);
             return;
           }
           // The server's own screening said no. Same outcome as on the page.
           if (r.status === 422 && r.body && r.body.field === 'propertyState') {
+            observeError('policy_exit');
             window.location.assign(outOfMarketPage(answers.propertyUse));
             return;
           }
           if (r.status === 422 && r.body && r.body.field === 'prequal') { decline('server'); return; }
-          if ((r.status === 422 || r.status === 429) && r.body && r.body.message) { fail(r.body.message); if (r.body.field === 'email' && contactView) { contactView(false); btn.textContent = 'Review preferences'; setErr(r.body.message); form.elements.email.focus(); } return; }
+          if ((r.status === 422 || r.status === 429 || r.status === 409) && r.body && r.body.message) { fail(r.body.message); if (r.body.field === 'email' && contactView) { contactView(false); btn.textContent = 'Review preferences'; setErr(r.body.message); form.elements.email.focus(); } return; }
           // A server error can mean a delayed write or a rescue attempt. It
           // cannot prove delivery, so do not claim Darren received anything or
           // encourage an immediate duplicate submission. No calendar is shown.
-          busy = false; stage = 3; updateProgress();
-          panel.innerHTML = '<h2 class="dt-book-title">We couldn’t confirm your request</h2>' +
-            '<p class="dt-book-sub">Darren may already have your details. To avoid a duplicate, please do not submit again immediately. You can refresh this page and try again later.</p>' +
-            '<div class="dt-book-bar"><span></span>' + closeLink() + '</div>';
-          wireClose();
+          fail('We couldn’t confirm whether your request was saved. Retry here with the same details to safely check it again.');
         }, function () {
-          fail('We could not reach our server. Check your connection and try again.');
+          fail('We couldn’t confirm your request. Check your connection and retry here with the same details.');
         });
     }
 

@@ -24,7 +24,7 @@
        booking-chooser.js and email-suggest.js are deferred (audit L4): nothing
        reads them until a click or a field blur. -->
   <script src="/attribution.js" async fetchpriority="high"></script>
-  <script src="/service-area.js" defer></script><script src="/booking-chooser.js" defer></script>
+  <script src="/service-area.js" defer></script><script src="/lead-request.js" defer></script><script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
 <style>
@@ -1137,7 +1137,7 @@
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="dscr-guide-title" tabindex="-1">
-    <div class="modal-form" id="modalForm">
+    <div class="modal-form" id="modalForm" data-dt-form="dscr-magnet">
       <div class="modal-header">
         <h3 id="dscr-guide-title">Get your DSCR breakdown.</h3>
         <button class="modal-close-x" id="closeModal" aria-label="Close">
@@ -1206,7 +1206,7 @@
       <div class="modal-body">
         <div class="success-check" role="img" aria-label="Success">&#10003;</div>
         <h3 class="success-heading">You're all set.</h3>
-        <p class="success-body" id="magnetSuccessBody">Check your email for your DSCR breakdown. Darren will be in touch.</p>
+        <p class="success-body" id="magnetSuccessBody">Your DSCR breakdown request is saved. Existing email preferences will be honored. Darren will be in touch.</p>
         <button type="button" id="openSuccessBookingBtn" class="cta outline" style="width:100%;justify-content:center;margin-top:20px;">Book a Free Strategy Call</button>
         <button class="cta" id="closeSuccess" style="width:100%;margin-top:10px;">Done</button>
       </div>
@@ -1613,6 +1613,7 @@
   }
 
   function setError(field, msg) {
+    if (msg && window.DT && window.DT.milestone) window.DT.milestone('form_error', {form_id:'dscr-magnet',error_code:'validation',field_category:'contact'});
     $(`m${field}Error`).textContent = msg;
     $(`m${field}Shell`).classList.toggle('error', !!msg);
   }
@@ -1664,6 +1665,7 @@
       return;
     }
     if (guideStep === 1 && (!window.DTServiceArea || !window.DTServiceArea.validate('dscr-magnet', true))) return;
+    if (window.DT && window.DT.milestone) window.DT.milestone('form_step', {form_id:'dscr-magnet',step_id:guideStep+1});
     showGuideStep(guideStep + 1);
   });
   $('guideBack').addEventListener('click', () => showGuideStep(guideStep - 1));
@@ -1688,6 +1690,7 @@
     }
   });
   function openRateModal() {
+    if (window.DTLead) window.DTLead.begin('dscr-magnet');
     guideReturnFocus = document.activeElement;
     document.body.classList.add('dscr-guide-open');
     overlay.classList.add('open');
@@ -1787,11 +1790,7 @@
       // Same-origin proxy, so the status is readable. The old no-cors post made
       // a 500 look identical to success, which is why this page could report a
       // lead it never actually saved.
-      var res = await fetch(LEAD_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'dscr-magnet' }, window.DTCompliance ? window.DTCompliance.sms('dscr-magnet') : {})),
-      });
+      var res = await window.DTLead.submit('dscr-magnet', Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'dscr-magnet' }, window.DTCompliance ? window.DTCompliance.sms('dscr-magnet') : {}), LEAD_ENDPOINT);
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the
         // domain they typed has no mail server, and the lead was NOT saved. Every
@@ -1800,14 +1799,14 @@
         var visitorMessage = null;
         // 429: the rate limit refused it before reading it, so nothing reached
         // Darren and no rescue email went out. Its message says so.
-        if (res.status === 422 || res.status === 429) {
-          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')) visitorMessage = fix.message; }
+        if (res.status === 422 || res.status === 429 || res.status === 409) {
+          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate' || fix.field === 'submissionId')) visitorMessage = fix.message; }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);
       }
-      if (window.DT) {
-        window.DT.track('generate_lead', {
+      if (window.DT && window.DTLead.claimConversion('dscr-magnet', res)) {
+        window.DT.track('generate_lead', Object.assign({}, window.DTLead.attribution('dscr-magnet', res), {
           lead_source: payload.source,
           form_id: 'dscr-magnet',
           page_path: location.pathname,
@@ -1816,7 +1815,7 @@
             phone_number: payload.phone,
             address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state }
           }
-        });
+        }));
         window.DT.track('virtual_page_view', { page_path: '/thank-you/dscr', page_title: 'Thank You — DSCR Guide' });
       }
       // Say which email is actually on its way. An empty calculator gets the
@@ -1825,8 +1824,8 @@
       var successBody = $('magnetSuccessBody');
       if (successBody) {
         successBody.textContent = dscrReady
-          ? 'Check your email for your DSCR breakdown. Darren will be in touch.'
-          : 'Check your email for the DSCR guide. Run the calculator above and send the form again if you would like a rate snapshot for your own property, or a loan officer can work it out with you on a quick call.';
+          ? 'Your DSCR breakdown request is saved. Existing email preferences will be honored. Darren will be in touch.'
+          : 'Your DSCR guide request is saved. Existing email preferences will be honored. You can run the calculator above to explore your own property or discuss the numbers on a call.';
       }
       // R6-2. The success card's next step is a booking, and this form has just
       // asked for the two fields the booking form asks for. Handing them over
@@ -1859,8 +1858,8 @@
       }
       errEl.textContent = visitorMessage ? visitorMessage
         : (typeof res !== 'undefined' && res)
-        ? "We couldn't confirm your request, but your details were passed to Darren and he'll be in touch. No need to submit again. Questions? Call (714) 887-5432."
-        : "We couldn't reach our server. Check your connection and try again, or call (714) 887-5432.";
+        ? "We couldn't confirm whether your request was saved. Retry here with the same details to safely check it again."
+        : "We couldn't confirm your request. Check your connection and retry here with the same details.";
     }
   });
 

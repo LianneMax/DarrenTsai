@@ -22,7 +22,7 @@
        booking-chooser.js and email-suggest.js are deferred (audit L4): nothing
        reads them until a click or a field blur. -->
   <script src="/attribution.js" async fetchpriority="high"></script>
-  <script src="/service-area.js" defer></script><script src="/booking-chooser.js" defer></script>
+  <script src="/service-area.js" defer></script><script src="/lead-request.js" defer></script><script src="/booking-chooser.js" defer></script>
   <script src="/email-suggest.js" defer></script>
 
 <style>
@@ -943,7 +943,7 @@
   </a>
 </div>
 
-</main><div class="rei-guide-overlay" id="reiGuideOverlay" hidden><div class="rei-guide-panel" role="dialog" aria-modal="true" aria-labelledby="rei-guide-title"><div class="rei-guide-header"><h2 id="rei-guide-title">Get the investing case study.</h2><button type="button" id="reiGuideClose" aria-label="Close case study request"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><div class="rei-guide-layout"><aside class="rei-guide-sidebar"><p>The real budget, timeline and lessons, sent to your inbox.</p><ol class="rei-guide-timeline"><li aria-current="step"><span>1</span><div><strong>Your details</strong><small>Where to send it</small></div></li><li><span>2</span><div><strong>Your property</strong><small>Check the service area</small></div></li><li><span>3</span><div><strong>Your preferences</strong><small>Review and send</small></div></li></ol><div class="rei-guide-person"><img src="/darren-avatar.png" width="38" height="38" alt=""><span>Real numbers.<br>Personal guidance.</span></div></aside><div class="rei-guide-body"><div class="lead-form-fields" id="formFields"><section class="rei-guide-step" data-rei-step="0" aria-labelledby="rei-details-title"><h3 id="rei-details-title" tabindex="-1">Where should we send it?</h3><p>Get the case study by email. Darren can follow up about your plans.</p><div class="field">
+</main><div class="rei-guide-overlay" id="reiGuideOverlay" hidden><div class="rei-guide-panel" role="dialog" aria-modal="true" aria-labelledby="rei-guide-title"><div class="rei-guide-header"><h2 id="rei-guide-title">Get the investing case study.</h2><button type="button" id="reiGuideClose" aria-label="Close case study request"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><div class="rei-guide-layout"><aside class="rei-guide-sidebar"><p>The real budget, timeline and lessons, sent to your inbox.</p><ol class="rei-guide-timeline"><li aria-current="step"><span>1</span><div><strong>Your details</strong><small>Where to send it</small></div></li><li><span>2</span><div><strong>Your property</strong><small>Check the service area</small></div></li><li><span>3</span><div><strong>Your preferences</strong><small>Review and send</small></div></li></ol><div class="rei-guide-person"><img src="/darren-avatar.png" width="38" height="38" alt=""><span>Real numbers.<br>Personal guidance.</span></div></aside><div class="rei-guide-body"><div class="lead-form-fields" id="formFields" data-dt-form="rei-magnet"><section class="rei-guide-step" data-rei-step="0" aria-labelledby="rei-details-title"><h3 id="rei-details-title" tabindex="-1">Where should we send it?</h3><p>Get the case study by email. Darren can follow up about your plans.</p><div class="field">
             <label for="lName">Full Name</label>
             <div class="input-shell" id="lNameShell"><input type="text" id="lName" placeholder="Jane Investor"></div>
             <span class="field-error" id="lNameError"></span>
@@ -970,7 +970,7 @@
           </div></section><section class="rei-guide-step" data-rei-step="1" aria-labelledby="rei-property-title" hidden><h3 id="rei-property-title" tabindex="-1">A little about the property.</h3><p>Two quick questions about where the property is.</p><fieldset class="compliance-disclosure" data-service-area="rei-magnet" data-service-area-loading="true"><p role="status">Loading the property service-area check…</p></fieldset></section><section class="rei-guide-step" data-rei-step="2" aria-labelledby="rei-preferences-title" hidden><h3 id="rei-preferences-title" tabindex="-1">Your preferences.</h3><p>Review and send. Text messages are optional.</p><div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="rei-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="rei-magnet"> <span>By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><label class="sms-choice"><input type="checkbox" data-sms-form="rei-magnet"> <span>By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt-out. View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></span></label><p class="sms-details">Text messages are optional and not a condition of purchase or of submitting this form.</p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div><button class="cta" id="submitLead" type="button">Send Me The Case Study</button><p class="form-note">Free forever. Unsubscribe anytime.</p></section><div class="rei-guide-actions"><button type="button" id="reiGuideBack" hidden>Back</button><span id="reiGuideCount" aria-live="polite">Step 1 of 3</span><button type="button" class="cta" id="reiGuideNext">Continue</button></div></div><div class="lead-success" id="leadSuccess">
           <div class="check">✓</div>
           <h3>Check your inbox</h3>
-          <p class="form-sub">Your case study PDF is on its way. If you want to talk through your own numbers, book a free 15-minute call any time.</p>
+          <p class="form-sub">Your case study request is saved. Existing email preferences will be honored. To discuss your own numbers, book a free 15-minute call.</p>
           <button type="button" class="cta outline" style="width:100%;" id="openLeadBookingBtn">Book a Free Strategy Call</button>
         </div></div></div></div></div>
 
@@ -1223,6 +1223,7 @@
   }
 
   function setError(field, msg) {
+    if (msg && window.DT && window.DT.milestone) window.DT.milestone('form_error', {form_id:'rei-magnet',error_code:'validation',field_category:'contact'});
     $(`l${field}Error`).textContent = msg;
     $(`l${field}Shell`).classList.toggle('error', !!msg);
   }
@@ -1273,11 +1274,7 @@
       // Same-origin proxy, so the status is readable. The old no-cors post made
       // a 500 look identical to success, which is why this page could report a
       // lead it never actually saved.
-      var res = await fetch(LEAD_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'rei-magnet' }, window.DTCompliance ? window.DTCompliance.sms('rei-magnet') : {})),
-      });
+      var res = await window.DTLead.submit('rei-magnet', Object.assign({}, payload, window.DT ? window.DT.attr() : {}, { formId: 'rei-magnet' }, window.DTCompliance ? window.DTCompliance.sms('rei-magnet') : {}), LEAD_ENDPOINT);
       if (!res.ok) {
         // A 422 with field:"email" is the one failure the visitor can fix: the
         // domain they typed has no mail server, and the lead was NOT saved. Every
@@ -1286,14 +1283,14 @@
         var visitorMessage = null;
         // 429: the rate limit refused it before reading it, so nothing reached
         // Darren and no rescue email went out. Its message says so.
-        if (res.status === 422 || res.status === 429) {
-          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')) visitorMessage = fix.message; }
+        if (res.status === 422 || res.status === 429 || res.status === 409) {
+          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate' || fix.field === 'submissionId')) visitorMessage = fix.message; }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);
       }
-      if (window.DT) {
-        window.DT.track('generate_lead', {
+      if (window.DT && window.DTLead.claimConversion('rei-magnet', res)) {
+        window.DT.track('generate_lead', Object.assign({}, window.DTLead.attribution('rei-magnet', res), {
           lead_source: payload.source,
           form_id: 'rei-magnet',
           page_path: location.pathname,
@@ -1302,7 +1299,7 @@
             phone_number: payload.phone,
             address: { first_name: payload.firstName, last_name: payload.lastName, region: payload.state }
           }
-        });
+        }));
         window.DT.track('virtual_page_view', { page_path: '/thank-you/rei', page_title: 'Thank You — REI Case Study' });
       }
       // R6-2. The success card's next step is a booking, and this form has just
@@ -1333,8 +1330,8 @@
       }
       errEl.textContent = visitorMessage ? visitorMessage
         : (typeof res !== 'undefined' && res)
-        ? "We couldn't confirm your request, but your details were passed to Darren and he'll be in touch. No need to submit again. Questions? Call (714) 887-5432."
-        : "We couldn't reach our server. Check your connection and try again, or call (714) 887-5432.";
+        ? "We couldn't confirm whether your request was saved. Retry here with the same details to safely check it again."
+        : "We couldn't confirm your request. Check your connection and retry here with the same details.";
     }
   });
 

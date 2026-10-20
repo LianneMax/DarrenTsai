@@ -5,8 +5,8 @@ import ServiceAreaFields from '../src/components/ServiceAreaFields';
 import { useLeadSubmit } from '../src/hooks/useLeadSubmit';
 import { loadGas } from './helpers/gas-harness';
 import { readFileSync } from 'node:fs';
-vi.mock('../src/utils/attribution', () => ({ getAttribution: () => ({ utm_source: 'youtube' }), track: vi.fn() }));
-afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
+vi.mock('../src/utils/attribution', () => ({ getAttribution: () => ({ utm_source: 'youtube' }), track: vi.fn(), milestone: vi.fn() }));
+afterEach(() => { for (const id of ['home-equity-calculator', 'home-contact-modal', 'test']) window.DTLead?.reset(id); document.body.innerHTML = ''; vi.unstubAllGlobals(); });
 describe('property service-area routing', () => {
   it.each(['home', 'debt-savings-calculator', 'home-equity-calculator', 'adu-calculator', 'mortgage-calculator-contact-modal', 'dscr-magnet', 'fha-magnet', 'rei-magnet'])('uses the intended state rules for %s', (source) => {
     expect(serviceArea('primary', 'CA', source)).toBe(source.includes('dscr') ? 'out-of-market' : 'supported');
@@ -39,7 +39,7 @@ describe('property service-area routing', () => {
     const state = document.querySelector<HTMLSelectElement>('[data-property-state]')!;
     use.value = 'primary'; state.value = 'NY';
     let sent: Record<string, unknown> = {};
-    const fetchMock = vi.fn(async (_url, init) => { sent = JSON.parse(init.body); return new Response('{"success":true}'); });
+    const fetchMock = vi.fn(async (_url, init) => { sent = JSON.parse(init.body); return new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(String(init.body)).submissionId})); });
     vi.stubGlobal('fetch', fetchMock);
     const submit = useLeadSubmit({ formId: 'test', thankYouPath: '/thanks', thankYouTitle: 'Thanks' });
     const data = { firstName: 'Test', lastName: '', email: 'test@example.com', phone: '7145550101', state: 'NY', source: 'home-contact', loanAmount: 200000 };
@@ -154,9 +154,10 @@ describe('state rules, final (policy v3)', () => {
 describe('enhanced conversions on /home-equity/ (consentGatedUserData)', () => {
   const data = { firstName: 'Ada', lastName: 'Owner', email: 'ada@example.com', phone: '7145550123', state: 'CA', source: 'home-equity', propertyUse: 'primary', propertyState: 'CA' };
   async function run(userData?: (l: object) => unknown) {
+    window.DTLead?.reset('home-equity-calculator');
     const { track } = await import('../src/utils/attribution');
     (track as unknown as ReturnType<typeof vi.fn>).mockClear();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"success":true}')));
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(String(init.body)).submissionId}))));
     vi.stubGlobal('DT', userData ? { userData } : {});
     const submit = useLeadSubmit({ formId: 'home-equity-calculator', thankYouPath: '/t', thankYouTitle: 'T', consentGatedUserData: true });
     expect(await submit(data)).toEqual({ ok: true });
@@ -172,6 +173,8 @@ describe('enhanced conversions on /home-equity/ (consentGatedUserData)', () => {
     const ud = { email: 'ada@example.com', phone_number: '+17145550123' };
     const event = await run(() => ud);
     expect(event.user_data).toEqual(ud);
-    expect(Object.keys(event).sort()).toEqual(['form_id', 'lead_source', 'page_path', 'user_data']);
+    expect(event).toMatchObject({form_id:'home-equity-calculator',lead_source:'home-equity',page_path:expect.any(String)});
+    expect(event).not.toHaveProperty('email'); expect(event).not.toHaveProperty('phone'); expect(event).not.toHaveProperty('firstName');
+    expect(event.utm_source).toBe('youtube');
   });
 });

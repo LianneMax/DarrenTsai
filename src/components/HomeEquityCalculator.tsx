@@ -10,6 +10,7 @@ import { stateForZip } from '../utils/zipState';
 import EquityPage, { EQUITY_FORM_ID, type EquityPageView, type EquityPath } from './HomeEquityViews';
 import DebtSavingsCalculator from './DebtSavingsCalculator';
 import { ErrorDialog } from './PageParts';
+import { milestone } from '../utils/attribution';
 
 const emailSchema = z.string().email();
 
@@ -46,6 +47,8 @@ const TITLES: Record<EquityPath, string> = {
 export default function HomeEquityCalculator() {
   const [path, setPathState] = useState<EquityPath>(initialPath);
   const [step, setStep] = useState(1);
+  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'home-equity-calculator',error_code:'validation'}); setErrorMsg(message); };
+  useEffect(() => { window.DTLead?.begin('home-equity-calculator'); }, []);
 
   // The URL, the hero (html.goal-payoff) and the title follow the path, so a
   // shared or reloaded link opens where the visitor was. UTMs and click ids in
@@ -143,27 +146,29 @@ export default function HomeEquityCalculator() {
   const next = () => {
     if (step === 1) {
       if (!hasHome) {
-        setErrorMsg('Enter your home value and your mortgage balance (0 if the home is paid off), so the estimate is about your home and not an example.');
+        validationError('Enter your home value and your mortgage balance (0 if the home is paid off), so the estimate is about your home and not an example.');
         return;
       }
       if (!propertyType || !propertyUse || !/^\d{5}$/.test(zip) || !propertyState) {
-        setErrorMsg('Please choose the property type and how you use the home, and enter the ZIP of the home you’re borrowing against.');
+        validationError('Please choose the property type and how you use the home, and enter the ZIP of the home you’re borrowing against.');
         return;
       }
       if (propertyType === 'mobile-land') { setDeclined('property-type'); scrollToFlow(); return; }
       const area = serviceArea(propertyUse, propertyState, 'home-equity');
       if (area === 'out-of-market') {
+        milestone('form_error', {form_id:EQUITY_FORM_ID,error_code:'policy_exit',field_category:'property'});
         window.location.assign(outOfMarketPage(propertyUse));
         return;
       }
-      if (area !== 'supported') { setErrorMsg('Please check the property state.'); return; }
+      if (area !== 'supported') { validationError('Please check the property state.'); return; }
+      milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 1 });
       setStep(2);
       scrollToFlow();
       return;
     }
     if (step === 2) {
       if (!goal || !creditRange || !cashRange || !mortgageCurrent || !bankruptcy) {
-        setErrorMsg('Please answer each question to continue.');
+        validationError('Please answer each question to continue.');
         return;
       }
       if (!prequalPasses({ propertyType, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy })) {
@@ -171,6 +176,7 @@ export default function HomeEquityCalculator() {
         scrollToFlow();
         return;
       }
+      milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 2 });
       setStep(3);
       scrollToFlow();
     }
@@ -188,15 +194,15 @@ export default function HomeEquityCalculator() {
   const submitLead = async () => {
     if (inFlight.current || sending) return;
     if (!fname || !lname || !phone || !email) {
-      setErrorMsg('Please fill in your name, phone and email.');
+      validationError('Please fill in your name, phone and email.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
-      setErrorMsg('Please enter a valid email address.');
+      validationError('Please enter a valid email address.');
       return;
     }
     if (!isValidPhoneNumber(phone.trim(), 'US')) {
-      setErrorMsg('Please enter a valid US phone number.');
+      validationError('Please enter a valid US phone number.');
       return;
     }
     setErrorMsg(null);
@@ -223,8 +229,8 @@ export default function HomeEquityCalculator() {
     }
     if (!result.ok) {
       setErrorMsg(
-        "We couldn't save your details on our end. " +
-        `Please try again in a moment, or email ${EMAIL} and Darren will pick it up.`
+        "We couldn't confirm whether your request was saved. " +
+        `Retry here with the same details, or email ${EMAIL} for help.`
       );
       return;
     }

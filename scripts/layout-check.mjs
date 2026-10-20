@@ -223,7 +223,7 @@ try {
       // or appointment. Google is blocked like every external host; the frame
       // bounds, accessible title and working fallback still belong to this site.
       if (path === '/book/' && [320, 1280].includes(width)) {
-        await page.route('**/api/lead', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+        await page.route('**/api/lead', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, receipt: 'saved', submissionId: route.request().postDataJSON().submissionId }) }));
         const card = page.locator('#dt-book-mount .dt-book-card');
         const bookingGoal = width === 320 ? 'not-sure' : 'equity';
         await card.locator('[data-q="bookingGoal"] [data-value="' + bookingGoal + '"]').click();

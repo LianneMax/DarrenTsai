@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { EMAIL } from '../config';
@@ -8,6 +8,7 @@ import { type EmailSuggestion } from '../utils/emailSuggest';
 import { aduNumbers, buildAduLead } from '../utils/adu';
 import AduPage, { type AduPageView } from './AduViews';
 import { serviceArea, OUT_OF_MARKET_MESSAGE } from '../utils/serviceArea';
+import { milestone } from '../utils/attribution';
 
 const emailSchema = z.string().email();
 
@@ -27,6 +28,8 @@ const emailSchema = z.string().email();
  */
 export default function AduCalculator() {
   const [step, setStep] = useState(1);
+  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'adu-calculator',error_code:'validation'}); setErrorMsg(message); };
+  useEffect(() => { window.DTLead?.begin('adu-calculator'); }, []);
 
   const [homeValue, setHomeValue] = useState('');
   const [mtgBalance, setMtgBalance] = useState('');
@@ -72,15 +75,17 @@ export default function AduCalculator() {
     if (inFlight.current || n < 1 || n > 4) return;
     if (n > step) {
       if (!purpose || cost <= 0 || fin <= 0) {
-        setErrorMsg('Choose your project and enter its estimated cost and the amount you would like to finance.'); return;
+        validationError('Choose your project and enter its estimated cost and the amount you would like to finance.'); return;
       }
       if (n >= 3 && !hasHome) {
-        setErrorMsg('Enter your home value and mortgage balance. Enter 0 if your home is paid off.'); return;
+        validationError('Enter your home value and mortgage balance. Enter 0 if your home is paid off.'); return;
       }
       if ((n >= 3 && (!propertyUse || !usState)) || (n >= 4 && serviceArea(propertyUse, usState, 'adu') !== 'supported')) {
+        milestone('form_error', {form_id:'adu-calculator',error_code:propertyUse && usState ? 'policy_exit':'validation',field_category:'property'});
         setErrorMsg(!propertyUse || !usState ? 'Choose how you use the home and the state it is in.' : OUT_OF_MARKET_MESSAGE); return;
       }
     }
+    if (n > step) milestone('form_step', { form_id: 'adu-calculator', step_id: step });
     setErrorMsg(null); setStep(n);
     setTimeout(() => document.getElementById('project')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'}), 0);
   };
@@ -88,15 +93,15 @@ export default function AduCalculator() {
   const submitLead = async () => {
     if (inFlight.current || sending) return;
     if (!fname || !phone || !email || !usState) {
-      setErrorMsg('Please fill in your name, phone, email, and state.');
+      validationError('Please fill in your name, phone, email, and state.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
-      setErrorMsg('Please enter a valid email address.');
+      validationError('Please enter a valid email address.');
       return;
     }
     if (!isValidPhoneNumber(phone.trim(), 'US')) {
-      setErrorMsg('Please enter a valid US phone number.');
+      validationError('Please enter a valid US phone number.');
       return;
     }
     setErrorMsg(null);
@@ -117,8 +122,8 @@ export default function AduCalculator() {
     }
     if (!result.ok) {
       setErrorMsg(
-        "We couldn't save your details on our end. " +
-        `Please try again in a moment, or email ${EMAIL} and Darren will pick it up.`
+        "We couldn't confirm whether your request was saved. " +
+        `Retry here with the same details, or email ${EMAIL} for help.`
       );
       return;
     }

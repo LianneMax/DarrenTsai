@@ -5,8 +5,8 @@ import ComplianceDisclosure from '../src/components/ComplianceDisclosure';
 import { useLeadSubmit } from '../src/hooks/useLeadSubmit';
 import { normalizeSmsConsent } from '../netlify/functions/lead.mts';
 import { loadGas } from './helpers/gas-harness';
-vi.mock('../src/utils/attribution', () => ({ getAttribution: () => ({}), track: vi.fn() }));
-afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
+vi.mock('../src/utils/attribution', () => ({ getAttribution: () => ({}), track: vi.fn(), milestone: vi.fn() }));
+afterEach(() => { for (const id of ['home-equity-calculator', 'home-contact-modal', 'test']) window.DTLead?.reset(id); document.body.innerHTML = ''; vi.unstubAllGlobals(); });
 const combinations = [[false, false], [true, false], [false, true], [true, true]];
 describe('independent SMS choices', () => {
   it.each(combinations)('records informational %s and marketing %s independently in React and static forms', async (info, marketing) => {
@@ -18,7 +18,7 @@ describe('independent SMS choices', () => {
     expect(infoBox.required).toBe(false); expect(marketingBox.required).toBe(false);
     privacy.checked = true; infoBox.checked = info; marketingBox.checked = marketing;
     let sent: Record<string, unknown> = {};
-    vi.stubGlobal('fetch', vi.fn(async (_url, init) => { sent = JSON.parse(init.body); return new Response('{"success":true}'); }));
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => { sent = JSON.parse(init.body); return new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(String(init.body)).submissionId})); }));
     const submit = useLeadSubmit({ formId: 'home-contact-modal', thankYouPath: '/thanks', thankYouTitle: 'Thanks' });
     expect(await submit({ source: 'home-contact', email: 'test@example.com', phone: '7145550101', firstName: 'Test', lastName: '', state: 'CA' })).toEqual({ ok: true });
     const expected = { smsInformationalConsent: info, smsMarketingConsent: marketing, smsConsent: marketing, privacyAcknowledged: true };

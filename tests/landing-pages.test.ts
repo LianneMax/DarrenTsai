@@ -3,11 +3,41 @@
  * read the source. A native alert() on a failed submit froze the page during the
  * 16 Sep smoke test and told a visitor whose lead HAD saved to "try again".
  */
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const PAGES = ['dscr', 'fha', 'realestateinvesting'];
+const REQUEST_SOURCE = readFileSync(resolve(__dirname, '../public/lead-request.js'), 'utf8');
+afterEach(() => { document.body.innerHTML = ''; delete window.DTLead; sessionStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+/** Execute the real inline callback and shared request runtime. Only surrounding
+ * calculator dependencies are stubbed; payload, receipt and error UI stay real. */
+function guideHandler(page: string) {
+  const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
+  document.documentElement.innerHTML = html;
+  vi.stubGlobal('DT', undefined);
+  vi.stubGlobal('DTConsent', {isAllowed: () => false});
+  vi.stubGlobal('DTCompliance', {ack: () => true, sms: () => ({privacyAcknowledged:true,smsConsent:false})});
+  delete window.DTLead;
+  new Function(REQUEST_SOURCE)();
+  const $ = (id: string) => document.getElementById(id)!;
+  const prefix = page === 'realestateinvesting' ? 'l' : 'm';
+  for (const [field, value] of Object.entries({Name:'TEST Guide',Email:'qa@example.com',Phone:'(714) 555-0123',State:'CA',Credit:'700'})) {
+    const el = document.getElementById(prefix + field) as HTMLInputElement | null;
+    if (el) el.value = value;
+  }
+  const marker = "$('submitLead').addEventListener('click', async () => {";
+  const start = html.indexOf(marker);
+  const end = html.indexOf('\n  });', start);
+  expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
+  const body = html.slice(start + marker.length, end);
+  const run = new Function('window','document','$','stateSelect','lStateSelect','clearErrors','validateLeadDetails','validateFhaLeadDetails','validateReiLeadDetails','showGuideStep','dscrReady','LEAD_ENDPOINT','modalForm','modalSuccess', `return async () => {${body}\n};`)(
+    window, document, $, $(prefix+'State'), $(prefix+'State'), () => {}, () => true, () => true, () => true, () => {}, false, '/api/lead',
+    document.getElementById('modalForm'), document.getElementById('modalSuccess'),
+  ) as () => Promise<void>;
+  return {run, button:$('submitLead') as HTMLButtonElement, error:() => document.querySelector('.submit-error')?.textContent || ''};
+}
 
 describe.each(PAGES)('/%s submit errors', (page) => {
   const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
@@ -20,8 +50,14 @@ describe.each(PAGES)('/%s submit errors', (page) => {
     expect(html.match(/className = 'submit-error'/g) ?? []).toHaveLength(1);
   });
 
-  it('tells a visitor not to resubmit when the server responded (lead was rescued)', () => {
-    expect(html).toContain('No need to submit again');
+  it('offers a same-inquiry retry without claiming an uncertain lead was delivered', async () => {
+    const form = guideHandler(page);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', {status:502})));
+    await form.run();
+    expect(form.error()).toMatch(/couldn't confirm whether your request was saved/i);
+    expect(form.error()).toMatch(/retry here with the same details/i);
+    expect(form.error()).not.toMatch(/No need to submit again|passed to Darren|delivered/i);
+    expect(form.button.disabled).toBe(false);
   });
 });
 
@@ -38,27 +74,36 @@ describe.each(PAGES)('/%s submit errors', (page) => {
  */
 
 /**
- * Patch 0006 makes /api/lead able to refuse a lead outright (422, dead email
- * domain). That is the ONLY failure where the lead was not saved, so the
- * existing "no need to submit again" copy would be a lie there. These check the
- * handlers separate the two cases.
+ * Definitive rejections show the actionable endpoint message. Unknown outcomes
+ * retain the recovery identity and never show success or a delivery promise.
  */
-describe.each(PAGES)('/%s email rejection', (page) => {
-  const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
-
-  it('reads the message off a 422 in the guide form handler', () => {
-    expect(html.match(/if \(res\.status === 422 \|\| res\.status === 429\)/g) ?? []).toHaveLength(1);
-    expect(html.match(/fix\.field === 'email'/g) ?? []).toHaveLength(1);
+describe.each(PAGES)('/%s actionable rejection and safe retry', (page) => {
+  it.each([[422,'email'],[422,'phone'],[429,'rate'],[409,'submissionId']])('shows the %s/%s message and re-enables the button', async (status, field) => {
+    const form = guideHandler(page);
+    const message = `Please review ${field}.`;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({field,message}), {status:Number(status)})));
+    await form.run();
+    expect(form.error()).toBe(message);
+    expect(form.button.disabled).toBe(false);
+    expect(document.querySelector('.modal-success.show')).toBeNull();
   });
-
-  it('prefers that message over the do-not-resubmit copy', () => {
-    expect(html.match(/errEl\.textContent = visitorMessage \? visitorMessage/g) ?? []).toHaveLength(1);
+  it('retries an unknown result with the exact same ID/body', async () => {
+    const form = guideHandler(page);
+    const sent: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {sent.push(String(init.body)); return new Response('{}',{status:503});}));
+    await form.run(); await form.run();
+    expect(sent).toHaveLength(2);
+    expect(JSON.parse(sent[0]).submissionId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(sent[1]).toBe(sent[0]);
+    expect(form.error()).toMatch(/same details/i);
   });
-
-  it('re-enables the button so the corrected address can be sent', () => {
-    // The catch block already does this for every failure; the 422 path throws
-    // into the same place rather than returning early.
-    expect(html).toContain('btn.disabled = false');
+  it('never shows success for a malformed 2xx receipt', async () => {
+    const form = guideHandler(page);
+    vi.stubGlobal('fetch',vi.fn(async () => new Response('{"ok":true}')));
+    await form.run();
+    expect(form.error()).toMatch(/couldn't confirm/i);
+    expect(form.button.disabled).toBe(false);
+    expect(document.querySelector('.modal-success.show')).toBeNull();
   });
 });
 
@@ -85,21 +130,6 @@ describe('/fha/ review button', () => {
   it('prefills the loan and rate only once the estimate shows a payment', () => {
     const hook = FHA_PAGE.slice(FHA_PAGE.indexOf('window.LF_CONTACT_PREFILL = function () {'));
     expect(hook.slice(0, 400)).toContain('if (!(price > 0 && rate > 0 && downPct >= MIN_DOWN_PCT)) return {};');
-  });
-});
-
-/**
- * A rate-limited post (429) was refused before it was read: nothing reached
- * Darren and no rescue email went out. Every form on the static pages must show
- * the endpoint's message then, never its generic "your details were passed to
- * Darren" copy, which is only true because other failures are rescued.
- */
-describe.each(['dscr', 'fha', 'realestateinvesting'])('/%s/ on a rate-limited post', (page) => {
-  it('shows the endpoint\'s message on its guide form', () => {
-    const html = readFileSync(resolve(__dirname, `../public/${page}/index.html`), 'utf8');
-    expect(html.split('if (res.status === 422 || res.status === 429) {').length - 1).toBe(1);
-    // phone since 16 Oct 2026: lead.mts refuses a non-US number with a message too.
-    expect(html.split("(fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate')").length - 1).toBe(1);
   });
 });
 

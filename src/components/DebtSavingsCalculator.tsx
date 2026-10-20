@@ -7,6 +7,7 @@ import { openBooking as openBookingPanel } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import DebtPage, { type DebtPageView } from './DebtPageViews';
 import { type DebtOption } from './debtOptions';
+import { milestone } from '../utils/attribution';
 
 const emailSchema = z.string().email();
 
@@ -88,6 +89,8 @@ function formatRateDate(iso: string): string {
  */
 export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?: string } = {}) {
   const [step, setStep] = useState(1);
+  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'debt-savings-calculator',error_code:'validation'}); setErrorMsg(message); };
+  useEffect(() => { window.DTLead?.begin('debt-savings-calculator'); }, []);
 
   // Current rates, fetched on mount. No deploy is involved: a new weekly PMMS
   // release shows up on the site within one cache window of /api/rates.
@@ -312,9 +315,10 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
 
   const goStep = (n: number) => {
     if (n > step && n > furthestStep) {
-      setErrorMsg(gateMessage);
+      validationError(gateMessage);
       return;
     }
+    if (n > step) milestone('form_step', { form_id: 'debt-savings-calculator', step_id: step });
     setStep(n);
     setTimeout(() => {
       document.getElementById(flowId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -326,18 +330,18 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     // click landing in the same tick would otherwise still get through.
     if (inFlight.current || sending) return;
     if (!fname || !phone || !email || !usState) {
-      setErrorMsg('Please fill in your name, phone, email, and state.');
+      validationError('Please fill in your name, phone, email, and state.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
-      setErrorMsg('Please enter a valid email address.');
+      validationError('Please enter a valid email address.');
       return;
     }
     if (!isValidPhoneNumber(phone.trim(), 'US')) {
-      setErrorMsg('Please enter a valid US phone number.');
+      validationError('Please enter a valid US phone number.');
       return;
     }
-    setErrorMsg('');
+    validationError('');
 
     const payload = {
       firstName: fname, lastName: lname, phone, email,
@@ -409,8 +413,8 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       // behind. The lead endpoint mails Darren a rescue copy on its own side,
       // but the visitor should still know their details may not have landed.
       setErrorMsg(
-        "We couldn't save your details on our end. " +
-        `Please try again in a moment, or email ${EMAIL} and Darren will pick it up.`
+        "We couldn't confirm whether your request was saved. " +
+        `Retry here with the same details, or email ${EMAIL} for help.`
       );
       return;
     }

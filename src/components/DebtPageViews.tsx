@@ -665,7 +665,7 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
 export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtPageView; overlays: ReactNode; flowId?: string }) {
   return (
     <div className="dcp-payoff">
-      <div id={flowId} className="dcp-flow">
+      <div id={flowId} className="dcp-flow" data-dt-form="debt-savings-calculator">
         <ul className="dcp-trust">
           <li><Check /> No cost to see your numbers</li>
           <li><Check /> Educational estimates</li>

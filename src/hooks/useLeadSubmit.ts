@@ -21,7 +21,8 @@ import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE } from '../uti
  * rendering.
  */
 import { LEAD_ENDPOINT } from '../config';
-import { getAttribution, track } from '../utils/attribution';
+import { getAttribution, track, milestone } from '../utils/attribution';
+import { submitLeadRequest, claimLeadConversion, confirmedAttribution } from '../utils/leadRequest';
 
 /** booking-chooser.js, when it is on the page. Absent in tests and on a cold load. */
 type BookingWindow = Window & {
@@ -90,24 +91,24 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
     const propertyState = fromPayload ? String(payload.propertyState) : document.querySelector<HTMLSelectElement>('[data-property-state="' + formId + '"]')?.value;
     const result = serviceArea(propertyUse, propertyState, String(payload.source || formId));
     if (screening && result !== 'supported') {
+      milestone('form_error', { form_id: formId, error_code: result === 'out-of-market' ? 'policy_exit' : 'validation', field_category: 'property' });
       const message = result === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE;
       const status = screening instanceof Element ? screening.querySelector('[role="status"]') : null; if (status) status.textContent = message;
       return { ok: false, kind: 'fieldError', field: 'propertyState', message };
     }
     const acknowledgment = document.querySelector<HTMLInputElement>('input[data-privacy-form="' + formId + '"]');
     if (acknowledgment && !acknowledgment.checked) {
+      milestone('form_error', { form_id: formId, error_code: 'validation', field_category: 'consent' });
       acknowledgment.reportValidity();
       return { ok: false, kind: 'fieldError', field: 'privacyAcknowledged', message: 'Please acknowledge the Privacy Policy and Terms to continue.' };
     }
     try {
       // Same-origin, so unlike the old no-cors post the status is readable and
       // a failure actually reaches the visitor instead of showing a checkmark.
-      const res = await fetch(LEAD_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await submitLeadRequest(formId, {
         // formId goes in the body as well as the GA4 event below, because
         // HubSpot's rdt_form_id is filled server-side from what arrives here.
-        body: JSON.stringify({ ...payload, ...getAttribution(), formId,
+          ...payload, ...getAttribution(), formId,
           aprEstimates: Array.from(document.querySelectorAll<HTMLElement>('.apr-estimate[data-apr-principal]')).filter(el => Number(el.dataset.aprPrincipal) > 0).map(el => ({ principal: Number(el.dataset.aprPrincipal), noteRate: Number(el.dataset.aprRate), termYears: Number(el.dataset.aprYears), upfrontFinanceCharges: Number(el.dataset.aprFees), estimatedApr: el.dataset.aprResult ? Number(el.dataset.aprResult) : null, estimateOnly: true })),
           ...(screening ? { propertyUse, propertyState, serviceAreaResult: result, serviceAreaVersion: SERVICE_AREA_VERSION } : {}),
           smsConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
@@ -117,23 +118,24 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
           smsInformationalConsentText: 'By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.',
           smsConsentVersion: '2026-10-15-v5', smsConsentText: 'By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.',
           smsConsentAt: new Date().toISOString(),
-        }),
-      });
+      }, LEAD_ENDPOINT);
 
       if (!res.ok) {
-        if (res.status === 422) {
+        if (res.status === 422 || res.status === 409 || res.status === 429) {
           const fix = await res.json().catch(() => null);
-          if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'propertyState') && fix.message) {
+          if (fix && fix.field && fix.message) {
             return { ok: false, kind: 'fieldError', field: fix.field, message: String(fix.message) };
           }
         }
         throw new Error(`lead-endpoint-${res.status}`);
       }
 
+      if (claimLeadConversion(formId, res)) {
       track('generate_lead', {
         lead_source: payload.source,
         form_id: formId,
         page_path: window.location.pathname,
+        ...confirmedAttribution(formId, res),
         ...(consentGatedUserData ? gatedUserData(payload) : {
           user_data: {
             email: payload.email,
@@ -146,6 +148,7 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
         page_path: thankYouPath,
         page_title: thankYouTitle,
       });
+      }
 
       // Every success state offers "Book a Free Strategy Call" next. Someone who
       // has just typed their name and email into this form should not be asked

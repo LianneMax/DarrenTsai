@@ -57,6 +57,9 @@
     callbacks.forEach(function (callback) { callback(); });
   }
   function clearOptionalStorage() {
+    // Pending inquiry snapshots contain attribution too. Consent withdrawal
+    // removes the durable draft while the loaded page can still retry in memory.
+    try { window.sessionStorage.removeItem('dt_pending_leads_v1'); } catch (e) { /* Storage may be denied. */ }
     try {
       window.localStorage.removeItem('dt_attr');
       Object.keys(window.localStorage).forEach(function (key) {
@@ -82,6 +85,7 @@
     choice = value && !gpc;
     try { window.localStorage.setItem(KEY, JSON.stringify({ optional: choice, ts: Date.now() })); } catch (e) { /* Page-view choice remains in memory. */ }
     consent(allowed() ? 'granted' : 'denied', 'update');
+    if (window.dispatchEvent) window.dispatchEvent(new Event('dt:consent'));
     if (!allowed()) clearOptionalStorage();
     close();
     if (wasAllowed && !allowed()) {

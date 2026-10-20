@@ -31,6 +31,7 @@
     if (returnFocus && returnFocus.isConnected) returnFocus.focus();
   }
   function open(event) {
+    if (window.DTLead) window.DTLead.begin('rei-magnet');
     if (event) event.preventDefault();
     returnFocus = document.activeElement;
     overlay.hidden = false;
@@ -59,6 +60,7 @@
     if (step === 1) {
       if (!window.DTServiceArea || !window.DTServiceArea.validate('rei-magnet', true)) return;
     }
+    if (window.DT && window.DT.milestone) window.DT.milestone('form_step', {form_id:'rei-magnet',step_id:step+1});
     showStep(step + 1);
   });
   back.addEventListener('click', function () { showStep(step - 1); });

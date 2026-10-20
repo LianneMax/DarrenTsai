@@ -347,9 +347,12 @@ describe('a waiting page does not describe what it is waiting for', () => {
     expect(FHA).toContain("put('fhaHoaOut', blankOrMoney(hoaEl, hoa))");
   });
 
-  it('R5-5: names the email that was actually sent', () => {
+  it('R5-5: confirms the saved request without promising queued or suppressed guide delivery', () => {
     expect(DSCR).toContain('successBody.textContent = dscrReady');
-    expect(DSCR).toContain('Check your email for the DSCR guide.');
+    expect(DSCR).toContain('Your DSCR guide request is saved.');
+    expect(DSCR).toContain('Your DSCR breakdown request is saved.');
+    expect(DSCR).toContain('Existing email preferences will be honored.');
+    expect(DSCR).not.toContain('Check your email for the DSCR guide.');
   });
 
   it('R5-6: carries the visitor and the ad into the booking lead', () => {

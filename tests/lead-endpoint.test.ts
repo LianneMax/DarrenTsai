@@ -59,7 +59,7 @@ beforeEach(() => {
   vi.stubGlobal('Netlify', {
     env: {
       get: (k: string) =>
-        ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, RESEND_API_KEY: 're_test', SITE_NAME: 'site' })[k],
+        ({ APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, LEAD_PROXY_KEY: 'private-test-key', RESEND_API_KEY: 're_test', SITE_NAME: 'site' })[k],
     },
   });
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -73,6 +73,30 @@ afterEach(() => {
 const ctx = {} as never;
 
 describe('request guards', () => {
+  it('fails closed without either server authentication key without enabling public alert-email abuse', async () => {
+    vi.stubGlobal('Netlify', {env:{get:(k:string)=>({APPS_SCRIPT_WEBHOOK_URL:UPSTREAM,RESEND_API_KEY:'re_test'})[k]}});
+    const response = await handler(req({...LEAD,submissionId:'12345678-1234-4234-8234-123456789012'}),ctx);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ok:false,receipt:'rejected',code:'proxy_auth_not_configured'});
+    expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
+  it('retains the configured confirmation-key fallback during staged key rotation', async () => {
+    vi.stubGlobal('Netlify',{env:{get:(k:string)=>({APPS_SCRIPT_WEBHOOK_URL:UPSTREAM,CONTACT_CONFIRM_API_KEY:'fallback-test-key'})[k]}});
+    expect((await handler(req(LEAD),ctx)).status).toBe(200);
+    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))._proxyKey).toBe('fallback-test-key');
+  });
+  it('uses a nonblank fallback when the primary is whitespace, preserving exact secret bytes', async () => {
+    vi.stubGlobal('Netlify',{env:{get:(k:string)=>({APPS_SCRIPT_WEBHOOK_URL:UPSTREAM,LEAD_PROXY_KEY:'  ',CONTACT_CONFIRM_API_KEY:' fallback-test-key '})[k]}});
+    expect((await handler(req(LEAD),ctx)).status).toBe(200);
+    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))._proxyKey).toBe(' fallback-test-key ');
+  });
+  it('maps the upstream explicit missing-auth configuration rejection without a rescue email', async () => {
+    responses=[new Response('{"success":false,"code":"proxy_auth_not_configured"}')];
+    const response=await handler(req(LEAD),ctx);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ok:false,receipt:'rejected',code:'proxy_auth_not_configured'});
+    expect(rescueSent()).toBe(false);
+  });
   it('rejects omitted screening when enforcement is enabled, without saving or emailing', async () => {
     vi.stubGlobal('Netlify', { env: { get: (k: string) => k === 'SERVICE_AREA_REQUIRED' ? 'true' : k === 'APPS_SCRIPT_WEBHOOK_URL' ? UPSTREAM : '' } });
     const response = await handler(req(LEAD), ctx);
@@ -355,7 +379,7 @@ describe('configuration', () => {
     'reads the upstream URL from %s',
     async (varName) => {
       vi.stubGlobal('Netlify', {
-        env: { get: (k: string) => (k === varName ? UPSTREAM : k === 'RESEND_API_KEY' ? 're_test' : undefined) },
+        env: { get: (k: string) => (k === varName ? UPSTREAM : k === 'LEAD_PROXY_KEY' ? 'private-test-key' : k === 'RESEND_API_KEY' ? 're_test' : undefined) },
       });
       const res = await handler(req(LEAD), ctx);
       expect(res.status).toBe(200);
@@ -365,15 +389,54 @@ describe('configuration', () => {
 });
 
 describe('the happy path', () => {
+  it('returns the confirmed identity and replay marker without changing the request', async () => {
+    const submissionId = '12345678-1234-4234-8234-123456789012';
+    responses = [new Response(JSON.stringify({ success: true, submissionId, receipt: 'saved', replayed: true }))];
+    const response = await handler(req({ ...LEAD, submissionId }), ctx);
+    expect(await response.json()).toEqual({ ok: true, submissionId, receipt: 'saved', replayed: true });
+    expect(JSON.parse(String(calls.find(c => c.url === UPSTREAM)!.init.body)).submissionId).toBe(submissionId);
+  });
+  it.each([
+    ['submission_conflict', 409, 'rejected'],
+    ['invalid_submission_id', 422, 'rejected'],
+    ['capture_busy', 503, 'uncertain'],
+  ])('maps upstream %s without a success state or rescue copy', async (code, status, receipt) => {
+    const submissionId = '12345678-1234-4234-8234-123456789012';
+    responses = [new Response(JSON.stringify({ success: false, code }))];
+    const response = await handler(req({ ...LEAD, submissionId }), ctx);
+    expect(response.status).toBe(status);
+    expect(await response.json()).toMatchObject({ ok: false, code, submissionId, receipt });
+    expect(rescueSent()).toBe(false);
+  });
+  it.each([{}, { submissionId: 'another', receipt: 'saved' }, { submissionId: '12345678-1234-4234-8234-123456789012' }])('refuses an unverified ID receipt: %j', async fields => {
+    const submissionId = '12345678-1234-4234-8234-123456789012';
+    responses = [new Response(JSON.stringify({ success: true, ...fields }))];
+    const response = await handler(req({ ...LEAD, submissionId }), ctx);
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ ok: false, receipt: 'uncertain', submissionId });
+  });
+  it('keeps the retry identity on a network timeout or unknown upstream outcome', async () => {
+    const submissionId = '12345678-1234-4234-8234-123456789012';
+    responses = [new Error('network disconnected')];
+    const response = await handler(req({ ...LEAD, submissionId }), ctx);
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ ok: false, receipt: 'uncertain', submissionId });
+  });
+  it('rejects a malformed identity before upstream writes', async () => {
+    const response = await handler(req({ ...LEAD, submissionId: '=unsafe' }), ctx);
+    expect(response.status).toBe(422);
+    expect(upstreamCalled()).toBe(false);
+    expect(rescueSent()).toBe(false);
+  });
   it('forwards the body verbatim and returns ok', async () => {
     responses = [new Response(JSON.stringify({ success: true }), { status: 200 })];
     const res = await handler(req(LEAD), ctx);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, receipt: 'saved', replayed: false });
 
     const forwarded = calls.find((c) => c.url === UPSTREAM)!;
-    expect(JSON.parse(forwarded.init.body as string)).toEqual(LEAD);
+    expect(JSON.parse(forwarded.init.body as string)).toEqual({...LEAD, _proxyKey:'private-test-key'});
     expect(forwarded.init.redirect).toBe('follow'); // the 302 to googleusercontent must be followed
     expect(rescueSent()).toBe(false);
   });
@@ -442,7 +505,7 @@ describe('failure paths — a lead must never be lost silently', () => {
   it('still returns 502 when the rescue email itself cannot be sent', async () => {
     // No RESEND_API_KEY: the visitor must still be told it failed rather than
     // being shown a success state.
-    vi.stubGlobal('Netlify', { env: { get: (k: string) => (k === 'APPS_SCRIPT_WEBHOOK_URL' ? UPSTREAM : undefined) } });
+    vi.stubGlobal('Netlify', { env: { get: (k: string) => (k === 'APPS_SCRIPT_WEBHOOK_URL' ? UPSTREAM : k === 'LEAD_PROXY_KEY' ? 'private-test-key' : undefined) } });
     responses = [new Response('boom', { status: 500 })];
     const res = await handler(req(LEAD), ctx);
     expect(res.status).toBe(502);
@@ -560,12 +623,12 @@ describe('hubspotutk', () => {
   it('is passed to Apps Script as hutk, alongside the lead', async () => {
     const res = await handler(withCookie(`_ga=GA1.1.1; hubspotutk=${HUTK}; __hstc=abc`), ctx);
     expect(res.status).toBe(200);
-    expect(JSON.parse(forwarded())).toEqual({ ...LEAD, hutk: HUTK });
+    expect(JSON.parse(forwarded())).toEqual({ ...LEAD, hutk: HUTK, _proxyKey:'private-test-key' });
   });
 
-  it('leaves the body byte for byte as sent when there is no cookie', async () => {
+  it('preserves every submitted field and adds server-only authentication when there is no cookie', async () => {
     await handler(req(LEAD), ctx);
-    expect(forwarded()).toBe(JSON.stringify(LEAD));
+    expect(JSON.parse(forwarded())).toEqual({...LEAD, _proxyKey:'private-test-key'});
   });
 
   it('wins over a hutk the body claims', async () => {

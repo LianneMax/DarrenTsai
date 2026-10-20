@@ -31,6 +31,7 @@
     if (returnFocus && returnFocus.isConnected) returnFocus.focus();
   }
   function open() {
+    if (window.DTLead) window.DTLead.begin('fha-magnet');
     returnFocus = document.activeElement;
     overlay.hidden = false;
     document.body.classList.add('fha-guide-open');
@@ -61,6 +62,7 @@
       if (!credit.value) { document.querySelector('#mCreditShell .cselect-trigger').focus(); return; }
       if (!window.DTServiceArea || !window.DTServiceArea.validate('fha-magnet', true)) return;
     }
+    if (window.DT && window.DT.milestone) window.DT.milestone('form_step', {form_id:'fha-magnet',step_id:step+1});
     showStep(step + 1);
   });
   back.addEventListener('click', function () { showStep(step - 1); });

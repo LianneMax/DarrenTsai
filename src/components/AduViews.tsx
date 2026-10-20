@@ -138,7 +138,7 @@ export default function AduPage({v,disclosure}:{v:AduPageView;overlays?:ReactNod
   const firstRender=useRef(true);
   useEffect(()=>{if(firstRender.current){firstRender.current=false;return;}document.getElementById('adu-step-heading')?.focus({preventScroll:true});},[v.step,v.submitted]);
   return <section className="dcp adu-revamp"><AduPageHero/>
-    <section id="project" className="adu-workspace design-wrap" aria-label="Your project funding snapshot">
+    <section id="project" className="adu-workspace design-wrap" aria-label="Your project funding snapshot" data-dt-form="adu-calculator">
       <JourneyTimeline steps={STEPS} current={v.step} complete={v.submitted} disabled={v.sending} onStep={v.goStep}/>
       <div className="adu-work-area"><div className="adu-stage-state"><span>{v.submitted?'Request received':`${v.step} of 4`}</span></div>
         {v.errorMsg&&<div className="adu-inline-error" role="alert">{v.errorMsg}</div>}
