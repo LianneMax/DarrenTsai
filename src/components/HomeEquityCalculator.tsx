@@ -59,6 +59,17 @@ export default function HomeEquityCalculator() {
       document.documentElement.classList.toggle('goal-payoff', next === 'payoff');
       document.title = TITLES[next];
     } catch { /* the path still switches */ }
+    // Choosing a path is the visitor saying "start", so take them straight to
+    // its first question ("Your home, at a glance." or today's debts) rather
+    // than leaving them under the hero (Max, 20 Oct). Both flows render as
+    // #equity; wait a frame so the payoff flow exists before scrolling.
+    window.requestAnimationFrame(() => {
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      const flow = document.getElementById('equity');
+      // The first question's heading, not the flow's top: above it sit the trust
+      // strip and spacing, which left the question halfway down a phone screen.
+      (flow?.querySelector('h2') || flow)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    });
   };
   useEffect(() => {
     if (path === 'payoff') document.title = TITLES.payoff;

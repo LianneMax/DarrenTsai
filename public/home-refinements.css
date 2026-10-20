@@ -1,23 +1,22 @@
-/* The hero shares the equity page's actual centered house and goal branches.
-   Its animated balance remains illustrative and never fills a lead form. */
-.site-design .home-diagram .property-story-home{background:none;padding:0;border-radius:0;margin:10px 0 0}
-.site-design .property-story-home .property-story-stage{height:195px}
-.site-design .property-story-home .property-story-stage>img{height:235px;object-fit:contain}
-.site-design .property-story-home .property-story-value{display:none}
-.site-design .property-story-home .property-story-value-bar{margin-top:8px;transition:grid-template-columns .1s linear}
-.site-design .property-story-home .property-story-value-bar>span,.site-design .property-story-home .property-story-value-bar>strong{padding:0;height:22px;min-width:0;position:relative}
-.site-design .property-story-home .property-story-value-bar>strong{background:#b9e3c6;color:#223d55}
-.site-design .home-balance-labels{display:flex;justify-content:space-between;gap:16px;font-size:14px;line-height:1.5;margin-top:12px;color:#223d55}
-.site-design .home-balance-labels strong{font-weight:500}
-.site-design .home-diagram .property-story-toggle svg{width:20px;height:20px;margin:0}
-.site-design .home-diagram .equity-routing-lines{height:100%;max-width:none;margin:0}
-.site-design .home-diagram .equity-transfer svg{width:32px;height:24px;margin:0}
-.site-design .home-diagram .equity-goal-emblem svg{width:22px;height:22px;margin:0}
-.site-design .property-story-home .equity-routing{height:70px}
-.site-design .property-story-home .equity-goal-examples{margin:0;list-style:none;padding:0}
-.site-design .property-story-home .equity-goal-examples li{font-size:13px;line-height:1.45}
-.site-design .home-diagram .diagram-control{margin-top:22px;padding:14px 15px 12px}
-.site-design .home-diagram .equity-equation{font-size:12px;padding-top:13px}
+/* The hero house is the mortgage/equity bar (Marketing.tsx EquityIllustration).
+   Its fills, outline, branch lines and travelling notes are SVG; the goal row is
+   an equal three-column grid so each emblem sits under its branch end. */
+.site-design .home-diagram svg.home-equity-house{max-width:440px;margin:8px auto 0;overflow:visible}
+.site-design .home-equity-house .home-equity-fill{fill:#b9e3c6}
+.site-design .home-equity-house .home-mortgage-fill{fill:#466a7a}
+.site-design .home-equity-house .home-level{stroke:#fff;stroke-width:2;stroke-dasharray:4 5}
+.site-design .home-equity-house .home-outline{fill:none;stroke:#223d55;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.site-design .home-equity-house .home-routes{fill:none;stroke:#b4cfc0;stroke-width:2}
+.site-design .home-equity-house .home-note rect{fill:#f0f6f8;stroke:#24744d;stroke-width:2}
+.site-design .home-equity-house .home-note circle{fill:none;stroke:#24744d;stroke-width:2}
+.site-design .home-goal-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:440px;margin:0 auto 18px;padding:0;list-style:none}
+.site-design .home-goal-row li{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-size:14px;line-height:1.4;color:#223d55}
+.site-design .home-goal-emblem{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#e2efe7;color:#24744d}
+.site-design .home-diagram .home-goal-emblem svg{width:22px;height:22px;margin:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.site-design .home-diagram .diagram-legend{margin-bottom:6px}
+.site-design .home-diagram .equity-equation{font-size:12px;padding-top:10px}
+.site-design .home-diagram .diagram-note{margin:8px 0 0;text-align:center;font-size:13px;line-height:1.5;color:#526676}
+@media(prefers-reduced-motion:reduce){.site-design .home-equity-house .home-note{display:none}}
 .site-design .benefits .action-card{grid-template-rows:auto auto 240px auto}
 .site-design .benefits .mini,.site-design .benefits .house-options{height:240px}
 .site-design .benefits .equity-demo{box-sizing:border-box;display:flex;flex-direction:column;padding:20px;gap:0}
@@ -25,15 +24,49 @@
 .site-design .equity-demo .equity-track{flex:none}
 .site-design .equity-demo .mini-row{gap:12px;margin:12px 0 0;font-size:12px;line-height:1.5}
 .site-design .equity-demo small{display:block;margin-top:auto;padding-top:16px;font-size:13px;line-height:1.55}
-/* Three separate product labels stay clear of one another at every card width. */
-.site-design .benefits .house-options{display:grid;grid-template-columns:minmax(0,.6fr) minmax(0,1.4fr);align-items:center;gap:6px;padding:12px;box-sizing:border-box;overflow:visible}
-.site-design .benefits .house-options img.house-render{grid-column:1;grid-row:1/4;width:100%;height:170px;object-fit:contain}
+/* Three separate product labels stay clear of one another at every card width.
+   The house sits in its own grid column beside them. site-design.css centres
+   every .house-render absolutely (top/left 50% plus a -50% translate), and
+   until 20 Oct this rule did not undo that, so the image ignored its column:
+   at 1280px it slid under the labels, and at 1100px and on phones it was pushed
+   out of the card altogether. Reset the positioning here, not there, because
+   the equity page's large illustration still relies on the centred version. */
+.site-design .benefits .house-options{display:grid;grid-template-columns:minmax(0,1fr) minmax(164px,1.3fr);align-items:center;gap:8px;padding:12px;box-sizing:border-box;overflow:hidden}
+.site-design .benefits .house-options img.house-render{position:static;top:auto;left:auto;transform:none;grid-column:1;grid-row:1/4;justify-self:center;width:100%;max-width:170px;height:170px;object-fit:contain}
 .site-design .benefits .house-options .floating-product{position:static;grid-column:2;width:100%;padding:7px 8px;min-width:0;box-sizing:border-box;transform:none!important}
 .site-design .benefits .house-options .floating-product strong{font-size:13px;line-height:1.4;gap:6px}
 .site-design .benefits .house-options .floating-product>span{font-size:12px;line-height:1.45}
+/* Alternating labels (Max, 20 Oct): HELOC and cash-out sit to the right of their
+   column, the home equity loan shifts left. The shift stays inside the label
+   column, so nothing ever covers the house. */
+.site-design .benefits .house-options .floating-product{width:93%;justify-self:end;padding:7px 9px}
+.site-design .benefits .house-options .product-loan{justify-self:start}
+/* Narrow cards (three columns at 1001-1100px, small phones) give the labels
+   their compact size so the house keeps 70px or more beside them. */
+.site-design .benefits .action-card:has(.house-options){container-type:inline-size}
+@container (max-width:342px){.site-design .benefits .house-options{grid-template-columns:minmax(0,1fr) minmax(134px,1.25fr)}.site-design .benefits .house-options .floating-product{width:95%;padding:6px 7px}.site-design .benefits .house-options .floating-product strong{font-size:12px}.site-design .benefits .house-options .floating-product>span{font-size:11px}}
+/* Under 360px the labels' 148px leaves the house about 46px, so stack it above
+   them instead and let this one card grow past the shared 240px. */
+@media(max-width:359px){.site-design .benefits .action-card{grid-template-rows:auto auto auto auto}.site-design .benefits .mini{height:240px}.site-design .benefits .house-options{height:auto;grid-template-columns:minmax(0,1fr)}.site-design .benefits .house-options img.house-render{grid-row:auto;height:96px;max-width:150px}.site-design .benefits .house-options .floating-product{grid-column:1}}
 .site-design .other-goals{display:flex;align-items:center;flex-wrap:nowrap;gap:24px;max-width:100%;overflow-x:auto;padding:4px 0 14px;white-space:nowrap;scrollbar-width:thin;scrollbar-color:#b8ccd5 transparent;overscroll-behavior-x:contain}
 .site-design .other-goals>*{flex:none}
 .site-design .other-goals a{padding-block:8px}
+/* The strip stays on one line, so at most widths its last goals sit past the
+   right edge. A thin scrollbar alone did not say so: at 1440px "Investing guide"
+   was hidden with nothing pointing at it. Each edge that has more fades out and
+   gets a round arrow button. The attributes are set by Marketing.tsx from the
+   real scroll position, so neither cue shows when everything already fits. */
+.site-design .other-goals-wrap{position:relative}
+.site-design .other-goals-wrap[data-more-right] .other-goals{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 96px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 96px),transparent)}
+.site-design .other-goals-wrap[data-more-left] .other-goals{-webkit-mask-image:linear-gradient(90deg,transparent,#000 72px);mask-image:linear-gradient(90deg,transparent,#000 72px)}
+.site-design .other-goals-wrap[data-more-left][data-more-right] .other-goals{-webkit-mask-image:linear-gradient(90deg,transparent,#000 72px,#000 calc(100% - 96px),transparent);mask-image:linear-gradient(90deg,transparent,#000 72px,#000 calc(100% - 96px),transparent)}
+.site-design .other-goals-more{position:absolute;top:calc(50% - 5px);transform:translateY(-50%);width:36px;height:36px;display:none;align-items:center;justify-content:center;border:1px solid #d5e1e7;border-radius:50%;background:#fff;color:#223d55;box-shadow:0 4px 12px #223d5514;cursor:pointer;padding:0}
+.site-design .other-goals-more svg{width:18px;height:18px}
+.site-design .other-goals-more:hover{border-color:#1a7f99;color:#1a7f99}
+.site-design .other-goals-more:focus-visible{outline:2px solid #1a7f99;outline-offset:2px}
+.site-design .other-goals-next{right:0}
+.site-design .other-goals-prev{left:0}
+.site-design .other-goals-wrap[data-more-right] .other-goals-next,.site-design .other-goals-wrap[data-more-left] .other-goals-prev{display:inline-flex}
 @media(min-width:601px) and (max-width:1000px){.site-design .benefits{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.site-design .property-story-home .property-story-stage{height:180px}.site-design .property-story-home .property-story-stage>img{height:220px}.site-design .home-diagram .diagram-control{margin-top:18px}.site-design .other-goals{gap:22px}.site-design .other-goals a{font-size:16px}}
-@media(prefers-reduced-motion:reduce){.site-design .property-story-home .property-story-value-bar{transition:none}}
+@media(max-width:600px){.site-design .home-goal-row li{font-size:13px}.site-design .other-goals{gap:22px}.site-design .other-goals a{font-size:16px}}
+.site-design .home-equity-house .home-details{fill:none;stroke:#fff;stroke-width:2;stroke-opacity:.7}

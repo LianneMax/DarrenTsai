@@ -118,3 +118,19 @@ describe('no focusable field is small enough to make iOS zoom', () => {
     expect(small).toEqual([]);
   });
 });
+
+/**
+ * 20 Oct: the homepage "Explore the tradeoffs" card became a grid with the house
+ * in its own column, but site-design.css still centres every `.house-render`
+ * absolutely. The grid rule never undid that, so the house slid under the
+ * product labels at 1280px and left the card at 1100px and on phones.
+ * `scripts/layout-check.mjs` measures it; this pins the cause.
+ */
+describe('the tradeoffs card house stays in its grid column', () => {
+  it('resets the shared absolute centring', () => {
+    const rule = /\.benefits \.house-options img\.house-render\{([^}]*)\}/.exec(read('public/home-refinements.css'));
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toMatch(/position:static/);
+    expect(rule![1]).toMatch(/transform:none/);
+  });
+});

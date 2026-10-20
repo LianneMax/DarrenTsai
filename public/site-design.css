@@ -148,3 +148,12 @@ body.site-design{font-size:1rem}
 /* The selected path also has a later calculator hover rule. Keep its white
    lettering on the same dark accent while it is hovered or keyboard-focused. */
 .site-design .equity-opening .dcp-chip[aria-pressed=true]:is(:hover,:focus-visible){background:#14667c;color:#fff}
+/* One focus look for every text field and dropdown (Max, 20 Oct). The shared
+   button/link ring (3px, offset 4px) also landed on fields, so a rounded field
+   showed its own border, a gap and a second teal ring. Fields now take the ring
+   on their own edge, plus a soft halo; a field inside a bordered shell hands it
+   to the shell. Buttons and links keep the offset ring. The selectors carry
+   three :not()s so they outrank each page's `.x-page :is(...)` focus rules. */
+:is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea):focus-visible{outline:2px solid #1a7f99!important;outline-offset:-1px!important;box-shadow:0 0 0 4px #1a7f9926}
+.input-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea,.cselect-trigger):focus-visible{outline:none!important;box-shadow:none}
+.input-shell:focus-within{border-color:#1a7f99!important;box-shadow:0 0 0 1px #1a7f99,0 0 0 4px #1a7f9926!important}

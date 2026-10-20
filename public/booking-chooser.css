@@ -134,3 +134,6 @@ body.booking-page{background:#f5f8fa}
 /* Keep question groups distinct, and the calendar action legible on its teal surface. */
 .dt-book-shell .dt-book-title+.dt-book-choices{margin-top:24px}
 .dt-book-card a.dt-book-calendar-link,.dt-book-card a.dt-book-calendar-link:visited{color:#fff}
+/* Same chevron as the guide modals' dropdowns (20 Oct QC); the OS arrow was the
+   only browser-default piece left in this form. */
+.dt-book-shell .dt-book-field select{padding-right:44px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23223d55' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center;-webkit-appearance:none;appearance:none;cursor:pointer}

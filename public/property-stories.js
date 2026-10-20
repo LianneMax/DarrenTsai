@@ -6,10 +6,10 @@
     document.querySelectorAll('[data-house-story]').forEach(function (root) {
       if (root.getAttribute('data-story-ready')) return;
       root.setAttribute('data-story-ready', 'true');
-      var paused = false;
+      // No pause/play button since 20 Oct (Max). The motion is decorative and
+      // still stops by itself offscreen, in a hidden tab and for reduced motion.
       var inView = false;
       var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-      var button = root.querySelector('.property-story-toggle');
       var subject = root.getAttribute('data-house-story') === 'equity' ? 'home equity' : 'rental';
       if (subject === 'rental') {
         var stage = root.querySelector('.property-story-stage');
@@ -39,12 +39,8 @@
         if (document.fonts) document.fonts.ready.then(alignDeposit);
       }
       function update() {
-        root.setAttribute('data-playing', String(!paused && !reduced.matches && inView && !document.hidden));
-        root.setAttribute('data-user-paused', String(paused));
-        button.hidden = reduced.matches;
-        button.setAttribute('aria-label', (paused ? 'Play ' : 'Pause ') + subject + ' illustration');
+        root.setAttribute('data-playing', String(!reduced.matches && inView && !document.hidden));
       }
-      button.addEventListener('click', function () { paused = !paused; update(); });
       document.addEventListener('visibilitychange', update);
       if (reduced.addEventListener) reduced.addEventListener('change', update);
       if (window.IntersectionObserver) {

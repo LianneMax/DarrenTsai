@@ -170,6 +170,51 @@ try {
           checks++;
         }
       }
+      // The "Explore the tradeoffs" house kept site-design.css's absolute
+      // centring after the card became a grid, so it hid under the product
+      // labels at 1280px and left the card at 1100px and on phones, while the
+      // label-against-label check still passed. Measure the image itself.
+      if (path === '/') {
+        const house = await page.locator('.benefits .house-options').evaluate((box) => {
+          const outer = box.getBoundingClientRect();
+          const img = box.querySelector('img.house-render').getBoundingClientRect();
+          const labels = [...box.querySelectorAll('.floating-product')].map((l) => l.getBoundingClientRect());
+          return {
+            inside: img.width > 60 && img.left >= outer.left - 0.5 && img.right <= outer.right + 0.5 && img.top >= outer.top - 0.5 && img.bottom <= outer.bottom + 0.5,
+            clear: labels.every((l) => img.right <= l.left + 0.5 || img.left >= l.right - 0.5 || img.bottom <= l.top + 0.5 || img.top >= l.bottom - 0.5),
+          };
+        });
+        checks++;
+        if (!house.inside) failures.push(`${width}px /: tradeoffs house is outside its card or collapsed`);
+        if (!house.clear) failures.push(`${width}px /: tradeoffs house overlaps a product label`);
+        // A one-line strip that runs past the edge must say so.
+        const strip = await page.locator('.other-goals').evaluate((e) => e.scrollWidth > e.clientWidth + 2);
+        const arrow = await page.getByRole('button', { name: 'Show more goals', exact: true }).isVisible();
+        checks++;
+        if (strip !== arrow) failures.push(`${width}px /: goal strip ${strip ? 'overflows without' : 'fits but shows'} a more-goals arrow`);
+      }
+      // Pause/play buttons were removed from every animation on 20 Oct (Max);
+      // the motion stops itself offscreen and for reduced motion instead.
+      if (await page.locator('button[aria-label*="Pause" i], button[aria-label*="Play " i], .property-story-toggle, .adu-tour-toggle').count()) {
+        failures.push(`${width}px ${path}: a pause/play control is back`);
+      }
+      // Service-area dropdowns once rendered in Arial; every field uses Outfit.
+      const offFont = await page.locator('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea').evaluateAll(
+        (nodes) => nodes.filter((n) => n.getBoundingClientRect().width && !getComputedStyle(n).fontFamily.startsWith('Outfit')).map((n) => n.id || n.name || n.tagName),
+      );
+      checks++;
+      if (offFont.length) failures.push(`${width}px ${path}: fields not in Outfit: ${offFont.join(', ')}`);
+      // The path buttons take the visitor straight to the first question.
+      if (width === 1280 && path === '/home-equity/') {
+        for (const name of ['Pay off high-interest debt', 'Access my home equity']) {
+          await page.locator('.dcp-path').getByRole('button', { name: new RegExp(name) }).click();
+          await page.waitForTimeout(900);
+          const top = await page.locator('#equity h2').first().evaluate((h) => h.getBoundingClientRect().top);
+          checks++;
+          if (top < 60 || top > 200) failures.push(`/home-equity/: "${name}" left the first question at ${Math.round(top)}px`);
+        }
+        await page.goto(BASE + path, { waitUntil: 'domcontentloaded' });
+      }
       // Exercise the real screened flow with a local receipt, never a live lead
       // or appointment. Google is blocked like every external host; the frame
       // bounds, accessible title and working fallback still belong to this site.

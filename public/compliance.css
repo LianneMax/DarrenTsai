@@ -3,3 +3,12 @@
 [data-service-area]{border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}[data-service-area] label{display:block;margin:8px 0}[data-service-area] select{display:block;width:100%;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--text-dark)}[data-service-area] legend{font-weight:600;font-size:18px}
 
 [data-service-area] .service-area-warning{font-family:inherit;font-size:1rem;font-weight:500;line-height:1.6;color:#36596a;background:#f0f6f8;border-left:3px solid #8bb5c5;padding:12px 14px;border-radius:6px}
+/* Service-area dropdowns (FHA, DSCR and REI guide modals), 20 Oct. Built by
+   service-area.js, they were the only fields left on the browser's own select:
+   Arial text, a near-invisible border and the OS chevron, beside Outfit fields
+   with the shared border. Match the modal's text fields. */
+[data-service-area] select{font:inherit;font-size:18px;line-height:1.4;min-height:51px;padding:12px 44px 12px 14px;border:1px solid #b9cbd6;border-radius:8px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23223d55' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center;color:#223d55;-webkit-appearance:none;appearance:none;cursor:pointer}
+[data-service-area] select option{font-family:Outfit,Arial,sans-serif;color:#223d55}
+[data-service-area] select[aria-invalid=true]:not(:focus){border-color:#b9cbd6}
+[data-service-area] legend{font-size:18px;font-weight:600;color:#223d55;padding:0}
+[data-service-area] label{font-size:14px;color:#526676}

@@ -35,17 +35,18 @@ describe('house exploration motion',()=>{
   const scene=()=>host.querySelector('.adu-house-stage')?.getAttribute('data-scene');
   it('keeps reduced-motion visitors in control without starting a tour',async()=>{
     vi.useFakeTimers(); await loadImages(); await clock(12000);expect(scene()).toBe('original');
-    expect(host.querySelector<HTMLButtonElement>('.adu-tour-toggle')?.disabled).toBe(true);
+    expect(host.querySelector('.adu-tour-toggle')).toBeNull(); // no pause/play button since 20 Oct
     await button('Detached ADU');expect(scene()).toBe('detached');await clock(12000);expect(scene()).toBe('detached');expect(posted).toHaveLength(0);
   });
-  it('cycles after number selection and pauses/resumes with the icon control',async()=>{
+  it('cycles after number selection and holds while hovered, with no pause button',async()=>{
     vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
     await act(async()=>root.render(<AduHouseExplorer/>));vi.useFakeTimers();await loadImages();
     await clock(5600);expect(scene()).toBe('detached');
     await button('Garage conversion');expect(scene()).toBe('garage');await clock(5600);expect(scene()).toBe('renovation');
-    await button('Pause house animation');await clock(12000);expect(scene()).toBe('renovation');
-    const play=host.querySelector<HTMLButtonElement>('[aria-label="Play house animation"]');expect(play).toBeTruthy();
-    await act(async()=>play!.click());await clock(5600);expect(scene()).toBe('original');
+    expect(host.querySelector('[aria-label="Pause house animation"],[aria-label="Play house animation"]')).toBeNull();
+    const figure=host.querySelector('.adu-house-explorer')!;
+    await act(async()=>{figure.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));});await clock(12000);expect(scene()).toBe('renovation');
+    await act(async()=>{figure.dispatchEvent(new MouseEvent('mouseout',{bubbles:true}));});await clock(5600);expect(scene()).toBe('original');
   });
   it('suspends the tour in a hidden tab and preserves a missing-image fallback',async()=>{
     vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));
