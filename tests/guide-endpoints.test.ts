@@ -124,13 +124,20 @@ describe.each(FUNCS)('%s', (name, handler, keyName, lead) => {
     expect((resendCalls[0].body.attachments as unknown[]).length).toBeGreaterThan(0);
   });
 
-  it.each([429, 500, 502, 503])('returns 503 (retry) when Resend answers %i', async (status) => {
+  it.each([429])('returns 503 (retry) when Resend definitively refuses with %i', async (status) => {
     resend = { status, body: 'rate limited' };
     const res = await handler(req(keyName, lead), {});
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBe('email send failed');
     expect(body.resendStatus).toBe(status);
+  });
+
+  it.each([500, 502, 503])('holds legacy requests without idempotency keys when Resend answers %i', async status => {
+    resend = { status, body: 'response lost after possible acceptance' };
+    const res = await handler(req(keyName, lead), {});
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'delivery_uncertain' });
   });
 
   it.each([400, 401, 403, 422])('returns 422 (do not retry) when Resend answers %i', async (status) => {
