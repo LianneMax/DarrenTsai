@@ -66,6 +66,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  if (vi.isFakeTimers()) vi.clearAllTimers();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -491,15 +493,60 @@ describe('failure paths — a lead must never be lost silently', () => {
     expect(body.subject).toMatch(/did not save/);
   });
 
-  it('tells Darren to check the Sheet on a timeout, not to re-enter, since Apps Script keeps running', async () => {
+  it('alerts only Max to check the Sheet on a timeout, since Apps Script keeps running', async () => {
     responses = [Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' })];
     const res = await handler(req(LEAD), ctx);
     expect(res.status).toBe(502);
     const rescue = calls.find((c) => c.url.includes('api.resend.com'))!;
     const body = JSON.parse(rescue.init.body as string);
+    expect(body.to).toEqual(['liannemaxbalbastro@gmail.com']);
     expect(body.subject).toMatch(/Check the Sheet/);
     expect(body.subject).not.toMatch(/did not save/);
     expect(body.text).toContain('jane@gmail.com');
+  });
+
+  it('also sends definite capture-failure rescue messages only to Max', async () => {
+    responses = [new Response('boom', { status: 500 })];
+    await handler(req(LEAD), ctx);
+    const rescue = calls.find(c => c.url.includes('api.resend.com'))!;
+    expect(JSON.parse(String(rescue.init.body)).to).toEqual(['liannemaxbalbastro@gmail.com']);
+  });
+
+  it.each([12_000, null])('waits for a slow confirmation but still bounds an unreachable upstream: %s', async delay => {
+    vi.useFakeTimers();
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation(ms => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException('Timed out', 'TimeoutError')), ms);
+      return controller.signal;
+    });
+    const submissionId = '12345678-1234-4234-8234-123456789012';
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
+      calls.push({url, init});
+      if (url !== UPSTREAM) return new Response('{}');
+      return new Promise<Response>((resolve, reject) => {
+        const completion = delay === null ? undefined : setTimeout(() => resolve(new Response(JSON.stringify({
+          success: true, receipt: 'saved', submissionId,
+        }))), delay);
+        init.signal!.addEventListener('abort', () => {
+          clearTimeout(completion);
+          reject(init.signal!.reason);
+        }, {once:true});
+      });
+    }));
+    let settled = false;
+    const pending = handler(req({...LEAD,submissionId}),ctx).then(r => { settled = true; return r; });
+    await vi.advanceTimersByTimeAsync(9_001);
+    expect(settled).toBe(false);
+    expect(rescueSent()).toBe(false);
+    await vi.advanceTimersByTimeAsync(delay === null ? 17_000 : 3_000);
+    const response = await pending;
+    expect(response.status).toBe(delay === null ? 502 : 200);
+    expect(await response.json()).toMatchObject({submissionId,receipt:delay === null ? 'uncertain' : 'saved'});
+    expect(rescueSent()).toBe(delay === null);
+    if (delay === null) {
+      const rescue = calls.find(c => c.url.includes('api.resend.com'))!;
+      expect(JSON.parse(String(rescue.init.body)).to).toEqual(['liannemaxbalbastro@gmail.com']);
+    }
   });
 
   it('still returns 502 when the rescue email itself cannot be sent', async () => {
@@ -515,7 +562,7 @@ describe('failure paths — a lead must never be lost silently', () => {
 /**
  * The rescue alert's formatting.
  *
- * This is the email Darren reads when a lead may be lost, so the contact
+ * This is the email Max reads when a lead may be lost, so the contact
  * details have to survive every shape a payload can arrive in — including the
  * one where it is not JSON at all and the raw block is the only record.
  */

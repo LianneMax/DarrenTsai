@@ -37,20 +37,19 @@ import { createHash } from "node:crypto";
 import { Resolver } from "node:dns/promises";
 
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
-// Both addresses, deliberately. A lost lead needs someone to act on it, and one
-// inbox is one holiday away from silence. Resend takes an array.
-const ALERT_TO = ["darren@realdarrentsai.com", "liannemaxbalbastro@gmail.com"];
+// Max, 21 Oct: technical capture/rescue alerts go only to Max. These are
+// operational recovery messages, separate from ordinary CRM lead notifications.
+const ALERT_TO = ["liannemaxbalbastro@gmail.com"];
 
-// Netlify synchronous functions are killed at 10s, and the rescue email below
-// needs roughly 300ms, so this is the most we can wait and still report.
-//
-// Measured against production on 17 Sep, after the slow work moved to the
-// follow-up queue: 3.7-3.9s warm, 6.2s cold. 8s left barely a second of margin
-// on a cold start, and this site is cold often. Exceeding it is no longer
-// harmful (the lead still saves and the alert says STATUS UNKNOWN), but it
-// still shows the visitor an error for a lead that worked, so it is worth
-// avoiding.
-const UPSTREAM_TIMEOUT_MS = 9000;
+// 21 Oct live verification: Google saved both the equity and guidance TESTs,
+// but our old 9s deadline aborted their confirmation and mailed false alarms.
+// That budget assumed a historical 10s hosting limit. This is a modern default
+// Request/Response function, whose current synchronous limit is 60s:
+// https://docs.netlify.com/build/functions/configuration/#default-values
+// Allow a slow Google response 25s total, without adding a delay to fast ones,
+// and leave ample hosting headroom for a genuine-failure rescue email. This
+// does not make slow storage fast or assert success without a matching receipt.
+const UPSTREAM_TIMEOUT_MS = 25000;
 
 const ALLOWED_HOSTS = ["realdarrentsai.com", "www.realdarrentsai.com"];
 
@@ -548,12 +547,12 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
 
 /**
  * Last line of defence: if the lead could not be stored anywhere, mail it to
- * Darren so it is still recoverable by hand. Never throws — a failure here must
+ * Max so it is still recoverable by hand. Never throws — a failure here must
  * not mask the original failure we are reporting.
  */
 // A timeout is not a failed write: Apps Script keeps running after we stop
 // waiting, so the lead has very likely been saved. Saying "NOT SAVED" there sent
-// Darren a false alarm and invited a duplicate hand-entry.
+// the operator a false alarm and invited a duplicate hand-entry.
 async function rescueEmail(reason: string, payload: string, uncertain = false) {
   const resendKey = Netlify.env.get("RESEND_API_KEY");
   if (!resendKey) {
@@ -579,8 +578,8 @@ export default async (req: Request, context: Context) => {
   if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
   if (!originAllowed(req)) return jsonResponse(403, { error: "forbidden" });
 
-  // Measured from here, so the rate-limit check comes out of the same 9s budget
-  // as the upstream call and the function still answers inside Netlify's 10s.
+  // Rate limiting and validation share the capture deadline rather than adding
+  // their own wait ahead of the upstream timeout.
   const startedAt = Date.now();
   if (!(await withinRateLimit(context?.ip))) {
     console.warn("lead: rate limited");
@@ -747,8 +746,8 @@ export default async (req: Request, context: Context) => {
   const forwarded = JSON.stringify({ ...payload, ...(hutk ? { hutk } : {}),
     ...(proxyKey ? { _proxyKey: proxyKey } : {}) });
 
-  // The DNS check eats into the same budget: Netlify kills the function at 10s
-  // and the rescue email still needs its ~300ms at the end.
+  // DNS and rate limiting eat into the same 25s capture budget. Keep the
+  // remaining hosting headroom available for a genuine-failure rescue email.
   const timer = AbortSignal.timeout(
     Math.max(1000, UPSTREAM_TIMEOUT_MS - (Date.now() - startedAt)),
   );
