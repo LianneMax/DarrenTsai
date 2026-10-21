@@ -15,6 +15,72 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loadGas, recordingFetch, type Tab, type FetchCall } from './helpers/gas-harness';
 
+const WORKER_LEASE_KEY = 'followup_worker_lease_v1';
+
+describe('authoritative worker admission, independent of cached Sheet rows', () => {
+  type WorkerRuntime = {
+    processFollowUps: () => void;
+    acquireFollowUpWorker: () => string | null;
+    releaseFollowUpWorker: (token: string) => boolean;
+    SpreadsheetApp: { openById: () => unknown };
+  };
+  const exports = ['processFollowUps', 'acquireFollowUpWorker', 'releaseFollowUpWorker', 'SpreadsheetApp'];
+  it('does not even read a stale pending Sheet snapshot while another worker owns the property lease', () => {
+    const props: Record<string, string> = {};
+    const owner = loadGas<WorkerRuntime>({ exports, props });
+    const h = loadGas<WorkerRuntime>({ exports, props });
+    h.queue({ source: 'dscr', email: 'qa@example.com' });
+    const originalOpen = h.gas.SpreadsheetApp.openById;
+    let reads = 0;
+    h.gas.SpreadsheetApp.openById = () => { reads++; return originalOpen(); };
+    const first = owner.gas.acquireFollowUpWorker()!;
+    expect(Object.keys(JSON.parse(props[WORKER_LEASE_KEY]))).toEqual(['token', 'startedAt']);
+    expect(props[WORKER_LEASE_KEY].length).toBeLessThan(200);
+    expect(props[WORKER_LEASE_KEY]).not.toContain('qa@example.com');
+    // The second execution's view is deliberately still pending. Admission
+    // cannot depend on this stale view or its missing per-row journal.
+    expect(h.statusOf().status).toBe('pending');
+    h.gas.processFollowUps();
+    expect(reads).toBe(0);
+    expect(h.statusOf().status).toBe('pending');
+    expect(JSON.parse(props[WORKER_LEASE_KEY]).token).toBe(first);
+    expect(owner.gas.releaseFollowUpWorker(first)).toBe(true);
+    h.gas.processFollowUps();
+    expect(reads).toBe(1);
+    expect(h.statusOf().status).toBe('guide-rejected'); // No sender configured, not silently skipped.
+    expect(props[WORKER_LEASE_KEY]).toBeUndefined();
+  });
+  it('expires a crashed worker only after the orphan window, and stale cleanup cannot release its replacement', () => {
+    const props: Record<string, string> = {};
+    const h = loadGas<WorkerRuntime>({ exports, props });
+    const first = h.gas.acquireFollowUpWorker()!;
+    expect(h.gas.acquireFollowUpWorker()).toBeNull();
+    const lease = JSON.parse(props[WORKER_LEASE_KEY]);
+    props[WORKER_LEASE_KEY] = JSON.stringify({ ...lease, startedAt: Date.now() - 11 * 60_000 });
+    const replacement = h.gas.acquireFollowUpWorker()!;
+    expect(replacement).not.toBe(first);
+    expect(h.gas.releaseFollowUpWorker(first)).toBe(false);
+    expect(JSON.parse(props[WORKER_LEASE_KEY]).token).toBe(replacement);
+    expect(h.gas.releaseFollowUpWorker(replacement)).toBe(true);
+    expect(Object.keys(props)).toEqual([]);
+  });
+  it('releases admission after an exception so the next run can recover checkpointed work', () => {
+    const props: Record<string, string> = {};
+    const h = loadGas<WorkerRuntime>({ exports, props });
+    h.gas.SpreadsheetApp.openById = () => { throw new Error('Sheet unavailable'); };
+    expect(() => h.gas.processFollowUps()).toThrow('Sheet unavailable');
+    expect(props[WORKER_LEASE_KEY]).toBeUndefined();
+    expect(h.gas.acquireFollowUpWorker()).toBeTruthy();
+  });
+  it('fails closed on a malformed worker property without reading or sending queued work', () => {
+    const props: Record<string, string> = { [WORKER_LEASE_KEY]: '{bad' };
+    const h = loadGas<WorkerRuntime>({ exports, props });
+    h.gas.SpreadsheetApp.openById = () => { throw new Error('must not read'); };
+    expect(() => h.gas.processFollowUps()).not.toThrow();
+    expect(props[WORKER_LEASE_KEY]).toBe('{bad');
+  });
+});
+
 type Harness = {
   processFollowUps: () => void;
   sendGuideDigest: () => void;

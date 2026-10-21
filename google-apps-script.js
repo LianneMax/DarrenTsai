@@ -2295,43 +2295,91 @@ function checkpointFollowUp(sheet, claim, job, result, finished) {
   });
 }
 
-function processFollowUps() {
-  const started = Date.now();
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(FOLLOWUP_TAB);
-  syncEmailOptOuts(ss);
-  if (!sheet || sheet.getLastRow() < 2) return;
-  const lastRow = sheet.getLastRow();
-  for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
-    if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
-    let claim;
-    try {
-      // Eligibility is re-read inside the short lock. Cache get/put cannot
-      // supply mutual exclusion and is no longer relied upon for correctness.
-      claim = claimFollowUp(sheet, rowNum);
-      if (!claim) continue;
-      for (const job of ['hubspot', 'guide']) {
-        const prior = claim.data._delivery.jobs[job];
-        if (prior.state !== 'pending' && prior.state !== 'retry') continue;
-        const running = { state: 'inflight', startedAt: prior.startedAt || new Date().toISOString(), retrySafe: prior.retrySafe === true };
-        if (!checkpointFollowUp(sheet, claim, job, running, false)) break;
-        const result = job === 'hubspot' ? pushToHubSpot(ss, claim.data) : sendGuideFor(ss, claim.data);
-        if (!checkpointFollowUp(sheet, claim, job, { state: result.outcome, detail: result.detail || '', startedAt: running.startedAt,
-          retrySafe: result.retrySafe === true || running.retrySafe }, false)) break;
+// 21 Oct: overlapping minute executions produced two CRM acceptance logs for
+// one saved submission despite the Sheet claim/flush checks. SpreadsheetApp
+// uses execution-local look-ahead caching; a Sheet row alone is insufficient
+// as the worker admission guard. Acquire ONE authoritative property under the
+// script lock before any Sheet read. It contains only a token/timestamp, stays
+// constant-sized, and never holds the script lock across provider HTTP.
+// The ten-minute lease exceeds Apps Script's six-minute execution cap, so a
+// crashed worker expires safely before the existing orphan recovery runs.
+const FOLLOWUP_WORKER_LEASE = 'followup_worker_lease_v1';
+function acquireFollowUpWorker() {
+  return withSheetLock(function () {
+    const props = PropertiesService.getScriptProperties();
+    const raw = props.getProperty(FOLLOWUP_WORKER_LEASE);
+    if (raw) {
+      const current = JSON.parse(raw);
+      if (!current || typeof current.token !== 'string' || typeof current.startedAt !== 'number' || !isFinite(current.startedAt)) {
+        throw new Error('Invalid follow-up worker lease; manual review required');
       }
-      const final = checkpointFollowUp(sheet, claim, null, null, true);
-      if (final && final.alert) alertFailure('Follow-up needs review (lead IS saved). Do not resend uncertain deliveries before reconciliation. [' +
-        final.status + '] ' + final.detail, JSON.stringify(leadSnapshot(claim.data)));
-    } catch (err) {
-      // Keep the last durable checkpoint. Turning it into a generic error would
-      // destroy which provider may have accepted the work before this crash.
-      alertFailure('Follow-up interrupted; lead IS saved. Reconcile provider acceptance before manual retry: ' + err.toString(),
-        claim ? JSON.stringify(leadSnapshot(claim.data)) : '{}');
+      if (Date.now() - current.startedAt < FOLLOWUP_ORPHAN_MS) return null;
     }
+    const token = Utilities.getUuid();
+    props.setProperty(FOLLOWUP_WORKER_LEASE, JSON.stringify({ token: token, startedAt: Date.now() }));
+    return token;
+  });
+}
+
+function releaseFollowUpWorker(token) {
+  return withSheetLock(function () {
+    const props = PropertiesService.getScriptProperties();
+    const raw = props.getProperty(FOLLOWUP_WORKER_LEASE);
+    if (!raw || JSON.parse(raw).token !== token) return false;
+    props.deleteProperty(FOLLOWUP_WORKER_LEASE);
+    return true;
+  });
+}
+
+function processFollowUps() {
+  let worker;
+  try { worker = acquireFollowUpWorker(); }
+  catch (err) {
+    alertFailure('Follow-up worker admission failed; captured leads remain queued. ' + err.toString(), '{}');
+    return;
   }
-  if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {
-    try { processCallRailSync(ss); }
-    catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
+  if (!worker) return;
+  try {
+    const started = Date.now();
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(FOLLOWUP_TAB);
+    syncEmailOptOuts(ss);
+    if (!sheet || sheet.getLastRow() < 2) return;
+    const lastRow = sheet.getLastRow();
+    for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
+      if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
+      let claim;
+      try {
+        // Eligibility is re-read inside the short lock. Cache get/put cannot
+        // supply mutual exclusion and is no longer relied upon for correctness.
+        claim = claimFollowUp(sheet, rowNum);
+        if (!claim) continue;
+        for (const job of ['hubspot', 'guide']) {
+          const prior = claim.data._delivery.jobs[job];
+          if (prior.state !== 'pending' && prior.state !== 'retry') continue;
+          const running = { state: 'inflight', startedAt: prior.startedAt || new Date().toISOString(), retrySafe: prior.retrySafe === true };
+          if (!checkpointFollowUp(sheet, claim, job, running, false)) break;
+          const result = job === 'hubspot' ? pushToHubSpot(ss, claim.data) : sendGuideFor(ss, claim.data);
+          if (!checkpointFollowUp(sheet, claim, job, { state: result.outcome, detail: result.detail || '', startedAt: running.startedAt,
+            retrySafe: result.retrySafe === true || running.retrySafe }, false)) break;
+        }
+        const final = checkpointFollowUp(sheet, claim, null, null, true);
+        if (final && final.alert) alertFailure('Follow-up needs review (lead IS saved). Do not resend uncertain deliveries before reconciliation. [' +
+          final.status + '] ' + final.detail, JSON.stringify(leadSnapshot(claim.data)));
+      } catch (err) {
+        // Keep the last durable checkpoint. Turning it into a generic error would
+        // destroy which provider may have accepted the work before this crash.
+        alertFailure('Follow-up interrupted; lead IS saved. Reconcile provider acceptance before manual retry: ' + err.toString(),
+          claim ? JSON.stringify(leadSnapshot(claim.data)) : '{}');
+      }
+    }
+    if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {
+      try { processCallRailSync(ss); }
+      catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
+    }
+  } finally {
+    try { releaseFollowUpWorker(worker); }
+    catch (err) { Logger.log('Follow-up worker lease release deferred; expiry will recover it'); }
   }
 }
 

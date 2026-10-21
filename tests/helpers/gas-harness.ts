@@ -210,7 +210,11 @@ function makeSheet(tab: Tab, tabs: Map<string, Tab>) {
  * keeps this string the single description of the runtime.
  */
 const STUBS = `
-  var PropertiesService = { getScriptProperties: function(){ return { getProperty: function(k){ return __getProp(k); } }; } };
+  var PropertiesService = { getScriptProperties: function(){ return {
+    getProperty: function(k){ return __getProp(k); },
+    setProperty: function(k,v){ __setProp(k,v); },
+    deleteProperty: function(k){ __deleteProp(k); }
+  }; } };
   var SpreadsheetApp = { openById: function(){ return __ss; }, flush: function(){} };
   var UrlFetchApp = { fetch: function(url, options){ return __fetch(url, options || {}); } };
   var Logger = { log: function(){} };
@@ -241,8 +245,10 @@ export function loadGas<T = Record<string, unknown>>(options: GasOptions): GasHa
     moveActiveSheet() {},
   };
 
-  const props = options.props;
-  const getProp = (key: string) => (props ? props[key] || '' : '');
+  const props = options.props ?? {};
+  const getProp = (key: string) => props[key] || '';
+  const setProp = (key: string, value: string) => { props[key] = value; };
+  const deleteProp = (key: string) => { delete props[key]; };
   const doFetch = options.fetch ?? (() => INERT_RESPONSE);
   const onMail = options.onMail ?? (() => {});
   // Predictable ids, so a test can say which submission a row belongs to.
@@ -250,10 +256,10 @@ export function loadGas<T = Record<string, unknown>>(options: GasOptions): GasHa
   const uuid = () => `uuid-${++minted}`;
 
   const factory = new Function(
-    '__ss', '__getProp', '__fetch', '__mail', '__uuid',
+    '__ss', '__getProp', '__fetch', '__mail', '__uuid', '__setProp', '__deleteProp',
     `${STUBS}\n${SOURCE}\nreturn { ${options.exports.join(', ')} };`,
   );
-  const gas = factory(spreadsheet, getProp, doFetch, onMail, uuid) as T;
+  const gas = factory(spreadsheet, getProp, doFetch, onMail, uuid, setProp, deleteProp) as T;
 
   return {
     gas,
