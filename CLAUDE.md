@@ -1,6 +1,7 @@
 # Claude Code guidance
 
 Read `AGENTS.md` for the architecture, lead-flow safeguards and verification commands.
+Follow its Project memory section for Max's Obsidian session entry point and durable decision writeback.
 Maintain one current operational audit in `.local-notes/SITE-AUDIT.md` (machine-local and gitignored). Historical account evidence stays under `.local-notes/`; do not publish it. Do not create another status Markdown.
 
 Max approved the title, cookie preferences, live confirmation copy, principal-and-interest wording and DSCR coverage wording on 10 October 2026. Numeric APR estimates are now approved when calculated from stated amount/rate/term/finance-charge assumptions, with a concise explanation. Never add a fixed spread to the note rate or infer an HEI offer from a HELOAN tool.

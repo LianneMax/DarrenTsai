@@ -348,11 +348,10 @@ describe('the daily digest', () => {
     expect(h.mail).toHaveLength(0);
   });
 
-  it('goes to both recipients', () => {
+  it('goes only to Max, without notifying Darren', () => {
     h.queue({ source: 'dscr', email: 'a@example.com' }, 'guide-failed', new Date().toISOString());
     h.sendGuideDigest();
-    expect(h.mail[0].to).toContain('darren@realdarrentsai.com');
-    expect(h.mail[0].to.split(',').length).toBe(2);
+    expect(h.mail[0].to).toBe('liannemaxbalbastro@gmail.com');
   });
 });
 

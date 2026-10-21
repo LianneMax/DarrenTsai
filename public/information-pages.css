@@ -40,3 +40,8 @@
 @media(max-width:900px){.information-layout{grid-template-columns:1fr;gap:36px}.information-toc{position:static;display:flex;gap:8px 24px;flex-wrap:wrap}.information-toc h2{width:100%;margin-bottom:5px}.information-toc a{padding:4px 0}.document-page .review-body{max-width:75ch}}
 @media(max-width:600px){.information-page .review-hero .dcp-hero-inner{padding:34px 22px 32px}.information-page .review-hero h1{font-size:34px}.information-page .review-hero .lead{font-size:17px}.information-layout{padding:30px 22px 44px;gap:30px}.information-toc{padding:20px}.information-toc a{font-size:15px}.information-page .review-body h2{font-size:23px}.information-page .review-body section{padding-top:24px}.service-area-page .review-body{padding:30px 22px 44px}.not-found-content{padding:36px 22px 48px}.not-found-content ul{grid-template-columns:1fr}.not-found-content a.card{font-size:17px;padding:17px 0}}
 @media(prefers-reduced-motion:reduce){.information-page *{scroll-behavior:auto!important}}
+/* Shown only after a recorded booking inquiry redirects here with #recorded
+   (22 Oct). A calculator form's state exit saves nothing and never shows it.
+   Same pale info box as the service-area notice. */
+.oom-recorded{display:none;margin:0 0 28px;padding:14px 16px;border-radius:10px;background:#eff5f7;color:#223d55;font-size:17px;line-height:1.7;scroll-margin-top:110px}
+.oom-recorded:target{display:block}

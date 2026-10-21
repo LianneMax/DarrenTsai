@@ -3,6 +3,24 @@
 Guidance for Codex working in this repository.
 **Operational status:** maintain only `.local-notes/SITE-AUDIT.md` (machine-local, gitignored). Do not publish account evidence. Retain TEST records until Max explicitly authorizes cleanup.
 
+## Project memory
+
+Max's Obsidian vault is set up at
+`C:/Users/Lmbal/OneDrive/Documents/Obsidian/Max Brain`. At session start, read
+its `CLAUDE.md`, then `Home.md` and `Darren Tsai/Darren Tsai Overview.md`.
+Search the relevant note before adding durable context; update its existing
+decision and date rather than creating a duplicate. Cross-session plans belong
+in `Darren Tsai/Plans and Pending Projects.md`, with links to the matching
+technical/content notes. Keep secrets, borrower records and account evidence
+out of the vault. The detailed operational audit remains
+`.local-notes/SITE-AUDIT.md`; compare dated notes with current source and live
+evidence before declaring an item complete. Note unavailable history or account
+access instead of assuming it was verified.
+For YouTube/content work, read the vault's `CTA Policy.md` and
+`Content Pillars.md`. Verify routes against `SHORTLINKS` in
+`netlify/functions/youtube-redirect.mts`; older installed content-skill tables
+may still name retired destinations.
+
 
 ## What this is
 
@@ -37,18 +55,18 @@ Visitor (paid click / YouTube link / organic)
   -> GA4 generate_lead / phone_click via GTM; CallRail owns paid calls
 ```
 
-Every submit path feeds `/api/lead`: four React forms (the debt calculator,
-the home-equity estimate, the ADU project snapshot and the mortgage calculator's lead form), three static
-landing-page magnet forms, and the contact modal on every page.
+Every submit path feeds `/api/lead`: React calculator requests, static
+landing-page magnets and the shared screened conversation/booking flow.
 
-**Every copy of the contact modal posts its own `source`**, one per page:
+**Historical contact sources remain accepted**, one per entry page:
 `home-contact`, `debt-consolidation-contact`, `home-equity-contact`, `adu-contact`,
 `mortgage-calculator-contact`, `dscr-contact`, `fha-contact`, `rei-contact`. They all posted `MortgageCalculator` until 26 Sep 2026, so the
 Sheet's Source column, the CRM tags and the GA4 event said the same thing
-wherever the lead came from. They have no funnel-specific columns, so they still
-fall through `doPost` to the generic Leads tab; what they must each have is a
-entry in `CONTACT_SOURCES` (Apps Script) or their visitors get no
-confirmation email. `tests/lead-flow-alignment.test.ts` reads the
+wherever the lead came from. Current personal-contact actions use
+`booking-prequal`; the chosen goal and entry context select the targeted source
+bucket. Stale clients' contact sources are classified by the writer rather than
+creating another generic Leads tab. Keep their `CONTACT_SOURCES` confirmation
+routes compatible. `tests/lead-flow-alignment.test.ts` reads the
 `leadSource` prop as well as `source:` literals, so a page that mounts the modal
 with an unrouted source fails there.
 
@@ -57,7 +75,7 @@ with an unrouted source fails there.
 | Layer | Choice |
 | --- | --- |
 | Frontend | React 18 + TypeScript, Vite 6, plain CSS (`src/index.css`, ~2200 lines, CSS custom properties on `:root`) |
-| Routing | None. Five HTML entries (`index.html`, `debt-consolidation/index.html`, `home-equity/index.html`, `adu/index.html`, `mortgage-calculator/index.html`). Netlify serves a real 404 for anything else. The first screen of `/` and of `/debt-consolidation/` is pre-rendered into its HTML at build and its CSS inlined (`src/prerender.tsx`, `PRERENDERED` in `vite.config.ts`) |
+| Routing | No client router. React entries are `/`, `/home-equity/`, `/adu/`, `/mortgage-calculator/` and `/about/`; other pages are static or function routes. Unknown paths return a real 404. Build-time prerender targets and inline CSS are defined by `PRERENDERED` in `vite.config.ts`; the retired debt URL redirects to the equity payoff path |
 | Landing pages | Hand-written static HTML in `public/dscr/`, `public/fha/`, `public/realestateinvesting/`. No build step, ~2000 lines each, inline `<script>` |
 | Server | Netlify Functions (`.mts`, `Netlify.env.get`), routes declared via `export const config.path` |
 | Storage of record | Google Sheet `1DZ98FIyaF8hYi-c3FPMLVF71dVVnJWyejg4_J2ZkepI`, driven by `google-apps-script.js` |
@@ -103,9 +121,10 @@ constrain code:
   owns paid phone calls (website pool, >60s filter). GA4 `phone_click` stays an
   observation event, never imported as a conversion. One exception, decided by
   Kocah on 8 Oct 2026 and theirs to make: the booking event is imported into
-  Ads as well. It was `calendly_booking`; since 15 Oct 2026 it is
-  `meeting_booked`, so Kocah's import must be repointed (see the booking notes
-  under Known state).
+  Ads as well. The former `calendly_booking` and HubSpot `meeting_booked`
+  integrations do not confirm a Google Calendar appointment. Kocah/Niko's
+  replacement import remains pending authoritative provider evidence and
+  deduplication (see booking notes under Known state).
 - **No PII into GA4.** The `generate_lead` dataLayer payload carries nested
   `user_data` for internal use. Do not map names, emails, phones or messages into
   GA4 event parameters. On `/book/` and `/home-equity/` (15 Oct 2026) it comes
@@ -289,11 +308,15 @@ or the lead lands on the generic tab with its fields dropped:
 - After changing triggers, run `installTriggers()` once by hand from the editor.
 - Apps Script Cloud Logging is unreliable for web-app executions; the `Debug`
   sheet tab is the trustworthy record (trimmed to 2000 rows daily).
-- Netlify kills a synchronous function at 10s. `/api/lead` budgets 9s upstream
-  and leaves roughly 300ms for the rescue email.
+- `/api/lead` budgets 25s for upstream confirmation, including preceding work.
+  The old 9s budget produced timeout alerts even when Apps Script saved the
+  request. This modern Request/Response function uses Netlify's documented
+  60s synchronous limit, leaving time for a rescue alert. Capture/rescue
+  emails from this endpoint go only to Max; other Apps Script alerts have
+  separate routing. An uncertain outcome retains the same submission ID.
 - `/api/lead` rate-limits per address in code (10 posts per 15 minutes,
   Netlify Blobs store `lead-rate`, address hashed), failing open on any Blobs
-  error or after 600ms, inside the same 9s budget. A refused post gets a 429
+  error or after 600ms, inside the same confirmation budget. A refused post gets a 429
   with `field: "rate"` before its body is read, so no rescue email; the static
   pages show its message. No honeypot field, on purpose: autofill can fill one
   and a filled honeypot is a silent 200.
@@ -342,9 +365,9 @@ or the lead lands on the generic tab with its fields dropped:
   goal first and posts it as `bookingGoal`; `lead.mts` applies its rule and
   sets `reviewFlag` (commercial and not-sure) itself. A failing home goes to
   `/out-of-market-primary/`, a failing investment to `/out-of-market-dscr/`.
-- **Booking is a prequal in front of HubSpot Meetings (15 Oct 2026, decided
-  with Darren).** Calendly is gone: its free plan could not screen anyone and
-  its public link let out-of-state visitors book around the site's state check.
+- **Booking is a prequal in front of Google Calendar (current provider).**
+  This supersedes the earlier HubSpot Meetings plan and Calendly implementation.
+  Max accepts that a copied direct Calendar link can bypass site screening.
   Every "Book a Call", "Schedule" and "Call" button, and every `tel:` link
   (`service-area.js` routes them), opens the one flow in
   `public/booking-chooser.js`; `/book/` mounts the same flow inline, and every
@@ -352,24 +375,28 @@ or the lead lands on the generic tab with its fields dropped:
   and type, after a goal question that picks the rule; the two knockouts (mortgage current, no bankruptcy or
   foreclosure in 4 years); contact and consent; `POST /api/lead` as
   `formId: booking-prequal` with the page's contact source. Only after a
-  confirmed receipt does the HubSpot calendar render, prefilled with
-  firstname, lastname and email, next to a Call button. An unsupported state
-  goes to `/out-of-market-primary/` or `/out-of-market-dscr/`; a knockout gets
-  a decline with no calendar and no phone number. `lead.mts` refuses a failing
+  matching saved receipt does the Google Calendar render next to a Call
+  button. No PII is added to the calendar URL. An unsupported state
+  goes to `/out-of-market-primary/` or `/out-of-market-dscr/`; inside the service area a knockout gets
+  a decline with no calendar and no phone number; outside it (22 Oct, Max) a
+  knockout is still recorded as a Sheet-only inquiry (`prequalAnswered`), and
+  the exit page shows its "inquiry is recorded" note via `#recorded`. `lead.mts` refuses a failing
   booking-prequal lead whatever `SERVICE_AREA_REQUIRED` says
   (`prequalPasses` in `src/utils/serviceArea.ts`).
-- `BOOKING_URL` in `booking-chooser.js` is the only place the meetings link
-  lives. While it is the placeholder, a passing lead is saved and sees a Call
-  button but no calendar.
-- Events: `generate_lead` once, on confirmed receipt of a qualified lead,
-  with consent-gated `user_data` only (see No PII into GA4); `booking_page_shown` when the calendar is drawn; `meeting_booked`
-  once, when the embed posts `meetingBookSucceeded` from a
-  `meetings*.hubspot.com` origin (exact host match; that message name comes
-  from community reports, not HubSpot docs, so confirm it on the first live
-  booking); `booking_prequal_declined` with a reason. `page_path` only.
-- Tests count as passing only with the whole suite: `tests/booking-chooser.test.ts`
-  loads the source once per file rather than per test, because the message
-  listener is registered at evaluation and re-evaluating stacks listeners.
+- `BOOKING_URL` in `booking-chooser.js` is the one current scheduling link.
+  Google Calendar event-detail access, reliable lead matching and a confirmed
+  appointment conversion remain account/integration acceptance gates.
+- Events: `generate_lead` once, on matching confirmed receipt of a qualified lead,
+  with consent-gated `user_data` only (see No PII into GA4);
+  `booking_page_shown` when the calendar is drawn;
+  `booking_prequal_declined` with a reason. `page_path` only.
+  No verified `meeting_booked` signal is currently emitted. Calendar load,
+  link clicks and the former HubSpot postMessage are not booking confirmation.
+  A future conversion needs authoritative provider evidence, stable appointment
+  identity, lead/attribution matching and deliberate update/cancellation handling.
+- Tests count as passing only with the whole suite. Booking tests execute the
+  real shared source; keep runtime setup isolated so repeated evaluation does
+  not stack handlers or manufacture apparent confirmation coverage.
 - `DTBooking.identify({name, email})` prefills the prequal's contact step after
   a form has already asked. Per tab, in memory and sessionStorage, never sent
   anywhere. An empty call clears it.

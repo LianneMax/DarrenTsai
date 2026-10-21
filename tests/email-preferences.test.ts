@@ -95,11 +95,16 @@ describe('persistent email opt-out', () => {
       const sheet = original.getSheetByName(name);
       if (!sheet) return null;
       return {...sheet,getRange(...args: number[]) {
-        expect(held).toBeDefined(); held!.add(name);
+        if (held) held.add(name);
+        else expect(args[0], 'only header existence may be read outside the write lock').toBe(1);
         if (headerOnly) expect(args[0], 'header setup must not read lead rows').toBe(1);
         return sheet.getRange(...args);
       }};
     }};
+    harness.gas.initializeEmailOptOutColumns(spreadsheet);
+    expect(sections).toHaveLength(2);
+    // Steady-state minute ticks must not acquire or flush write locks when
+    // every header already exists; actual missing headers still repair above.
     harness.gas.initializeEmailOptOutColumns(spreadsheet);
     expect(sections).toHaveLength(2);
     headerOnly = false;

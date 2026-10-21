@@ -307,14 +307,14 @@ describe('a tab that is not in schema order is reported, and the lead still save
     expect(h.mail).toEqual([]);
   });
 
-  it('mails both recipients when the tab is in its old order, and says no lead is affected', () => {
+  it('mails only Max when the tab is in its old order, and says no lead is affected', () => {
     const h = load();
     h.seed({ name: 'Debt Consolidation', rows: [[...OLD_DEBT_HEADERS]] });
     expect(h.post(DEBT_LEAD).success).toBe(true);
     expect(h.mail).toHaveLength(1);
     expect(h.mail[0].subject).toBe('Sheet columns out of order: Debt Consolidation');
     expect(h.mail[0].subject).not.toContain('LEAD PIPELINE FAILURE');
-    expect(h.mail[0].to.split(',')).toHaveLength(2);
+    expect(h.mail[0].to).toBe('liannemaxbalbastro@gmail.com');
     expect(h.mail[0].body).toContain('NO LEAD IS AFFECTED');
     expect(h.mail[0].body).toContain('migrateLeadTabs()');
     expect(h.mail[0].body).toContain('missing: Submission ID');

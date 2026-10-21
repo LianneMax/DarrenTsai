@@ -21,10 +21,11 @@
  *   3. contact details, then the required privacy and optional SMS choices
  *   4. POST /api/lead. Only after a confirmed receipt: the calendar,
  *      plus a Call button.
- * An unsupported state goes to /out-of-market-primary/ or /out-of-market-dscr/.
- * A knockout gets a short, kind decline. A fail shows no calendar and no phone
- * number, and nothing is posted: lead.mts refuses a failing booking-prequal
- * lead too, so a hand-built request cannot book around this either.
+ * State screening is deferred until deliberate final submission with privacy
+ * acknowledged. An unsupported inquiry is saved to the Sheet only, then goes
+ * to its out-of-market page. It cannot create a qualified conversion, CRM job
+ * or calendar. A non-state knockout still declines without posting anything,
+ * unless the property is outside the service area: that inquiry is recorded.
  *
  * ES5 on purpose: this is served verbatim to the browser with no transpile.
  */
@@ -405,17 +406,22 @@
       panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.propertyUse || !answers.propertyState) { setErr('Please answer each question to continue.'); return; }
         var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal);
-        if (area === 'out-of-market') { observeError('policy_exit'); window.location.assign(outOfMarketPage(answers.propertyUse)); return; }
-        if (area !== 'supported') { setErr('Please choose the property state.'); return; }
+        // Keep all four steps and collect the acknowledged inquiry before the
+        // state decision. Choosing a state must not save or redirect anything.
+        if (area === 'incomplete') { setErr('Please choose the property state.'); return; }
         stepType();
       };
     }
+    // 22 Oct (Max): a property outside the service area is recorded as a Sheet-only
+    // inquiry even when a knockout answer fails, so Darren can see demand by state.
+    // Inside the service area the knockouts still decline without posting.
+    function outsideArea() { return window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal) === 'out-of-market'; }
     function stepType() {
       draw(1, 'Property · 2 of 3', 'What type of property is it?', '', choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType), 'Continue', stepProperty);
       wireChoices(panel, answers, changed);
       panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.propertyType) { setErr('Please choose the property type.'); return; }
-        if (answers.propertyType === 'mobile-land') { decline('property-type'); return; }
+        if (answers.propertyType === 'mobile-land' && !outsideArea()) { decline('property-type'); return; }
         stepHistory();
       };
     }
@@ -424,8 +430,8 @@
       wireChoices(panel, answers, changed);
       panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.mortgageCurrent || !answers.recentBankruptcyForeclosure) { setErr('Please answer both to continue.'); return; }
-        if (answers.mortgageCurrent === 'no') { decline('mortgage'); return; }
-        if (answers.recentBankruptcyForeclosure === 'yes') { decline('bankruptcy-foreclosure'); return; }
+        if (answers.mortgageCurrent === 'no' && !outsideArea()) { decline('mortgage'); return; }
+        if (answers.recentBankruptcyForeclosure === 'yes' && !outsideArea()) { decline('bankruptcy-foreclosure'); return; }
         stepContact();
       };
     }
@@ -436,7 +442,7 @@
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
         '<p class="dt-book-note dt-book-note-sms">Text messages are optional and not a condition of purchase or of submitting this form.</p>' +
-        '<p class="dt-book-note">Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
+        '<p class="dt-book-note">Submitting records your inquiry and checks service availability. Calendar access depends on the property and your answers. Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
       var form = panel.querySelector('form');
       var consentVisible = false;
       contactView = function (show) {
@@ -482,14 +488,21 @@
       setErr('');
       var btn = form.querySelector('.dt-book-next');
       btn.disabled = true;
-      btn.textContent = 'Saving...';
+      btn.textContent = 'Saving your request...';
+      var saveStatus = document.createElement('p');
+      saveStatus.className = 'dt-book-calendar-help dt-book-save-status';
+      saveStatus.setAttribute('role', 'status');
+      saveStatus.textContent = 'Saving your details and checking your property. This can take a few seconds.';
+      form.appendChild(saveStatus);
+      form.setAttribute('aria-busy', 'true');
+      var area = window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal);
       var lead = {
         firstName: val('firstName'), lastName: val('lastName'), email: val('email'), phone: val('phone'),
         state: answers.propertyState,
         source: bookingBucket(answers.bookingGoal, source), entrySource: source, formId: FORM_ID, magnet: 'Booking prequal',
         bookingGoal: answers.bookingGoal, reviewFlag: REVIEW_GOALS.indexOf(answers.bookingGoal) !== -1 ? 'Yes' : '',
         propertyUse: answers.propertyUse, propertyState: answers.propertyState,
-        serviceAreaResult: 'supported', serviceAreaVersion: window.DTServiceArea.version(),
+        serviceAreaResult: area, serviceAreaVersion: window.DTServiceArea.version(),
         propertyType: answers.propertyType, mortgageCurrent: answers.mortgageCurrent,
         recentBankruptcyForeclosure: answers.recentBankruptcyForeclosure,
         privacyAcknowledged: true, privacyVersion: PRIVACY_VERSION,
@@ -509,17 +522,31 @@
 
       var fail = function (message) {
         busy = false; updateProgress();
+        form.removeAttribute('aria-busy');
+        if (saveStatus.parentNode) saveStatus.parentNode.removeChild(saveStatus);
         btn.disabled = false;
         btn.textContent = COPY.submit;
         setErr(message, false);
       };
       window.DTLead.submit(FORM_ID, body)
         .then(function (res) {
-          if (res.ok) return { ok: true, response: res };
+          if (res.ok) return res.clone().json().then(function (receipt) { return { ok: true, response: res, body: receipt }; });
           return res.json().then(function (j) { return { ok: false, status: res.status, body: j }; }, function () { return { ok: false, status: res.status, body: null }; });
         })
         .then(function (r) {
           if (r.ok) {
+            // DTLead already verified the saved submission ID. The additive
+            // writer disposition is required before a recorded-only redirect;
+            // a generic saved receipt must never masquerade as this outcome.
+            if (r.body.disposition === 'sheet-only') {
+              if (area !== 'out-of-market') { fail('We couldn’t confirm the next step for your request. Retry here with the same details.'); return; }
+              observeError('policy_exit');
+              // #recorded shows the page's "your inquiry is recorded" note (CSS
+              // :target); calculator exits that saved nothing never carry it.
+              window.location.assign(outOfMarketPage(answers.propertyUse) + '#recorded');
+              return;
+            }
+            if (area !== 'supported') { fail('We couldn’t confirm whether your inquiry was recorded. Retry here with the same details.'); return; }
             identify({ name: lead.firstName + ' ' + lead.lastName, email: lead.email });
             // The one website form conversion. Once, and only for a qualified
             // lead the server confirmed. user_data is attached only after
@@ -533,10 +560,10 @@
             showCalendar(lead);
             return;
           }
-          // The server's own screening said no. Same outcome as on the page.
+          // A rejected/old endpoint has not confirmed a Sheet-only record.
+          // Stay here so the visitor can correct answers or retry safely.
           if (r.status === 422 && r.body && r.body.field === 'propertyState') {
-            observeError('policy_exit');
-            window.location.assign(outOfMarketPage(answers.propertyUse));
+            fail(r.body.message || 'We couldn’t record this inquiry. Please review your property answers and try again.');
             return;
           }
           if (r.status === 422 && r.body && r.body.field === 'prequal') { decline('server'); return; }
@@ -588,9 +615,18 @@
     card.classList.add('dt-cal');
     card.innerHTML = '<h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' +
       '<p class="dt-book-sub">Your request is saved. Choose a time for your 15-minute qualification call with Darren.</p>' +
+      '<p class="dt-book-calendar-help dt-book-calendar-status" role="status">Your request is saved. Loading Google Calendar...</p>' +
       '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a qualification call with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
       '<p class="dt-book-calendar-help">Google Calendar will ask you to confirm your booking details. If the calendar does not load, open it in a new tab.</p>' +
       '<a class="dt-book-calendar-link" href="' + esc(BOOKING_URL) + '" target="_blank" rel="noopener noreferrer">Open calendar in a new tab</a>' + call + (footer || '');
+    // The saved receipt and Google's network request are separate waits. Do
+    // not prefetch the calendar while the visitor is still answering. A frame
+    // load means only that Google responded, never an appointment confirmation.
+    var frame = card.querySelector('iframe');
+    frame.addEventListener('load', function () {
+      var loading = card.querySelector('.dt-book-calendar-status');
+      if (loading) loading.textContent = 'Choose a time below. You can also open the calendar in a new tab.';
+    });
     track('booking_page_shown', { page_path: window.location.pathname });
   }
 

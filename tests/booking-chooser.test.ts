@@ -7,9 +7,9 @@
  * Call button goes through this flow, so these are the details that must not
  * quietly come undone:
  *
- *  - Nothing is posted, and no calendar or phone number is shown, for a lead
- *    that fails: an unsupported state goes to the out-of-market pages, a
- *    knockout gets a decline.
+ *  - Unsupported states continue through the existing four steps. Only after
+ *    final privacy-acknowledged submission and a saved Sheet-only receipt do
+ *    they reach the out-of-market page. Non-state knockouts still decline.
  *  - The calendar appears only after /api/lead confirms receipt, with a Google frame and a safe new-tab fallback.
  *  - generate_lead fires once, for a confirmed qualified lead, with no PII.
  *  - an unverified iframe message never reports meeting_booked.
@@ -156,23 +156,25 @@ describe('step 1: property', () => {
     expect(card().querySelector('[data-q="mortgageCurrent"]')).toBeNull();
   });
 
-  it('sends an unsupported primary-home state to /out-of-market-primary/, posting nothing', () => {
+  it('keeps an unsupported primary-home state in the same four-step flow without posting', () => {
     booking.open();
     selectGoal('equity');
     tap('propertyUse', 'primary');
     pickState('NY');
     next();
-    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
+    expect(assign).not.toHaveBeenCalled();
+    expect(card().querySelector('[data-q="propertyType"]')).not.toBeNull();
     expect(leadFetch).not.toHaveBeenCalled();
   });
 
-  it('sends an unsupported rental state to /out-of-market-dscr/', () => {
+  it('lets an unsupported rental state reach the property-type question', () => {
     booking.open();
     selectGoal('equity');
     tap('propertyUse', 'investment');
     pickState('NY');
     next();
-    expect(assign).toHaveBeenCalledWith('/out-of-market-dscr/');
+    expect(assign).not.toHaveBeenCalled();
+    expect(card().querySelector('[data-q="propertyType"]')).not.toBeNull();
   });
 
   it('declines mobile homes and land with no calendar and no phone number', () => {
@@ -207,13 +209,14 @@ describe('step 1: property', () => {
     expect(card().querySelector('[data-q="mortgageCurrent"]')).not.toBeNull();
   });
 
-  it('sends a second home anywhere else to /out-of-market-primary/', () => {
+  it('defers a second-home state decision until final submission', () => {
     booking.open();
     selectGoal('equity');
     tap('propertyUse', 'second-home');
     pickState('NV');
     next();
-    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
+    expect(assign).not.toHaveBeenCalled();
+    expect(card().querySelector('[data-q="propertyType"]')).not.toBeNull();
     expect(leadFetch).not.toHaveBeenCalled();
   });
 });
@@ -400,14 +403,15 @@ describe('step 3: save the lead, then the calendar', () => {
     expect(track.mock.calls.map((c) => c[0])).not.toContain('generate_lead');
   });
 
-  it('follows the server to the out-of-market page if its screening says no', async () => {
+  it('stays on the form if an old endpoint refuses a state without a saved receipt', async () => {
     leadFetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({field:'propertyState'}), {status:422})));
     booking.open();
     passSteps();
     fillContact();
     await flush();
     await flush();
-    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
+    expect(assign).not.toHaveBeenCalled();
+    expect(errText()).toMatch(/couldn’t record/);
   });
 
   it('shows no calendar for an uncertain receipt and offers a safe same-inquiry retry', async () => {
@@ -438,10 +442,10 @@ describe('PII-free validation and policy observations', () => {
     expect(window.DT?.milestone).toHaveBeenCalledWith('form_error', {form_id:'booking-prequal',error_code:'validation',field_category:'property'});
     expect(leadFetch).not.toHaveBeenCalled();
   });
-  it('observes unsupported property policy separately from a technical failure', () => {
+  it('does not observe a policy exit before an unsupported inquiry is deliberately saved', () => {
     booking.open(); selectGoal('equity'); tap('propertyUse','primary'); pickState('NY'); next();
-    expect(window.DT?.milestone).toHaveBeenCalledWith('form_error', {form_id:'booking-prequal',error_code:'policy_exit',field_category:'property'});
-    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/'); expect(leadFetch).not.toHaveBeenCalled();
+    expect(window.DT?.milestone).not.toHaveBeenCalledWith('form_error', expect.objectContaining({error_code:'policy_exit'}));
+    expect(assign).not.toHaveBeenCalled(); expect(leadFetch).not.toHaveBeenCalled();
   });
 });
 
@@ -502,7 +506,8 @@ describe('the panel', () => {
     pickState('NY');
     expect((card().querySelector('[data-stage="2"]') as HTMLButtonElement).disabled).toBe(true);
     next();
-    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/');
+    expect(assign).not.toHaveBeenCalled();
+    expect(card().querySelector('[data-q="propertyType"]')).not.toBeNull();
     expect(leadFetch).not.toHaveBeenCalled();
   });
 
@@ -607,5 +612,70 @@ describe('contact checks (16 Oct 2026)', () => {
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     await flush();
     expect(leadBody().phone).toBe('(714) 555-0123');
+  });
+});
+
+
+describe('acknowledged unsupported inquiry capture', () => {
+  it.each([['primary','CO','equity','/out-of-market-primary/#recorded'], ['investment','NY','dscr','/out-of-market-dscr/#recorded']])('records %s in %s before the unsupported page', async (use,state,goal,destination) => {
+    let finish: (response:Response) => void = () => {};
+    leadFetch = vi.fn(() => new Promise<Response>(resolve => { finish=resolve; }));
+    booking.open(); passSteps(use,state,goal);
+    expect([...card().querySelectorAll('.dt-book-progress strong')].map(n=>n.textContent)).toEqual(['Your goal','Your property','Your details','Pick a time']);
+    expect(assign).not.toHaveBeenCalled(); expect(leadFetch).not.toHaveBeenCalled();
+    fillContact(); await flush();
+    expect(leadBody()).toMatchObject({propertyUse:use,propertyState:state,privacyAcknowledged:true,serviceAreaResult:'out-of-market'});
+    expect(assign).not.toHaveBeenCalled(); expect(card().querySelector('iframe')).toBeNull();
+    finish(new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:leadBody().submissionId,disposition:'sheet-only'})));
+    await flush(); await flush();
+    expect(assign).toHaveBeenCalledWith(destination);
+    expect(card().querySelector('iframe')).toBeNull(); expect(card().querySelector('a[href^="tel:"]')).toBeNull();
+    expect(track.mock.calls.map(c=>c[0])).not.toContain('generate_lead');
+    expect(track.mock.calls.map(c=>c[0])).not.toContain('booking_page_shown');
+  });
+  // 22 Oct (Max): outside the service area a failed knockout continues to the
+  // details step and is recorded Sheet-only; inside it, the knockout declines.
+  const KNOCKOUTS=[['propertyType','mobile-land'],['mortgageCurrent','no'],['recentBankruptcyForeclosure','yes']];
+  const walk=(state:string,q:string,v:string)=>{ selectGoal('equity'); tap('propertyUse','primary'); pickState(state); next();
+    tap('propertyType', q==='propertyType'?v:'single-family-condo'); next(); if (!card().querySelector('[data-q="mortgageCurrent"]')) return;
+    tap('mortgageCurrent', q==='mortgageCurrent'?v:'yes'); tap('recentBankruptcyForeclosure', q==='recentBankruptcyForeclosure'?v:'no'); next(); };
+  it.each(KNOCKOUTS)('records an outside-area visitor whose %s is %s', async (q,v) => {
+    leadFetch=vi.fn((_url,init)=>Promise.resolve(new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(init.body).submissionId,disposition:'sheet-only'}))));
+    booking.open(); walk('CO',q,v); fillContact(); await flush(); await flush();
+    expect(leadBody()).toMatchObject({[q]:v,propertyState:'CO',serviceAreaResult:'out-of-market'});
+    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/#recorded'); expect(card().querySelector('iframe')).toBeNull();
+  });
+  it.each(KNOCKOUTS)('still declines an in-area visitor whose %s is %s, posting nothing', async (q,v) => {
+    booking.open(); walk('CA',q,v); await flush();
+    expect(card().querySelector('form')).toBeNull(); expect(leadFetch).not.toHaveBeenCalled(); expect(assign).not.toHaveBeenCalled();
+    expect(track.mock.calls.map(c=>c[0])).toContain('booking_prequal_declined');
+  });
+  it('never sends an unsupported inquiry by checking privacy alone', async () => {
+    booking.open(); passSteps('primary','CO'); fillContact({privacy:false}); await flush();
+    const privacy=card().querySelector('[name="privacy"]') as HTMLInputElement;
+    privacy.checked=true; privacy.dispatchEvent(new Event('change',{bubbles:true}));
+    await flush(); expect(leadFetch).not.toHaveBeenCalled(); expect(assign).not.toHaveBeenCalled();
+  });
+  it.each([{}, {disposition:'sheet-only',submissionId:'wrong'}])('rejects an incomplete or mismatched unsupported receipt: %j', async fields => {
+    leadFetch=vi.fn((_url,init)=>Promise.resolve(new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(init.body).submissionId,...fields}))));
+    booking.open(); passSteps('primary','CO'); fillContact(); await flush(); await flush();
+    expect(assign).not.toHaveBeenCalled(); expect(card().querySelector('iframe')).toBeNull();
+    expect(errText()).toMatch(/confirm/); expect(track.mock.calls.map(c=>c[0])).not.toContain('generate_lead');
+  });
+  it('uses the same inquiry identity when a Sheet-only confirmation times out', async () => {
+    leadFetch=vi.fn((_url,init)=>Promise.resolve(new Response(JSON.stringify(leadFetch.mock.calls.length===1 ? {} : {ok:true,receipt:'saved',submissionId:JSON.parse(init.body).submissionId,disposition:'sheet-only'}), {status:leadFetch.mock.calls.length===1?502:200})));
+    booking.open(); passSteps('primary','CO'); fillContact(); await flush(); await flush();
+    const first=String(leadFetch.mock.calls[0][1].body); expect(assign).not.toHaveBeenCalled();
+    next(); await flush(); await flush();
+    expect(String(leadFetch.mock.calls[1][1].body)).toBe(first); expect(assign).toHaveBeenCalledWith('/out-of-market-primary/#recorded');
+  });
+  it('keeps investment coverage in CO and loads the calendar only after saving', async () => {
+    booking.open(); passSteps('investment','CO','dscr'); fillContact(); await flush(); await flush();
+    expect(leadBody().serviceAreaResult).toBe('supported'); expect(assign).not.toHaveBeenCalled();
+    expect(card().querySelector('iframe')).not.toBeNull(); expect(track.mock.calls.filter(c=>c[0]==='generate_lead')).toHaveLength(1);
+    expect(card().querySelector('.dt-book-calendar-status')?.textContent).toMatch(/Loading Google Calendar/);
+    card().querySelector('iframe')!.dispatchEvent(new Event('load'));
+    expect(card().querySelector('.dt-book-calendar-status')?.textContent).toMatch(/Choose a time/);
+    expect(track.mock.calls.map(c=>c[0])).not.toContain('meeting_booked');
   });
 });

@@ -113,6 +113,7 @@
         if (!receipt || receipt.ok !== true || receipt.submissionId !== record.submissionId || receipt.receipt !== 'saved') {
           throw new Error('The saved receipt could not be confirmed. Retry this request with the same details.');
         }
+        record.disposition = receipt.disposition === 'sheet-only' ? 'sheet-only' : '';
         record.confirmed = true;
         receipts.set(response, record);
         persist();
@@ -124,7 +125,7 @@
   function recordFor(formId, response) { return response ? receipts.get(response) : pending[formId]; }
   function claimConversion(formId, response) {
     var record = recordFor(formId, response);
-    if (!record || !record.confirmed || converted[record.submissionId]) return false;
+    if (!record || !record.confirmed || record.disposition === 'sheet-only' || converted[record.submissionId]) return false;
     converted[record.submissionId] = true;
     return true;
   }

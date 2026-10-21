@@ -84,8 +84,18 @@ describe('retiring Leads preserves the record before deletion', () => {
     const h = migrationHarness(true);
     expect(h.gas.migrateLegacyLeads(true)).toEqual({ copied: 3, verified: 3, deleted: true });
     expect(h.tabs.has('Leads')).toBe(false);
-    const result = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'book-contact', formId: 'booking-prequal', bookingGoal: 'equity', email: 'new@example.com', _proxyKey: TEST_PROXY_KEY }) } });
-    expect(JSON.parse(result.__body).success).toBe(true);
+    // A stale page source still carries a complete, supported booking inquiry.
+    // Incomplete booking payloads have their own rejection coverage; this test
+    // proves retiring the generic tab did not break valid old entry sources.
+    const result = h.gas.doPost({ postData: { contents: JSON.stringify({
+      source: 'book-contact', formId: 'booking-prequal', bookingGoal: 'equity',
+      submissionId: 'stale-booking-source', firstName: 'New', lastName: 'Visitor',
+      email: 'new@example.com', phone: '7145550123',
+      state: 'CA', propertyState: 'CA', propertyUse: 'primary', propertyType: 'single-family-condo',
+      mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no',
+      privacyAcknowledged: true, privacyVersion: '2026-10-13-v1', _proxyKey: TEST_PROXY_KEY,
+    }) } });
+    expect(JSON.parse(result.__body)).toMatchObject({ success: true, receipt: 'saved', submissionId: 'stale-booking-source' });
     expect(h.rowOf('Home Equity', 2).Source).toBe('home-equity');
     expect(h.tabs.has('Leads')).toBe(false);
   });

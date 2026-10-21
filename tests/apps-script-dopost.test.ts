@@ -432,11 +432,11 @@ describe('each funnel writes to its own tab, under its own headers', () => {
     });
   });
 
-  it('a booking-prequal lead lands on Leads with its three answers in their own columns', () => {
+  it('a booking-prequal lead lands in its chosen goal tab with qualification answers', () => {
     // public/booking-chooser.js, 15 Oct 2026. The columns are appended after
     // everything already on the tab, so nothing on a live sheet moves.
     post(h, {
-      source: 'book-contact', formId: 'booking-prequal',
+      source: 'book-contact', formId: 'booking-prequal', bookingGoal: 'not-sure',
       firstName: 'Ada', email: 'ada@example.com', phone: '7145550123', state: 'CA',
       propertyUse: 'primary', propertyState: 'CA', propertyType: 'single-family-condo',
       mortgageCurrent: 'no-mortgage', recentBankruptcyForeclosure: 'no', ...ATTR,

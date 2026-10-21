@@ -725,3 +725,48 @@ describe('contact format', () => {
     expect((await handler(req({ firstName: 'Jane', phone: '(714) 555-0123', source: 'dscr' }), ctx)).status).toBe(200);
   });
 });
+
+
+describe('Sheet-only booking inquiries, decided after acknowledgement', () => {
+  const inquiry={...LEAD,lastName:'Doe',submissionId:'sheet-only-inquiry',formId:'booking-prequal',source:'home-contact',bookingGoal:'equity',propertyUse:'primary',propertyState:'CO',propertyType:'single-family-condo',mortgageCurrent:'yes',recentBankruptcyForeclosure:'no',privacyAcknowledged:true,privacyVersion:'2026-10-13-v1'};
+  const receipt=(disposition: string|undefined='sheet-only')=>new Response(JSON.stringify({success:true,receipt:'saved',submissionId:inquiry.submissionId,...(disposition?{disposition}:{})}));
+  it.each([['primary','CO','equity'],['investment','NY','dscr'],['second-home','NV','own-home']])('retains %s %s only after independent writer confirmation', async (propertyUse,propertyState,bookingGoal)=>{
+    responses=[receipt()];
+    const response=await handler(req({...inquiry,propertyUse,propertyState,bookingGoal,serviceAreaResult:'supported',captureDisposition:'supported'}),ctx);
+    expect(response.status).toBe(200); expect(await response.json()).toMatchObject({ok:true,receipt:'saved',submissionId:inquiry.submissionId,disposition:'sheet-only'});
+    const sent=JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body));
+    expect(sent).toMatchObject({propertyState,propertyUse,serviceAreaResult:'out-of-market',captureDisposition:'sheet-only',privacyAcknowledged:true});
+    expect(rescueSent()).toBe(false);
+  });
+  it.each([{privacyAcknowledged:false},{privacyAcknowledged:'true'},{privacyVersion:''},{submissionId:undefined},{email:''},{phone:''},{firstName:''},{lastName:''},{propertyState:'XX'},{bookingGoal:'own-home',propertyUse:'investment'},{mortgageCurrent:'maybe'},{propertyType:''},{recentBankruptcyForeclosure:''}])('rejects incomplete/invalid recording evidence before a write: %j', async fields=>{
+    const response=await handler(req({...inquiry,...fields}),ctx);
+    expect(response.status).toBe(422); expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
+  // 22 Oct (Max): outside the service area a failed knockout is still recorded.
+  it.each([{mortgageCurrent:'no'},{recentBankruptcyForeclosure:'yes'},{propertyType:'mobile-land'}])('records an outside-area inquiry that fails a knockout: %j', async(fields)=>{
+    responses=[receipt()];
+    const response=await handler(req({...inquiry,...fields}),ctx);
+    expect(response.status).toBe(200); expect(await response.json()).toMatchObject({ok:true,disposition:'sheet-only'});
+    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))).toMatchObject({...fields,captureDisposition:'sheet-only'});
+  });
+  it.each([{mortgageCurrent:'no'},{recentBankruptcyForeclosure:'yes'},{propertyType:'mobile-land'}])('still refuses an in-area booking that fails a knockout: %j', async(fields)=>{
+    const response=await handler(req({...inquiry,propertyState:'CA',...fields}),ctx);
+    expect(response.status).toBe(422); expect(await response.json()).toMatchObject({field:'prequal'}); expect(upstreamCalled()).toBe(false);
+  });
+  it('does not permit client Sheet-only flags to bypass supported DSCR delivery', async()=>{
+    responses=[receipt('')];
+    const response=await handler(req({...inquiry,bookingGoal:'dscr',propertyUse:'investment',captureDisposition:'sheet-only',disposition:'sheet-only'}),ctx);
+    expect(response.status).toBe(200); expect(await response.json()).not.toHaveProperty('disposition');
+    const sent=JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body));
+    expect(sent.serviceAreaResult).toBe('supported'); expect(sent).not.toHaveProperty('captureDisposition');expect(sent).not.toHaveProperty('disposition');
+  });
+  it('fails safely when an older writer does not acknowledge Sheet-only handling',async()=>{
+    responses=[receipt(''),new Response('{}')];
+    const response=await handler(req(inquiry),ctx);
+    expect(response.status).toBe(502);expect(await response.json()).toMatchObject({receipt:'uncertain',submissionId:inquiry.submissionId});
+  });
+  it('does not widen unsupported capture to calculators',async()=>{
+    const response=await handler(req({...inquiry,formId:'home-equity-calculator'}),ctx);
+    expect(response.status).toBe(422);expect(upstreamCalled()).toBe(false);
+  });
+});

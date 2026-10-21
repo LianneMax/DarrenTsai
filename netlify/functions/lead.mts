@@ -1,4 +1,4 @@
-import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses } from '../../src/utils/serviceArea';
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses, prequalAnswered, propertyUses } from '../../src/utils/serviceArea';
 import { bookingBucket } from '../../src/utils/bookingBucket';
 // Netlify Function: lead
 //
@@ -647,9 +647,16 @@ export default async (req: Request, context: Context) => {
   // Keep older clients' absent fields absent; invalid evidence must not lose a lead.
   normalizeSmsConsent(payload);
 
+  // A visitor cannot choose their processing lane. Only a complete, explicitly
+  // acknowledged booking inquiry may use the new Sheet-only path. Other forms
+  // keep their existing state gate; existing investment coverage is unchanged.
+  delete payload.captureDisposition;
+  delete payload.disposition;
+  let sheetOnly = false;
+
   // Rollout switch supports old open tabs until the new fields are deployed.
   // Once enabled, omission cannot bypass screening. Never trust a client result.
-  if (payload.serviceAreaVersion || Netlify.env.get('SERVICE_AREA_REQUIRED') === 'true') {
+  if (payload.formId !== BOOKING_PREQUAL_FORM && (payload.serviceAreaVersion || Netlify.env.get('SERVICE_AREA_REQUIRED') === 'true')) {
     // /book/'s goal decides the rule there (policy v3); other forms send none.
     const goal = payload.formId === BOOKING_PREQUAL_FORM ? payload.bookingGoal : undefined;
     const result = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || payload.formId || ''), goal);
@@ -677,8 +684,30 @@ export default async (req: Request, context: Context) => {
     }
     if (goal !== undefined) payload.reviewFlag = BOOKING_GOALS[goal].review ? 'Yes' : '';
     const area = serviceArea(payload.propertyUse, payload.propertyState, String(payload.source || ''), goal);
-    if (area !== 'supported') return jsonResponse(422, { field: 'propertyState', message: area === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
-    if (!prequalPasses(payload)) return jsonResponse(422, { field: 'prequal', message: 'A call is not available for these answers.' });
+    if (area !== 'supported') {
+      // 22 Oct: defer state screening until the visitor deliberately submits
+      // after privacy acknowledgement. An unsupported inquiry is retained for
+      // state-demand reporting only, never admitted to calendar/CRM delivery.
+      // Wrong goal/use combinations and incomplete fields are still invalid.
+      if (payload.formId !== BOOKING_PREQUAL_FORM || area === 'incomplete' || !propertyUses(String(payload.source || ''), goal).includes(String(payload.propertyUse))) {
+        return jsonResponse(422, { field: 'propertyState', message: area === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE });
+      }
+      if (!submissionId || payload.privacyAcknowledged !== true || typeof payload.privacyVersion !== 'string' || !payload.privacyVersion.trim() ||
+          typeof payload.firstName !== 'string' || !payload.firstName.trim() ||
+          typeof payload.lastName !== 'string' || !payload.lastName.trim() ||
+          typeof payload.email !== 'string' || !isEmailFormat(payload.email) || !isUsPhone(payload.phone)) {
+        return jsonResponse(422, { field: 'propertyState', message: 'Please complete your name, email, phone and privacy acknowledgement before sending this inquiry.' });
+      }
+      sheetOnly = true;
+      payload.captureDisposition = 'sheet-only';
+    }
+    // 22 Oct (Max): an outside-area inquiry is recorded even when a knockout
+    // fails; it never reaches a calendar or CRM, so the knockout only needs to
+    // be a real answer there. Inside the area the knockouts still refuse.
+    if (sheetOnly ? !prequalAnswered(payload) : !prequalPasses(payload)) return jsonResponse(422, { field: 'prequal', message: 'A call is not available for these answers.' });
+    payload.propertyState = String(payload.propertyState).trim().toUpperCase();
+    payload.serviceAreaResult = area;
+    payload.serviceAreaVersion = SERVICE_AREA_VERSION;
     // A page-contact source used to send every booking to generic Leads.
     // Preserve that entry context, but classify only after server screening.
     if (goal !== undefined) {
@@ -771,7 +800,7 @@ export default async (req: Request, context: Context) => {
 
     // Apps Script answers 200 with {success:false, error} when it caught an
     // exception internally, so a 2xx alone is not proof the lead was stored.
-    let parsed: { success?: boolean; error?: string; code?: string; field?: string; message?: string; submissionId?: string; receipt?: string; replayed?: boolean } = {};
+    let parsed: { success?: boolean; error?: string; code?: string; field?: string; message?: string; submissionId?: string; receipt?: string; replayed?: boolean; disposition?: string } = {};
     try {
       parsed = JSON.parse(text);
     } catch {
@@ -795,7 +824,14 @@ export default async (req: Request, context: Context) => {
       await rescueEmail('Apps Script did not confirm this submission identity', raw, true);
       return uncertain('receipt mismatch');
     }
-    return jsonResponse(200, { ok: true, receipt: 'saved', ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true });
+    // A confirmed write alone cannot tell the UI which next step is allowed.
+    // During a staged rollout an older writer might save AND enqueue the new
+    // inquiry, so require the independent writer's Sheet-only acknowledgement.
+    if ((sheetOnly && parsed.disposition !== 'sheet-only') || (!sheetOnly && parsed.disposition === 'sheet-only')) {
+      await rescueEmail('Apps Script did not confirm the expected inquiry disposition', raw, true);
+      return uncertain('receipt disposition mismatch');
+    }
+    return jsonResponse(200, { ok: true, receipt: 'saved', ...(sheetOnly ? { disposition: 'sheet-only' } : {}), ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true });
   } catch (err) {
     const name = (err as { name?: string } | null)?.name;
     const timedOut = timer.aborted || name === "TimeoutError" || name === "AbortError";

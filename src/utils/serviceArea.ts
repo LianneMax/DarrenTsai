@@ -91,6 +91,13 @@ export const BOOKING_PREQUAL_FORM = 'booking-prequal';
 export const PREQUAL_FORMS = [BOOKING_PREQUAL_FORM, 'home-equity-calculator'];
 export const PREQUAL_PROPERTY_TYPES = ['single-family-condo', '2-4-units'];
 export const PREQUAL_MORTGAGE_OK = ['yes', 'no-mortgage'];
+/** Every knockout question has a valid answer, whatever it is (Sheet-only inquiries). */
+export function prequalAnswered(p: Record<string, unknown>): boolean {
+  return ['single-family-condo', '2-4-units', 'mobile-land'].includes(String(p.propertyType))
+    && ['yes', 'no', 'no-mortgage'].includes(String(p.mortgageCurrent))
+    && ['yes', 'no'].includes(String(p.recentBankruptcyForeclosure));
+}
+
 export function prequalPasses(p: Record<string, unknown>): boolean {
   return PREQUAL_PROPERTY_TYPES.includes(String(p.propertyType))
     && PREQUAL_MORTGAGE_OK.includes(String(p.mortgageCurrent))

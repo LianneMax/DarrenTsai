@@ -88,7 +88,12 @@ describe('the consent words are untouched (10DLC review)', () => {
     for (const m of SOURCE.matchAll(/var SMS_(?:INFO|MARKETING)_TEXT = '([^']+)'/g)) expect(read('public/compliance.js')).toContain(m[1]);
     expect(SOURCE).toContain('I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)');
     expect(SOURCE).toContain('>Text messages are optional and not a condition of purchase or of submitting this form.</p>');
-    expect(SOURCE).toContain('>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>');
+    expect(SOURCE).toContain('Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>');
+  });
+
+  it('describes recording and service screening without promising an unsupported inquiry a mortgage review', () => {
+    expect(SOURCE).toContain('>Submitting records your inquiry and checks service availability. Calendar access depends on the property and your answers.');
+    expect(SOURCE).not.toContain('Submitting requests a mortgage review');
   });
 
   it('keeps the whole block visible: nothing collapsed behind a toggle', () => {

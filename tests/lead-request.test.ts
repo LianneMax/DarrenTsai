@@ -119,3 +119,14 @@ describe('one identity for one submitted inquiry', () => {
     expect(JSON.parse(String((fetch.mock.calls[1] as unknown as [string, RequestInit])[1].body)).submissionId).not.toBe(first.submissionId);
   });
 });
+
+
+it('keeps a saved Sheet-only inquiry out of qualified conversions, including on replay', async () => {
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:window.DTLead!.prepare('dscr-magnet',payload).submissionId,disposition:'sheet-only'}))));
+  const response=await window.DTLead!.submit('dscr-magnet',payload);
+  expect(response.ok).toBe(true);
+  expect(window.DTLead!.claimConversion('dscr-magnet',response)).toBe(false);
+  expect(window.DTLead!.claimConversion('dscr-magnet')).toBe(false);
+  const replay=await window.DTLead!.submit('dscr-magnet',payload);
+  expect(window.DTLead!.claimConversion('dscr-magnet',replay)).toBe(false);
+});

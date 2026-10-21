@@ -64,6 +64,59 @@ function isLicensedState(state) {
   return LICENSED_STATES.indexOf(String(state).trim().toUpperCase()) !== -1;
 }
 
+// Apps Script has no module imports. Keep this booking-only policy mirror in
+// step with public/service-area-policy.json (the source-executing tests compare
+// every state/use/goal). The proxy authenticates the hop, but the writer still
+// computes the destination itself: posted flags must never authorize CRM work.
+const BOOKING_PROPERTY_STATES = 'AK AL AR AZ CA CO CT DC DE FL GA HI IA ID IL IN KS KY LA MA MD ME MI MN MO MS MT NC ND NE NH NJ NM NV NY OH OK OR PA RI SC SD TN TX UT VA VT WA WI WV WY'.split(' ');
+const BOOKING_INVESTMENT_EXCLUDED = 'ID MN ND NH NJ NV NY SD UT'.split(' ');
+const BOOKING_INQUIRY_GOALS = ['equity', 'dscr', 'own-home', 'commercial', 'not-sure'];
+function bookingServiceArea(data) {
+  const state = typeof data.propertyState === 'string' ? data.propertyState.trim().toUpperCase() : '';
+  const use = data.propertyUse;
+  const goal = data.bookingGoal;
+  const uses = goal === 'dscr' || goal === 'commercial' ? ['investment']
+    : goal === 'own-home' || goal === 'not-sure' ? ['primary', 'second-home']
+    : ['primary', 'second-home', 'investment'];
+  if (BOOKING_INQUIRY_GOALS.indexOf(goal) === -1 || BOOKING_PROPERTY_STATES.indexOf(state) === -1 ||
+    uses.indexOf(use) === -1) return 'incomplete';
+  return (use === 'investment' ? BOOKING_INVESTMENT_EXCLUDED.indexOf(state) === -1 : isLicensedState(state))
+    ? 'supported' : 'out-of-market';
+}
+function isSheetOnlyInquiry(data) {
+  return data && data.formId === 'booking-prequal' && bookingServiceArea(data) === 'out-of-market';
+}
+function bookingCaptureError(data) {
+  if (bookingServiceArea(data) === 'incomplete') return 'Please choose your goal, property use and property state.';
+  // 22 Oct (Max): outside the service area the inquiry is recorded even when a
+  // knockout fails (Sheet-only, no calendar or CRM); the answers must still be real.
+  const outside = bookingServiceArea(data) === 'out-of-market';
+  const types = outside ? ['single-family-condo', '2-4-units', 'mobile-land'] : ['single-family-condo', '2-4-units'];
+  const mortgage = outside ? ['yes', 'no', 'no-mortgage'] : ['yes', 'no-mortgage'];
+  const history = outside ? ['yes', 'no'] : ['no'];
+  if (types.indexOf(data.propertyType) === -1 || mortgage.indexOf(data.mortgageCurrent) === -1 ||
+    history.indexOf(data.recentBankruptcyForeclosure) === -1) {
+    return 'This property does not meet the conversation requirements.';
+  }
+  // Normal supported clients keep their existing proxy validation contract.
+  // An unsupported inquiry is newly accepted here, so require its full explicit
+  // consent/contact contract even if a stale or misconfigured proxy forwards it.
+  if (bookingServiceArea(data) === 'out-of-market') {
+    const digits = String(data.phone || '').replace(/\D/g, '');
+    if (!data.submissionId || data.privacyAcknowledged !== true || !String(data.privacyVersion || '').trim() ||
+      !String(data.firstName || '').trim() || !String(data.lastName || '').trim() ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email || '')) || !/^1?[2-9]\d{2}[2-9]\d{6}$/.test(digits)) {
+      return 'Please complete your contact details and accept the privacy acknowledgment.';
+    }
+  }
+  return '';
+}
+function savedCaptureReceipt(data, replayed) {
+  const receipt = { success: true, submissionId: data.submissionId, receipt: 'saved', replayed: !!replayed };
+  if (isSheetOnlyInquiry(data)) receipt.disposition = 'sheet-only';
+  return receipt;
+}
+
 /**
  * The contact modal, per page.
  *
@@ -200,9 +253,9 @@ function isTestLead(d) {
   return false;
 }
 
-/** Test?, then two blank cells for a person to fill in. */
+/** Test?, Status, Contacted. Unsupported inquiries carry a visible Sheet-only status. */
 function triageRow(d) {
-  return [isTestLead(d) ? 'TEST' : '', '', ''];
+  return [isTestLead(d) ? 'TEST' : '', isSheetOnlyInquiry(d) ? 'Sheet only: outside service area' : '', ''];
 }
 
 function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
@@ -772,7 +825,7 @@ function appendByHeader(ss, sheet, tabName, headers, values) {
   sheet.appendRow(row);
 
   // Consent fields intentionally append without a migration. Compare the original
-  // schema separately so this expected extension does not alert Darren per lead tab.
+  // schema separately so this expected extension does not alert Max per lead tab.
   // All other missing, renamed, duplicated or reordered headers still alert.
   const isBase = function (h) { return SMS_CONSENT_HEADERS.indexOf(h) === -1; };
   const drift = describeSheetDrift(live.slice(0, live.length - missing.length).filter(isBase), headers.filter(isBase), missing.filter(isBase));
@@ -1110,6 +1163,7 @@ function alertHubSpotDroppedFields(dropped, code) {
  * row red. It turns on the moment both are set, with no deploy.
  */
 function pushToHubSpot(ss, data) {
+  if (isSheetOnlyInquiry(data)) return { outcome: 'skipped', detail: 'Sheet-only inquiry; no CRM dispatch' };
   const props = PropertiesService.getScriptProperties();
   const portalId = String(props.getProperty('HUBSPOT_PORTAL_ID') || '').trim();
   const formGuid = String(props.getProperty('HUBSPOT_FORM_GUID') || '').trim();
@@ -1296,7 +1350,15 @@ function initializeEmailOptOutColumns(ss) {
   // with no pending opt-outs. A live ADU test timed out waiting for this lock.
   // Header setup needs no lead rows; release between tabs so new leads can run.
   emailOptOutSheets(spreadsheet).forEach(function (sheet) {
-    withSheetLock(function () { ensureEmailOptOutColumn(sheet); SpreadsheetApp.flush(); });
+    // Most minute runs find every header already installed. A read-only
+    // existence check needs no write lock or flush. A missing header is still
+    // repaired under the shared lock, with a second check to handle a race.
+    if (liveHeaders(sheet).indexOf('Unsubscribe?') !== -1) return;
+    withSheetLock(function () {
+      if (liveHeaders(sheet).indexOf('Unsubscribe?') !== -1) return;
+      ensureEmailOptOutColumn(sheet);
+      SpreadsheetApp.flush();
+    });
   });
 }
 function markLeadEmailUnsubscribed(ss, email) {
@@ -1342,6 +1404,8 @@ function syncEmailOptOuts(ss) {
     return JSON.parse(response.getContentText());
   }
   try {
+    // Existing headers are checked read-only; only an actual repair acquires
+    // the capture lock. Empty outboxes no longer force all-tab write flushes.
     initializeEmailOptOutColumns(ss);
     const pending = request({ operation: 'pending' }).emails || [];
     pending.forEach(function (email) {
@@ -1510,6 +1574,7 @@ function sendContactConfirmation(ss, data) {
 
 /** Run whichever guide applies to this lead (at most one does). */
 function sendGuideFor(ss, data) {
+  if (isSheetOnlyInquiry(data)) return { outcome: 'skipped', detail: 'Sheet-only inquiry; no email dispatch' };
   // Product classification is not a guide request. A DSCR booking used to have
   // a contact source; moving its bucket must not start emailing an unasked PDF.
   if (data.formId === 'booking-prequal' || Object.prototype.hasOwnProperty.call(CONTACT_SOURCES, data.entrySource)) {
@@ -1522,14 +1587,9 @@ function sendGuideFor(ss, data) {
   return { outcome: 'skipped' };
 }
 
-// Email Darren when a lead fails to land, including the raw payload so it can
-// be recovered by hand. Rate-limited to one alert per 5 minutes: a systemic
-// outage would otherwise burn the 100/day consumer Gmail quota in minutes and
-// bury the first, most useful alert.
-// Comma-separated, which MailApp accepts as one string. Both addresses get
-// every alert and every digest: a lost lead needs someone to act on it, and one
-// inbox is one holiday away from silence.
-const ALERT_EMAIL = 'darren@realdarrentsai.com,liannemaxbalbastro@gmail.com';
+// Operational alerts belong to Max only (22 Oct 2026). Borrower emails and
+// normal CRM ownership/notifications are separate and are not rerouted here.
+const ALERT_EMAIL = 'liannemaxbalbastro@gmail.com';
 function alertFailure(subjectDetail, rawPayload) {
   try {
     const cache = CacheService.getScriptCache();
@@ -1538,12 +1598,33 @@ function alertFailure(subjectDetail, rawPayload) {
     MailApp.sendEmail({
       to: ALERT_EMAIL,
       subject: 'LEAD PIPELINE FAILURE — realdarrentsai.com',
-      body: subjectDetail + '\n\nRAW PAYLOAD (recover this lead by hand):\n' + rawPayload +
-            '\n\nFurther alerts are suppressed for 5 minutes.'
+      body: subjectDetail + (rawPayload && rawPayload !== '{}' ?
+        '\n\nSUBMISSION EVIDENCE (check the Sheet and provider records before any recovery):\n' + rawPayload : '') +
+        '\n\nFurther failure alerts are suppressed for 5 minutes. Review the daily digest for additional failures.'
     });
   } catch (err) {
     Logger.log('alertFailure itself failed: ' + err.toString());
   }
+}
+function alertWorkerAdmissionDelay(err, elapsedMs) {
+  try {
+    const cache = CacheService.getScriptCache();
+    // A scheduling delay must not swallow a genuine capture/provider failure.
+    if (cache.get('followup_admission_delay_sent')) return;
+    cache.put('followup_admission_delay_sent', '1', 300);
+    MailApp.sendEmail({
+      to: ALERT_EMAIL,
+      subject: 'Follow-up processing delayed: realdarrentsai.com',
+      body: 'The scheduled follow-up worker could not acquire the shared script lock.\n' +
+        'Lock wait limit: 20 seconds. Observed admission attempt: ' + (elapsedMs / 1000).toFixed(1) + ' seconds.\n\n' +
+        'The worker did not inspect the queue or select an individual lead. This alert does not establish a lost lead or a failed email. ' +
+        'Queue contents and recovery have not been verified by this execution.\n\n' +
+        'The next scheduled minute run is expected to try again. Check Apps Script executions and the Follow-ups tab to confirm recovery; ' +
+        'do not re-enter or resend inquiries based on this alert alone. The lock holder is not identified by this error.\n\n' +
+        'The separate website confirmation budget is a maximum of 25 seconds, not a minimum wait.\n\n' +
+        'Technical detail: ' + err.toString() + '\n\nFurther admission-delay notices are suppressed for 5 minutes; genuine failure alerts are separate.'
+    });
+  } catch (mailError) { Logger.log('Worker admission notice failed: ' + mailError.toString()); }
 }
 
 /** Stable structural comparison, independent of JSON key order. Only transport
@@ -1643,6 +1724,18 @@ function doPost(e) {
     // Private queue checkpoints are minted only by this script. An anonymous
     // form must not inject completed jobs or a delivery lease into the queue.
     Object.keys(data).forEach(function (key) { if (key.charAt(0) === '_') delete data[key]; });
+    delete data.disposition;
+    delete data.captureDisposition;
+    if (data.formId === 'booking-prequal') {
+      const validationError = bookingCaptureError(data);
+      if (validationError) return ContentService.createTextOutput(JSON.stringify({ success: false,
+        code: 'invalid_booking_inquiry', field: 'propertyState', message: validationError })).setMimeType(ContentService.MimeType.JSON);
+      data.propertyState = data.propertyState.trim().toUpperCase();
+      data.state = data.propertyState;
+      data.serviceAreaResult = bookingServiceArea(data);
+      data.serviceAreaVersion = '2026-10-15-v3';
+      if (data.serviceAreaResult === 'out-of-market') data.captureDisposition = 'sheet-only';
+    }
     if (data.source !== 'newsletter' && data.source !== 'QualifyForm') {
       const originalSource = data.source;
       data.source = targetedSource(data);
@@ -1651,7 +1744,7 @@ function doPost(e) {
     lock = LockService.getScriptLock();
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-    // The proxy has a nine-second total budget. A twenty-second lock wait
+    // The proxy has a 25-second total confirmation budget. A long lock wait
     // creates an unknown late save; do not queue behind a busy worker for longer
     // than the caller can wait. The caller keeps its logical ID when retrying.
     if (!lock.tryLock(1500)) return ContentService.createTextOutput(JSON.stringify({
@@ -1679,10 +1772,9 @@ function doPost(e) {
       // A crash after writing the lead but before enqueueing must not lose its
       // promised work. enqueueFollowUp itself deduplicates the original ID.
       if (original) {
-        enqueueFollowUp(ss, original.payload, JSON.stringify(original.payload));
+        if (!queued) enqueueFollowUp(ss, original.payload, JSON.stringify(original.payload), true);
         SpreadsheetApp.flush();
-        return ContentService.createTextOutput(JSON.stringify({ success: true, submissionId: data.submissionId,
-          receipt: 'saved', replayed: true })).setMimeType(ContentService.MimeType.JSON);
+        return ContentService.createTextOutput(JSON.stringify(savedCaptureReceipt(original.payload, true))).setMimeType(ContentService.MimeType.JSON);
       }
     }
 
@@ -1730,7 +1822,7 @@ function doPost(e) {
     //
     // Re-serialised so the queued payload carries the Submission ID the row was
     // just given. `raw` stays as received for the failure alert below.
-    enqueueFollowUp(ss, data, JSON.stringify(data));
+    if (!queued) enqueueFollowUp(ss, data, JSON.stringify(data), true);
     SpreadsheetApp.flush();
     lock.releaseLock();
     // Acquire the optional queue's lock only after the primary write releases
@@ -1738,7 +1830,7 @@ function doPost(e) {
     try { enqueueCallRailSync(ss, data); } catch (err) { logDebug(ss, 'CallRail sync enqueue needs review: ' + err.toString(), data.email); }
 
     return ContentService
-      .createTextOutput(JSON.stringify({ success: true, submissionId: data.submissionId, receipt: 'saved', replayed: !!queued }))
+      .createTextOutput(JSON.stringify(savedCaptureReceipt(data, !!queued)))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -2169,9 +2261,12 @@ function claimDecision(status, processedAt, now) {
   return { claim: false, attempts: 0, reason: 'terminal' };
 }
 
-function enqueueFollowUp(ss, data, raw) {
+function enqueueFollowUp(ss, data, raw, alreadyChecked) {
+  if (isSheetOnlyInquiry(data)) return;
   const sheet = getOrCreateSheet(ss, FOLLOWUP_TAB, FOLLOWUP_HEADERS);
-  if (data.submissionId && sheet.getLastRow() > 1) {
+  // doPost already checked this ID under the same capture lock. Avoid a
+  // second full queue read while visitors and the minute worker are waiting.
+  if (!alreadyChecked && data.submissionId && sheet.getLastRow() > 1) {
     const payloads = sheet.getRange(2, FOLLOWUP_COL.payload, sheet.getLastRow() - 1, 1).getValues();
     if (payloads.some(function (row) {
       try { return JSON.parse(String(row[0])).submissionId === data.submissionId; } catch { return false; }
@@ -2184,11 +2279,18 @@ function enqueueFollowUp(ss, data, raw) {
 
 // Sheet writes are serialised against doPost, but only one write at a time.
 // The script lock must NOT be held across the HTTP below: doPost waits on that
-// same lock for 20s, so holding it for a multi-minute batch would fail exactly
+// same lock for up to 1.5s, so holding it for a multi-minute batch would fail exactly
 // the live submissions this queue exists to protect.
 function withSheetLock(fn) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  try { lock.waitLock(20000); }
+  catch (err) {
+    // Mark the actual acquisition seam. A later Script Properties timeout is
+    // an admission failure, not evidence that the shared lock was unavailable.
+    const waitError = new Error(err.toString());
+    waitError.sheetLockWaitFailed = true;
+    throw waitError;
+  }
   try { return fn(); } finally { lock.releaseLock(); }
 }
 
@@ -2201,7 +2303,7 @@ function withSheetLock(fn) {
  * HubSpot and the guide email each report their own outcome. The guide: sent -> 'done'; Resend busy/down -> 'guide-retry:N', retried up to
  * GUIDE_MAX_ATTEMPTS, then 'guide-failed'; a permanent rejection (invalid
  * address, missing config) -> 'guide-rejected' with no retry. Both terminal
- * failures alert Darren, and the daily digest catches anything the 5 minute
+ * failures alert Max, and the daily digest catches anything the 5 minute
  * alert throttle swallowed. Unknown provider acceptance is held for review;
  * interrupted workers retain their last flushed per-job checkpoint.
  *
@@ -2332,10 +2434,12 @@ function releaseFollowUpWorker(token) {
 }
 
 function processFollowUps() {
+  const admissionStarted = Date.now();
   let worker;
   try { worker = acquireFollowUpWorker(); }
   catch (err) {
-    alertFailure('Follow-up worker admission failed; captured leads remain queued. ' + err.toString(), '{}');
+    if (err && err.sheetLockWaitFailed === true) alertWorkerAdmissionDelay(err, Date.now() - admissionStarted);
+    else alertFailure('Follow-up worker admission needs review. The queue was not inspected and no lead was selected. ' + err.toString());
     return;
   }
   if (!worker) return;
@@ -2388,6 +2492,7 @@ function processFollowUps() {
 // is never blindly retried: CallRail documents no submission idempotency key.
 const CALLRAIL_SYNC_HEADERS = ['Submission ID', 'Payload', 'Status', 'CallRail ID', 'Detail'];
 function enqueueCallRailSync(ss, data) {
+  if (isSheetOnlyInquiry(data)) return;
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty('CALLRAIL_SYNC_ENABLED') !== 'true' || (isTestLead(data) && props.getProperty('CALLRAIL_SEND_TESTS') !== 'true')) return;
   withSheetLock(function () {
@@ -2427,6 +2532,10 @@ function processCallRailSync(ss) {
     sheet.getRange(row, 3, 1, 1).setValues([['sending']]); // a crash is reviewable, not duplicate delivery
     try {
       const data = JSON.parse(rows[i][1]);
+      if (isSheetOnlyInquiry(data)) {
+        sheet.getRange(row, 3, 1, 3).setValues([['skipped', '', 'Sheet-only inquiry; no CallRail dispatch']]);
+        continue;
+      }
       const response = UrlFetchApp.fetch('https://api.callrail.com/v3/a/' + account + '/form_submissions.json', {
         method: 'post', contentType: 'application/json',
         headers: { Authorization: 'Token token=' + token },
@@ -2446,7 +2555,7 @@ function processCallRailSync(ss) {
 // WHY. alertFailure sends at most one email every 5 minutes. That is right for
 // a flood, but it means the second and later failures in a burst are visible
 // only to someone who thinks to open the Follow-ups tab. If a guide API key
-// expires, every lead fails, Darren gets one email, and the rest are silent.
+// expires, every lead fails, Max gets one email, and the rest are silent.
 // This runs once a day and reports everything, throttled by nothing.
 
 const GUIDE_DIGEST_STATUSES = ['guide-failed', 'guide-rejected', 'hubspot-failed', 'hubspot-rejected', 'guide-uncertain', 'hubspot-uncertain', 'error'];

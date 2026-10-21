@@ -343,7 +343,7 @@ describe('doPost replies before the slow follow-ups', () => {
   it('queues the follow-up before replying', () => {
     const src = body();
     expect(src).toContain('enqueueFollowUp(');
-    expect(src.indexOf('enqueueFollowUp(')).toBeLessThan(src.indexOf('success: true'));
+    expect(src.indexOf('enqueueFollowUp(')).toBeLessThan(src.indexOf('savedCaptureReceipt('));
   });
 
   it('processFollowUps still runs every step the old inline path did', () => {
