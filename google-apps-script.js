@@ -1350,7 +1350,7 @@ function initializeEmailOptOutColumns(ss) {
   // with no pending opt-outs. A live ADU test timed out waiting for this lock.
   // Header setup needs no lead rows; release between tabs so new leads can run.
   emailOptOutSheets(spreadsheet).forEach(function (sheet) {
-    // Most minute runs find every header already installed. A read-only
+    // Already configured tabs have every header installed. A read-only
     // existence check needs no write lock or flush. A missing header is still
     // repaired under the shared lock, with a second check to handle a race.
     if (liveHeaders(sheet).indexOf('Unsubscribe?') !== -1) return;
@@ -1404,9 +1404,10 @@ function syncEmailOptOuts(ss) {
     return JSON.parse(response.getContentText());
   }
   try {
-    // Existing headers are checked read-only; only an actual repair acquires
-    // the capture lock. Empty outboxes no longer force all-tab write flushes.
-    initializeEmailOptOutColumns(ss);
+    // 22 Oct: an idle minute worker still spent its runtime allowance reading
+    // every capture tab's headers before discovering an empty outbox. Fetch the
+    // outbox first. Each actual address update below ensures its own headers;
+    // initializeEmailOptOutColumns remains the explicit one-time setup/repair.
     const pending = request({ operation: 'pending' }).emails || [];
     pending.forEach(function (email) {
       markLeadEmailUnsubscribed(ss, email);
@@ -2450,8 +2451,17 @@ function processFollowUps() {
     syncEmailOptOuts(ss);
     if (!sheet || sheet.getLastRow() < 2) return;
     const lastRow = sheet.getLastRow();
+    // 22 Oct: completed history caused a Sheet read and lock acquisition per
+    // row on every minute tick. Read status/timestamp once to skip terminal and
+    // not-yet-due rows. This snapshot grants no delivery permission: eligible
+    // candidates still re-read and claim under the authoritative lock below.
+    // Newly appended rows and retries becoming due after this pass are handled
+    // by the next minute run, as with the existing lastRow snapshot.
+    const candidates = sheet.getRange(2, FOLLOWUP_COL.status, lastRow - 1, 2).getValues();
     for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
       if (Date.now() - started > FOLLOWUP_MAX_RUN_MS) break;
+      const candidate = candidates[rowNum - 2];
+      if (!candidate || !claimDecision(candidate[0], candidate[1], Date.now()).claim) continue;
       let claim;
       try {
         // Eligibility is re-read inside the short lock. Cache get/put cannot
