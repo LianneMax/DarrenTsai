@@ -77,7 +77,13 @@ body.dt-booking-open{overflow:hidden!important}
 .dt-book-inline .dt-book-layout{padding:24px 0;grid-template-columns:280px minmax(0,1fr);gap:64px}
 .dt-book-inline .dt-book-guide{top:104px}
 body.booking-page{background:#f5f8fa}
-.booking-page #dt-book-mount{max-width:1120px;margin:30px auto 60px;padding:0 24px}
+/* The mount is empty until booking-chooser.js renders the flow, so without a
+   floor the footer painted directly under the nav and was then pushed down a
+   full screen: Lighthouse measured CLS 0.84 on /book/ (24 Oct 2026). The
+   mount starts ~100px down (nav + 30px margin), so a screen minus that keeps
+   the footer below the fold from first paint without a large gap under a
+   short step; vh is the fallback for browsers without svh. */
+.booking-page #dt-book-mount{max-width:1120px;margin:30px auto 60px;padding:0 24px;min-height:calc(100vh - 100px);min-height:calc(100svh - 100px)}
 .booking-page .site-footer{background:#f5f8fa}
 @media(max-width:900px){
   .dt-book-overlay{padding:16px}
