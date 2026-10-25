@@ -591,6 +591,11 @@
       panel.querySelector('.dt-book-next').onclick = stepProperty;
       track('booking_prequal_declined', { reason: reason, page_path: window.location.pathname });
     }
+    // Draw the step-1 tracker now rather than on the first draw(). On phones it
+    // sits above the panel, and filling it only after the service-area policy
+    // arrives pushed the question down: live Lighthouse CLS 0.23 on /book/
+    // mobile (26 Oct 2026). draw() repaints the identical markup.
+    updateProgress();
     window.DTServiceArea.whenReady(stepGoal, function () {
       draw(0, '', 'Book a Call', 'The property check could not load. Please refresh the page and try again.', '', '');
     });
