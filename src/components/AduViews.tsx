@@ -3,7 +3,7 @@ import { formatCurrency, formatRate } from '../utils/formatters';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { ADU_PURPOSES } from '../utils/adu';
 import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
-import { PROPERTY_STATES, PROPERTY_STATE_LABELS, serviceArea, OUT_OF_MARKET_MESSAGE } from '../utils/serviceArea';
+import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
 import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep } from './PageParts';
 import AduHouseExplorer from './AduHouseExplorer';
 import { MarketingFaq } from './Marketing';
@@ -18,6 +18,7 @@ export interface AduPageView {
   fname: string; setFname: (v: string) => void; lname: string; setLname: (v: string) => void;
   phone: string; setPhone: (v: string) => void; email: string; setEmail: (v: string) => void;
   emailHint: EmailSuggestion | null; setEmailHint: (h: EmailSuggestion | null) => void;
+  message: string; setMessage: (value: string) => void;
   usState: string; setUsState: (v: string) => void; sending: boolean; submitted: boolean;
   submitLead: () => void; openBooking: () => void; errorMsg: string | null;
 }
@@ -100,15 +101,14 @@ export function StepAduSnapshot({v}:{v:AduPageView}) {
     </details>
     <details className="adu-path-details"><summary>Which financing paths could fit?</summary><ul className="adu-financing-paths"><li>A fixed home equity loan may suit a known one-time budget.</li><li>A HELOC may suit staged draws, with variable-rate and repayment risks.</li><li>A cash-out refinance replaces the first mortgage.</li><li>Construction financing may require a separate project review.</li></ul><p className="adu-help">These are discussion paths, not eligibility results.</p></details>
     <p className="adu-estimate-note">Financing does not confirm the ADU can be built or rented. An educational snapshot, not an appraisal, loan approval or confirmation that the project can be permitted, built or rented. Borrowing against your home can put your home at risk.</p>
-    {serviceArea(v.propertyUse,v.usState,'adu')==='out-of-market'&&<p className="adu-inline-error" role="status">{OUT_OF_MARKET_MESSAGE}</p>}
     <Next v={v} next={4} back={2} label="Talk through my plan"/>
   </div>;
 }
 
 export function StepAduContact({v}:{v:AduPageView}) {
   return <div className="adu-contact-stage"><span data-service-area="adu-calculator" hidden/><LeadContactStep v={v} formId="adu-calculator" propertyAlreadyAsked title="Bring your plan to Darren."
-    lead="Your project and numbers go with your request, so the conversation starts with your plan."
-    caption="Darren will review your project, funding amount and home snapshot, then discuss financing options and lender terms. This request is not a loan application and does not confirm permits or feasibility."
+    lead="Your project, numbers and optional note go with your request. Availability is checked after you acknowledge privacy and submit."
+    caption="Outside our service area, your inquiry is recorded without a calendar or financing review. This request is not a loan application and does not confirm permits or feasibility."
     submitLabel="Send my project" onBack={()=>v.goStep(3)}/></div>;
 }
 

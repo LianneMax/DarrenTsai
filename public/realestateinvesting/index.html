@@ -1231,7 +1231,7 @@
     ['Name', 'Email', 'Phone', 'State'].forEach(f => setError(f, ''));
   }
 
-  function validateReiLeadDetails() {
+  function validateReiLeadDetails(includeProperty = true) {
     clearErrors();
     const name = $('lName').value.trim(), email = $('lEmail').value.trim(), phone = $('lPhone').value.trim();
     const phoneDigits = phone.replace(/\D/g, ''), state = $('lState').value;
@@ -1241,7 +1241,7 @@
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
     if (!phone) { setError('Phone', 'Required'); valid = false; }
     else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
-    if (!state) { setError('State', 'Required'); valid = false; }
+    if (includeProperty && !state) { setError('State', 'Required'); valid = false; }
     return valid;
   }
 
@@ -1284,11 +1284,12 @@
         // 429: the rate limit refused it before reading it, so nothing reached
         // Darren and no rescue email went out. Its message says so.
         if (res.status === 422 || res.status === 429 || res.status === 409) {
-          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate' || fix.field === 'submissionId')) visitorMessage = fix.message; }
+          try { var fix = await res.json(); if (fix && fix.field && fix.message) visitorMessage = String(fix.message); }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);
       }
+      if (window.DTLead.finishInquiry('rei-magnet', res)) return;
       if (window.DT && window.DTLead.claimConversion('rei-magnet', res)) {
         window.DT.track('generate_lead', Object.assign({}, window.DTLead.attribution('rei-magnet', res), {
           lead_source: payload.source,

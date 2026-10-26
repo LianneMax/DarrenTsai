@@ -73,7 +73,7 @@ describe('one setting decides the booking wording', () => {
 
 describe('/home-equity/ follows the same setting', () => {
   const v = { sending: false, fname: '', setFname: () => {}, lname: '', setLname: () => {}, email: '', setEmail: () => {},
-    emailHint: null, setEmailHint: () => {}, phone: '', setPhone: () => {}, goStep: () => {}, submitLead: () => {} } as unknown as EquityPageView;
+    emailHint: null, setEmailHint: () => {}, phone: '', setPhone: () => {}, message:'', setMessage:()=>{}, goStep: () => {}, submitLead: () => {} } as unknown as EquityPageView;
 
   it('offers the calendar after a saved request when the schedule is configured', () => {
     const page = renderToStaticMarkup(<StepEquityContact v={v} />);

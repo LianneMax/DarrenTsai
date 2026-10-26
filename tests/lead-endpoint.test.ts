@@ -198,7 +198,9 @@ describe('request guards', () => {
     });
 
     it('holds /home-equity/ to the same rules', async () => {
-      const equity = { ...PREQUAL, formId: 'home-equity-calculator', source: 'home-equity' };
+      const equity = { ...PREQUAL, formId: 'home-equity-calculator', source: 'home-equity',
+        lastName: 'Doe', submissionId: 'equity-prequal-test', privacyAcknowledged: true, privacyVersion: '2026-10-13-v1' };
+      responses = [new Response(JSON.stringify({success:true, receipt:'saved', submissionId:equity.submissionId}))];
       expect((await handler(req(equity), ctx)).status).toBe(200);
       const refused = await handler(req({ ...equity, recentBankruptcyForeclosure: 'yes' }), ctx);
       expect(refused.status).toBe(422);
@@ -768,5 +770,39 @@ describe('Sheet-only booking inquiries, decided after acknowledgement', () => {
   it('does not widen unsupported capture to calculators',async()=>{
     const response=await handler(req({...inquiry,formId:'home-equity-calculator'}),ctx);
     expect(response.status).toBe(422);expect(upstreamCalled()).toBe(false);
+  });
+});
+
+describe('narrow equity calculator Sheet-only extension', () => {
+  const base = {...LEAD, lastName:'Doe', submissionId:'equity-capture-123', propertyUse:'primary', propertyState:'CO', state:'CA',
+    propertyType:'single-family-condo', mortgageCurrent:'yes', recentBankruptcyForeclosure:'no', privacyAcknowledged:true, privacyVersion:'2026-10-13-v1'};
+  const forms = [['home-equity-calculator', 'home-equity'], ['debt-savings-calculator', 'DebtConsolidation']];
+  const receipt = (disposition?:string) => new Response(JSON.stringify({success:true, receipt:'saved', submissionId:base.submissionId, ...(disposition ? {disposition} : {})}));
+  it.each(forms)('requires an independent Sheet-only receipt for %s and recomputes posted flags', async(formId, source) => {
+    responses = [receipt('sheet-only')];
+    const res = await handler(req({...base,formId,source,serviceAreaResult:'supported',captureDisposition:'supported',message:'Please keep my inquiry.'}),ctx);
+    expect(res.status).toBe(200); expect(await res.json()).toMatchObject({disposition:'sheet-only'});
+    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))).toMatchObject({state:'CO',propertyState:'CO',serviceAreaResult:'out-of-market',captureDisposition:'sheet-only',message:'Please keep my inquiry.'});
+  });
+  it.each(forms)('does not accept an older writer disposition in %s', async(formId,source) => {
+    responses=[receipt(),new Response('{}')];
+    expect((await handler(req({...base,formId,source}),ctx)).status).toBe(502);
+  });
+  it.each(forms)('rejects malformed or unconsented %s before any write or rescue mail',async(formId,source)=>{
+    for (const patch of [{privacyAcknowledged:false},{privacyVersion:''},{lastName:''},{submissionId:undefined},{phone:''},{email:''},
+      {source:'dscr'},{message:'x'.repeat(2001)},{message:{}},{propertyState:'XX'},{propertyUse:''}]) {
+      expect((await handler(req({...base,formId,source,...patch}),ctx)).status).toBe(422);
+    }
+    expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
+  });
+  it.each(forms)('preserves supported investment coverage for %s',async(formId,source)=>{
+    responses=[receipt()];
+    const res=await handler(req({...base,formId,source,propertyUse:'investment',captureDisposition:'sheet-only'}),ctx);
+    expect(res.status).toBe(200); expect(await res.json()).not.toHaveProperty('disposition');
+    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body)).serviceAreaResult).toBe('supported');
+  });
+  it('does not widen unknown calculator service areas',async()=>{
+    expect((await handler(req({...base,formId:'unknown-calculator',source:'adu',serviceAreaVersion:'2026-10-15-v3'}),ctx)).status).toBe(422);
+    expect(upstreamCalled()).toBe(false);
   });
 });

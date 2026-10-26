@@ -1,5 +1,22 @@
 {
   "version": "2026-10-15-v3",
+  "inquiryForms": {
+    "home-equity-calculator": "home-equity",
+    "debt-savings-calculator": "DebtConsolidation",
+    "adu-calculator": "adu",
+    "dscr-magnet": "dscr",
+    "fha-magnet": "fha",
+    "rei-magnet": "real-estate-investing",
+    "home-contact-modal": "home-contact",
+    "mortgage-calculator-contact-modal": "mortgage-calculator-contact",
+    "debt-consolidation-contact-modal": "debt-consolidation-contact",
+    "home-equity-contact-modal": "home-equity-contact",
+    "adu-contact-modal": "adu-contact",
+    "dscr-contact-modal": "dscr-contact",
+    "fha-contact-modal": "fha-contact",
+    "fha-payment-review": "fha-contact",
+    "rei-contact-modal": "rei-contact"
+  },
   "propertyUses": { "fha": ["primary"], "dscr": ["investment"], "own-home": ["primary", "second-home"], "general": ["primary", "second-home", "investment"] },
   "investmentRule": "Investment property passes if its state is on either list: investment or consumer (the 8 licensed states).",
   "consumer": [

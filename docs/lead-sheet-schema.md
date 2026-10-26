@@ -64,9 +64,36 @@ Form ID tells apart two forms on one page (e.g. the FHA guide form vs the "Have 
 - FHA: Credit Score | Purchase Price | Down Payment % | Rate | Annual Tax | Annual Insurance | Monthly HOA | Est. Monthly Payment
 - Real Estate Investing: none (Magnet covers it)
 - Leads (contact/review forms on DSCR, FHA, REI, Mortgage Calculator): Loan Amount | Term (Years) | Rate (%) | Goals | Target Outcome | Timeline
-- Debt Consolidation: Debts | Total Debt Balance | Total Debt Payment | Weighted Avg Rate | Home Value | Mortgage Balance | Mortgage Payment | Mortgage Rate | Mortgage Term | Estimated Home Equity | Current LTV | Current Monthly Payment | Monthly Savings | Refi Monthly Payment | Refi Monthly Savings | Same-Payoff Refi Payment | Same-Payoff Refi Savings | HELOAN Credit Tier | HELOAN Term | HELOAN Monthly Payment | HELOAN Monthly Savings | Rate Source Date
-- Home Equity (new): Home Value | Mortgage Balance | Estimated Home Equity | Current LTV | Goal | Amount Exploring | Illustrative CLTV | Preference
+- Debt Consolidation: Debts | Total Debt Balance | Total Debt Payment | Weighted Avg Rate | Home Value | Mortgage Balance | Mortgage Payment | Mortgage Rate | Mortgage Term | Estimated Home Equity | Current LTV | Current Monthly Payment | Monthly Savings | Refi Monthly Payment | Refi Monthly Savings | Same-Payoff Refi Payment | Same-Payoff Refi Savings | HELOAN Credit Tier | HELOAN Term | HELOAN Monthly Payment | HELOAN Monthly Savings | Rate Source Date | Inquiry Message
+- Home Equity: Home Value | Mortgage Balance | Estimated Home Equity | Current LTV | Goal | Amount Exploring | Illustrative CLTV | Preference | Inquiry Message
 - ADU (new): Home Value | Mortgage Balance | Estimated Home Equity | Current LTV | Project Cost | Amount to Finance | Illustrative CLTV | Project Purpose
+
+All capture schemas include optional `Inquiry Message` text (up to
+2,000 characters). `safeCell()` keeps formula-like text inert. The complete
+submission snapshot retains the message too. Missing headers are appended by
+name; only the controlled audit/migration may place them in schema order.
+
+All active calculator, guide and conversation forms support confirmed Sheet-only
+inquiries. The exact form/source allowlist lives in `inquiryForms` in
+`public/service-area-policy.json`, with an independently checked writer mirror.
+It covers equity, payoff, ADU, DSCR, FHA and investing guides, plus compatible
+contact forms; `booking-prequal` keeps its existing goal-based policy.
+Newsletter and unsubscribe are not loan inquiries. After explicit privacy
+acknowledgment and deliberate submission, both
+servers recompute property-state/use eligibility. Unsupported valid inquiries
+stay in the same source tab with `Service Area Result = out-of-market` and
+`Status = Sheet only: outside service area`. They create no CRM, email or CallRail
+jobs and return a matching saved receipt with `disposition: sheet-only`. The client
+then opens the relevant existing out-of-market page with `#recorded`, without
+a qualified conversion or calendar. Supported investment coverage remains broader
+than `Licensed?`; a `No` in that column alone does not imply Sheet-only.
+
+The payoff comparison also retains an optional `comparisonOption` in the existing
+submission snapshot. A HELOC discussion includes `helocIllustration` with the
+entered home value and mortgage balance, the explicit 85% combined-LTV assumption,
+illustrative amount and `illustrationOnly: true`. This is discussion context, not
+approved credit, monthly pricing or a new HubSpot `loan_type` assignment. It adds
+no Sheet tab or column.
 
 Values from the preview (v4):
 - Home Equity Goal: Pay Off Debt, Renovation / ADU, Investment, Major Expense, Something Else.

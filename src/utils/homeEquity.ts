@@ -88,6 +88,7 @@ export interface EquityLeadInput {
   recentBankruptcyForeclosure: string;
   /** Optional; '' when skipped. */
   preference: string;
+  message?: string;
 }
 
 /**
@@ -110,6 +111,7 @@ export function buildEquityLead(i: EquityLeadInput) {
     amountExploring: '',
     illustrativeCltv: '',
     preference: i.preference,
+    message: i.message || '',
     propertyType: i.propertyType,
     propertyUse: i.propertyUse,
     propertyState: i.propertyState,

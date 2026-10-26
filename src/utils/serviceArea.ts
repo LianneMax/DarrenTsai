@@ -86,6 +86,20 @@ export const OUT_OF_MARKET_MESSAGE = 'A personal review isn’t available for th
 // mortgage that is not current and a bankruptcy or foreclosure in the last 4
 // years. "No mortgage yet" passes: a buyer has no mortgage to be current on.
 export const BOOKING_PREQUAL_FORM = 'booking-prequal';
+/** These two existing calculators require both name fields. Other forms keep
+ * their existing single/full-name contact contract when retaining inquiries. */
+export function isEquityForm(formId: unknown): boolean {
+  return formId === 'home-equity-calculator' || formId === 'debt-savings-calculator';
+}
+/** Only named inquiry endpoints can retain unsupported-property interest.
+ * Keep the writer's independent mirror aligned with this public policy table. */
+export function isCaptureForm(formId: unknown): boolean {
+  return typeof formId === 'string' && Object.prototype.hasOwnProperty.call(policy.inquiryForms, formId);
+}
+export function isCaptureInquiry(formId: unknown, source: unknown): boolean {
+  return isCaptureForm(formId) && (policy.inquiryForms as Record<string, string>)[String(formId)] === source;
+}
+export const INQUIRY_MESSAGE_LIMIT = 2000;
 // /home-equity/ asks the same questions as its own three steps and shows the
 // same calendar after them, so it is held to the same rules.
 export const PREQUAL_FORMS = [BOOKING_PREQUAL_FORM, 'home-equity-calculator'];

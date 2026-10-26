@@ -41,20 +41,20 @@ const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS 
 
 /** source -> [tab, the funnel's own columns], as docs/lead-sheet-schema.md lists them. */
 const DETAILS: Record<string, [string, string[]]> = {
-  'mortgage-review': ['Mortgage Review', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
-  'home-purchase-refinance': ['Home Purchase & Refinance', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
-  'commercial': ['Commercial', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
-  'needs-guidance': ['Needs Guidance', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline']],
+  'mortgage-review': ['Mortgage Review', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline', 'Inquiry Message']],
+  'home-purchase-refinance': ['Home Purchase & Refinance', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline', 'Inquiry Message']],
+  'commercial': ['Commercial', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline', 'Inquiry Message']],
+  'needs-guidance': ['Needs Guidance', ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline', 'Inquiry Message']],
   'dscr': ['DSCR', [
     'Purchase Price', 'Down Payment', 'Loan Amount', 'Rate', 'Monthly Rent', 'Annual Tax',
-    'Annual Insurance', 'Monthly HOA', 'Monthly P&I', 'Monthly PITIA', 'DSCR',
+    'Annual Insurance', 'Monthly HOA', 'Monthly P&I', 'Monthly PITIA', 'DSCR', 'Inquiry Message',
   ]],
-  'self-employed': ['Self-Employed', []],
+  'self-employed': ['Self-Employed', ['Inquiry Message']],
   'fha': ['FHA', [
     'Credit Score', 'Purchase Price', 'Down Payment %', 'Rate', 'Annual Tax',
-    'Annual Insurance', 'Monthly HOA', 'Est. Monthly Payment',
+    'Annual Insurance', 'Monthly HOA', 'Est. Monthly Payment', 'Inquiry Message',
   ]],
-  'real-estate-investing': ['Real Estate Investing', []],
+  'real-estate-investing': ['Real Estate Investing', ['Inquiry Message']],
   'DebtConsolidation': ['Debt Consolidation', [
     'Debts', 'Total Debt Balance', 'Total Debt Payment', 'Weighted Avg Rate',
     'Home Value', 'Mortgage Balance', 'Mortgage Payment', 'Mortgage Rate', 'Mortgage Term',
@@ -62,18 +62,18 @@ const DETAILS: Record<string, [string, string[]]> = {
     'Refi Monthly Payment', 'Refi Monthly Savings',
     'Same-Payoff Refi Payment', 'Same-Payoff Refi Savings',
     'HELOAN Credit Tier', 'HELOAN Term', 'HELOAN Monthly Payment', 'HELOAN Monthly Savings',
-    'Rate Source Date',
+    'Rate Source Date', 'Inquiry Message',
   ]],
   'home-equity': ['Home Equity', [
     'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
-    'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference',
+    'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference', 'Inquiry Message',
   ]],
   'adu': ['ADU', [
     'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
-    'Project Cost', 'Amount to Finance', 'Illustrative CLTV', 'Project Purpose',
+    'Project Cost', 'Amount to Finance', 'Illustrative CLTV', 'Project Purpose', 'Inquiry Message',
   ]],
 };
-const LEADS_DETAILS = ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline'];
+const LEADS_DETAILS = ['Loan Amount', 'Term (Years)', 'Rate (%)', 'Goals', 'Target Outcome', 'Timeline', 'Inquiry Message'];
 
 type Schema = { tab: string; headers: string[] };
 type Gas = {
@@ -167,6 +167,7 @@ const OLD_DEBT_HEADERS = [
 
 const DEBT_LEAD = {
   source: 'DebtConsolidation', formId: 'debt-savings-calculator',
+  submissionId: 'uuid-1', privacyAcknowledged: true, privacyVersion: '2026-10-13-v1', propertyUse: 'primary', propertyState: 'CA',
   pageUri: 'https://realdarrentsai.com/debt-consolidation/?gclid=ABC',
   firstName: 'Cy', lastName: 'Homeowner', email: 'liannemaxbalbastro+cols@gmail.com',
   phone: '(714) 882-1190', state: 'CA',

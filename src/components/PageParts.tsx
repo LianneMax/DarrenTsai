@@ -1,5 +1,6 @@
 import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
+import InquiryMessage from './InquiryMessage';
 /**
  * Pieces shared by the revamp pages (/debt-consolidation/ since phase 2,
  * /home-equity/ since phase 3), so the two draw a row, a step button or the
@@ -208,6 +209,7 @@ export function MoneyInput({ id, label, value, onChange, placeholder, optional }
 
 /** The contact fields every revamp page's last step asks for. */
 export interface ContactView {
+  message: string; setMessage: (value: string) => void;
   fname: string; setFname: (v: string) => void;
   lname: string; setLname: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
@@ -229,7 +231,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack, 
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">{title}</h2>
-      {!propertyAlreadyAsked && <ServiceAreaFields formId={formId} onStateChange={v.setUsState} />}
+      {!propertyAlreadyAsked && <ServiceAreaFields formId={formId} onStateChange={v.setUsState} deferScreening />}
       <p className="dcp-lead">
         {lead ?? 'Your estimate is a starting point. A personal review helps you understand which options may fit your goals. No hard pull, no obligation.'}
       </p>
@@ -271,6 +273,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack, 
         </div>
       </div>
 
+      <InquiryMessage id={`${formId}-message`} value={v.message} onChange={v.setMessage} />
 {caption && <p className="dcp-caption">{caption}</p>}
       <ComplianceDisclosure formId={formId} />
 

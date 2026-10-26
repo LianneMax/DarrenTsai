@@ -71,13 +71,15 @@ function passSteps(use = 'primary', state = 'CA', goal = 'equity') {
   next();
 }
 
-function fillContact({ privacy = true } = {}) {
+function fillContact({ privacy = true, message = '' } = {}) {
   const form = card().querySelector('form') as HTMLFormElement;
   (form.elements.namedItem('firstName') as HTMLInputElement).value = 'Ada';
   (form.elements.namedItem('lastName') as HTMLInputElement).value = 'Lovelace';
   (form.elements.namedItem('email') as HTMLInputElement).value = 'ada@example.com';
   (form.elements.namedItem('phone') as HTMLInputElement).value = '7145550123';
   (form.elements.namedItem('privacy') as HTMLInputElement).checked = privacy;
+  const note = form.elements.namedItem('message') as HTMLTextAreaElement | null;
+  if (note) note.value = message;
   form.dispatchEvent(new Event('submit', { cancelable: true }));
   form.dispatchEvent(new Event('submit', { cancelable: true }));
 }
@@ -314,6 +316,15 @@ describe('step 2: the two knockouts', () => {
 });
 
 describe('step 3: save the lead, then the calendar', () => {
+  it('retains an optional plain-text inquiry note in the existing final contact step', async () => {
+    booking.open(); passSteps(); fillContact({message:'Please compare my options.'}); await flush();
+    expect(leadFetch).toHaveBeenCalledTimes(1);
+    expect(leadBody().message).toBe('Please compare my options.');
+  });
+  it('rejects a programmatically overlong note before sending', async () => {
+    booking.open(); passSteps(); fillContact({message:'x'.repeat(2001)}); await flush();
+    expect(errText()).toContain('2,000'); expect(leadFetch).not.toHaveBeenCalled();
+  });
   it('requires the privacy acknowledgment and posts nothing without it', async () => {
     booking.open();
     passSteps();

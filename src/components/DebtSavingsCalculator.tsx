@@ -8,6 +8,9 @@ import { type EmailSuggestion } from '../utils/emailSuggest';
 import DebtPage, { type DebtPageView } from './DebtPageViews';
 import { type DebtOption } from './debtOptions';
 import { milestone } from '../utils/attribution';
+import { outOfMarketPage } from '../utils/serviceArea';
+import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
+import './payoff.css';
 
 const emailSchema = z.string().email();
 
@@ -146,9 +149,8 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   const [heloanTerm, setHeloanTerm] = useState('');
 
   // Which option the visitor wants to talk about, on /debt-consolidation/ only.
-  // It is shown back to them on the confirmation and is NOT in the lead: the
-  // payload below is deliberately unchanged by the redesign, so the page works
-  // against the Sheet as it is today and as it will be after the migration.
+  // Retained in the existing submission snapshot, not a new source or CRM loan
+  // type. A HELOC discussion is interest in an option, not an approved product.
   const [chosen, setChosen] = useState<DebtOption>('');
 
   // Lead form
@@ -161,7 +163,9 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // to the Sheet as the visitor's answer: Best Time to Call and Lead Source
   // were the form's own defaults on every untouched submit. They stay optional,
   // so an untouched dropdown sends blank rather than blocking the lead.
-  const [usState,   setUsState]   = useState('');
+  const [propertyState, setPropertyState] = useState('');
+  const [propertyUse, setPropertyUse] = useState('');
+  const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
   // The button used to stay live through the request, so a double click wrote
@@ -295,6 +299,11 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   const hasDebt = debts.some(d => (d.bal || 0) > 0 && (d.pmt || 0) > 0);
   // A mortgage needs its payment; a paid-off home (balance 0) has none to give.
   const hasHome = hv > 0 && balanceGiven && (mb === 0 || mp > 0);
+  // 26 Oct, Max: give HELOC an equity-based example and a useful next action.
+  // Reuse the site's 85% planning assumption, explicitly labelled as an example,
+  // not a lender's HELOC limit. Unlike the payoff HELOAN, borrowing room is not
+  // capped at debt owed, and it never feeds monthly-payment/savings formulas.
+  const helocRoom = hasHome ? Math.max(hv * COMMON_CLTV_LIMIT / 100 - mb, 0) : null;
   const furthestStep = !hasDebt ? 1 : !hasHome ? 2 : 4;
   const gateMessage = !hasDebt
     ? 'Add at least one debt with a balance and a monthly payment, so the comparison is about your money and not an example.'
@@ -329,8 +338,8 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     // Belt and braces with the disabled button: a keyboard repeat or a second
     // click landing in the same tick would otherwise still get through.
     if (inFlight.current || sending) return;
-    if (!fname || !phone || !email || !usState) {
-      validationError('Please fill in your name, phone, email, and state.');
+    if (!fname.trim() || !lname.trim() || !phone || !email || !propertyState || !propertyUse) {
+      validationError('Please fill in your full name, phone, email, property use and property state.');
       return;
     }
     if (!emailSchema.safeParse(email.trim()).success) {
@@ -344,8 +353,12 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     validationError('');
 
     const payload = {
-      firstName: fname, lastName: lname, phone, email,
-      state: usState,
+      firstName: fname.trim(), lastName: lname.trim(), phone, email, message,
+      ...(chosen ? { comparisonOption: chosen } : {}),
+      ...(chosen === 'heloc' && helocRoom !== null ? {
+        helocIllustration: { amount: helocRoom, assumedCltvPercent: COMMON_CLTV_LIMIT, homeValue: hv, mortgageBalance: mb, illustrationOnly: true },
+      } : {}),
+      state: propertyState, propertyState, propertyUse,
       // Signed: negative means the best priced option still raises the payment.
       // It used to be sent only when positive, so "costs more" and "never
       // computed" were the same blank cell. (Best Time to Call and Lead Source
@@ -410,7 +423,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
 
     if (!result.ok) {
       // Say so plainly rather than showing a success state we cannot stand
-      // behind. The lead endpoint mails Darren a rescue copy on its own side,
+      // behind. The lead endpoint alerts Max about an uncertain upstream save,
       // but the visitor should still know their details may not have landed.
       setErrorMsg(
         "We couldn't confirm whether your request was saved. " +
@@ -419,6 +432,10 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       return;
     }
 
+    if (result.disposition === 'sheet-only') {
+      window.location.assign(outOfMarketPage(propertyUse) + '#recorded');
+      return;
+    }
     setSubmitted(true)
   };
 
@@ -520,9 +537,9 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
     heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
     tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, leftoverPmt, heloanTotal, heloanSave, cltv,
-    chosen, setChosen,
+    chosen, setChosen, helocRoom,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
-    emailHint, setEmailHint, usState, setUsState,
+    emailHint, setEmailHint, propertyState, setPropertyState, propertyUse, setPropertyUse, message, setMessage,
     sending, submitted, submitLead, openBooking,
     rateBadge, disclosure,
   };

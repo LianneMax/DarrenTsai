@@ -154,6 +154,7 @@ describe('state rules, final (policy v3)', () => {
 describe('enhanced conversions on /home-equity/ (consentGatedUserData)', () => {
   const data = { firstName: 'Ada', lastName: 'Owner', email: 'ada@example.com', phone: '7145550123', state: 'CA', source: 'home-equity', propertyUse: 'primary', propertyState: 'CA' };
   async function run(userData?: (l: object) => unknown) {
+    document.body.innerHTML='<input type="checkbox" data-privacy-form="home-equity-calculator" checked>';
     window.DTLead?.reset('home-equity-calculator');
     const { track } = await import('../src/utils/attribution');
     (track as unknown as ReturnType<typeof vi.fn>).mockClear();

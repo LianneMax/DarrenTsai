@@ -27,7 +27,8 @@ import { PHONE } from '../config';
 import { formatCurrency } from '../utils/formatters';
 import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/emailSuggest';
 import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
-import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
+import { PROPERTY_STATES, PROPERTY_STATE_LABELS, serviceArea } from '../utils/serviceArea';
+import InquiryMessage from './InquiryMessage';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput } from './PageParts';
 import ComplianceDisclosure from './ComplianceDisclosure';
@@ -65,6 +66,7 @@ export interface EquityPageView {
   lname: string; setLname: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
   email: string; setEmail: (v: string) => void;
+  message: string; setMessage: (v: string) => void;
   emailHint: EmailSuggestion | null; setEmailHint: (h: EmailSuggestion | null) => void;
   sending: boolean;
   submitted: boolean;
@@ -220,10 +222,13 @@ export function StepEquityGoal({ v }: { v: EquityPageView }) {
  * tells service-area.js not to add it, and the answers travel in the payload.
  */
 export function StepEquityContact({ v }: { v: EquityPageView }) {
+  const outside = serviceArea(v.propertyUse, v.propertyState, 'home-equity') === 'out-of-market';
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Where should Darren reach you?</h2>
-      <p className="dcp-lead">Your estimate and answers go with your request. {BOOKING_CALENDAR_READY
+      <p className="dcp-lead">Your estimate and answers go with your request. {outside
+        ? <>You can record your inquiry, but a call is unavailable for this property’s state and use.</>
+        : BOOKING_CALENDAR_READY
         ? <>Next, you can pick a time on Darren&apos;s calendar.</>
         : <>Darren will call you to set a time.</>}</p>
       <span data-service-area={EQUITY_FORM_ID} hidden />
@@ -265,6 +270,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
         </div>
       </div>
 
+      <InquiryMessage id="equity-inquiry-message" value={v.message} onChange={v.setMessage} />
       <ComplianceDisclosure formId={EQUITY_FORM_ID} />
 
       <StepNav
@@ -272,7 +278,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
         disabled={v.sending}
         next={v.sending
           ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
-          : <>{BOOKING_CALENDAR_READY ? <>See Darren&apos;s Calendar</> : <>Send my request</>} <Arrow /></>}
+          : <>{outside ? 'Record my inquiry' : BOOKING_CALENDAR_READY ? <>See Darren&apos;s Calendar</> : <>Send my request</>} <Arrow /></>}
         onNext={v.submitLead}
       />
     </div>

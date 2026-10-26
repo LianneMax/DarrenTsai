@@ -130,3 +130,14 @@ it('keeps a saved Sheet-only inquiry out of qualified conversions, including on 
   const replay=await window.DTLead!.submit('dscr-magnet',payload);
   expect(window.DTLead!.claimConversion('dscr-magnet',replay)).toBe(false);
 });
+
+describe('static inquiry completion requires a matching independent disposition',()=>{
+  const inquiry={...payload,source:'dscr',propertyUse:'investment',propertyState:'CA'};
+  function area(result:string){vi.stubGlobal('DTServiceArea',{ready:()=>true,isCaptureInquiry:(id:string,source:string)=>id==='dscr-magnet'&&source==='dscr',uses:()=>['investment'],check:()=>result});}
+  async function receipt(disposition?:string){vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:window.DTLead!.prepare('dscr-magnet',inquiry).submissionId,...(disposition?{disposition}:{})}))));return window.DTLead!.submit('dscr-magnet',inquiry);}
+  it('allows normal success only for a supported confirmed capture',async()=>{area('supported');expect(window.DTLead!.finishInquiry('dscr-magnet',await receipt())).toBe(false);});
+  it.each([['out-of-market',undefined],['supported','sheet-only'],['incomplete',undefined]])('rejects %s with %s receipt before any success or conversion',async(result,disposition)=>{
+    area(result!);const response=await receipt(disposition);expect(()=>window.DTLead!.finishInquiry('dscr-magnet',response)).toThrow(/disposition/);
+  });
+  it('refuses unrelated or fabricated response objects',()=>{area('supported');expect(()=>window.DTLead!.finishInquiry('dscr-magnet',{ok:true} as never)).toThrow(/confirmed/);});
+});

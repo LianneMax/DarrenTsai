@@ -64,7 +64,7 @@ function isLicensedState(state) {
   return LICENSED_STATES.indexOf(String(state).trim().toUpperCase()) !== -1;
 }
 
-// Apps Script has no module imports. Keep this booking-only policy mirror in
+// Apps Script has no module imports. Keep this booking/equity policy mirror in
 // step with public/service-area-policy.json (the source-executing tests compare
 // every state/use/goal). The proxy authenticates the hop, but the writer still
 // computes the destination itself: posted flags must never authorize CRM work.
@@ -83,10 +83,51 @@ function bookingServiceArea(data) {
   return (use === 'investment' ? BOOKING_INVESTMENT_EXCLUDED.indexOf(state) === -1 : isLicensedState(state))
     ? 'supported' : 'out-of-market';
 }
+// Independent writer allowlist; tests compare this to the shared browser policy.
+const INQUIRY_FORMS = {
+  'home-equity-calculator': 'home-equity', 'debt-savings-calculator': 'DebtConsolidation', 'adu-calculator': 'adu',
+  'dscr-magnet': 'dscr', 'fha-magnet': 'fha', 'rei-magnet': 'real-estate-investing',
+  'home-contact-modal': 'home-contact', 'mortgage-calculator-contact-modal': 'mortgage-calculator-contact',
+  'debt-consolidation-contact-modal': 'debt-consolidation-contact', 'home-equity-contact-modal': 'home-equity-contact',
+  'adu-contact-modal': 'adu-contact', 'dscr-contact-modal': 'dscr-contact', 'fha-contact-modal': 'fha-contact',
+  'fha-payment-review': 'fha-contact', 'rei-contact-modal': 'rei-contact'
+};
+function isCaptureForm(formId) { return Object.prototype.hasOwnProperty.call(INQUIRY_FORMS, formId); }
+function captureServiceArea(data) {
+  const state = typeof data.propertyState === 'string' ? data.propertyState.trim().toUpperCase() : '';
+  const form = String(data.formId || '');
+  const uses = form.indexOf('fha') !== -1 ? ['primary'] : form.indexOf('dscr') !== -1 ? ['investment'] : ['primary', 'second-home', 'investment'];
+  if (BOOKING_PROPERTY_STATES.indexOf(state) === -1 || uses.indexOf(data.propertyUse) === -1) return 'incomplete';
+  return (data.propertyUse === 'investment' ? BOOKING_INVESTMENT_EXCLUDED.indexOf(state) === -1 : isLicensedState(state))
+    ? 'supported' : 'out-of-market';
+}
 function isSheetOnlyInquiry(data) {
-  return data && data.formId === 'booking-prequal' && bookingServiceArea(data) === 'out-of-market';
+  return data && ((data.formId === 'booking-prequal' && bookingServiceArea(data) === 'out-of-market') ||
+    (isCaptureForm(data.formId) && captureServiceArea(data) === 'out-of-market'));
+}
+// The writer independently enforces this narrow extension. Posted disposition,
+// state-result flags or a stale proxy cannot authorize CRM delivery (26 Oct).
+function inquiryCaptureError(data) {
+  if (INQUIRY_FORMS[data.formId] !== data.source || captureServiceArea(data) === 'incomplete') return 'Please check the form and property details.';
+  const digits = String(data.phone || '').replace(/\D/g, '');
+  if (typeof data.submissionId !== 'string' || !data.submissionId.trim() || data.privacyAcknowledged !== true || typeof data.privacyVersion !== 'string' || !data.privacyVersion.trim() ||
+    typeof data.firstName !== 'string' || !data.firstName.trim() ||
+    (data.lastName !== undefined && typeof data.lastName !== 'string') ||
+    (['home-equity-calculator', 'debt-savings-calculator'].indexOf(data.formId) !== -1 && !String(data.lastName || '').trim()) ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email || '')) || !/^1?[2-9]\d{2}[2-9]\d{6}$/.test(digits)) {
+    return 'Please complete your contact details and accept the privacy acknowledgment.';
+  }
+  if (data.message !== undefined && (typeof data.message !== 'string' || data.message.length > 2000)) return 'Please keep your message within 2,000 characters.';
+  if (data.formId === 'home-equity-calculator') {
+    const outside = captureServiceArea(data) === 'out-of-market';
+    if ((outside ? ['single-family-condo', '2-4-units', 'mobile-land'] : ['single-family-condo', '2-4-units']).indexOf(data.propertyType) === -1 ||
+      (outside ? ['yes', 'no', 'no-mortgage'] : ['yes', 'no-mortgage']).indexOf(data.mortgageCurrent) === -1 ||
+      (outside ? ['yes', 'no'] : ['no']).indexOf(data.recentBankruptcyForeclosure) === -1) return 'Please check the property eligibility answers.';
+  }
+  return '';
 }
 function bookingCaptureError(data) {
+  if (data.message !== undefined && (typeof data.message !== 'string' || data.message.length > 2000)) return 'Please keep your message within 2,000 characters.';
   if (bookingServiceArea(data) === 'incomplete') return 'Please choose your goal, property use and property state.';
   // 22 Oct (Max): outside the service area the inquiry is recorded even when a
   // knockout fails (Sheet-only, no calendar or CRM); the answers must still be real.
@@ -474,7 +515,7 @@ const SOURCE_SCHEMAS = {
       'Refi Monthly Payment', 'Refi Monthly Savings',
       'Same-Payoff Refi Payment', 'Same-Payoff Refi Savings',
       'HELOAN Credit Tier', 'HELOAN Term', 'HELOAN Monthly Payment', 'HELOAN Monthly Savings',
-      'Rate Source Date'
+      'Rate Source Date', 'Inquiry Message'
     ],
     detailValues: function (d) {
       return {
@@ -495,7 +536,7 @@ const SOURCE_SCHEMAS = {
         'HELOAN Credit Tier': d.heloanCreditTier, 'HELOAN Term': d.heloanTermYears,
         'HELOAN Monthly Payment': d.heloanMonthlyPayment,
         'HELOAN Monthly Savings': d.heloanMonthlySavings,
-        'Rate Source Date': d.rateSourceDate
+        'Rate Source Date': d.rateSourceDate, 'Inquiry Message': d.message || ''
       };
     }
   },
@@ -505,14 +546,14 @@ const SOURCE_SCHEMAS = {
     tab: 'Home Equity',
     details: [
       'Home Value', 'Mortgage Balance', 'Estimated Home Equity', 'Current LTV',
-      'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference'
+      'Goal', 'Amount Exploring', 'Illustrative CLTV', 'Preference', 'Inquiry Message'
     ],
     detailValues: function (d) {
       return {
         'Home Value': d.homeValue, 'Mortgage Balance': d.mortgageBalance,
         'Estimated Home Equity': d.estimatedEquity, 'Current LTV': d.currentLtv,
         'Goal': d.goal, 'Amount Exploring': d.amountExploring,
-        'Illustrative CLTV': d.illustrativeCltv, 'Preference': d.preference
+        'Illustrative CLTV': d.illustrativeCltv, 'Preference': d.preference, 'Inquiry Message': d.message || ''
       };
     }
   },
@@ -659,6 +700,9 @@ function migrateLegacyLeads(deleteAfterVerification, bucketOverrides) {
  * header order.
  */
 function finishLeadSchema(schema) {
+  // One visible note column on every capture tab, including booking buckets.
+  // Header-aware writes append missing columns; migration alone reorders them.
+  if (schema.details.indexOf('Inquiry Message') === -1) schema.details.push('Inquiry Message');
   schema.headers = LEAD_PREFIX.concat(schema.details, SMS_CONSENT_HEADERS, ATTR_HEADERS, TRIAGE_HEADERS);
   schema.values = function (d) {
     const v = byHeader(LEAD_PREFIX, [
@@ -672,6 +716,7 @@ function finishLeadSchema(schema) {
       urlPath(d.pageUri)
     ]);
     const own = schema.detailValues(d);
+    own['Inquiry Message'] = d.message || '';
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
     const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '', d.propertyZip || '', d.creditRange || '', d.cashRange || '', d.bookingGoal || '', d.reviewFlag || '']);
     SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
@@ -1727,6 +1772,16 @@ function doPost(e) {
     Object.keys(data).forEach(function (key) { if (key.charAt(0) === '_') delete data[key]; });
     delete data.disposition;
     delete data.captureDisposition;
+    if (isCaptureForm(data.formId)) {
+      const validationError = inquiryCaptureError(data);
+      if (validationError) return ContentService.createTextOutput(JSON.stringify({ success: false,
+        code: 'invalid_booking_inquiry', field: 'propertyState', message: validationError })).setMimeType(ContentService.MimeType.JSON);
+      data.propertyState = data.propertyState.trim().toUpperCase();
+      data.state = data.propertyState;
+      data.serviceAreaResult = captureServiceArea(data);
+      data.serviceAreaVersion = '2026-10-15-v3';
+      if (data.serviceAreaResult === 'out-of-market') data.captureDisposition = 'sheet-only';
+    }
     if (data.formId === 'booking-prequal') {
       const validationError = bookingCaptureError(data);
       if (validationError) return ContentService.createTextOutput(JSON.stringify({ success: false,

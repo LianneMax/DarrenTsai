@@ -9,7 +9,9 @@
  * which cannot be priced says why, and that the confirmation does not claim
  * more than the lead carries.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -35,9 +37,10 @@ function view(over: Partial<DebtPageView> = {}): DebtPageView {
     heloanTier: '', setHeloanTier: noop, heloanTerm: '', setHeloanTerm: noop,
     tierRate: 0, tierYears: 0, heloanPriced: false,
     heloanAmt: 0, heloanPmt: 0, leftoverPmt: 0, heloanTotal: 0, heloanSave: 0, cltv: 0,
-    chosen: '', setChosen: noop,
+    chosen: '', setChosen: noop, helocRoom: null,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
-    email: '', setEmail: noop, emailHint: null, setEmailHint: noop, usState: '', setUsState: noop,
+    email: '', setEmail: noop, emailHint: null, setEmailHint: noop,
+    propertyState: '', setPropertyState: noop, propertyUse: '', setPropertyUse: noop, message: '', setMessage: noop,
     sending: false, submitted: false, submitLead: noop, openBooking: noop,
     rateBadge: null, disclosure: null,
     ...over,
@@ -52,7 +55,7 @@ const filled = view({
   homeValue: '650000', mtgBalance: '350000', mtgPayment: '1800',
   hv: 650000, mb: 350000, mp: 1800, todayTotal: 3800, balanceGiven: true,
   newLoan: 425000, refiPmt: 2661, refiSave: 1139, refiLtv: 65.4,
-  heloanAmt: 75000, cltv: 65.4,
+  heloanAmt: 75000, cltv: 65.4, helocRoom: 202500,
 });
 
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
@@ -70,7 +73,7 @@ describe('an untouched page shows no figures', () => {
 
   it('the HELOAN card asks for a tier and term instead of quoting the best case', () => {
     const page = html(<StepCompare v={filled} />);
-    expect(page).toContain('Pick your credit range and a term below');
+    expect(page).toContain('Pick your credit range and a term above');
   });
 });
 
@@ -123,8 +126,7 @@ describe('the confirmation', () => {
     expect(page).not.toMatch(/business day|shortly|has reviewed/i);
   });
 
-  it('shows the option under the visitor\'s summary, without claiming it was sent', () => {
-    // `chosen` is not in the lead payload. The page must not say it was.
+  it('shows discussion intent under the visitor\'s summary without implying approval', () => {
     const page = recap({ chosen: 'heloan' });
     expect(page).toContain('Your summary');
     expect(page).not.toMatch(/option[^<]*(was|were) sent/i);
@@ -239,12 +241,42 @@ describe('the payoff comparison keeps its disclosures', () => {
     expect(page).toContain('Actual costs and APR require a lender');
   });
 
-  it('shows HELOC beside today, the fixed loan and cash-out, unpriced', () => {
-    const heloc = page.slice(page.indexOf('dcp-option-heloc'), page.indexOf('Est. Cash-Out Refi'));
+  it('shows HELOC borrowing room beside the priced payment options without inventing a payment', () => {
+    const helocStart = page.indexOf('dcp-option-heloc');
+    const heloc = page.slice(helocStart, page.indexOf('Fixed home equity loan', helocStart));
     expect(heloc).toContain('HELOC');
-    expect(heloc).toContain('Not estimated here');
-    expect(heloc).not.toMatch(/\$\d/);
-    const order = ['Today', 'HELOC', 'Est. Cash-Out Refi', 'Est. Fixed HELOAN'].map((t) => page.indexOf(t));
+    expect(heloc).toContain('$202,500');
+    expect(heloc).toContain('Illustrative borrowing room');
+    expect(heloc).toContain('Not a monthly payment');
+    expect(heloc).toContain('Example at 85% combined loan-to-value');
+    expect(heloc).toContain('lender limits and eligibility vary');
+    expect(heloc).toContain('Discuss a HELOC');
+    expect(heloc).not.toContain('Estimated payment difference:');
+    expect(heloc).not.toContain('$202,500/mo');
+    const cards = page.slice(page.indexOf('dcp-option-today'));
+    const order = ['Today', 'HELOC', 'Fixed home equity loan', 'Est. Cash-Out Refi'].map((t) => cards.indexOf('dcp-option-title">'+t+'<'));
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+  it('handles zero and missing borrowing room without promising unavailable credit',()=>{
+    const zero=html(<StepCompare v={{...filled,helocRoom:0}}/>);
+    expect(zero).toContain('No borrowing room at this assumption.');
+    expect(zero).toContain('Discuss a HELOC');
+    const missing=html(<StepCompare v={{...filled,hasHome:false,helocRoom:null}}/>);
+    expect(missing).toContain('Add home details');
+    expect(missing).not.toContain('$202,500');
+  });
+  it('HELOC action carries the discussion choice into the existing contact step without submitting',async()=>{
+    const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+    const goStep=vi.fn();const setChosen=vi.fn();const submitLead=vi.fn();
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+    try{
+      await act(async()=>root.render(<StepCompare v={{...filled,goStep,setChosen,submitLead}}/>));
+      const button=Array.from(host.querySelectorAll('button')).find(b=>b.textContent?.includes('Discuss a HELOC'))!;
+      await act(async()=>button.click());expect(setChosen).toHaveBeenCalledWith('heloc');expect(goStep).toHaveBeenCalledWith(4);expect(submitLead).not.toHaveBeenCalled();
+    }finally{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();}
+  });
+  it('recaps a HELOC illustration as borrowing room rather than a monthly payment',()=>{
+    const recap=html(<DebtRecap v={{...filled,chosen:'heloc',submitted:true}}/>);
+    expect(recap).toContain('$202,500 illustrative borrowing room');expect(recap).toContain('Not approved credit.');expect(recap).not.toContain('$202,500/mo');
   });
 });

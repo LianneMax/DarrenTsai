@@ -87,9 +87,9 @@ describe('isolated ADU design journey',()=>{
     expect((host.querySelector('#adu-calculator-property-state') as HTMLSelectElement).value).toBe('CA');
     await button('Back');expect((host.querySelector('#adu-cost') as HTMLInputElement).value).toBe('175000');expect(host.querySelector('.adu-purpose[aria-pressed="true"]')?.textContent).toContain('ADU for family');
   });
-  it('lets unsupported property locations see education while blocking a personal review',async()=>{
+  it('lets unsupported property locations reach contact without saving before privacy acknowledgment',async()=>{
     await project();await home('NY');expect(heading()).toBe('Your project, in perspective.');expect(text()).toContain('$100,000');
-    await button('Talk through my plan');expect(heading()).toBe('Your project, in perspective.');expect(text()).toContain('personal review');expect(posted).toHaveLength(0);
+    await button('Talk through my plan');expect(host.querySelector('#lead-email')).not.toBeNull();expect(text()).toContain('your inquiry is recorded without a calendar');expect(posted).toHaveLength(0);
   });
   it('handles a paid-off home and an underwater home without implying available credit',async()=>{
     await project();await home('CA','0');expect(text()).toContain('$650,000');await button('Back');await input('adu-balance','700000');await button('See my snapshot');

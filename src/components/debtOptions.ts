@@ -32,4 +32,4 @@ export const HELOAN_TERMS = [
 ];
 
 /** The option a visitor says they want to talk about. '' until they pick one. */
-export type DebtOption = '' | 'refi' | 'refiSame' | 'heloan';
+export type DebtOption = '' | 'refi' | 'refiSame' | 'heloan' | 'heloc';

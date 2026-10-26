@@ -7,7 +7,7 @@ import { openBooking } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { aduNumbers, buildAduLead } from '../utils/adu';
 import AduPage, { type AduPageView } from './AduViews';
-import { serviceArea, OUT_OF_MARKET_MESSAGE } from '../utils/serviceArea';
+import { serviceArea, outOfMarketPage } from '../utils/serviceArea';
 import { milestone } from '../utils/attribution';
 
 const emailSchema = z.string().email();
@@ -42,6 +42,7 @@ export default function AduCalculator() {
   const [lname, setLname] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
   const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
   const [usState, setUsState] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -80,9 +81,9 @@ export default function AduCalculator() {
       if (n >= 3 && !hasHome) {
         validationError('Enter your home value and mortgage balance. Enter 0 if your home is paid off.'); return;
       }
-      if ((n >= 3 && (!propertyUse || !usState)) || (n >= 4 && serviceArea(propertyUse, usState, 'adu') !== 'supported')) {
+      if (n >= 3 && serviceArea(propertyUse, usState, 'adu') === 'incomplete') {
         milestone('form_error', {form_id:'adu-calculator',error_code:propertyUse && usState ? 'policy_exit':'validation',field_category:'property'});
-        setErrorMsg(!propertyUse || !usState ? 'Choose how you use the home and the state it is in.' : OUT_OF_MARKET_MESSAGE); return;
+        setErrorMsg('Choose how you use the home and the state it is in.'); return;
       }
     }
     if (n > step) milestone('form_step', { form_id: 'adu-calculator', step_id: step });
@@ -111,7 +112,7 @@ export default function AduCalculator() {
     const result = await postLead({ ...buildAduLead({
       firstName: fname, lastName: lname, phone, email, state: usState,
       homeValue: hv, mortgageBalance: mb, projectCost: cost, amountToFinance: fin, purpose,
-    }), propertyUse, propertyState: usState });
+    }), propertyUse, propertyState: usState, message });
     if (!result.ok) {
       inFlight.current = false;
       setSending(false);
@@ -127,6 +128,7 @@ export default function AduCalculator() {
       );
       return;
     }
+    if (result.disposition === 'sheet-only') { window.location.assign(outOfMarketPage(propertyUse) + '#recorded'); return; }
     setSubmitted(true);
   };
 
@@ -136,7 +138,7 @@ export default function AduCalculator() {
     hv, mb, cost, fin, hasHome, equity, ltv, cltv, gap,
     purpose, setPurpose, propertyUse, setPropertyUse, errorMsg,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
-    emailHint, setEmailHint, usState, setUsState,
+    emailHint, setEmailHint, usState, setUsState, message, setMessage,
     sending, submitted, submitLead: () => { void submitLead(); }, openBooking,
   };
 

@@ -1,4 +1,4 @@
-import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE } from '../utils/serviceArea';
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, isCaptureInquiry, propertyUses } from '../utils/serviceArea';
 /**
  * The half of a lead submit that is the same on every form: post it, read the
  * status, and fire the two dataLayer events on success.
@@ -9,9 +9,8 @@ import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE } from '../uti
  * calculator raises a modal. What they share is everything between the button
  * press and that decision, and that part is where the expensive mistakes live:
  *
- *  - The 422 branch is the only failure a visitor can fix. Every other status
- *    has already been emailed to Darren, which is why the generic copy tells
- *    them not to resubmit, and why a 422 must never reach it.
+ *  - Actionable validation stays on the form. Unknown saves retain their
+ *    submission identity for retry; the endpoint's rescue alerts go to Max.
  *  - generate_lead is the single website form conversion Google Ads imports.
  *    It has to fire exactly once, after a confirmed save, never on a failure.
  *  - user_data stays nested. It is carried for internal use only and must not
@@ -46,13 +45,13 @@ export type LeadPayload = {
 
 export type SubmitResult =
   /** Saved. The caller shows its success state. */
-  | { ok: true }
+  | { ok: true; disposition?: 'sheet-only' }
   /**
    * The one failure the visitor can act on: the email domain has no mail
    * server and nothing was saved. The caller keeps them on the form.
    */
   | { ok: false; kind: 'fieldError'; field: string; message: string }
-  /** Anything else. A rescue email has already gone out on a 502. */
+  /** Anything else. Keep the uncertain request recoverable on the form. */
   | { ok: false; kind: 'failed' };
 
 export type LeadSubmitConfig = {
@@ -90,16 +89,18 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
     const propertyUse = fromPayload ? String(payload.propertyUse) : document.querySelector<HTMLSelectElement>('[data-property-use="' + formId + '"]')?.value;
     const propertyState = fromPayload ? String(payload.propertyState) : document.querySelector<HTMLSelectElement>('[data-property-state="' + formId + '"]')?.value;
     const result = serviceArea(propertyUse, propertyState, String(payload.source || formId));
-    if (screening && result !== 'supported') {
+    const captureInquiry = isCaptureInquiry(formId, payload.source);
+    const sheetOnly = captureInquiry && result === 'out-of-market' && propertyUses(payload.source).includes(String(propertyUse));
+    if (screening && result !== 'supported' && !sheetOnly) {
       milestone('form_error', { form_id: formId, error_code: result === 'out-of-market' ? 'policy_exit' : 'validation', field_category: 'property' });
       const message = result === 'incomplete' ? 'Please choose the property use and state.' : OUT_OF_MARKET_MESSAGE;
       const status = screening instanceof Element ? screening.querySelector('[role="status"]') : null; if (status) status.textContent = message;
       return { ok: false, kind: 'fieldError', field: 'propertyState', message };
     }
     const acknowledgment = document.querySelector<HTMLInputElement>('input[data-privacy-form="' + formId + '"]');
-    if (acknowledgment && !acknowledgment.checked) {
+    if ((captureInquiry && !acknowledgment) || (acknowledgment && !acknowledgment.checked)) {
       milestone('form_error', { form_id: formId, error_code: 'validation', field_category: 'consent' });
-      acknowledgment.reportValidity();
+      acknowledgment?.reportValidity();
       return { ok: false, kind: 'fieldError', field: 'privacyAcknowledged', message: 'Please acknowledge the Privacy Policy and Terms to continue.' };
     }
     try {
@@ -130,6 +131,14 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
         throw new Error(`lead-endpoint-${res.status}`);
       }
 
+      // DTLead already requires a matching saved submission receipt. In addition,
+      // both servers must agree on the disposition before an exit or calendar is
+      // shown; an older writer must not silently admit an outside-area inquiry.
+      if (captureInquiry) {
+        const receipt = await res.clone().json();
+        if ((receipt.disposition === 'sheet-only') !== sheetOnly) throw new Error('inquiry-disposition-mismatch');
+        if (sheetOnly) return { ok: true, disposition: 'sheet-only' };
+      }
       if (claimLeadConversion(formId, res)) {
       track('generate_lead', {
         lead_source: payload.source,

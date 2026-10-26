@@ -30,6 +30,18 @@
     var c = context(id, goal);
     return c ? policy.propertyUses[c] : [];
   }
+  function isCaptureInquiry(id, source) {
+    return !!policy && !!policy.inquiryForms && Object.prototype.hasOwnProperty.call(policy.inquiryForms, id) && policy.inquiryForms[id] === source;
+  }
+  function isCaptureForm(id) { return !!policy && !!policy.inquiryForms && Object.prototype.hasOwnProperty.call(policy.inquiryForms, id); }
+  var RECORDING_NOTE = 'Availability is checked after you acknowledge privacy and submit. Outside our service area, your inquiry is recorded without a calendar or financing review.';
+  function addMessage(input, id) {
+    if (!isCaptureForm(id) || !/-magnet$/.test(id) || document.querySelector('[data-inquiry-message="' + id + '"]')) return;
+    var disclosure = input.closest('.compliance-disclosure'); if (!disclosure) return;
+    var note = document.createElement('div'); note.className = 'inquiry-message';
+    note.innerHTML = '<label for="'+id+'-message">Anything you’d like Darren to know? <span>(optional)</span></label><textarea id="'+id+'-message" data-inquiry-message="'+id+'" rows="3" maxlength="2000" aria-describedby="'+id+'-message-help"></textarea><p id="'+id+'-message-help">Please leave out account numbers, Social Security numbers and other sensitive details. Up to 2,000 characters.</p><p>'+RECORDING_NOTE+'</p>';
+    disclosure.parentNode.insertBefore(note, disclosure);
+  }
   function onEitherList(state) {
     return policy.investment.indexOf(state) >= 0 || policy.consumer.indexOf(state) >= 0;
   }
@@ -56,6 +68,17 @@
     // A single allowed use (DSCR, FHA) is the answer, not a question.
     var useSelect = root.querySelector('[data-property-use]');
     if (propertyUses(id).length === 1) useSelect.value = propertyUses(id)[0];
+    // Reuse each guide's existing state control on its property step. This
+    // preserves its validators/picker without asking a second location question.
+    var legacyState = /-magnet$/.test(id) ? document.getElementById(id === 'rei-magnet' ? 'lState' : 'mState') : null;
+    var legacyField = legacyState && legacyState.closest('.field');
+    if (legacyField) {
+      root.querySelector('label[for="'+id+'-state"]').remove();
+      root.querySelector('[data-property-state]').remove();
+      legacyState.setAttribute('data-property-state', id);
+      legacyField.querySelector('label').textContent = w.state;
+      root.insertBefore(legacyField, root.querySelector('[role="status"]'));
+    }
     root.addEventListener('change', function(){validate(id);}); return root;
   }
   function read(id) {
@@ -64,10 +87,14 @@
   }
   function validate(id, focusMissing) {
     var data=read(id); var root=document.querySelector('[data-service-area="'+id+'"]');
+    var valid = !!policy && propertyUses(id).indexOf(data.propertyUse) >= 0 && data.serviceAreaResult !== 'incomplete';
+    var deferred = isCaptureForm(id);
     if(root){
       var status=root.querySelector('[role="status"]');
-      status.className=data.serviceAreaResult==='supported'?'':'service-area-warning';
-      status.textContent=data.serviceAreaResult==='supported'?'This checks service area only, not loan approval.':data.serviceAreaResult==='out-of-market'?'A personal review is not available for this property location right now. You can keep exploring your options with the calculator.':'Please select property use and property state to continue.';
+      if (status) {
+        status.className=valid && deferred ? '' : data.serviceAreaResult==='supported'?'':'service-area-warning';
+        status.textContent=valid && deferred ? RECORDING_NOTE : data.serviceAreaResult==='supported'?'This checks service area only, not loan approval.':data.serviceAreaResult==='out-of-market'?'A personal review is not available for this property location right now. You can keep exploring your options with the calculator.':'Please select property use and property state to continue.';
+      }
       var missing=null;
       root.querySelectorAll('select').forEach(function(select){
         select.setAttribute('aria-invalid', select.value ? 'false' : 'true');
@@ -75,9 +102,9 @@
       });
       if(focusMissing && missing) missing.focus();
     }
-    return !!policy && data.serviceAreaResult==='supported';
+    return valid && (deferred || data.serviceAreaResult==='supported');
   }
-  window.DTServiceArea={read:read,validate:validate,fields:fields,ready:function(){return !!policy;},whenReady:whenReady,
+  window.DTServiceArea={read:read,validate:validate,fields:fields,ready:function(){return !!policy;},whenReady:whenReady,isCaptureInquiry:isCaptureInquiry,
     check:function(use,state,id,goal){return policy?result(use,state,id,goal):'incomplete';},
     uses:function(id,goal){return policy?propertyUses(id,goal):[];},
     states:function(){return policy?policy.states.map(function(s){return [s,policy.labels[s]];}):[];},
@@ -95,5 +122,5 @@
     var disclosure=input.closest('.compliance-disclosure'); if(!disclosure) return;
     var loading=document.createElement('fieldset'); loading.setAttribute('data-service-area',id); loading.setAttribute('data-service-area-loading','true'); loading.innerHTML='<p role="status">Loading the property service-area check…</p>'; disclosure.parentNode.insertBefore(loading,disclosure);
   });
-  fetch('/service-area-policy.json').then(function(r){if(!r.ok)throw new Error('policy unavailable');return r.json();}).then(function(p){policy=p;settle(true);document.querySelectorAll('[data-privacy-form]').forEach(function(input){var id=input.getAttribute('data-privacy-form');var existing=document.querySelector('[data-service-area="'+id+'"]');if(existing){if(existing.hasAttribute('data-service-area-loading'))existing.replaceWith(fields(id));return;}var disclosure=input.closest('.compliance-disclosure');if(disclosure)disclosure.parentNode.insertBefore(fields(id),disclosure);});}).catch(function(){ failed=true; settle(false); document.querySelectorAll('[data-service-area-loading] [role="status"]').forEach(function(status){status.textContent='The service-area check is unavailable. Please refresh the page; your request has not been submitted.';}); });
+  fetch('/service-area-policy.json').then(function(r){if(!r.ok)throw new Error('policy unavailable');return r.json();}).then(function(p){policy=p;settle(true);document.querySelectorAll('[data-privacy-form]').forEach(function(input){var id=input.getAttribute('data-privacy-form');addMessage(input,id);var existing=document.querySelector('[data-service-area="'+id+'"]');if(existing){if(existing.hasAttribute('data-service-area-loading'))existing.replaceWith(fields(id));return;}var disclosure=input.closest('.compliance-disclosure');if(disclosure)disclosure.parentNode.insertBefore(fields(id),disclosure);});}).catch(function(){ failed=true; settle(false); document.querySelectorAll('[data-service-area-loading] [role="status"]').forEach(function(status){status.textContent='The service-area check is unavailable. Please refresh the page; your request has not been submitted.';}); });
 })();

@@ -147,7 +147,7 @@ function view(over: Partial<EquityPageView> = {}): EquityPageView {
     mortgageCurrent: '', setMortgageCurrent: noop, bankruptcy: '', setBankruptcy: noop,
     preference: '', setPreference: noop,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
-    email: '', setEmail: noop, emailHint: null, setEmailHint: noop,
+    email: '', setEmail: noop, emailHint: null, setEmailHint: noop, message: '', setMessage: noop,
     sending: false, submitted: false, declined: '', submitLead: noop,
     ...over,
   };

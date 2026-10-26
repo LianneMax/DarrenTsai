@@ -291,6 +291,8 @@ describe('each funnel writes to its own tab, under its own headers', () => {
   it('gives every row an id, the form it came from and the page it was sent from', () => {
     post(h, {
       source: 'fha', email: 'ids@example.com', formId: 'fha-magnet',
+      firstName: 'Test', phone: '7145550123', submissionId: 'uuid-1',
+      propertyUse: 'primary', propertyState: 'CA', privacyAcknowledged: true, privacyVersion: '2026-10-13-v1',
       pageUri: 'https://realdarrentsai.com/fha/?gclid=ABC#form', firstUtmMedium: 'cpc',
     });
     expect(h.rowOf('FHA')).toMatchObject({

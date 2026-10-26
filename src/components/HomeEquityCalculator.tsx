@@ -98,6 +98,7 @@ export default function HomeEquityCalculator() {
   const [lname, setLname] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
   const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [declined, setDeclined] = useState<'' | 'property-type' | 'knockout'>('');
@@ -153,14 +154,11 @@ export default function HomeEquityCalculator() {
         validationError('Please choose the property type and how you use the home, and enter the ZIP of the home you’re borrowing against.');
         return;
       }
-      if (propertyType === 'mobile-land') { setDeclined('property-type'); scrollToFlow(); return; }
       const area = serviceArea(propertyUse, propertyState, 'home-equity');
-      if (area === 'out-of-market') {
-        milestone('form_error', {form_id:EQUITY_FORM_ID,error_code:'policy_exit',field_category:'property'});
-        window.location.assign(outOfMarketPage(propertyUse));
-        return;
-      }
-      if (area !== 'supported') { validationError('Please check the property state.'); return; }
+      if (area === 'incomplete') { validationError('Please check the property state.'); return; }
+      // Outside-area visitors can finish an interest-only inquiry. Their answers
+      // and consent are saved before the exit; supported knockout rules stay put.
+      if (area === 'supported' && propertyType === 'mobile-land') { setDeclined('property-type'); scrollToFlow(); return; }
       milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 1 });
       setStep(2);
       scrollToFlow();
@@ -171,7 +169,7 @@ export default function HomeEquityCalculator() {
         validationError('Please answer each question to continue.');
         return;
       }
-      if (!prequalPasses({ propertyType, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy })) {
+      if (serviceArea(propertyUse, propertyState, 'home-equity') === 'supported' && !prequalPasses({ propertyType, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy })) {
         setDeclined('knockout');
         scrollToFlow();
         return;
@@ -210,7 +208,7 @@ export default function HomeEquityCalculator() {
     inFlight.current = true;
     setSending(true);
     const result = await postLead(buildEquityLead({
-      firstName: fname, lastName: lname, phone, email,
+      firstName: fname.trim(), lastName: lname.trim(), phone, email, message,
       homeValue: hv, mortgageBalance: mb,
       propertyType, propertyUse, propertyZip: zip, propertyState,
       goal, creditRange, cashRange, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy, preference,
@@ -220,10 +218,6 @@ export default function HomeEquityCalculator() {
       setSending(false);
     }
     if (!result.ok && result.kind === 'fieldError') {
-      if (result.field === 'propertyState') {
-        window.location.assign(outOfMarketPage(propertyUse));
-        return;
-      }
       setErrorMsg(result.message);
       return;
     }
@@ -232,6 +226,10 @@ export default function HomeEquityCalculator() {
         "We couldn't confirm whether your request was saved. " +
         `Retry here with the same details, or email ${EMAIL} for help.`
       );
+      return;
+    }
+    if (result.disposition === 'sheet-only') {
+      window.location.assign(outOfMarketPage(propertyUse) + '#recorded');
       return;
     }
     setSubmitted(true);
@@ -245,6 +243,7 @@ export default function HomeEquityCalculator() {
     goal, setGoal, creditRange, setCreditRange, cashRange, setCashRange,
     mortgageCurrent, setMortgageCurrent, bankruptcy, setBankruptcy, preference, setPreference,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
+    message, setMessage,
     emailHint, setEmailHint,
     sending, submitted, declined, submitLead: () => { void submitLead(); },
   };

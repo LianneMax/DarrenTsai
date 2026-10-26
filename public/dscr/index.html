@@ -1621,7 +1621,7 @@
     ['Name','Email','Phone','State'].forEach(f => setError(f, ''));
   }
 
-  function validateLeadDetails() {
+  function validateLeadDetails(includeProperty = true) {
     clearErrors();
     const name = $('mName').value.trim();
     const email = $('mEmail').value.trim();
@@ -1634,7 +1634,7 @@
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
     if (!phone) { setError('Phone', 'Required'); valid = false; }
     else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
-    if (!state) { setError('State', 'Required'); valid = false; }
+    if (includeProperty && !state) { setError('State', 'Required'); valid = false; }
     return valid;
 
   }
@@ -1659,7 +1659,7 @@
     guideSteps[step].querySelector('h4').focus();
   }
   $('guideNext').addEventListener('click', () => {
-    if (guideStep === 0 && !validateLeadDetails()) {
+    if (guideStep === 0 && !validateLeadDetails(false)) {
       const error = document.querySelector('#modalForm .input-shell.error');
       if (error) error.querySelector('input,button').focus();
       return;
@@ -1800,11 +1800,12 @@
         // 429: the rate limit refused it before reading it, so nothing reached
         // Darren and no rescue email went out. Its message says so.
         if (res.status === 422 || res.status === 429 || res.status === 409) {
-          try { var fix = await res.json(); if (fix && (fix.field === 'email' || fix.field === 'phone' || fix.field === 'rate' || fix.field === 'submissionId')) visitorMessage = fix.message; }
+          try { var fix = await res.json(); if (fix && fix.field && fix.message) visitorMessage = String(fix.message); }
           catch (jsonErr) { visitorMessage = null; }
         }
         throw new Error('lead-endpoint-' + res.status);
       }
+      if (window.DTLead.finishInquiry('dscr-magnet', res)) return;
       if (window.DT && window.DTLead.claimConversion('dscr-magnet', res)) {
         window.DT.track('generate_lead', Object.assign({}, window.DTLead.attribution('dscr-magnet', res), {
           lead_source: payload.source,

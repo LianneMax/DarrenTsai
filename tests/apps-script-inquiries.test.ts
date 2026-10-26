@@ -7,6 +7,7 @@ type Runtime = {
   doPost: (event: { postData: { contents: string } }) => { __body: string };
   processFollowUps: () => void;
   bookingServiceArea: (data: Record<string, unknown>) => string;
+  captureServiceArea: (data: Record<string, unknown>) => string;
   alertFailure: (detail: string, raw?: string) => void;
   SpreadsheetApp: { openById: (id: string) => unknown; flush: () => void };
   LockService: { getScriptLock: () => { waitLock: (ms: number) => void; releaseLock: () => void } };
@@ -15,7 +16,7 @@ type Runtime = {
 function setup() {
   const mail: MailMessage[] = [];
   const calls: string[] = [];
-  const h = loadGas<Runtime>({ exports: ['doPost', 'processFollowUps', 'bookingServiceArea', 'alertFailure', 'SpreadsheetApp', 'LockService', 'CacheService'],
+  const h = loadGas<Runtime>({ exports: ['doPost', 'processFollowUps', 'bookingServiceArea', 'captureServiceArea', 'alertFailure', 'SpreadsheetApp', 'LockService', 'CacheService'],
     props: { LEAD_PROXY_KEY: KEY, HUBSPOT_PORTAL_ID: '123', HUBSPOT_FORM_GUID: 'test-form', HUBSPOT_SEND_TESTS: 'true',
       NETLIFY_CONTACT_CONFIRM_URL: 'https://realdarrentsai.com/api/send-contact-confirmation', NETLIFY_CONTACT_CONFIRM_KEY: 'confirm',
       CALLRAIL_SYNC_ENABLED: 'true', CALLRAIL_SEND_TESTS: 'true', CALLRAIL_API_TOKEN: 'test', CALLRAIL_ACCOUNT_ID: '123', CALLRAIL_COMPANY_ID: '456' },
@@ -103,6 +104,51 @@ describe('authoritative Sheet-only booking inquiries', () => {
     expect(h.tabs.get('CallRail Sync')!.rows[1][2]).toBe('skipped');
     expect(h.calls.filter(url => !url.endsWith('/stop-email'))).toEqual([]);
     expect(h.mail).toEqual([]);
+  });
+});
+
+describe('equity calculator interest-only capture', () => {
+  const forms = [['home-equity-calculator', 'home-equity', 'Home Equity'], ['debt-savings-calculator', 'DebtConsolidation', 'Debt Consolidation']];
+  it('keeps the independent writer policy aligned for every property state and use', () => {
+    const h = setup();
+    for (const propertyUse of ['primary', 'second-home', 'investment']) for (const propertyState of PROPERTY_STATES) {
+      expect(h.gas.captureServiceArea({formId:'home-equity-calculator', propertyUse, propertyState})).toBe(serviceArea(propertyUse, propertyState, 'home-equity'));
+    }
+  });
+  it.each(forms)('saves %s once, retaining its message safely and never dispatching downstream', (formId, source, tab) => {
+    const h = setup(); const data = inquiry({formId, source, message: '=IMPORTXML("https://invalid.test", "//a")', state: 'CA'});
+    expect(h.post(data)).toMatchObject({success:true, receipt:'saved', disposition:'sheet-only'});
+    const row = h.rowOf(tab);
+    expect(row).toMatchObject({'Inquiry Message': data.message, State:'CO', 'Property State':'CO', 'Licensed?':'No', 'Service Area Result':'out-of-market', Status:'Sheet only: outside service area'});
+    // The harness consumes a protective apostrophe like Sheets, and represents
+    // a live formula as an object. A plain string proves it stayed inert.
+    expect(typeof row['Inquiry Message']).toBe('string');
+    expect(JSON.parse(String(row['Submission Snapshot'])).message).toBe(data.message);
+    expect(h.post(data)).toMatchObject({replayed:true, disposition:'sheet-only'});
+    expect(h.tabs.get(tab)!.rows).toHaveLength(2);
+    expect(h.tabs.has('Follow-ups')).toBe(false); expect(h.tabs.has('CallRail Sync')).toBe(false);
+    // A damaged queue must still recompute eligibility, rather than trust a flag.
+    h.queue(data); h.gas.processFollowUps();
+    expect(h.calls.filter(url => !url.endsWith('/stop-email'))).toEqual([]); expect(h.mail).toEqual([]);
+  });
+  it.each(forms)('preserves supported rentals outside the consumer license list for %s', (formId, source, tab) => {
+    const h = setup();
+    expect(h.post(inquiry({formId, source, propertyUse:'investment', propertyState:'CO', captureDisposition:'sheet-only'})))
+      .toEqual({success:true, receipt:'saved', submissionId:'booking-capture-123', replayed:false});
+    expect(h.rowOf(tab)).toMatchObject({'Licensed?':'No', 'Service Area Result':'supported', Status:''});
+    expect(h.tabs.get('Follow-ups')!.rows).toHaveLength(2);
+  });
+  it.each(forms)('refuses missing consent, malformed messages, forged pairing and incomplete contacts in %s', (formId, source) => {
+    for (const patch of [{privacyAcknowledged:false}, {privacyVersion:''}, {lastName:''}, {email:''}, {phone:''}, {submissionId:''},
+      {propertyState:'ZZ'}, {propertyUse:'vacation'}, {source:'dscr'}, {message:42}, {message:'x'.repeat(2001)}]) {
+      const h = setup(); expect(h.post(inquiry({formId, source, ...patch}))).toMatchObject({success:false, code:'invalid_booking_inquiry'});
+      expect(h.tabs.size).toBe(0); expect(h.mail).toEqual([]); expect(h.calls).toEqual([]);
+    }
+  });
+  it('retains outside-area knockout answers for equity, while preserving in-area knockouts', () => {
+    const fields = {formId:'home-equity-calculator', source:'home-equity', propertyType:'mobile-land', mortgageCurrent:'no', recentBankruptcyForeclosure:'yes'};
+    expect(setup().post(inquiry(fields))).toMatchObject({success:true, disposition:'sheet-only'});
+    expect(setup().post(inquiry({...fields, propertyState:'CA'}))).toMatchObject({success:false});
   });
 });
 

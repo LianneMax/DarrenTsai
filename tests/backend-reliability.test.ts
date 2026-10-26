@@ -15,6 +15,8 @@ type Runtime = {
 };
 const exports = ['doPost', 'SpreadsheetApp', 'LockService', 'processFollowUps', 'claimFollowUp', 'checkpointFollowUp', 'hubspotFields'];
 const lead = { source: 'fha', formId: 'fha-magnet', submissionId: 'stable-1', email: 'qa@example.com',
+  firstName:'Test', lastName:'Reliability', phone:'7145550123', propertyUse:'primary', propertyState:'CA', state:'CA',
+  serviceAreaResult:'supported', serviceAreaVersion:'2026-10-15-v3', privacyVersion:'2026-10-13-v1',
   timestamp: '2026-10-20T01:00:00Z', smsConsentAt: '2026-10-20T01:00:00Z', privacyAcknowledged: true, utm_source: 'youtube' };
 function post(gas: Runtime, data: Payload) { return JSON.parse(gas.doPost({ postData: { contents: JSON.stringify({ ...data, _proxyKey: TEST_PROXY_KEY }) } }).__body); }
 
@@ -30,7 +32,9 @@ describe('capture retry identity', () => {
     const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });
     post(h.gas, lead);
     const before = JSON.stringify([...h.tabs]);
-    expect(post(h.gas, { ...lead, [key]: 'changed' })).toMatchObject({ success: false, code: 'submission_conflict', field: 'submissionId' });
+    const change = key === 'email' ? {email:'another@example.com'} : key === 'source' ? {source:'real-estate-investing',formId:'rei-magnet'} : key === 'privacyAcknowledged' ? {privacyAcknowledged:false} : {[key]:'changed'};
+    expect(post(h.gas, { ...lead, ...change })).toMatchObject(key === 'privacyAcknowledged'
+      ? {success:false,code:'invalid_booking_inquiry'} : { success: false, code: 'submission_conflict', field: 'submissionId' });
     expect(JSON.stringify([...h.tabs])).toBe(before);
   });
   it('repairs a missing queue after the durable capture without duplicating the lead', () => {
@@ -77,7 +81,7 @@ describe('capture retry identity', () => {
 });
 
 describe('durable job ownership and recovery', () => {
-  const props = { HUBSPOT_PORTAL_ID: 'portal', HUBSPOT_FORM_GUID: 'form', NETLIFY_FHA_PDF_URL: 'https://example.com/guide', NETLIFY_FHA_PDF_KEY: 'key' };
+  const props = { HUBSPOT_PORTAL_ID: 'portal', HUBSPOT_FORM_GUID: 'form', HUBSPOT_SEND_TESTS:'true', NETLIFY_FHA_PDF_URL: 'https://example.com/guide', NETLIFY_FHA_PDF_KEY: 'key' };
   it('an overlapping worker cannot send an already claimed row', () => {
     const calls: string[] = [];
     let nested: () => void = () => {};

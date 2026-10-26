@@ -24,13 +24,14 @@ import ComplianceDisclosure from './ComplianceDisclosure';
  */
 import { formatUsPhone } from '../utils/phone';
 import type { ReactNode } from 'react';
-import { LICENSED_STATES, PHONE, isLicensedState } from '../config';
+import { PHONE } from '../config';
 import { formatCurrency, formatRate } from '../utils/formatters';
 import { savingsText, savingsRowText, RESULT_ROW_LABEL, BLENDED_ROW_LABEL } from '../utils/savingsText';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
 import CustomSelect from './CustomSelect';
 import AprEstimate from './AprEstimate';
-import StateSelect from './StateSelect';
+import InquiryMessage from './InquiryMessage';
+import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
 import { Arrow, Check, Row, StepNav, EquitySnapshot } from './PageParts';
 
@@ -91,7 +92,9 @@ export interface DebtPageView {
   heloanSave: number;
   cltv: number;
 
-  /** The option the visitor wants to talk about. Shown on the recap; not part of the lead. */
+  /** Illustration of borrowing room, distinct from a payment or approved limit. */
+  helocRoom: number | null;
+  /** The discussion choice is retained in the submission snapshot and recap. */
   chosen: DebtOption;
   setChosen: (o: DebtOption) => void;
 
@@ -100,7 +103,9 @@ export interface DebtPageView {
   phone: string; setPhone: (v: string) => void;
   email: string; setEmail: (v: string) => void;
   emailHint: EmailSuggestion | null; setEmailHint: (h: EmailSuggestion | null) => void;
-  usState: string; setUsState: (v: string) => void;
+  propertyState: string; setPropertyState: (v: string) => void;
+  propertyUse: string; setPropertyUse: (v: string) => void;
+  message: string; setMessage: (v: string) => void;
   sending: boolean;
   submitted: boolean;
   submitLead: () => void;
@@ -114,7 +119,7 @@ export interface DebtPageView {
 /** The loan-to-value many lenders stop a cash-out refinance at. Said, not enforced. */
 const CASH_OUT_LIMIT = 80;
 
-const STEPS = [['Your debts','Start with your payments'],['Your home','The home behind the plan'],['Comparison','Understand the tradeoffs'],['Talk to Darren','A personal next step']] as const;
+const STEPS = [['Your debts','Start with your payments'],['Your home','The home behind the plan'],['Compare','Understand the tradeoffs'],['Talk to Darren','A personal next step']] as const;
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
 
@@ -146,42 +151,42 @@ export function StepDebts({ v }: { v: DebtPageView }) {
       {v.debts.map((d) => (
         <div key={d.id} className="dcp-debt">
           <div>
-            <label className="input-label">Debt Type</label>
+            <label className="input-label" htmlFor={`debt-type-${d.id}`}>Debt Type</label>
             <CustomSelect
               id={`debt-type-${d.id}`}
               value={d.type}
               options={DEBT_TYPES.map((t) => ({ value: t, label: t }))}
               onChange={(val) => v.updateDebt(d.id, 'type', val)}
-              placeholder="Select debt type…"
+              placeholder="Choose debt"
             />
           </div>
           <div>
-            <label className="input-label">Balance ($)</label>
+            <label className="input-label" htmlFor={`debt-balance-${d.id}`}>Balance ($)</label>
             <div className="input-prefix-wrap">
               <span className="input-prefix">$</span>
               <input
-                type="number" className="form-input input-has-prefix"
+                id={`debt-balance-${d.id}`} type="number" className="form-input input-has-prefix"
                 value={d.bal || ''} placeholder="e.g. 5,000"
                 onChange={(e) => v.updateDebt(d.id, 'bal', e.target.value)}
               />
             </div>
           </div>
           <div>
-            <label className="input-label">Monthly Payment</label>
+            <label className="input-label" htmlFor={`debt-payment-${d.id}`}>Monthly Payment</label>
             <div className="input-prefix-wrap">
               <span className="input-prefix">$</span>
               <input
-                type="number" className="form-input input-has-prefix"
+                id={`debt-payment-${d.id}`} type="number" className="form-input input-has-prefix"
                 value={d.pmt || ''} placeholder="e.g. 150"
                 onChange={(e) => v.updateDebt(d.id, 'pmt', e.target.value)}
               />
             </div>
           </div>
           <div>
-            <label className="input-label">Interest Rate (%)</label>
+            <label className="input-label" htmlFor={`debt-rate-${d.id}`}>Interest Rate (%)</label>
             <div className="input-suffix-wrap">
               <input
-                type="number" step="0.1" className="form-input input-has-suffix"
+                id={`debt-rate-${d.id}`} type="number" step="0.1" className="form-input input-has-suffix"
                 value={d.rate || ''} placeholder="e.g. 24.99"
                 onChange={(e) => v.updateDebt(d.id, 'rate', e.target.value)}
               />
@@ -310,6 +315,9 @@ function OptionCard({ id, title, v, payment, scope, save, children, unavailable 
     return (
       <div className="dcp-option dcp-option-wait">
         <span className="dcp-option-title">{title}</span>
+        <span className="dcp-option-pay dcp-option-pay-text">{id === 'heloan' && v.hasHome && v.heloanAmt <= 0 ? 'No room at these figures' : id === 'refiSame' ? 'Term needed' : 'Choose assumptions'}</span>
+        <span className="dcp-option-scope">Monthly payment not estimated</span>
+        <span className="dcp-verdict">Payment difference pending</span>
         <div className="dcp-option-body">{unavailable}</div>
       </div>
     );
@@ -321,8 +329,8 @@ function OptionCard({ id, title, v, payment, scope, save, children, unavailable 
       <span className="dcp-option-scope">{scope}</span>
       <Verdict save={save} />
       <div className="dcp-option-body">{children}</div>
-      {/* No "best option" badge anywhere: the visitor says which one they want
-          to talk about. It is shown back to them on the confirmation. */}
+      {/* The visitor chooses the discussion. The snapshot records intent,
+          rather than a qualified loan program. */}
       <button
         type="button"
         className="dcp-pick"
@@ -366,7 +374,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         <p>
           {heloanShort || heloanNoRoom
             ? <>The refinance options pay off all {formatCurrency(v.totBal)} of your debts. </>
-            : <>Each option pays off the same {formatCurrency(v.totBal)} of debts. </>}
+            : <>Compare options for your {formatCurrency(v.totBal)} of debts. </>}
           Compare the combined mortgage P&amp;I and debt payments. Taxes, insurance, HOA and closing
           costs are excluded.
         </p>
@@ -378,7 +386,6 @@ export function StepCompare({ v }: { v: DebtPageView }) {
 
       {v.rateBadge}
 
-      <div className="dcp-options">
         <div className="dcp-option dcp-option-today">
           <span className="dcp-option-title">Today</span>
           <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}</span>
@@ -389,19 +396,68 @@ export function StepCompare({ v }: { v: DebtPageView }) {
           </div>
         </div>
 
-        {/* HELOC (15 Oct 2026): part of the comparison, but described rather
-            than priced. Its payment depends on the draw and a variable rate,
-            and the site has no HELOC rate source, so no figure is invented. */}
-        <div className="dcp-option dcp-option-heloc">
-          <span className="dcp-option-title">HELOC</span>
-          <span className="dcp-option-pay dcp-option-pay-text">Not estimated here</span>
-          <span className="dcp-option-scope">Keeps your mortgage · usually a variable rate</span>
-          <div className="dcp-option-body">
-            A credit line against your home that you draw on to pay off the debts. The payment
-            depends on how much you draw and on a rate that can change, so Darren prices it with you.
+      {!heloanNoRoom && <div className="dcp-loan-controls">
+        <h3>Fixed home equity loan assumptions</h3>
+        <div className="dcp-grid-2">
+          <div>
+            <label className="input-label" htmlFor="heloan-tier">Credit range</label>
+            <CustomSelect id="heloan-tier" value={v.heloanTier} options={HELOAN_TIERS}
+              onChange={v.setHeloanTier} placeholder="Select range…" />
+          </div>
+          <div>
+            <label className="input-label" htmlFor="heloan-term">Loan term</label>
+            <CustomSelect id="heloan-term" value={v.heloanTerm} options={HELOAN_TERMS}
+              onChange={v.setHeloanTerm} placeholder="Select term…" />
           </div>
         </div>
+        <p className="dcp-hint">See how different assumptions change the estimate. A selected range is not a credit check.</p>
+      </div>}
 
+      <div className="dcp-options dcp-primary-options">
+        {/* The line-size illustration is not monthly pricing. Do not put its
+            amount into a savings verdict or treat 85% as a lender offer. */}
+        <div className={`dcp-option dcp-option-heloc${v.chosen === 'heloc' ? ' dcp-option-selected' : ''}`}>
+          <span className="dcp-option-title">HELOC</span>
+          <span className={`dcp-option-pay${v.helocRoom === null ? ' dcp-option-pay-text' : ''}`}>{v.helocRoom === null ? 'Add home details' : formatCurrency(v.helocRoom)}</span>
+          <span className="dcp-option-scope">Illustrative borrowing room<br />Not a monthly payment</span>
+          <span className="dcp-verdict">Example at {COMMON_CLTV_LIMIT}% combined loan-to-value</span>
+          <div className="dcp-option-body">
+            {v.helocRoom === null ? 'Enter your home value and mortgage details to see an example.'
+              : <>{COMMON_CLTV_LIMIT}% of {formatCurrency(v.hv)}, less {formatCurrency(v.mb)} owed.
+                {v.helocRoom === 0 && <> No borrowing room at this assumption.</>} Other property liens reduce this amount. Illustration only; lender limits and eligibility vary.</>}
+            <p>{paidOff ? 'No mortgage to replace.' : 'Keeps your mortgage.'} The payment depends on your draw, rate and repayment terms.</p>
+          </div>
+          <button type="button" className="dcp-pick" onClick={() => {
+            if (v.helocRoom === null) { v.goStep(2); return; }
+            v.setChosen('heloc'); v.goStep(4);
+          }}>{v.helocRoom === null ? 'Add home details' : 'Discuss a HELOC'} <Arrow /></button>
+        </div>
+
+        <OptionCard id="heloan" title="Fixed home equity loan" v={v}
+          payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
+          scope={heloanShort
+            ? (paidOff ? 'HELOAN + remaining debts' : 'Mortgage + HELOAN + remaining debts')
+            : (paidOff ? 'HELOAN, the only loan on the home' : 'Combined mortgage + HELOAN')}
+          save={v.heloanSave}
+          unavailable={heloanNoRoom
+            ? <>At these numbers there is no room under the 85% combined loan-to-value limit,
+                so a home equity loan cannot be priced. Darren can look at what else may work.</>
+            // A HELOAN rate is a credit-score question and the tiers span five
+            // points. A price before the visitor has said is a quote for a
+            // different person.
+            : <>Pick your credit range and a term above to price this option.</>
+          }>
+          {paidOff
+            ? <>No mortgage to keep. </>
+            : <>Mortgage: kept{v.mr > 0 ? ` at ${v.mr.toFixed(2)}%` : ''}
+              {v.mt > 0 ? ` with ${years(v.mt)} remaining` : ''}. </>}
+          New loan: {v.tierRate.toFixed(2)}% over {years(v.tierYears)}.
+          {heloanShort && (
+            <> Limited to {formatCurrency(v.heloanAmt)} by an 85% combined loan-to-value, which is
+              less than your {formatCurrency(v.totBal)} in debts. The rest stays with its current
+              lenders, about {formatCurrency(v.leftoverPmt)}/mo, and is included in the payment above.</>
+          )}
+        </OptionCard>
         <OptionCard id="refi" title="Est. Cash-Out Refi" v={v}
           payment={v.refiPmt > 0 ? v.refiPmt : null}
           scope="Estimated P&I · new 30YR fixed" save={v.refiSave}>
@@ -427,31 +483,6 @@ export function StepCompare({ v }: { v: DebtPageView }) {
           {refiOverLimit}
         </OptionCard>
 
-        <OptionCard id="heloan" title="Est. Fixed HELOAN" v={v}
-          payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
-          scope={heloanShort
-            ? (paidOff ? 'HELOAN + remaining debts' : 'Mortgage + HELOAN + remaining debts')
-            : (paidOff ? 'HELOAN, the only loan on the home' : 'Combined mortgage + HELOAN')}
-          save={v.heloanSave}
-          unavailable={heloanNoRoom
-            ? <>At these numbers there is no room under the 85% combined loan-to-value limit,
-                so a home equity loan cannot be priced. Darren can look at what else may work.</>
-            // A HELOAN rate is a credit-score question and the tiers span five
-            // points. A price before the visitor has said is a quote for a
-            // different person.
-            : <>Pick your credit range and a term below to price this option.</>
-          }>
-          {paidOff
-            ? <>No mortgage to keep. </>
-            : <>Mortgage: kept{v.mr > 0 ? ` at ${v.mr.toFixed(2)}%` : ''}
-              {v.mt > 0 ? ` with ${years(v.mt)} remaining` : ''}. </>}
-          New loan: {v.tierRate.toFixed(2)}% over {years(v.tierYears)}.
-          {heloanShort && (
-            <> Limited to {formatCurrency(v.heloanAmt)} by an 85% combined loan-to-value, which is
-              less than your {formatCurrency(v.totBal)} in debts. The rest stays with its current
-              lenders, about {formatCurrency(v.leftoverPmt)}/mo, and is included in the payment above.</>
-          )}
-        </OptionCard>
       </div>
 
       <div className="dcp-note">
@@ -463,23 +494,8 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         </p>
       </div>
 
-      <h3 className="dcp-h3">Adjust Your Home Equity Loan Estimate</h3>
-      <div className="dcp-grid-2">
-        <div>
-          <label className="input-label">HELOAN Credit Tier</label>
-          <CustomSelect id="heloan-tier" value={v.heloanTier} options={HELOAN_TIERS}
-            onChange={v.setHeloanTier} placeholder="Select credit tier…" />
-        </div>
-        <div>
-          <label className="input-label">HELOAN Term</label>
-          <CustomSelect id="heloan-term" value={v.heloanTerm} options={HELOAN_TERMS}
-            onChange={v.setHeloanTerm} placeholder="Select term…" />
-        </div>
-      </div>
-      <p className="dcp-hint">See how different assumptions change the estimate. A selected range is not a credit check.</p>
-
       <details className="dcp-details">
-        <summary>Estimated Cash-Out Refinance Breakdown · View calculation details</summary>
+        <summary>Cash-out refinance calculation details</summary>
         <Row label="New Loan Amount" value={v.newLoan > 0 ? formatCurrency(v.newLoan) : '—'} />
         <Row label="Rate (30YR fixed)" value={formatRate(v.rate30)} />
         <Row label="Estimated APR" value={<AprEstimate principal={v.newLoan} rate={v.rate30} years={30} />} />
@@ -488,7 +504,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       </details>
 
       <details className="dcp-details">
-        <summary>Estimated Fixed-Rate HELOAN Breakdown · View calculation details</summary>
+        <summary>Fixed home equity loan calculation details</summary>
         <Row label="HELOAN Amount" value={v.heloanAmt > 0 ? formatCurrency(v.heloanAmt) : '—'} />
         <Row label="HELOAN Rate / Term"
           value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
@@ -524,8 +540,10 @@ export function StepCompare({ v }: { v: DebtPageView }) {
 export function StepContact({ v }: { v: DebtPageView }) {
   return (
     <div className="dcp-panel">
-      <h2 className="dcp-h2 dcp-h2-lg">I Want to See My Actual Numbers</h2>
-      <ServiceAreaFields formId="debt-savings-calculator" />
+      <h2 className="dcp-h2 dcp-h2-lg">Talk through your comparison.</h2>
+      {v.chosen === 'heloc' && <p className="dcp-hint">You’d like to discuss a HELOC. Darren can review the possible line amount, rate and payment with you.</p>}
+      <ServiceAreaFields formId="debt-savings-calculator" propertyUse={v.propertyUse} propertyState={v.propertyState}
+        onUseChange={v.setPropertyUse} onStateChange={v.setPropertyState} deferScreening />
       <p className="dcp-lead">
         Your estimate is a starting point. A personal review helps you understand which options
         may fit your goals. No hard pull, no obligation.
@@ -533,21 +551,21 @@ export function StepContact({ v }: { v: DebtPageView }) {
 
       <div className="dcp-grid-2">
         <div>
-          <label className="input-label">First Name</label>
-          <input type="text" className="form-input" placeholder="First name"
+          <label className="input-label" htmlFor="payoff-fname">First Name</label>
+          <input id="payoff-fname" type="text" className="form-input" placeholder="First name"
             value={v.fname} onChange={(e) => v.setFname(e.target.value)} />
         </div>
         <div>
-          <label className="input-label">Last Name</label>
-          <input type="text" className="form-input" placeholder="Last name"
+          <label className="input-label" htmlFor="payoff-lname">Last Name</label>
+          <input id="payoff-lname" type="text" className="form-input" placeholder="Last name"
             value={v.lname} onChange={(e) => v.setLname(e.target.value)} />
         </div>
       </div>
 
       <div className="dcp-grid-2">
         <div>
-          <label className="input-label">Email Address</label>
-          <input type="email" className="form-input" placeholder="you@email.com"
+          <label className="input-label" htmlFor="payoff-email">Email Address</label>
+          <input id="payoff-email" type="email" className="form-input" placeholder="you@email.com"
             value={v.email}
             onChange={(e) => { v.setEmailHint(null); v.setEmail(e.target.value); }}
             onBlur={(e) => hintAfterBlur(e.target.value, v.setEmailHint)} />
@@ -562,25 +580,13 @@ export function StepContact({ v }: { v: DebtPageView }) {
           ))}
         </div>
         <div>
-          <label className="input-label">Phone Number</label>
-          <input type="tel" className="form-input" placeholder="(714) 000-0000"
+          <label className="input-label" htmlFor="payoff-phone">Phone Number</label>
+          <input id="payoff-phone" type="tel" className="form-input" placeholder="(714) 000-0000"
             value={v.phone} onChange={(e) => v.setPhone(formatUsPhone(e.target.value))} />
         </div>
       </div>
 
-      {/* No "best time to call" and no "how did you hear": both came off this
-          step on 8 Oct. Tracked attribution answers the second. */}
-      <div className="dcp-field">
-        <label className="input-label">State</label>
-        <StateSelect id="us-state" value={v.usState} onChange={v.setUsState} placeholder="Select your state…" />
-        {/* Said before they submit. The lead is still saved and Darren still
-            refers it; what was missing was telling the visitor. */}
-        {v.usState && !isLicensedState(v.usState) && (
-          <span className="email-hint">
-            Darren is licensed in {LICENSED_STATES.join(' · ')}. The property-use and property-state check above determines whether a review is available.
-          </span>
-        )}
-      </div>
+      <InquiryMessage id="payoff-inquiry-message" value={v.message} onChange={v.setMessage} />
 
       <ComplianceDisclosure formId="debt-savings-calculator" />
       <StepNav
@@ -599,6 +605,9 @@ export function StepContact({ v }: { v: DebtPageView }) {
 
 /** What the visitor chose to discuss, in the words the card used. */
 function chosenLine(v: DebtPageView): { label: string; detail: string } {
+  if (v.chosen === 'heloc') {
+    return { label: 'HELOC', detail: v.helocRoom === null ? 'Line amount and payment need a personal review.' : `${formatCurrency(v.helocRoom)} illustrative borrowing room at ${COMMON_CLTV_LIMIT}% combined loan-to-value. Not approved credit.` };
+  }
   if (v.chosen === 'refi' && v.refiPmt > 0) {
     return { label: 'Cash-out refinance', detail: `${formatCurrency(v.refiPmt)}/mo est. P&I · ${savingsText(v.refiSave)}` };
   }
@@ -615,10 +624,9 @@ function chosenLine(v: DebtPageView): { label: string; detail: string } {
  * Shown only after the server has confirmed the save. It says the request was
  * received, not that anyone has reviewed it, and promises no time.
  *
- * The option row is the visitor's own choice shown back to them. It is not in
- * the lead (the payload is unchanged by the redesign), so it sits under "Your
- * summary" and the copy above it claims only the numbers were sent, which they
- * were: every option's payment and saving is in the payload.
+ * The option row is the visitor's discussion choice, also retained in the
+ * submission snapshot. It does not establish product eligibility, an approved
+ * line size or a quoted payment. The HELOC example must stay labelled here too.
  */
 export function DebtRecap({ v }: { v: DebtPageView }) {
   const option = chosenLine(v);
@@ -672,7 +680,7 @@ export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtP
           <li><Check /> Results before contact</li>
         </ul>
 
-        <div className={v.submitted?'':'equity-journey-layout'}>
+        <div className={v.submitted ? '' : `equity-journey-layout${v.step === 3 ? ' payoff-comparison-layout' : ''}`}>
         {!v.submitted&&<JourneyTimeline steps={STEPS} current={v.step} disabled={v.sending} onStep={v.goStep}/>}
         <div className="equity-journey-content">
         {v.submitted && <DebtRecap v={v} />}

@@ -6,8 +6,8 @@ import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { formatUsPhone } from '../utils/phone';
 import type { MortgageInputs } from '../types/mortgage';
-import { EMAIL, LICENSED_STATES, isLicensedState } from '../config';
-import StateSelect from './StateSelect';
+import { EMAIL } from '../config';
+import { outOfMarketPage } from '../utils/serviceArea';
 import CustomSelect from './CustomSelect';
 import { openBooking } from '../utils/booking';
 import { milestone } from '../utils/attribution';
@@ -46,6 +46,7 @@ interface FormState {
   email: string;
   phone: string;
   state: string;
+  propertyUse: string;
   loanAmount: string;
   annualRate: string;
   termYears: string;
@@ -112,6 +113,7 @@ export default function LeadForm({
     email: '',
     phone: '',
     state: '',
+    propertyUse: '',
     loanAmount: prefillNumbers ? currentInputs.loanAmount.toLocaleString('en-US') : '',
     annualRate: prefillNumbers ? currentInputs.annualRate.toString() : '',
     termYears: currentInputs.termYears.toString(),
@@ -182,6 +184,7 @@ export default function LeadForm({
       email:     form.email.trim(),
       phone:     form.phone.trim(),
       state:     form.state,
+      propertyState: form.state, propertyUse: form.propertyUse,
       // Blank, not 0 and not 30.
       //
       // No Contact form on this site asks for a term, and `|| 30` wrote 30 into
@@ -212,6 +215,7 @@ export default function LeadForm({
       return;
     }
 
+    if (result.ok && result.disposition === 'sheet-only') { window.location.assign(outOfMarketPage(form.propertyUse) + '#recorded'); return; }
     setStatus(result.ok ? 'success' : 'error');
   };
 
@@ -247,7 +251,9 @@ export default function LeadForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate data-dt-form={formId}>
-      <ServiceAreaFields formId={formId} />
+      <ServiceAreaFields formId={formId} propertyUse={form.propertyUse} propertyState={form.state}
+        onUseChange={value => setForm(previous => ({...previous, propertyUse:value}))}
+        onStateChange={value => {setForm(previous => ({...previous, state:value}));setErrors(previous => ({...previous,state:undefined}));}} deferScreening />
       {/* Note */}
       <p className="modal-note">
         <strong>* Required</strong>: name, email, phone and state. The rest is optional.
@@ -334,31 +340,6 @@ export default function LeadForm({
         </div>
       </div>
 
-      {/* State */}
-      <div className="input-group" style={{ marginBottom: 16 }}>
-        <label htmlFor="lf-state" className="input-label">
-          State <span style={{ color: 'var(--rose)' }}>*</span>
-        </label>
-        <StateSelect
-          id="lf-state"
-          value={form.state}
-          hasError={!!errors.state}
-          onChange={(abbr) => {
-            setForm((prev) => ({ ...prev, state: abbr }));
-            setErrors((prev) => ({ ...prev, state: undefined }));
-          }}
-        />
-        {errors.state && <span className="field-error">{errors.state}</span>}
-        {/* Said before they submit, not after. The lead is still saved and
-            Darren still refers it, but a visitor who finds out afterwards has
-            been let down by a form that looked like it was listening. */}
-        {form.state && !isLicensedState(form.state) && (
-          <span className="email-hint">
-            Darren is licensed in {LICENSED_STATES.join(' · ')}. The property-use and property-state check above determines whether a review is available.
-          </span>
-        )}
-      </div>
-
       {/* Goals */}
       <div className="input-group">
         <label htmlFor="lf-goals" className="input-label">
@@ -368,6 +349,7 @@ export default function LeadForm({
           id="lf-goals"
           className={`form-input form-textarea${errors.goals ? ' input-error' : ''}`}
           rows={3}
+          maxLength={2000}
           placeholder="e.g. Lower my monthly payments, pay off credit card debt, save for a rental property…"
           value={form.goals}
           onChange={set('goals')}

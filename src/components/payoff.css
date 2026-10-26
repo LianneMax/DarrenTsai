@@ -1,0 +1,70 @@
+/* The payoff journey keeps the site's existing palette and four steps. Its
+   comparison gets the full content width so four options never leave a lone
+   narrow card below a three-column grid (26 Oct, Max's layout review). */
+.dcp-payoff .dcp-debt {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 28px;
+  gap: 14px;
+}
+.dcp-payoff .dcp-debt > div:first-child { grid-column: 1 / 4; }
+.dcp-payoff .dcp-debt > .dcp-remove { grid-column: 4; grid-row: 1 / 3; }
+.dcp-payoff .dcp-primary-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.site-design .dcp-payoff .dcp-option { padding: 18px; gap: 8px; box-shadow: none; transform: none; }
+.site-design .dcp-payoff .dcp-primary-options > .dcp-option {
+  display: grid; grid-template-rows: 24px 36px 42px 48px 1fr auto; align-items: start; justify-items: stretch;
+}
+.site-design .dcp-payoff .dcp-option-title { min-height: 0; line-height: 24px; }
+.site-design .dcp-payoff .dcp-option-pay { font-size: 26px; line-height: 36px; }
+.site-design .dcp-payoff .dcp-option-pay-text { font-size: 17px; }
+.site-design .dcp-payoff .dcp-option-scope { font-size: 13px; line-height: 20px; }
+.site-design .dcp-payoff .dcp-verdict { align-self: start; border-radius: 6px; font-size: 13px; line-height: 20px; }
+.site-design .dcp-payoff .dcp-option-wait .dcp-option-body { margin: 0; }
+.site-design .dcp-payoff .dcp-pick { justify-self: center; margin-top: 8px; }
+.dcp-payoff .dcp-option-title { font-size: 16px; letter-spacing: 0; text-transform: none; }
+.dcp-payoff .dcp-option-body { font-size: 14px; line-height: 1.65; }
+.site-design .dcp-payoff .dcp-option-body p { font-size: inherit; line-height: inherit; margin: 8px 0 0; }
+.dcp-payoff .dcp-option-today { margin-top: 18px; padding: 16px 20px; gap: 8px 16px; }
+.dcp-payoff .dcp-option-today .dcp-option-body { font-size: 13px; }
+.dcp-payoff .dcp-loan-controls { margin: 20px 0 14px; }
+.dcp-payoff .dcp-loan-controls h3 { font-size: 16px; margin: 0 0 10px; }
+.dcp-payoff .dcp-loan-controls .dcp-grid-2 { gap: 12px; }
+.dcp-payoff .dcp-loan-controls .input-label { font-size: 13px; }
+.dcp-payoff .dcp-loan-controls .dcp-hint { margin: 8px 0; }
+/* The site's global FAQ summary styling also reached the nested APR info icon,
+   adding a second plus sign and 62px of padding. Scope compact disclosure rows
+   here and restore the APR control's own dimensions (26 Oct, Max's screenshot). */
+.site-design .dcp-payoff .dcp-details { padding: 0 14px; margin: 10px 0; }
+.site-design .dcp-payoff .dcp-details > summary { font-size: 15px; line-height: 1.45; padding: 12px 0; min-height: 48px; }
+.site-design .dcp-payoff .dcp-row { font-size: 14px; line-height: 1.5; padding: 10px 0; gap: 16px; }
+.site-design .dcp-payoff .dcp-row > span { min-width: 0; }
+.site-design .dcp-payoff .dcp-row > span:last-child { flex: 0 0 46%; }
+.site-design .dcp-payoff .dcp-row:last-child { border: 0; }
+.site-design .dcp-payoff .apr-estimate { justify-content: flex-end; gap: 4px 7px; }
+.site-design .dcp-payoff .apr-number { font-size: 16px; }
+.site-design .dcp-payoff .apr-assumption { font-size: 12px; }
+.site-design .dcp-payoff .apr-info > summary { display: block; min-height: 24px; padding: 0; font-size: 18px; line-height: 24px; }
+.site-design .dcp-payoff .apr-info > summary::after { content: none; }
+.inquiry-message { margin: 24px 0; }
+.inquiry-message textarea { display: block; width: 100%; min-height: 104px; resize: vertical; }
+.inquiry-message .input-label span { font-weight: 400; }
+.site-design .equity-journey-layout.payoff-comparison-layout { grid-template-columns: minmax(0, 1fr); }
+.payoff-comparison-layout .dcp-panel { max-width: 980px; }
+.payoff-comparison-layout .journey-progress { position: static; padding: 0; }
+.payoff-comparison-layout .journey-progress ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.payoff-comparison-layout .journey-progress li:not(:last-child)::before,
+.payoff-comparison-layout .journey-guide { display: none; }
+.payoff-comparison-layout .journey-progress li { padding-bottom: 0; }
+.payoff-comparison-layout .journey-progress small { display: none; }
+@media (max-width: 700px) {
+  .dcp-payoff .dcp-primary-options { grid-template-columns: minmax(0, 1fr); }
+  .site-design .dcp-payoff .dcp-primary-options > .dcp-option { grid-template-rows: auto; }
+  .dcp-payoff .dcp-debt { grid-template-columns: minmax(0, 1fr) 24px; padding: 14px; gap: 12px; }
+  .dcp-payoff .dcp-debt > div { grid-column: 1 / -1; }
+  .dcp-payoff .dcp-debt > div:first-child { grid-column: 1; }
+  .dcp-payoff .dcp-debt > .dcp-remove { grid-column: 2; grid-row: 1; }
+  .dcp-payoff .dcp-option { padding: 20px; }
+  .dcp-payoff .journey-progress button { gap: 6px; min-width: 0; }
+  .dcp-payoff .journey-progress strong { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+  .payoff-comparison-layout .journey-progress ol { gap: 6px; }
+  .payoff-comparison-layout .journey-progress button { flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .payoff-comparison-layout .journey-progress strong { font-size: 11px; }
+}

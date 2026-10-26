@@ -377,6 +377,7 @@ describe('the first lead after the migration', () => {
     harness.gas.migrateLeadTabs();
     harness.gas.doPost({ postData: { contents: JSON.stringify({
       source: 'DebtConsolidation', email: 'new@example.com', state: 'TX', monthlySavings: -80, formId: 'debt-savings-calculator', _proxyKey: TEST_PROXY_KEY,
+      firstName:'Test', lastName:'Migration', phone:'7145550123', submissionId:'new-migration-test', propertyUse:'primary', propertyState:'TX', privacyAcknowledged:true, privacyVersion:'2026-10-13-v1',
     }) } });
 
     const tab = harness.tabs.get('Debt Consolidation')!;

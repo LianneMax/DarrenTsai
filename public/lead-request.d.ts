@@ -8,6 +8,7 @@ declare global {
       attribution: (formId: string, response?: Response) => Record<string, string>;
       reset: (formId: string) => void;
       begin: (formId: string) => void;
+      finishInquiry: (formId: string, response: Response) => boolean;
     };
   }
 }

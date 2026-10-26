@@ -145,5 +145,20 @@
   // Reopening a finished form is a new inquiry. Reopening an uncertain one is
   // recovery and must keep its ID, even when no form fields survived a reload.
   function begin(formId) { if (pending[formId] && pending[formId].confirmed) reset(formId); }
-  window.DTLead = { prepare: prepare, submit: submit, claimConversion: claimConversion, attribution: attribution, reset: reset, begin: begin };
+  // Static guides call this before success, identification or conversion. Use
+  // the frozen confirmed body, so a changed/hidden property input cannot select
+  // a different exit while the original request finishes.
+  function finishInquiry(formId, response) {
+    var record = receipts.get(response);
+    var area = window.DTServiceArea;
+    if (!record || !record.confirmed || !area || !area.ready()) throw new Error('The saved inquiry could not be confirmed.');
+    var data = JSON.parse(record.body);
+    if (!area.isCaptureInquiry(formId, data.source) || area.uses(formId).indexOf(data.propertyUse) < 0) throw new Error('Please refresh this form before sending.');
+    var result = area.check(data.propertyUse, data.propertyState, formId);
+    if (result === 'incomplete' || (record.disposition === 'sheet-only') !== (result === 'out-of-market')) throw new Error('The inquiry disposition could not be confirmed. Retry with the same details.');
+    if (record.disposition !== 'sheet-only') return false;
+    window.location.assign((data.propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/') + '#recorded');
+    return true;
+  }
+  window.DTLead = { prepare: prepare, submit: submit, claimConversion: claimConversion, attribution: attribution, reset: reset, begin: begin, finishInquiry: finishInquiry };
 })();

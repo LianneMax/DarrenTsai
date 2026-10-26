@@ -93,6 +93,7 @@ function view(over: Partial<AduPageView> = {}): AduPageView {
     purpose: '', setPurpose: noop, propertyUse: '', setPropertyUse: noop, errorMsg: null,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop, usState: '', setUsState: noop,
+    message: '', setMessage: noop,
     sending: false, submitted: false, submitLead: noop, openBooking: noop,
     ...over,
   };

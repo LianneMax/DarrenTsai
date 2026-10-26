@@ -312,7 +312,7 @@
     var reached = 0;
     var busy = false;
     var contactView = null;
-    var contact = { firstName: '', lastName: '', email: '', phone: '', privacy: false, smsInfo: false, smsMarketing: false };
+    var contact = { firstName: '', lastName: '', email: '', phone: '', message: '', privacy: false, smsInfo: false, smsMarketing: false };
     if (knownLead) {
       var names = (knownLead.name || '').split(/\s+/);
       contact.firstName = names.shift() || '';
@@ -436,8 +436,9 @@
       };
     }
     function stepContact() {
+      var note = answers.bookingGoal === 'not-sure' ? '' : '<label class="dt-book-field">Anything you’d like Darren to know? (optional)<textarea class="dt-book-situation" name="message" rows="3" maxlength="2000" aria-describedby="dt-book-message-help">' + esc(contact.message) + '</textarea></label><p id="dt-book-message-help" class="dt-book-note">Up to 2,000 characters. Please leave out account numbers, Social Security numbers and other sensitive details.</p>';
       draw(2, 'Contact details', 'Where should Darren reach you?', 'Your contact details stay here while you review your answers.', '<form novalidate><div class="dt-book-contact-details"><div class="dt-book-row"><label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(contact.firstName) + '"></label><label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(contact.lastName) + '"></label></div><label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(contact.email) + '"></label><label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required value="' + esc(contact.phone) + '"></label></div><div class="dt-book-consents" hidden>' +
-        '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
+        note + '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
         '<h3 class="dt-book-q">Text messages (optional)</h3>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
@@ -512,7 +513,9 @@
         smsConsentAt: new Date().toISOString(),
         timestamp: new Date().toISOString()
       };
-      if (answers.bookingGoal === 'not-sure') lead.message = answers.situation.trim();
+      var inquiryMessage = answers.bookingGoal === 'not-sure' ? answers.situation.trim() : contact.message.trim();
+      if (inquiryMessage.length > 2000) { busy = false; btn.disabled = false; setErr('Please keep your message within 2,000 characters.'); return; }
+      if (inquiryMessage || answers.bookingGoal === 'not-sure') lead.message = inquiryMessage;
       var attr = {};
       try { attr = window.DT && window.DT.attr ? window.DT.attr() : {}; } catch (e2) { attr = {}; }
       var body = {};

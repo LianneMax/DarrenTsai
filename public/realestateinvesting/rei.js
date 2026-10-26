@@ -52,7 +52,7 @@
   overlay.addEventListener('click', function (event) { if (event.target === overlay) close(); });
   next.addEventListener('click', function () {
     // Reuse the final submit's original validators; Continue never sends data.
-    if (step === 0 && !window.validateReiLeadDetails()) {
+    if (step === 0 && !window.validateReiLeadDetails(false)) {
       var invalid = steps[0].querySelector('.input-shell.error input,.input-shell.error button');
       if (invalid) invalid.focus();
       return;
