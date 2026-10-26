@@ -1115,7 +1115,11 @@ function hubspotFields(data) {
   if (!mapping || Array.isArray(mapping) || typeof mapping !== 'object') mapping = {};
   Object.keys(mapping).forEach(function (key) {
     const name = mapping[key];
-    if (typeof name !== 'string' || (!/^rdt_[a-z0-9_]+$/.test(name) && ['loan_amount', 'loan_type', 'property_use', 'lead_source_detail'].indexOf(name) < 0)) return;
+    // 27 Oct: the existing HubSpot Message property is multi-line text. Reuse
+    // that verified field rather than requiring property-creation permissions.
+    // Only the inquiry's message may map to this standard property; the live
+    // API form must declare it before the configuration is activated.
+    if (typeof name !== 'string' || (!/^rdt_[a-z0-9_]+$/.test(name) && ['loan_amount', 'loan_type', 'property_use', 'lead_source_detail'].indexOf(name) < 0 && !(key === 'message' && name === 'message'))) return;
     const value = hubspotDetailValue(data, key);
     if (/^sms.*Consent$/.test(key) && value !== true) return; // no new opt-in is not a subscription revocation
     add(name, typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
