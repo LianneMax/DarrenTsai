@@ -143,6 +143,36 @@
 
   var knownLead = readLead();
 
+  // Only the shared request runtime can remember a matching saved receipt.
+  // Recheck the CURRENT policy before reusing it on this page or another one.
+  // Identification alone, a guide click, or an uncertain save never qualifies.
+  function savedContinuation() {
+    var area = window.DTServiceArea;
+    var saved = window.DTLead && window.DTLead.savedInquiry ? window.DTLead.savedInquiry() : null;
+    if (!saved || !area || !area.ready() || !saved.privacyAcknowledged || saved.serviceAreaVersion !== area.version()) return null;
+    if (saved.formId !== FORM_ID && !area.isCaptureInquiry(saved.formId, saved.source)) return null;
+    var result = area.check(saved.propertyUse, saved.propertyState, saved.formId, saved.bookingGoal);
+    if (result === 'incomplete' || (saved.disposition === 'sheet-only') !== (result === 'out-of-market')) return null;
+    // Keep explicit non-state knockouts intact. Other accepted inquiry forms
+    // have their own server validation; do not ask their contact details twice.
+    if (saved.propertyType === 'mobile-land' || saved.mortgageCurrent === 'no' || saved.recentBankruptcyForeclosure === 'yes') return null;
+    return saved;
+  }
+  function refreshCallNumber(node) {
+    try {
+      if (window.DTConsent && window.DTConsent.isAllowed() && window.CallTrk && window.CallTrk.swap) window.CallTrk.swap(node);
+    } catch (e) { /* preserve a working call even if optional tracking fails */ }
+  }
+  function continueSaved(card) {
+    var saved = savedContinuation();
+    if (!saved) return false;
+    if (saved.disposition === 'sheet-only') { window.location.assign(outOfMarketPage(saved.propertyUse) + '#recorded'); return true; }
+    var inDialog = !!card.closest('.dt-book-overlay');
+    renderCalendar(card, saved, inDialog ? '<button type="button" class="dt-book-close" aria-label="Close booking"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>' : '');
+    if (inDialog) card.querySelector('.dt-book-close').onclick = close;
+    return true;
+  }
+
   function track(event, params) {
     try {
       if (window.DT && window.DT.track) window.DT.track(event, params);
@@ -439,7 +469,6 @@
       var note = answers.bookingGoal === 'not-sure' ? '' : '<label class="dt-book-field">Anything you’d like Darren to know? (optional)<textarea class="dt-book-situation" name="message" rows="3" maxlength="2000" aria-describedby="dt-book-message-help">' + esc(contact.message) + '</textarea></label><p id="dt-book-message-help" class="dt-book-note">Up to 2,000 characters. Please leave out account numbers, Social Security numbers and other sensitive details.</p>';
       draw(2, 'Contact details', 'Where should Darren reach you?', 'Your contact details stay here while you review your answers.', '<form novalidate><div class="dt-book-contact-details"><div class="dt-book-row"><label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(contact.firstName) + '"></label><label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(contact.lastName) + '"></label></div><label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(contact.email) + '"></label><label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required value="' + esc(contact.phone) + '"></label></div><div class="dt-book-consents" hidden>' +
         note + '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
-        '<h3 class="dt-book-q">Text messages (optional)</h3>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
         '<p class="dt-book-note dt-book-note-sms">Text messages are optional and not a condition of purchase or of submitting this form.</p>' +
@@ -610,23 +639,24 @@
    * (DTBooking.calendar). While BOOKING_URL is the placeholder, the Call button
    * and a plain "Darren has your details" stand in for it.
    */
-  function renderCalendar(card, lead, footer) {
+  function renderCalendar(card, lead, headerAction) {
     injectStyles();
     var call = '<a class="dt-book-call" href="' + PHONE_HREF + '"><span>Prefer to talk now? Call <span class="dt-book-nowrap">' + PHONE_DISPLAY + '</span></span></a>';
     if (!BOOKING_READY) {
-      card.innerHTML = '<h2 class="dt-book-title">You\'re all set, ' + esc(lead.firstName) + '</h2>' +
-        '<p class="dt-book-sub">Darren has your details and will call you to set a time.</p>' + call + (footer || '');
+      card.innerHTML = '<div class="dt-book-calendar-heading"><h2 class="dt-book-title">You\'re all set, ' + esc(lead.firstName) + '</h2>' + (headerAction || '') + '</div>' +
+        '<p class="dt-book-sub">Darren has your details and will call you to set a time.</p>' + call;
+      refreshCallNumber(card);
       return;
     }
     // Google's embed has no documented HubSpot-style prefill parameters.
     // Keep names and emails out of the third-party iframe URL.
     card.classList.add('dt-cal');
-    card.innerHTML = '<h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' +
+    card.innerHTML = '<div class="dt-book-calendar-heading"><h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' + (headerAction || '') + '</div>' +
       '<p class="dt-book-sub">Your request is saved. Choose a time for your 15-minute qualification call with Darren.</p>' +
       '<p class="dt-book-calendar-help dt-book-calendar-status" role="status">Your request is saved. Loading Google Calendar...</p>' +
       '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a qualification call with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
       '<p class="dt-book-calendar-help">Google Calendar will ask you to confirm your booking details. If the calendar does not load, open it in a new tab.</p>' +
-      '<a class="dt-book-calendar-link" href="' + esc(BOOKING_URL) + '" target="_blank" rel="noopener noreferrer">Open calendar in a new tab</a>' + call + (footer || '');
+      '<a class="dt-book-calendar-link" href="' + esc(BOOKING_URL) + '" target="_blank" rel="noopener noreferrer">Open calendar in a new tab</a>' + call;
     // The saved receipt and Google's network request are separate waits. Do
     // not prefetch the calendar while the visitor is still answering. A frame
     // load means only that Google responded, never an appointment confirmation.
@@ -636,14 +666,18 @@
       if (loading) loading.textContent = 'Choose a time below. You can also open the calendar in a new tab.';
     });
     track('booking_page_shown', { page_path: window.location.pathname });
+    refreshCallNumber(card);
   }
 
   /** For a page that ran the prequal itself: draw the calendar inline in `el`. */
   function calendar(el, lead) {
-    if (!el || !lead) return;
+    if (!el || !lead) return false;
+    var saved = savedContinuation();
+    if (!saved || saved.disposition === 'sheet-only') return false;
     el.classList.add('dt-book-inline');
     el.innerHTML = '<div class="dt-book-card"></div>';
-    renderCalendar(el.querySelector('.dt-book-card'), lead, '');
+    renderCalendar(el.querySelector('.dt-book-card'), saved, '');
+    return true;
   }
 
   function close() {
@@ -685,13 +719,25 @@
       if (inline.scrollIntoView) inline.scrollIntoView({ block: 'start', behavior: 'smooth' });
       return;
     }
+    // The completed equity/payoff page already has a calendar. Reuse its
+    // rendered frame too, rather than load another Google frame in a dialog.
+    var recap = document.querySelector('.dcp-recap-calendar .dt-book-card');
+    var existing = savedContinuation();
+    if (recap && existing && existing.disposition !== 'sheet-only') {
+      var title = recap.querySelector('.dt-book-title');
+      if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
+      if (recap.scrollIntoView) recap.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
     if (!window.DTServiceArea) { window.location.assign('/book/'); return; }
     injectStyles();
     lastFocus = document.activeElement;
     // Mobile booking closes its navigation drawer. Returning focus to that
     // now-hidden trigger strands keyboard users, so restore the visible menu.
     if (lastFocus && lastFocus.closest && lastFocus.closest('.nav-mobile-menu')) lastFocus = document.querySelector('.nav-hamburger') || lastFocus;
-    var resume = !!savedOverlay;
+    var continuation = savedContinuation();
+    if (continuation && continuation.disposition === 'sheet-only') { window.location.assign(outOfMarketPage(continuation.propertyUse) + '#recorded'); return; }
+    var resume = !!savedOverlay && !continuation;
     overlay = savedOverlay || document.createElement('div');
     savedOverlay = null;
     overlay.className = 'dt-book-overlay';
@@ -705,11 +751,12 @@
     document.addEventListener('keydown', onKey);
     document.body.appendChild(overlay);
     document.body.classList.add('dt-booking-open');
-    if (!resume) start(card, false);
+    if (!resume) window.DTServiceArea.whenReady(function () { if (!continueSaved(card)) start(card, false); }, function () { start(card, false); });
     window.setTimeout(function () {
       if (!overlay || !overlay.contains(card)) return;
       overlay.classList.add('dt-open');
-      var first = card.querySelector('.dt-book-panel .dt-book-title') || card.querySelector('button, select, input');
+      var first = card.querySelector('.dt-book-title') || card.querySelector('button, select, input');
+      if (first && first.classList.contains('dt-book-title')) first.setAttribute('tabindex', '-1');
       if (!overlay.contains(document.activeElement) && first && first.focus) first.focus();
     }, 10);
   }
@@ -724,7 +771,7 @@
     el.innerHTML = '<div class="dt-book-card"></div>';
     var card = el.querySelector('.dt-book-card');
     loadingCard(card);
-    start(card, true);
+    window.DTServiceArea.whenReady(function () { if (!continueSaved(card)) start(card, true); }, function () { start(card, true); });
   }
 
   /**

@@ -57,7 +57,10 @@ function prerenderHomeShell(): Plugin {
         configFile: false,
         logLevel: 'silent',
         appType: 'custom',
-        server: { middlewareMode: true, hmr: false, ws: false },
+        // This server renders one snapshot then closes. Watching the same
+        // OneDrive checkout as the dev server can stall SSR module loading on
+        // Windows; a build never needs filesystem change notifications.
+        server: { middlewareMode: true, hmr: false, ws: false, watch: null },
         optimizeDeps: { noDiscovery: true, include: [] },
         // configFile is off, so the build's define is passed again: the shells
         // render the same booking wording as the app.

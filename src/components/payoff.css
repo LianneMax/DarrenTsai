@@ -14,6 +14,7 @@
 }
 .site-design .dcp-payoff .dcp-option-title { min-height: 0; line-height: 24px; }
 .site-design .dcp-payoff .dcp-option-pay { font-size: 26px; line-height: 36px; }
+.site-design .dcp-payoff .dcp-option-pay small { margin-left: 5px; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .site-design .dcp-payoff .dcp-option-pay-text { font-size: 17px; }
 .site-design .dcp-payoff .dcp-option-scope { font-size: 13px; line-height: 20px; }
 .site-design .dcp-payoff .dcp-verdict { align-self: start; border-radius: 6px; font-size: 13px; line-height: 20px; }

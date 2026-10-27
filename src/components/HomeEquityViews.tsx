@@ -22,8 +22,8 @@ import ZipFeedback from './ZipFeedback';
  * available equity), "Your request has been received" (not "Darren has
  * reviewed"). Never approved, qualify or available credit.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { PHONE } from '../config';
+import { useEffect, type ReactNode } from 'react';
+import SavedLeadCalendar from './SavedLeadCalendar';
 import { formatCurrency } from '../utils/formatters';
 import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/emailSuggest';
 import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
@@ -313,17 +313,6 @@ export function EquityDeclined({ v }: { v: EquityPageView }) {
  * same events as every other booking.
  */
 export function EquityRecap({ v }: { v: EquityPageView }) {
-  const slot = useRef<HTMLDivElement>(null);
-  const [drawn, setDrawn] = useState(false);
-  useEffect(() => {
-    const booking = (window as Window & { DTBooking?: { calendar?: (el: Element, lead: object) => void } }).DTBooking;
-    if (slot.current && booking && typeof booking.calendar === 'function') {
-      booking.calendar(slot.current, { firstName: v.fname.trim(), lastName: v.lname.trim(), email: v.email.trim() });
-      setDrawn(true);
-    }
-    // Drawn once, for the lead that was saved.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   return (
     <div className="dcp-panel dcp-recap">
       <div className="success-check" role="img" aria-label="Success">✓</div>
@@ -338,13 +327,7 @@ export function EquityRecap({ v }: { v: EquityPageView }) {
         {v.preference && <Row label="Option of interest" value={v.preference} />}
       </div>
 
-      {/* booking-chooser.js owns this node's contents, so React leaves it empty. */}
-      <div ref={slot} className="dcp-recap-calendar" />
-      {!drawn && (
-        <div className="dcp-recap-actions">
-          <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="btn dcp-back">Call Darren {PHONE}</a>
-        </div>
-      )}
+      <SavedLeadCalendar firstName={v.fname} />
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>
     </div>
   );

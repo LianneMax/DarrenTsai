@@ -13,6 +13,40 @@
   var receipts = new window.WeakMap();
   var DRAFT_KEY = 'dt_pending_leads_v1';
   var DRAFT_TTL = 30 * 60 * 1000;
+  // 27 Oct: scheduling after a calculator save is a continuation, not another
+  // inquiry. Retain only a short-lived functional receipt and property context
+  // per tab, never debt figures, phone, email or the optional private message.
+  // A later outside-area save replaces the earlier receipt too, so it cannot
+  // inherit a calendar from a different property. This is not Ads storage.
+  var SAVED_KEY = 'dt_saved_inquiry_v1';
+  var savedInquiry = null;
+  try { savedInquiry = JSON.parse(window.sessionStorage.getItem(SAVED_KEY) || 'null'); } catch (e) { /* memory works without storage */ }
+  function expireSaved() {
+    var current = savedInquiry;
+    if (!current || !Number.isFinite(current.savedAt)) return;
+    window.setTimeout(function () {
+      if (savedInquiry !== current) return;
+      savedInquiry = null;
+      try { window.sessionStorage.removeItem(SAVED_KEY); } catch (e) { /* storage may be unavailable */ }
+    }, Math.max(0, DRAFT_TTL - (Date.now() - current.savedAt)));
+  }
+  expireSaved();
+  function rememberInquiry(record) {
+    var data = JSON.parse(record.body);
+    savedInquiry = { submissionId: record.submissionId, disposition: record.disposition,
+      savedAt: Date.now(), formId: data.formId, source: data.source,
+      firstName: data.firstName, propertyUse: data.propertyUse, propertyState: data.propertyState,
+      bookingGoal: data.bookingGoal, serviceAreaVersion: data.serviceAreaVersion,
+      privacyAcknowledged: data.privacyAcknowledged === true,
+      propertyType: data.propertyType, mortgageCurrent: data.mortgageCurrent,
+      recentBankruptcyForeclosure: data.recentBankruptcyForeclosure };
+    try { window.sessionStorage.setItem(SAVED_KEY, JSON.stringify(savedInquiry)); } catch (e) { /* functional in-memory continuation */ }
+    expireSaved();
+  }
+  function saved() {
+    if (!savedInquiry || !savedInquiry.submissionId || !Number.isFinite(savedInquiry.savedAt) || Date.now() - savedInquiry.savedAt < 0 || Date.now() - savedInquiry.savedAt >= DRAFT_TTL) return null;
+    return Object.assign({}, savedInquiry);
+  }
   function mayPersist() {
     try { return !!(window.DTConsent && window.DTConsent.isAllowed()); } catch (e) { return false; }
   }
@@ -116,6 +150,7 @@
         record.disposition = receipt.disposition === 'sheet-only' ? 'sheet-only' : '';
         record.confirmed = true;
         receipts.set(response, record);
+        rememberInquiry(record);
         persist();
         return response;
       }).catch(function (err) { error('receipt_invalid'); throw err; });
@@ -160,5 +195,5 @@
     window.location.assign((data.propertyUse === 'investment' ? '/out-of-market-dscr/' : '/out-of-market-primary/') + '#recorded');
     return true;
   }
-  window.DTLead = { prepare: prepare, submit: submit, claimConversion: claimConversion, attribution: attribution, reset: reset, begin: begin, finishInquiry: finishInquiry };
+  window.DTLead = { prepare: prepare, submit: submit, claimConversion: claimConversion, attribution: attribution, reset: reset, begin: begin, finishInquiry: finishInquiry, savedInquiry: saved };
 })();

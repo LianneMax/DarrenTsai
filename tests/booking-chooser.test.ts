@@ -30,7 +30,7 @@ const COMPLIANCE = readFileSync(resolve(__dirname, '../public/compliance.js'), '
 const POLICY = JSON.parse(readFileSync(resolve(__dirname, '../public/service-area-policy.json'), 'utf8'));
 const TEST_URL = 'https://calendar.google.com/calendar/appointments/schedules/test?gv=true';
 
-type Booking = { open: () => void; close: () => void; mount: (el: Element) => void; identify: (l: { name?: string; email?: string }) => void };
+type Booking = { open: () => void; close: () => void; mount: (el: Element) => void; calendar: (el: Element, lead: object) => boolean; identify: (l: { name?: string; email?: string }) => void };
 
 let booking: Booking;
 let track: ReturnType<typeof vi.fn>;
@@ -329,6 +329,9 @@ describe('step 3: save the lead, then the calendar', () => {
     booking.open();
     passSteps();
     fillContact({ privacy: false });
+    expect(card().textContent).not.toContain('Text messages (optional)');
+    expect(card().querySelector('input[name="smsInfo"]')).not.toBeNull();
+    expect(card().querySelector('input[name="smsMarketing"]')).not.toBeNull();
     await flush();
     expect(errText()).toMatch(/Privacy Policy/);
     expect(leadFetch).not.toHaveBeenCalled();
@@ -688,5 +691,79 @@ describe('acknowledged unsupported inquiry capture', () => {
     card().querySelector('iframe')!.dispatchEvent(new Event('load'));
     expect(card().querySelector('.dt-book-calendar-status')?.textContent).toMatch(/Choose a time/);
     expect(track.mock.calls.map(c=>c[0])).not.toContain('meeting_booked');
+  });
+});
+
+
+describe('saved inquiry continuation across every funnel', () => {
+  async function capture(formId = 'debt-savings-calculator', source = 'DebtConsolidation', extra = {}) {
+    return window.DTLead!.submit(formId, { formId, source, firstName: 'Ada', email: 'ada@example.com', phone: '7145550123',
+      propertyUse: formId.includes('dscr') ? 'investment' : 'primary', propertyState: 'CA',
+      privacyAcknowledged: true, serviceAreaVersion: POLICY.version, ...extra });
+  }
+  it.each(Object.entries(POLICY.inquiryForms))('%s continues without creating a second inquiry', async (formId, source) => {
+    await capture(formId, source);
+    booking.open();
+    expect(card().querySelector('iframe')).not.toBeNull();
+    expect(card().querySelector('form')).toBeNull();
+    expect(card().querySelector('button[aria-label="Close booking"]')).not.toBeNull();
+    expect(card().querySelector('.dt-book-calendar-heading button[aria-label="Close booking"]')).not.toBeNull();
+    booking.close(); booking.open();
+    expect(card().querySelector('iframe')).not.toBeNull();
+    expect(leadFetch).toHaveBeenCalledTimes(1);
+    expect(track.mock.calls.filter(c => c[0] === 'generate_lead')).toHaveLength(0);
+  });
+  it('continues on /book/ after a page reload without resubmitting', async () => {
+    await capture();
+    delete window.DTLead; new Function(REQUEST_SOURCE)();
+    Object.defineProperty(window, 'location', {configurable:true,value:{...window.location,pathname:'/book/'}});
+    const root = document.createElement('main'); root.id='dt-book-mount'; document.body.appendChild(root); booking.mount(root);
+    expect(root.querySelector('iframe')).not.toBeNull(); expect(leadFetch).toHaveBeenCalledTimes(1);
+    const stored = sessionStorage.getItem('dt_saved_inquiry_v1')!;
+    expect(stored).not.toContain('ada@example.com'); expect(stored).not.toContain('7145550123');
+  });
+  it('uses the submitted property context after moving to a different funnel', async () => {
+    await capture();
+    Object.defineProperty(window,'location',{configurable:true,value:{...window.location,pathname:'/dscr/'}});
+    booking.open(); expect(card().querySelector('iframe')).not.toBeNull(); expect(leadFetch).toHaveBeenCalledTimes(1);
+  });
+  it('reuses the recap iframe rather than loading a second calendar', async () => {
+    const recap=document.createElement('div'); recap.className='dcp-recap-calendar'; document.body.appendChild(recap);
+    expect(booking.calendar(recap,{firstName:'Ada'})).toBe(false);
+    await capture(); expect(booking.calendar(recap,{firstName:'Ada'})).toBe(true);
+    const frame=recap.querySelector('iframe'); booking.open();
+    expect(document.querySelector('.dt-book-overlay')).toBeNull();
+    expect(document.querySelectorAll('iframe')).toHaveLength(1);
+    expect(recap.querySelector('iframe')).toBe(frame); expect(leadFetch).toHaveBeenCalledTimes(1);
+  });
+  it('outside-area capture replaces an earlier supported receipt and blocks the calendar', async () => {
+    await capture();
+    leadFetch=vi.fn((_url, init)=>Promise.resolve(new Response(JSON.stringify({ok:true,receipt:'saved',submissionId:JSON.parse(init.body).submissionId,disposition:'sheet-only'}))));
+    await capture('debt-savings-calculator','DebtConsolidation',{propertyState:'CO'});
+    booking.open();
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(assign).toHaveBeenCalledWith('/out-of-market-primary/#recorded');
+    expect(leadFetch).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    {privacyAcknowledged:false}, {serviceAreaVersion:'old'}, {propertyState:'CO'},
+    {mortgageCurrent:'no'}, {recentBankruptcyForeclosure:'yes'}, {propertyType:'mobile-land'},
+    {source:'wrong'}
+  ])('does not skip screening for invalid or ineligible context %j', async extra => {
+    await capture('debt-savings-calculator','DebtConsolidation',extra); booking.open();
+    expect(card().querySelector('iframe')).toBeNull(); expect(card().querySelector('[data-q="bookingGoal"]')).not.toBeNull();
+  });
+  it('expires a saved continuation after 30 minutes', async () => {
+    await capture(); const now = Date.now(); const spy=vi.spyOn(Date,'now').mockReturnValue(now + 31 * 60000);
+    booking.open(); expect(card().querySelector('iframe')).toBeNull(); spy.mockRestore();
+  });
+  it('refreshes a newly rendered call number only with optional consent', async () => {
+    const swap=vi.fn((node:Element)=>{ const a=node.querySelector('a[href^="tel:"]'); if(a){a.setAttribute('href','tel:+17145550999');a.textContent='Call (714) 555-0999';} });
+    Object.assign(window,{DTConsent:{isAllowed:()=>true},CallTrk:{swap}});
+    await capture(); booking.open();
+    expect(card().querySelector('a[href="tel:+17145550999"]')?.textContent).toContain('(714) 555-0999');
+    expect(swap).toHaveBeenCalled();
+    delete (window as unknown as {CallTrk?:unknown}).CallTrk;
+    delete (window as unknown as {DTConsent?:unknown}).DTConsent;
   });
 });

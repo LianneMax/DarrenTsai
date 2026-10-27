@@ -15,8 +15,12 @@ body.dt-booking-open{overflow:hidden!important}
 .dt-book-brand strong{font-size:17px;font-weight:600}
 .dt-book-brand small{font-size:14px;color:#526676}
 .dt-book-duration{font-size:16px;color:#526676}
-.dt-book-header .dt-book-close{display:grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:8px;background:#f5f8fa;color:#223d55;cursor:pointer}
-.dt-book-header .dt-book-close:hover{background:#e8eef2}
+.dt-book-header .dt-book-close,.dt-book-calendar-heading .dt-book-close{display:grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:8px;background:#f5f8fa;color:#223d55;cursor:pointer}
+.dt-book-header .dt-book-close:hover,.dt-book-calendar-heading .dt-book-close:hover{background:#e8eef2}
+.dt-book-calendar-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 12px}
+.dt-book-calendar-heading .dt-book-title{min-width:0;margin:0;flex:1}
+.dt-book-calendar-heading .dt-book-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.dt-book-calendar-heading .dt-book-close:focus-visible{outline:3px solid #1a7f99;outline-offset:3px}
 .dt-book-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:32px;padding:28px;align-items:start}
 .dt-book-guide{position:sticky;top:108px;padding:12px 0}
 .dt-book-intro h1{font-size:32px;font-weight:600;line-height:1.12;letter-spacing:-.025em;margin:0 0 20px;color:#223d55}

@@ -21,7 +21,9 @@
   var GOALS = { equity: 'general', dscr: 'dscr', 'own-home': 'own-home', commercial: 'dscr', 'not-sure': 'own-home' };
   function context(id, goal) {
     if (goal) return Object.prototype.hasOwnProperty.call(GOALS, goal) ? GOALS[goal] : null;
-    var where = String(id) + ' ' + (window.location ? window.location.pathname : '');
+    // A saved inquiry may be continued from another page. Its explicit form
+    // context wins over that page's pathname (e.g. equity primary on /dscr/).
+    var where = id ? String(id) : (window.location ? window.location.pathname : '');
     if (where.indexOf('fha') >= 0) return 'fha';
     if (where.indexOf('dscr') >= 0) return 'dscr';
     return 'general';
@@ -109,11 +111,29 @@
     uses:function(id,goal){return policy?propertyUses(id,goal):[];},
     states:function(){return policy?policy.states.map(function(s){return [s,policy.labels[s]];}):[];},
     version:function(){return policy?policy.version:'';}};
+  // CallRail scans the initial page; React success states and booking panels
+  // add numbers later. Rescan only new call-bearing elements, never load the
+  // tracker ourselves, cache a pool number, or override the consent decision.
+  if (window.MutationObserver) new window.MutationObserver(function (records) {
+    if (typeof window === 'undefined' || !window.DTConsent || !window.DTConsent.isAllowed() || !window.CallTrk || !window.CallTrk.swap) return;
+    records.forEach(function (record) { Array.prototype.forEach.call(record.addedNodes, function (node) {
+      if (node.nodeType === 1 && (node.matches('a[href^="tel:"]') || node.querySelector('a[href^="tel:"]'))) {
+        try { window.CallTrk.swap(node); } catch (e) { /* a tracking failure must not break the call */ }
+      }
+    }); });
+  }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', function(e) {
     var anchor = e.target.closest && e.target.closest('a[href^="tel:"]');
     // Only the booking flow's own Call button, shown after the prequal passes,
     // dials straight through. Every other number on the site runs the prequal.
     if (!anchor || anchor.closest('.dt-book-overlay, .dt-book-inline')) return;
+    // A confirmed, currently eligible inquiry can call from any page without
+    // re-entering the booking questionnaire. Sheet-only receipts never pass.
+    var saved = window.DTLead && window.DTLead.savedInquiry ? window.DTLead.savedInquiry() : null;
+    if (saved && saved.disposition !== 'sheet-only' && saved.privacyAcknowledged && saved.serviceAreaVersion === (policy && policy.version)
+      && (saved.formId === 'booking-prequal' || isCaptureInquiry(saved.formId, saved.source))
+      && result(saved.propertyUse, saved.propertyState, saved.formId, saved.bookingGoal) === 'supported'
+      && saved.propertyType !== 'mobile-land' && saved.mortgageCurrent !== 'no' && saved.recentBankruptcyForeclosure !== 'yes') return;
     e.preventDefault();
     if (window.DTBooking) window.DTBooking.open();
   }, true);

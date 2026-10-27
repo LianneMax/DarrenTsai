@@ -24,7 +24,7 @@ import ComplianceDisclosure from './ComplianceDisclosure';
  */
 import { formatUsPhone } from '../utils/phone';
 import type { ReactNode } from 'react';
-import { PHONE } from '../config';
+import SavedLeadCalendar from './SavedLeadCalendar';
 import { formatCurrency, formatRate } from '../utils/formatters';
 import { savingsText, savingsRowText, RESULT_ROW_LABEL, BLENDED_ROW_LABEL } from '../utils/savingsText';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
@@ -325,7 +325,7 @@ function OptionCard({ id, title, v, payment, scope, save, children, unavailable 
   return (
     <div className={`dcp-option${selected ? ' dcp-option-selected' : ''}`}>
       <span className="dcp-option-title">{title}</span>
-      <span className="dcp-option-pay">{formatCurrency(payment)}</span>
+      <span className="dcp-option-pay">{formatCurrency(payment)}<small>/month</small></span>
       <span className="dcp-option-scope">{scope}</span>
       <Verdict save={save} />
       <div className="dcp-option-body">{children}</div>
@@ -335,7 +335,7 @@ function OptionCard({ id, title, v, payment, scope, save, children, unavailable 
         type="button"
         className="dcp-pick"
         aria-pressed={selected}
-        onClick={() => v.setChosen(selected ? '' : id)}
+        onClick={() => { v.setChosen(id); v.goStep(4); }}
       >
         {selected ? <><Check /> I want to discuss this</> : 'Discuss this option'}
       </button>
@@ -388,7 +388,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
 
         <div className="dcp-option dcp-option-today">
           <span className="dcp-option-title">Today</span>
-          <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}</span>
+          <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}<small>/month</small></span>
           <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : <>Mortgage P&amp;I + all debts</>}</span>
           <div className="dcp-option-body">
             {paidOff ? 'Keeps your separate debts.' : 'Keeps your current mortgage and separate debts.'}{' '}
@@ -589,6 +589,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
       <InquiryMessage id="payoff-inquiry-message" value={v.message} onChange={v.setMessage} />
 
       <ComplianceDisclosure formId="debt-savings-calculator" />
+      {v.sending && <p className="dcp-hint" role="status">Saving your details. Your calendar will open after the save is confirmed. This can take a few seconds.</p>}
       <StepNav
         back="← Back" onBack={() => v.goStep(3)}
         disabled={v.sending}
@@ -649,14 +650,7 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
         </div>
       </div>
 
-      {/* Booking lives here, after the save, so every booked call arrives with
-          its numbers. The button opens the inline chooser (booking-chooser.js),
-          which is what makes a completed booking countable. The call link is a
-          real tel: anchor, so CallRail swaps the number and phone_click fires. */}
-      <div className="dcp-recap-actions">
-        <button type="button" className="btn btn-teal" onClick={v.openBooking}>Schedule a Time</button>
-        <a href={`tel:${PHONE.replace(/\D/g, '')}`} className="btn dcp-back">Call Darren {PHONE}</a>
-      </div>
+      <SavedLeadCalendar firstName={v.fname} />
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>
     </div>
   );

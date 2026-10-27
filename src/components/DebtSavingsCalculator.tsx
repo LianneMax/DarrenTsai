@@ -92,7 +92,7 @@ function formatRateDate(iso: string): string {
  */
 export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?: string } = {}) {
   const [step, setStep] = useState(1);
-  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'debt-savings-calculator',error_code:'validation'}); setErrorMsg(message); };
+  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'debt-savings-calculator',error_code:'validation'}); setErrorKind('validation'); setErrorMsg(message); };
   useEffect(() => { window.DTLead?.begin('debt-savings-calculator'); }, []);
 
   // Current rates, fetched on mount. No deploy is involved: a new weekly PMMS
@@ -168,6 +168,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<'validation' | 'save'>('validation');
   // The button used to stay live through the request, so a double click wrote
   // two Sheet rows and created two Bonzo prospects for one person. LeadForm has
   // always guarded this; this was the one form that did not.
@@ -417,6 +418,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     // A dead email domain is the one failure the visitor can still fix, and the
     // only one where nothing was saved. Keep them here with the server's message.
     if (!result.ok && result.kind === 'fieldError') {
+      setErrorKind('validation');
       setErrorMsg(result.message);
       return;
     }
@@ -425,6 +427,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       // Say so plainly rather than showing a success state we cannot stand
       // behind. The lead endpoint alerts Max about an uncertain upstream save,
       // but the visitor should still know their details may not have landed.
+      setErrorKind('save');
       setErrorMsg(
         "We couldn't confirm whether your request was saved. " +
         `Retry here with the same details, or email ${EMAIL} for help.`
@@ -496,7 +499,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
                   <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
                 <h2 id="dsc-error-title" className="modal-title" style={{ fontSize: '1.15rem' }}>
-                  Something's missing
+                  {errorKind === 'save' ? 'Save not confirmed' : "Something's missing"}
                 </h2>
               </div>
               <button

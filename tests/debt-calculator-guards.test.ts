@@ -308,7 +308,10 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
     // card, where the lead is already saved.
     const step4 = VIEWS.slice(VIEWS.indexOf('export function StepContact('), VIEWS.indexOf('export function DebtRecap('));
     expect(step4).not.toContain('openBooking');
-    expect(VIEWS.slice(VIEWS.indexOf('export function DebtRecap('))).toContain('onClick={v.openBooking}');
+    // The saved recap now embeds the shared calendar instead of posting a
+    // second booking inquiry. The calendar is still absent from step 4.
+    expect(step4).not.toContain('<SavedLeadCalendar');
+    expect(VIEWS.slice(VIEWS.indexOf('export function DebtRecap('))).toContain('<SavedLeadCalendar firstName={v.fname}');
   });
 
   it('does not offer a text nobody answers', () => {
