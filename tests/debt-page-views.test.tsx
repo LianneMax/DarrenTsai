@@ -60,6 +60,17 @@ const filled = view({
 
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
 
+it('gives every home-step number an associated visible label', () => {
+  const host = document.createElement('div');
+  host.innerHTML = html(<StepHome v={view({ step: 2 })} />);
+  const inputs = Array.from(host.querySelectorAll('input'));
+  expect(inputs).toHaveLength(5);
+  expect(inputs.map(input => input.labels?.[0]?.textContent)).toEqual([
+    'Current Home Value', 'Current Mortgage Balance', 'Monthly Payment (P&I)',
+    'Mortgage Rate · optional', 'Remaining Term · optional',
+  ]);
+});
+
 describe('an untouched page shows no figures', () => {
   it('step 1 shows its totals only once there is a debt row, as the homepage does', () => {
     const page = html(<StepDebts v={view({ debts: [] })} />);

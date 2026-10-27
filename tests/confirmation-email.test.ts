@@ -32,12 +32,13 @@ describe('the email being sent today is untouched', () => {
   it('renders byte for byte what it did before the contexts existed', () => {
     // Hashes of the handler's output captured from the commit before this
     // change, for a lead with a message that needs escaping and one without.
-    // Re-captured 15 Oct 2026 when the calendar link moved from Calendly to
-    // /book/; a diff of the two renders showed that href as the only change.
+    // Re-captured 27 Oct 2026 after the visual release audit found that white
+    // CTA text on #219ebc failed normal-text contrast. Only the button's
+    // background changed to the site's #177f94; approved copy is retained.
     expect(sha(buildEmailHtml({ firstName: 'Sam', email: 's@example.com', message: 'Want to clear two <cards> & a loan' })))
-      .toBe('24ec58409f95754fa270c3a9abaf68d0008b7ea51d6165264a49e7425341d827');
+      .toBe('c654ddfaf7ff455d80d6a73e2526f8bd075363e9162edbda36b02af0ee4c1348');
     expect(sha(buildEmailHtml({ email: 's@example.com' })))
-      .toBe('364b10c540d831a750746b797ac7322a0426869093da0e4c70516c4eb7ce4365');
+      .toBe('2a8e4ef609b10badb44b2cb4609f747d2fe246431d1da227edec1f88a98c5de1');
   });
 
   it('is what a lead with no context, or one it has never heard of, gets', () => {

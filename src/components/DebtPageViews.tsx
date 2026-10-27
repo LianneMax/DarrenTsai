@@ -232,19 +232,19 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
       <div className="dcp-grid-2">
         <div>
-          <label className="input-label">Current Home Value</label>
+          <label className="input-label" htmlFor="payoff-home-value">Current Home Value</label>
           <div className="input-prefix-wrap">
             <span className="input-prefix">$</span>
-            <input type="number" className="form-input input-has-prefix"
+            <input id="payoff-home-value" type="number" className="form-input input-has-prefix"
               placeholder="e.g. 650,000" value={v.homeValue}
               onChange={(e) => v.setHomeValue(e.target.value)} />
           </div>
         </div>
         <div>
-          <label className="input-label">Current Mortgage Balance</label>
+          <label className="input-label" htmlFor="payoff-mortgage-balance">Current Mortgage Balance</label>
           <div className="input-prefix-wrap">
             <span className="input-prefix">$</span>
-            <input type="number" className="form-input input-has-prefix"
+            <input id="payoff-mortgage-balance" type="number" className="form-input input-has-prefix"
               placeholder="e.g. 350,000" value={v.mtgBalance}
               onChange={(e) => v.setMtgBalance(e.target.value)} />
           </div>
@@ -253,27 +253,27 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
       <div className="dcp-grid-3">
         <div>
-          <label className="input-label">Monthly Payment (P&amp;I)</label>
+          <label className="input-label" htmlFor="payoff-mortgage-payment">Monthly Payment (P&amp;I)</label>
           <div className="input-prefix-wrap">
             <span className="input-prefix">$</span>
-            <input type="number" className="form-input input-has-prefix"
+            <input id="payoff-mortgage-payment" type="number" className="form-input input-has-prefix"
               placeholder="e.g. 2,200" value={v.mtgPayment}
               onChange={(e) => v.setMtgPayment(e.target.value)} />
           </div>
         </div>
         <div>
-          <label className="input-label">Mortgage Rate <span className="dcp-optional">· optional</span></label>
+          <label className="input-label" htmlFor="payoff-mortgage-rate">Mortgage Rate <span className="dcp-optional">· optional</span></label>
           <div className="input-suffix-wrap">
-            <input type="number" step="0.1" className="form-input input-has-suffix"
+            <input id="payoff-mortgage-rate" type="number" step="0.1" className="form-input input-has-suffix"
               placeholder="e.g. 3.5" value={v.mtgRate}
               onChange={(e) => v.setMtgRate(e.target.value)} />
             <span className="input-suffix">%</span>
           </div>
         </div>
         <div>
-          <label className="input-label">Remaining Term <span className="dcp-optional">· optional</span></label>
+          <label className="input-label" htmlFor="payoff-mortgage-term">Remaining Term <span className="dcp-optional">· optional</span></label>
           <div className="input-suffix-wrap">
-            <input type="number" className="form-input input-has-suffix"
+            <input id="payoff-mortgage-term" type="number" className="form-input input-has-suffix"
               placeholder="e.g. 27" value={v.mtgTerm}
               onChange={(e) => v.setMtgTerm(e.target.value)} />
             <span className="input-suffix">yrs</span>

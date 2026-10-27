@@ -190,7 +190,7 @@ function buildEmailHtml(lead: { firstName?: string; dscr?: string }) {
     <td class="pad" align="left" style="padding:28px 40px 0 40px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td bgcolor="#219ebc" style="border-radius:8px;">
+          <td bgcolor="#177f94" style="border-radius:8px;">
             <a href="https://realdarrentsai.com/book/?utm_source=email&amp;utm_medium=guide&amp;utm_campaign=dscr-guide" style="display:block;padding:14px 30px;font-family:${FONT};font-size:15px;line-height:20px;mso-line-height-rule:exactly;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Book a 15-minute call</a>
           </td>
         </tr>
