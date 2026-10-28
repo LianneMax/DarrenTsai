@@ -703,13 +703,14 @@ describe('saved inquiry continuation across every funnel', () => {
   }
   it.each(Object.entries(POLICY.inquiryForms))('%s advances straight to an inline calendar exactly once', async (formId, source) => {
     const host = document.createElement('div');
-    host.innerHTML = '<h3>Request received</h3><button id="openLeadBookingBtn">Book a Call</button>';
+    host.innerHTML = '<div class="check">✓</div><h3>Request received</h3><button id="openLeadBookingBtn">Book a Call</button>';
     document.body.appendChild(host);
     booking.afterSubmit(host); expect(host.querySelector('iframe')).toBeNull();
     await capture(formId, source);
     booking.afterSubmit(host); booking.afterSubmit(host);
     expect(host.querySelectorAll('iframe')).toHaveLength(1);
     expect(host.querySelector<HTMLButtonElement>('#openLeadBookingBtn')!.hidden).toBe(true);
+    expect(host.querySelector<HTMLElement>('.check')!.hidden).toBe(true);
     expect(host.querySelector('form')).toBeNull();
     expect(leadFetch).toHaveBeenCalledTimes(1);
   });

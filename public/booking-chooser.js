@@ -711,7 +711,7 @@
     if (oldAction) oldAction.hidden = true;
     var heading = host.querySelector('h3');
     if (heading) heading.hidden = true;
-    var check = host.querySelector('.success-check');
+    var check = host.querySelector('.success-check, .check');
     if (check) check.hidden = true;
     var title = slot.querySelector('.dt-book-title');
     if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
