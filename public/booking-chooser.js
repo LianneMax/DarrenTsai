@@ -106,6 +106,7 @@
   var overlay = null;
   var savedOverlay = null;
   var lastFocus = null;
+  var bookingStylesUnavailable = false;
 
   /**
    * Who is booking, when we happen to know.
@@ -232,6 +233,9 @@
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     var css =
+      // The full questionnaire used to paint before its late stylesheet.
+      // Keep its content out of the first paint until that stylesheet lands.
+      '.dt-book-shell{visibility:hidden;}' +
       '.dt-book-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;' +
       'justify-content:center;padding:20px 16px;background:rgba(15,32,45,.55);opacity:0;transition:opacity .15s ease;' +
       'overflow-y:auto;}' +
@@ -292,6 +296,14 @@
     document.head.appendChild(style);
     var sheet = document.querySelector('link[href="/booking-chooser.css"]') || document.createElement('link');
     sheet.rel = 'stylesheet'; sheet.href = '/booking-chooser.css';
+    sheet.addEventListener('error', function () {
+      bookingStylesUnavailable = true;
+      var shells = document.querySelectorAll('.dt-book-shell');
+      for (var i = 0; i < shells.length; i++) {
+        shells[i].textContent = 'The booking display could not load. Refresh this page to try again.';
+        shells[i].style.visibility = 'visible';
+      }
+    });
     document.head.appendChild(sheet);
   }
 
@@ -333,6 +345,10 @@
    * and only decides what Close means.
    */
   function start(card, inline) {
+    if (bookingStylesUnavailable) {
+      card.textContent = 'The booking display could not load. Refresh this page to try again.';
+      return;
+    }
     if (window.DTLead) window.DTLead.begin(FORM_ID);
     card.setAttribute('data-dt-form', FORM_ID);
     var answers = newAnswers();
@@ -680,6 +696,28 @@
     return true;
   }
 
+  /** Every completed capture advances to scheduling, without another opt-in. */
+  function afterSubmit(host) {
+    if (!host || host.querySelector('.dcp-recap-calendar')) return;
+    try {
+    var slot = document.createElement('div');
+    slot.className = 'dcp-recap-calendar';
+    if (!calendar(slot, {})) return;
+    host.insertBefore(slot, host.firstChild);
+    host.classList.add('dt-calendar-success');
+    // Keep the original recovery action if a saved receipt cannot be reused.
+    // Only a validated, supported receipt may replace the legacy success CTA.
+    var oldAction = host.querySelector('#openLeadBookingBtn, #openSuccessBookingBtn');
+    if (oldAction) oldAction.hidden = true;
+    var heading = host.querySelector('h3');
+    if (heading) heading.hidden = true;
+    var check = host.querySelector('.success-check');
+    if (check) check.hidden = true;
+    var title = slot.querySelector('.dt-book-title');
+    if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
+    } catch (e) { /* Scheduling display must never turn a confirmed save into a submission error. */ }
+  }
+
   function close() {
     if (!overlay) return;
     var node = overlay;
@@ -803,5 +841,9 @@
 
   // preload is kept so existing callers do not break; nothing is worth
   // fetching before the prequal passes.
-  window.DTBooking = { open: open, close: close, mount: mount, calendar: calendar, preload: function () {}, identify: identify };
+  window.DTBooking = { open: open, close: close, mount: mount, calendar: calendar, afterSubmit: afterSubmit, preload: function () {}, identify: identify };
+  // Load the small local stylesheet before the visitor reaches a booking CTA.
+  // This has no tracking or third-party request and works after rejection too.
+  injectStyles();
+  window.dispatchEvent(new Event('dt:booking-ready'));
 })();

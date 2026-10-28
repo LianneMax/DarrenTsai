@@ -1840,6 +1840,7 @@
       } catch (e) { /* never let a convenience break a saved lead */ }
       modalForm.classList.add('hide');
       modalSuccess.classList.add('show');
+      if (window.DTBooking && window.DTBooking.afterSubmit) window.DTBooking.afterSubmit(modalSuccess);
       const successHeading = modalSuccess.querySelector('h3');
       successHeading.setAttribute('tabindex', '-1');
       successHeading.focus();

@@ -14,7 +14,7 @@
   var choice = null;
   var storageUnavailable = false;
   var waiting = [];
-  var panel, manage, toggle, previousFocus;
+  var panel, previousFocus;
   try {
     // Reject reloads to stop already-loaded vendors. If preferences cannot be
     // saved, default off so that reload cannot silently enable tracking again.
@@ -97,7 +97,6 @@
   function show(focusChoice) {
     previousFocus = document.activeElement;
     panel.hidden = false;
-    manage.hidden = true;
     panel.querySelector('.dt-cookie-reload-note').hidden = !allowed();
     if (focusChoice !== false) panel.querySelector('button:not(:disabled)').focus();
   }
@@ -110,17 +109,15 @@
     panel = document.createElement('section');
     panel.className = 'dt-cookie-panel'; panel.hidden = true;
     panel.setAttribute('aria-label', 'Cookie preferences');
-    panel.innerHTML = '<h2>Your privacy, your choice.</h2><p>With your permission, Google, HubSpot and CallRail help us measure visits, ads and calls. Optional analytics and marketing stay off until you accept. Calculators and forms work either way.</p><p class="dt-cookie-reload-note" hidden>Turning tracking off reloads this page. Submit any completed form first.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Accept optional</button><button type="button" data-choice="reject">Reject optional</button><button type="button" data-choice="manage">Manage preferences</button></div><div class="dt-cookie-manage" hidden><label><input type="checkbox"> Allow optional analytics and marketing</label><p>Necessary preferences stay on. You can change your choice from the footer at any time.</p><button type="button" data-choice="save">Save preferences</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
+    panel.innerHTML = '<h2>Your privacy, your choice.</h2><p>With your permission, Google, HubSpot and CallRail help us measure visits, ads and calls. Optional analytics and marketing stay off until you accept. Calculators and forms work either way.</p><p class="dt-cookie-reload-note" hidden>Turning tracking off reloads this page. Submit any completed form first.</p><div class="dt-cookie-actions"><button type="button" data-choice="accept">Accept</button><button type="button" data-choice="reject">Reject</button></div><a href="/privacy-policy/">Privacy policy</a><button type="button" class="dt-cookie-close" aria-label="Close cookie preferences">×</button>';
     document.body.appendChild(panel);
-    manage = panel.querySelector('.dt-cookie-manage'); toggle = manage.querySelector('input');
-    toggle.checked = allowed(); toggle.disabled = gpc;
     if (storageUnavailable) {
       var storageNotice = document.createElement('p');
       storageNotice.textContent = 'Your browser cannot save preferences, so optional tracking starts off.';
       panel.insertBefore(storageNotice, panel.querySelector('.dt-cookie-actions'));
     }
     if (gpc) {
-      var notice = document.createElement('p'); notice.textContent = 'Your Global Privacy Control signal keeps optional tracking off.'; manage.appendChild(notice);
+      var notice = document.createElement('p'); notice.textContent = 'Your Global Privacy Control signal keeps optional tracking off.'; panel.insertBefore(notice, panel.querySelector('.dt-cookie-actions'));
       panel.querySelector('[data-choice="accept"]').disabled = true;
     }
     panel.addEventListener('click', function (event) {
@@ -129,8 +126,6 @@
       var action = button.getAttribute('data-choice');
       if (action === 'accept') save(true);
       else if (action === 'reject') save(false);
-      else if (action === 'save') save(toggle.checked);
-      else if (action === 'manage') { manage.hidden = false; toggle.checked = allowed(); toggle.focus(); }
       else close();
     });
     panel.addEventListener('keydown', function (event) { if (event.key === 'Escape') close(); });

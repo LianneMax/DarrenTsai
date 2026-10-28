@@ -24,6 +24,8 @@ import ComplianceDisclosure from './ComplianceDisclosure';
  */
 import { formatUsPhone } from '../utils/phone';
 import type { ReactNode } from 'react';
+import { serviceArea } from '../utils/serviceArea';
+import { BOOKING_CALENDAR_READY } from '../utils/booking';
 import SavedLeadCalendar from './SavedLeadCalendar';
 import { formatCurrency, formatRate } from '../utils/formatters';
 import { savingsText, savingsRowText, RESULT_ROW_LABEL, BLENDED_ROW_LABEL } from '../utils/savingsText';
@@ -68,6 +70,8 @@ export interface DebtPageView {
   balanceGiven: boolean;
 
   rate30: number;
+  refiTerm: '30' | 'same'; setRefiTerm: (term: '30' | 'same') => void;
+  aprFees: { heloan: string; refi: string }; setAprFee: (option: 'heloan' | 'refi', fees: string) => void;
   todayTotal: number;
   newLoan: number;
   refiPmt: number;
@@ -299,245 +303,126 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
 // ─── Step 3: comparison ───────────────────────────────────────────────────────
 
-function OptionCard({ id, title, v, payment, scope, save, children, unavailable }: {
-  id: Exclude<DebtOption, ''>;
-  title: string;
-  v: DebtPageView;
-  /** Null when the option cannot be priced yet. */
-  payment: number | null;
-  scope: string;
-  save: number;
-  children: ReactNode;
-  unavailable?: ReactNode;
+function OptionCard({ id, title, v, payment, scope, save, children, controls, unavailable, action }: {
+  id: Exclude<DebtOption, ''>; title: string; v: DebtPageView;
+  payment: number | null; scope: string; save: number;
+  children: ReactNode; controls?: ReactNode; unavailable?: ReactNode; action: string;
 }) {
   const selected = v.chosen === id;
-  if (payment === null) {
-    return (
-      <div className="dcp-option dcp-option-wait">
-        <span className="dcp-option-title">{title}</span>
-        <span className="dcp-option-pay dcp-option-pay-text">{id === 'heloan' && v.hasHome && v.heloanAmt <= 0 ? 'No room at these figures' : id === 'refiSame' ? 'Term needed' : 'Choose assumptions'}</span>
-        <span className="dcp-option-scope">Monthly payment not estimated</span>
-        <span className="dcp-verdict">Payment difference pending</span>
-        <div className="dcp-option-body">{unavailable}</div>
-      </div>
-    );
-  }
-  return (
-    <div className={`dcp-option${selected ? ' dcp-option-selected' : ''}`}>
-      <span className="dcp-option-title">{title}</span>
-      <span className="dcp-option-pay">{formatCurrency(payment)}<small>/month</small></span>
-      <span className="dcp-option-scope">{scope}</span>
-      <Verdict save={save} />
-      <div className="dcp-option-body">{children}</div>
-      {/* The visitor chooses the discussion. The snapshot records intent,
-          rather than a qualified loan program. */}
-      <button
-        type="button"
-        className="dcp-pick"
-        aria-pressed={selected}
-        onClick={() => { v.setChosen(id); v.goStep(4); }}
-      >
-        {selected ? <><Check /> I want to discuss this</> : 'Discuss this option'}
-      </button>
-    </div>
-  );
+  return <div className={`dcp-option${payment === null ? ' dcp-option-wait' : ''}${selected ? ' dcp-option-selected' : ''}`}>
+    <span className="dcp-option-title">{title}</span>
+    <span className={`dcp-option-pay${payment === null ? ' dcp-option-pay-text' : ''}`}>
+      {payment === null ? (id === 'heloan' && v.hasHome && v.heloanAmt <= 0 ? 'No room at these figures' : id === 'refiSame' ? 'Term needed' : id === 'heloan' ? 'Choose assumptions' : 'Rate unavailable') : <>{formatCurrency(payment)}<small>/month</small></>}
+    </span>
+    <span className="dcp-option-scope">{scope}</span>
+    {payment === null ? <span className="dcp-verdict">Payment difference pending</span> : <Verdict save={save} />}
+    <div className="dcp-option-controls">{controls}</div>
+    <div className="dcp-option-body">{payment === null ? unavailable : children}</div>
+    <button type="button" className="dcp-pick" aria-pressed={selected}
+      onClick={() => { v.setChosen(id); v.goStep(4); }}>{action} <Arrow /></button>
+  </div>;
 }
 
 export function StepCompare({ v }: { v: DebtPageView }) {
-  const rateChange = v.mr > 0
-    ? `Rate: ${v.mr.toFixed(2)}% to about ${v.rate30.toFixed(2)}%.`
-    : `New rate: about ${v.rate30.toFixed(2)}%.`;
-  // The home equity loan is capped at 85% combined loan-to-value, so it may not
-  // reach the whole of the debt, or any of it. Said on its card, because the
-  // copy above otherwise claims every option clears the same amount.
-  //
-  // `heloanNoRoom` is its own case. With the mortgage already at 85% of the
-  // value or more, heloanAmt is 0, so no tier or term can price it, and the card
-  // used to keep asking for a credit range the visitor had already picked.
+  // A term toggle changes the illustration, not the visitor's expressed intent.
+  // Only Discuss records refi/refiSame; the existing snapshot retains both calculations.
+  const same = v.refiTerm === 'same';
+  const refiYears = same ? v.sameTermYears : 30;
+  const refiPayment = same ? v.refiSameTermPmt : v.refiPmt;
+  const refiDifference = same ? v.refiSameTermSave : v.refiSave;
   const heloanNoRoom = v.hasHome && v.heloanAmt <= 0;
   const heloanShort = v.heloanAmt > 0 && v.heloanAmt < v.totBal;
-  // A paid-off home (balance 0): nothing to replace, keep or keep the date of.
   const paidOff = v.mb === 0;
-  // Past 80% of the home's value, many lenders will not do a cash-out refinance.
-  // Said on both refi cards; the figure itself is not capped (Max, 10 Oct).
   const refiOverLimit = v.refiLtv > CASH_OUT_LIMIT
-    ? <> That is a new loan of about {Math.round(v.refiLtv)}% of your home&apos;s value; many lenders
-        cap a cash-out refinance at {CASH_OUT_LIMIT}%. Darren can tell you what may be possible.</>
-    : null;
-
-  return (
-    <div className="dcp-panel">
-      <h2 className="dcp-h2">Your Side-by-Side Comparison</h2>
-
-      <div className="dcp-note">
-        <h3>Compare monthly relief and repayment tradeoffs.</h3>
-        <p>
-          {heloanShort || heloanNoRoom
-            ? <>The refinance options pay off all {formatCurrency(v.totBal)} of your debts. </>
-            : <>Compare options for your {formatCurrency(v.totBal)} of debts. </>}
-          Compare the combined mortgage P&amp;I and debt payments. Taxes, insurance, HOA and closing
-          costs are excluded.
-        </p>
-        <p>
-          <strong>A lower monthly payment is not a calculation of total savings.</strong> This tool
-          does not work out which option costs less over its full life.
-        </p>
-      </div>
-
-      {v.rateBadge}
-
-        <div className="dcp-option dcp-option-today">
-          <span className="dcp-option-title">Today</span>
-          <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}<small>/month</small></span>
-          <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : <>Mortgage P&amp;I + all debts</>}</span>
-          <div className="dcp-option-body">
-            {paidOff ? 'Keeps your separate debts.' : 'Keeps your current mortgage and separate debts.'}{' '}
-            Debt payoff dates depend on your existing repayment plans.
-          </div>
-        </div>
-
-      {!heloanNoRoom && <div className="dcp-loan-controls">
-        <h3>Fixed home equity loan assumptions</h3>
-        <div className="dcp-grid-2">
-          <div>
-            <label className="input-label" htmlFor="heloan-tier">Credit range</label>
-            <CustomSelect id="heloan-tier" value={v.heloanTier} options={HELOAN_TIERS}
-              onChange={v.setHeloanTier} placeholder="Select range…" />
-          </div>
-          <div>
-            <label className="input-label" htmlFor="heloan-term">Loan term</label>
-            <CustomSelect id="heloan-term" value={v.heloanTerm} options={HELOAN_TERMS}
-              onChange={v.setHeloanTerm} placeholder="Select term…" />
-          </div>
-        </div>
-        <p className="dcp-hint">See how different assumptions change the estimate. A selected range is not a credit check.</p>
-      </div>}
-
-      <div className="dcp-options dcp-primary-options">
-        {/* The line-size illustration is not monthly pricing. Do not put its
-            amount into a savings verdict or treat 85% as a lender offer. */}
-        <div className={`dcp-option dcp-option-heloc${v.chosen === 'heloc' ? ' dcp-option-selected' : ''}`}>
-          <span className="dcp-option-title">HELOC</span>
-          <span className={`dcp-option-pay${v.helocRoom === null ? ' dcp-option-pay-text' : ''}`}>{v.helocRoom === null ? 'Add home details' : formatCurrency(v.helocRoom)}</span>
-          <span className="dcp-option-scope">Illustrative borrowing room<br />Not a monthly payment</span>
-          <span className="dcp-verdict">Example at {COMMON_CLTV_LIMIT}% combined loan-to-value</span>
-          <div className="dcp-option-body">
-            {v.helocRoom === null ? 'Enter your home value and mortgage details to see an example.'
-              : <>{COMMON_CLTV_LIMIT}% of {formatCurrency(v.hv)}, less {formatCurrency(v.mb)} owed.
-                {v.helocRoom === 0 && <> No borrowing room at this assumption.</>} Other property liens reduce this amount. Illustration only; lender limits and eligibility vary.</>}
-            <p>{paidOff ? 'No mortgage to replace.' : 'Keeps your mortgage.'} The payment depends on your draw, rate and repayment terms.</p>
-          </div>
-          <button type="button" className="dcp-pick" onClick={() => {
-            if (v.helocRoom === null) { v.goStep(2); return; }
-            v.setChosen('heloc'); v.goStep(4);
-          }}>{v.helocRoom === null ? 'Add home details' : 'Discuss a HELOC'} <Arrow /></button>
-        </div>
-
-        <OptionCard id="heloan" title="Fixed home equity loan" v={v}
-          payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
-          scope={heloanShort
-            ? (paidOff ? 'HELOAN + remaining debts' : 'Mortgage + HELOAN + remaining debts')
-            : (paidOff ? 'HELOAN, the only loan on the home' : 'Combined mortgage + HELOAN')}
-          save={v.heloanSave}
-          unavailable={heloanNoRoom
-            ? <>At these numbers there is no room under the 85% combined loan-to-value limit,
-                so a home equity loan cannot be priced. Darren can look at what else may work.</>
-            // A HELOAN rate is a credit-score question and the tiers span five
-            // points. A price before the visitor has said is a quote for a
-            // different person.
-            : <>Pick your credit range and a term above to price this option.</>
-          }>
-          {paidOff
-            ? <>No mortgage to keep. </>
-            : <>Mortgage: kept{v.mr > 0 ? ` at ${v.mr.toFixed(2)}%` : ''}
-              {v.mt > 0 ? ` with ${years(v.mt)} remaining` : ''}. </>}
-          New loan: {v.tierRate.toFixed(2)}% over {years(v.tierYears)}.
-          {heloanShort && (
-            <> Limited to {formatCurrency(v.heloanAmt)} by an 85% combined loan-to-value, which is
-              less than your {formatCurrency(v.totBal)} in debts. The rest stays with its current
-              lenders, about {formatCurrency(v.leftoverPmt)}/mo, and is included in the payment above.</>
-          )}
-        </OptionCard>
-        <OptionCard id="refi" title="Est. Cash-Out Refi" v={v}
-          payment={v.refiPmt > 0 ? v.refiPmt : null}
-          scope="Estimated P&I · new 30YR fixed" save={v.refiSave}>
-          {paidOff
-            ? <>New mortgage of {formatCurrency(v.newLoan)} for your debts, about {v.rate30.toFixed(2)}% over 30 years.</>
-            : <>Mortgage: replaced. {rateChange} Repayment: new 30 years
-              {v.yearsAdded > 0 ? `, about ${years(v.yearsAdded)} longer.` : '.'}</>}
-          {refiOverLimit}
-        </OptionCard>
-
-        <OptionCard id="refiSame" title="Refi, Same Payoff Date" v={v}
-          payment={v.refiSameTermPmt > 0 ? v.refiSameTermPmt : null}
-          scope={`Estimated P&I · new ${v.sameTermYears}YR fixed`} save={v.refiSameTermSave}
-          unavailable={paidOff
-            ? <>With no mortgage there is no payoff date to keep, so this option does not apply.</>
-            : <>
-              Add your remaining term to see a refinance that keeps your current payoff date.
-              <button type="button" className="dcp-link" onClick={() => v.goStep(2)}>Add mortgage details</button>
-            </>
-          }>
-          Mortgage: replaced. {rateChange} Repayment: about {years(v.sameTermYears)}, keeping your
-          current payoff date.
-          {refiOverLimit}
-        </OptionCard>
-
-      </div>
-
-      <div className="dcp-note">
-        <h3>Before choosing, check the full cost.</h3>
-        <p>
-          Compare closing costs, interest over time and when each debt is paid off. A refinance
-          changes the rate on your entire mortgage. A HELOAN preserves it but adds a separate
-          secured loan. Debt previously unsecured becomes secured by your home.
-        </p>
-      </div>
-
-      <details className="dcp-details">
-        <summary>Cash-out refinance calculation details</summary>
-        <Row label="New Loan Amount" value={v.newLoan > 0 ? formatCurrency(v.newLoan) : '—'} />
-        <Row label="Rate (30YR fixed)" value={formatRate(v.rate30)} />
-        <Row label="Estimated APR" value={<AprEstimate principal={v.newLoan} rate={v.rate30} years={30} />} />
-        <Row label="Monthly P&I Payment" value={v.refiPmt > 0 ? formatCurrency(v.refiPmt) : '—'} />
-        <Row strong label={RESULT_ROW_LABEL} value={v.newLoan > 0 ? savingsRowText(v.refiSave) : '—'} />
-      </details>
-
-      <details className="dcp-details">
-        <summary>Fixed home equity loan calculation details</summary>
-        <Row label="HELOAN Amount" value={v.heloanAmt > 0 ? formatCurrency(v.heloanAmt) : '—'} />
-        <Row label="HELOAN Rate / Term"
-          value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
-        <Row label="Estimated APR" value={<AprEstimate principal={v.heloanPriced ? v.heloanAmt : 0} rate={v.tierRate} years={v.tierYears} />} />
-        <Row label="HELOAN Monthly Payment" value={v.heloanPmt > 0 ? formatCurrency(v.heloanPmt) : '—'} />
-        <Row label="Existing Mortgage Payment" value={v.mp > 0 ? formatCurrency(v.mp) : '—'} />
-        <Row label="Illustrative CLTV" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
-        {/* A verdict needs a rate: nothing is said until a tier and a term are chosen. */}
-        <Row strong label={BLENDED_ROW_LABEL}
-          value={v.heloanPriced && v.heloanPmt > 0 ? savingsRowText(v.heloanSave) : '—'} />
-      </details>
-
-      <p id="dsc-cost-assumptions" className="dcp-caption">
-        <strong>Cost assumptions:</strong> payments show principal and interest only, excluding taxes,
-        insurance and fees. Estimated APR assumes $0 upfront finance charges unless you enter them
-        using the info icon. Actual costs and APR require a lender's Loan Estimate.
-      </p>
-      <p className="dcp-caption">
-        Lower monthly payments do not necessarily mean lower total borrowing costs. Paying off
-        unsecured debt with a loan secured by your home can put your home at risk.
-      </p>
-
-      <StepNav
-        back="← Back" onBack={() => v.goStep(2)}
-        next={<>Have Darren Compare Full Costs <Arrow /></>} onNext={() => v.goStep(4)}
-      />
+    ? <>That is a new loan of about {Math.round(v.refiLtv)}% of your home&apos;s value; many lenders cap a cash-out refinance at {CASH_OUT_LIMIT}%. Darren can review what may be possible.</> : null;
+  return <div className="dcp-panel">
+    <h2 className="dcp-h2">Your Side-by-Side Comparison</h2>
+    <div className="dcp-option dcp-option-today">
+      <span className="dcp-option-title">Today</span>
+      <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}<small>/month</small></span>
+      <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : 'Mortgage P&I + all debts'}</span>
     </div>
-  );
+    <p className="dcp-comparison-note">Compare your combined monthly payments. Taxes, insurance, HOA and closing costs are excluded; your actual obligation will be greater.</p>
+    <p className="dcp-comparison-note"><strong>A lower monthly payment is not a calculation of total savings.</strong> A loan secured by your home can put your home at risk.</p>
+    {v.rateBadge}
+    <div className="dcp-options dcp-primary-options">
+      <div className={`dcp-option dcp-option-heloc${v.chosen === 'heloc' ? ' dcp-option-selected' : ''}`}>
+        <span className="dcp-option-title">HELOC</span>
+        <span className={`dcp-option-pay${v.helocRoom === null ? ' dcp-option-pay-text' : ''}`}>{v.helocRoom === null ? 'Add home details' : formatCurrency(v.helocRoom)}</span>
+        <span className="dcp-option-scope">Illustrative borrowing room<br />Not a monthly payment</span>
+        <span className="dcp-verdict">Example at {COMMON_CLTV_LIMIT}% combined loan-to-value</span>
+        <div className="dcp-option-controls"><p>{paidOff ? 'No mortgage to replace.' : 'Keeps your mortgage.'}<br />Usually a variable rate.</p></div>
+        <div className="dcp-option-body">
+          <p>Monthly payment needs a draw amount, rate and repayment terms.</p>
+          <details className="dcp-card-details"><summary>How this amount is estimated</summary>
+            <p>{v.helocRoom === null ? 'Enter your home value and mortgage details to see an example.' : <>{COMMON_CLTV_LIMIT}% of {formatCurrency(v.hv)}, less {formatCurrency(v.mb)} owed. {v.helocRoom === 0 && 'No borrowing room at this assumption. '}Other property liens reduce this amount. Illustration only; lender limits and eligibility vary.</>}</p>
+          </details>
+        </div>
+        <button type="button" className="dcp-pick" aria-pressed={v.chosen === 'heloc'} onClick={() => {
+          if (v.helocRoom === null) { v.goStep(2); return; }
+          v.setChosen('heloc'); v.goStep(4);
+        }}>{v.helocRoom === null ? 'Add home details' : 'Discuss a HELOC'} <Arrow /></button>
+      </div>
+      <OptionCard id="heloan" title="Fixed home equity loan" v={v}
+        payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
+        scope={heloanShort ? (paidOff ? 'HELOAN + remaining debts' : 'Mortgage + HELOAN + remaining debts') : (paidOff ? 'HELOAN, the only loan on the home' : 'Combined mortgage + HELOAN')}
+        save={v.heloanSave} action="Discuss equity loan"
+        controls={!heloanNoRoom && <div className="dcp-loan-controls">
+          <label className="input-label" htmlFor="heloan-tier">Credit range</label>
+          <CustomSelect id="heloan-tier" value={v.heloanTier} options={HELOAN_TIERS} onChange={v.setHeloanTier} placeholder="Select range…" />
+          <label className="input-label" htmlFor="heloan-term">Loan term</label>
+          <CustomSelect id="heloan-term" value={v.heloanTerm} options={HELOAN_TERMS} onChange={v.setHeloanTerm} placeholder="Select term…" />
+        </div>}
+        unavailable={heloanNoRoom ? <>At these numbers there is no room under the 85% combined loan-to-value limit. Darren can review alternatives.</> : <>Pick your credit range and a term to estimate this option. A selected range is not a credit check.</>}>
+        <p>{paidOff ? 'No mortgage to keep.' : 'Keeps your mortgage.'} New loan: {formatCurrency(v.heloanPmt)}/month for {years(v.tierYears)} at {formatRate(v.tierRate)} fixed.</p>
+        <div className="dcp-card-apr">Estimated APR <AprEstimate principal={v.heloanAmt} rate={v.tierRate} years={v.tierYears} fees={v.aprFees.heloan} onFeesChange={fees => v.setAprFee('heloan', fees)} /></div>
+        {heloanShort && <p>Only {formatCurrency(v.heloanAmt)} of your {formatCurrency(v.totBal)} debt is covered. The rest stays with its current lenders, about {formatCurrency(v.leftoverPmt)}/mo, and is included in the payment above.</p>}
+      </OptionCard>
+      <OptionCard id={same ? 'refiSame' : 'refi'} title="Cash-out refinance" v={v}
+        payment={refiPayment > 0 ? refiPayment : null}
+        scope={`Estimated P&I · new ${refiYears || '—'}YR fixed`} save={refiDifference} action="Discuss this refinance"
+        controls={<div className="dcp-loan-controls">
+          <label className="input-label" htmlFor="refi-comparison-term">Repayment term</label>
+          <CustomSelect id="refi-comparison-term" value={v.refiTerm} onChange={term => v.setRefiTerm(term === 'same' ? 'same' : '30')} placeholder="Choose term"
+            options={[{value:'30',label:'New 30 years'},{value:'same',label:'Same payoff date'}]} />
+          {paidOff && <p className="dcp-hint">With no mortgage there is no payoff date to keep.</p>}
+        </div>}
+        unavailable={same && !paidOff ? <>Add your remaining term to see a refinance that keeps your current payoff date.<button type="button" className="dcp-link" onClick={() => v.goStep(2)}>Add mortgage details</button></> : <>A rate and repayment term are needed to estimate this payment.</>}>
+        <p>{paidOff ? <>New mortgage of {formatCurrency(v.newLoan)} for your debts.</> : 'Mortgage: replaced.'} {formatRate(v.rate30)} fixed for {years(refiYears)}{!same && v.yearsAdded > 0 ? `, about ${years(v.yearsAdded)} longer` : ''}.</p>
+        <div className="dcp-card-apr">Estimated APR <AprEstimate principal={v.newLoan} rate={v.rate30} years={refiYears} fees={v.aprFees.refi} onFeesChange={fees => v.setAprFee('refi', fees)} /></div>
+        {refiOverLimit && <p>{refiOverLimit}</p>}
+      </OptionCard>
+    </div>
+    <details className="dcp-details">
+      <summary>What to compare beyond the monthly payment</summary>
+      <p>Lower monthly payments do not necessarily mean lower total borrowing costs. Compare closing costs, interest over time and payoff dates. A refinance changes the rate on your entire mortgage. Debt previously unsecured becomes secured by your home.</p>
+      {(heloanShort || heloanNoRoom) && <p>The refinance options pay off all {formatCurrency(v.totBal)} of your debts. The home equity loan may cover less.</p>}
+    </details>
+    <details className="dcp-details">
+      <summary>Cash-out refinance calculation details</summary>
+      <Row label="New Loan Amount" value={v.newLoan > 0 ? formatCurrency(v.newLoan) : '—'} />
+      <Row label="Rate / term" value={`${formatRate(v.rate30)} / ${refiYears || '—'} yr`} />
+      <Row label="Monthly P&I Payment" value={refiPayment > 0 ? formatCurrency(refiPayment) : '—'} />
+      <Row strong label={RESULT_ROW_LABEL} value={refiPayment > 0 ? savingsRowText(refiDifference) : '—'} />
+    </details>
+    <details className="dcp-details">
+      <summary>Fixed home equity loan calculation details</summary>
+      <Row label="HELOAN Amount" value={v.heloanAmt > 0 ? formatCurrency(v.heloanAmt) : '—'} />
+      <Row label="HELOAN Rate / Term" value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
+      <Row label="HELOAN Monthly Payment" value={v.heloanPmt > 0 ? formatCurrency(v.heloanPmt) : '—'} />
+      <Row label="Existing Mortgage Payment" value={v.mp > 0 ? formatCurrency(v.mp) : '—'} />
+      <Row label="Illustrative CLTV" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
+      <Row strong label={BLENDED_ROW_LABEL} value={v.heloanPriced && v.heloanPmt > 0 ? savingsRowText(v.heloanSave) : '—'} />
+    </details>
+    <p id="dsc-cost-assumptions" className="dcp-caption"><strong>Cost assumptions:</strong> payments show principal and interest only, excluding taxes, insurance and fees. Estimated APR assumes $0 upfront finance charges unless you enter them using the info icon. Actual costs and APR require a lender's Loan Estimate.</p>
+    <StepNav back="← Back" onBack={() => v.goStep(2)} next={<>Compare with Darren <Arrow /></>} onNext={() => v.goStep(4)} />
+  </div>;
 }
 
 // ─── Step 4: contact ──────────────────────────────────────────────────────────
 
 export function StepContact({ v }: { v: DebtPageView }) {
+  const outside = serviceArea(v.propertyUse, v.propertyState, 'debt-savings-calculator') === 'out-of-market';
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Talk through your comparison.</h2>
@@ -595,7 +480,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
         disabled={v.sending}
         next={v.sending
           ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
-          : <>Send My Numbers to Darren <Arrow /></>}
+          : <>{outside ? 'Record my inquiry' : BOOKING_CALENDAR_READY ? 'See Darren’s Calendar' : 'Send my request'} <Arrow /></>}
         onNext={v.submitLead}
       />
     </div>
@@ -633,24 +518,16 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
   const option = chosenLine(v);
   return (
     <div className="dcp-panel dcp-recap">
-      <div className="success-check" role="img" aria-label="Success">✓</div>
-      <h2 className="dcp-h2 dcp-h2-lg">Your request has been received.</h2>
-      <p className="dcp-lead">
-        Your numbers were sent with it, so you will not need to start over. Darren will be in
-        touch.
-      </p>
-
+      <SavedLeadCalendar firstName={v.fname} />
+      <details className="dcp-recap-details"><summary>View your saved numbers</summary>
       <div className="dcp-recap-rows">
-        <span className="dcp-eyebrow dcp-eyebrow-dark">Your summary</span>
         <Row label="Total debt" value={formatCurrency(v.totBal)} />
         <Row label="Today's payment" value={`${formatCurrency(v.todayTotal)}/mo`} />
         <div className="dcp-row">
           <span>Option you want to discuss</span>
           <span><strong>{option.label}</strong><small>{option.detail}</small></span>
         </div>
-      </div>
-
-      <SavedLeadCalendar firstName={v.fname} />
+      </div></details>
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>
     </div>
   );

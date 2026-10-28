@@ -7,10 +7,10 @@
 }
 .dcp-payoff .dcp-debt > div:first-child { grid-column: 1 / 4; }
 .dcp-payoff .dcp-debt > .dcp-remove { grid-column: 4; grid-row: 1 / 3; }
-.dcp-payoff .dcp-primary-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.dcp-payoff .dcp-primary-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .site-design .dcp-payoff .dcp-option { padding: 18px; gap: 8px; box-shadow: none; transform: none; }
 .site-design .dcp-payoff .dcp-primary-options > .dcp-option {
-  display: grid; grid-template-rows: 24px 36px 42px 48px 1fr auto; align-items: start; justify-items: stretch;
+  display: grid; grid-template-rows: 48px 36px 42px 64px auto 1fr auto; align-items: start; justify-items: stretch;
 }
 .site-design .dcp-payoff .dcp-option-title { min-height: 0; line-height: 24px; }
 .site-design .dcp-payoff .dcp-option-pay { font-size: 26px; line-height: 36px; }
@@ -30,6 +30,22 @@
 .dcp-payoff .dcp-loan-controls .dcp-grid-2 { gap: 12px; }
 .dcp-payoff .dcp-loan-controls .input-label { font-size: 13px; }
 .dcp-payoff .dcp-loan-controls .dcp-hint { margin: 8px 0; }
+.dcp-payoff .dcp-option-controls { text-align: left; min-width: 0; }
+.dcp-payoff .dcp-option-controls p { font-size: 14px; line-height: 1.5; margin: 0; }
+.dcp-payoff .dcp-option-controls .dcp-loan-controls { margin: 0; }
+.dcp-payoff .dcp-loan-controls .input-label { margin: 8px 0 4px; }
+.dcp-payoff .dcp-loan-controls .cselect-trigger { font-size: 14px; }
+.dcp-payoff .dcp-card-apr { margin-top: 12px; }
+.site-design .dcp-payoff .dcp-card-apr .apr-estimate { justify-content: center; }
+.site-design .dcp-payoff .dcp-card-details > summary { padding: 12px 0; min-height: 44px; font-size: 14px; line-height: 1.5; }
+.site-design .dcp-payoff .dcp-card-details > summary::after { content: none; }
+.site-design .dcp-payoff .dcp-comparison-note { margin: 10px 0; font-size: 14px; line-height: 1.55; }
+.site-design .dcp-payoff .dcp-pick { width: 100%; justify-content: center; min-height: 44px; }
+/* Share each comparison row across products, including the two explicit loan
+   assumptions. A wrapped disclosure or action must not stagger its neighbors. */
+@supports (grid-template-rows: subgrid) {
+  .site-design .dcp-payoff .dcp-primary-options > .dcp-option { grid-row: span 7; grid-template-rows: subgrid; }
+}
 /* The site's global FAQ summary styling also reached the nested APR info icon,
    adding a second plus sign and 62px of padding. Scope compact disclosure rows
    here and restore the APR control's own dimensions (26 Oct, Max's screenshot). */
@@ -57,7 +73,7 @@
 .payoff-comparison-layout .journey-progress small { display: none; }
 @media (max-width: 700px) {
   .dcp-payoff .dcp-primary-options { grid-template-columns: minmax(0, 1fr); }
-  .site-design .dcp-payoff .dcp-primary-options > .dcp-option { grid-template-rows: auto; }
+  .site-design .dcp-payoff .dcp-primary-options > .dcp-option { grid-row: auto; grid-template-rows: auto; }
   .dcp-payoff .dcp-debt { grid-template-columns: minmax(0, 1fr) 24px; padding: 14px; gap: 12px; }
   .dcp-payoff .dcp-debt > div { grid-column: 1 / -1; }
   .dcp-payoff .dcp-debt > div:first-child { grid-column: 1; }

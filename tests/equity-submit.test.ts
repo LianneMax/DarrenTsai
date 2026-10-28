@@ -24,6 +24,15 @@ function respond(disposition?:string,wrongId=false) {
   });
 }
 describe('equity callers honor the confirmed capture disposition',()=>{
+  it('preserves comparison APR assumptions after the comparison DOM has unmounted', async()=>{
+    form('debt-savings-calculator'); const fetch=respond();vi.stubGlobal('fetch',fetch);
+    const aprEstimates=[{principal:425000,noteRate:6.41,termYears:20,upfrontFinanceCharges:2000,estimatedApr:6.47,estimateOnly:true}];
+    expect(await submit('debt-savings-calculator','DebtConsolidation',{propertyState:'CA',state:'CA',comparisonOption:'refiSame',refiIllustrationTermYears:20,aprEstimates})).toEqual({ok:true});
+    const sent=JSON.parse(String(fetch.mock.calls[0][1].body));
+    expect(sent.aprEstimates).toEqual(aprEstimates);
+    expect(sent.comparisonOption).toBe('refiSame');expect(sent.refiIllustrationTermYears).toBe(20);
+    expect(sent.privacyAcknowledged).toBe(true);expect(sent.smsConsent).toBe(false);
+  });
   it.each(forms)('%s does not post before explicit acknowledgment',async(formId,source)=>{
     const fetch=respond('sheet-only');vi.stubGlobal('fetch',fetch);
     expect(await submit(formId,source)).toMatchObject({ok:false,field:'privacyAcknowledged'});

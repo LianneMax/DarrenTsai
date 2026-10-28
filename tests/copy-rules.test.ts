@@ -63,11 +63,12 @@ describe('no response time is promised', () => {
     for (const promise of PROMISES) expect(src, String(promise)).not.toMatch(promise);
   });
 
-  it('every success state that speaks for Darren uses the one sentence', () => {
-    // Whitespace folded: a JSX paragraph can wrap the sentence across lines.
+  it('completed React captures lead with scheduling instead of a waiting message', () => {
+    // Max, 27 Oct: a large received/wait-for-contact state made scheduling
+    // easy to miss. Keep the no-deadline rules above, but make booking next.
     for (const file of ['DebtPageViews', 'HomeEquityViews', 'AduViews', 'LeadForm']) {
       const src = read(`src/components/${file}.tsx`).replace(/\s+/g, ' ');
-      expect(src, file).toContain('Darren will be in touch.');
+      expect(src, file).toContain('<SavedLeadCalendar');
     }
     for (const page of ['dscr', 'fha', 'realestateinvesting']) {
       const html = read(`public/${page}/index.html`);

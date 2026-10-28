@@ -10,7 +10,7 @@
  * more than the lead carries.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
@@ -32,7 +32,7 @@ function view(over: Partial<DebtPageView> = {}): DebtPageView {
     homeValue: '', setHomeValue: noop, mtgBalance: '', setMtgBalance: noop,
     mtgPayment: '', setMtgPayment: noop, mtgRate: '', setMtgRate: noop, mtgTerm: '', setMtgTerm: noop,
     hv: 0, mb: 0, mp: 0, mr: 0, mt: 0, hasHome: false, balanceGiven: false,
-    rate30: 6.41, todayTotal: 0, newLoan: 0, refiPmt: 0, refiSave: 0, refiLtv: 0,
+    rate30: 6.41, refiTerm: '30', setRefiTerm: noop, aprFees: { heloan: '', refi: '' }, setAprFee: noop, todayTotal: 0, newLoan: 0, refiPmt: 0, refiSave: 0, refiLtv: 0,
     sameTermYears: 0, refiSameTermPmt: 0, refiSameTermSave: 0, yearsAdded: 0,
     heloanTier: '', setHeloanTier: noop, heloanTerm: '', setHeloanTerm: noop,
     tierRate: 0, tierYears: 0, heloanPriced: false,
@@ -84,7 +84,7 @@ describe('an untouched page shows no figures', () => {
 
   it('the HELOAN card asks for a tier and term instead of quoting the best case', () => {
     const page = html(<StepCompare v={filled} />);
-    expect(page).toContain('Pick your credit range and a term above');
+    expect(page).toContain('Pick your credit range and a term');
   });
 });
 
@@ -132,14 +132,14 @@ describe('the confirmation', () => {
 
   it('says the request was received and promises no time', () => {
     const page = recap({});
-    expect(page).toContain('Your request has been received.');
-    expect(page).toContain('Darren will be in touch.');
+    expect(page).toContain('Your inquiry is saved. Loading the next step…');
+    expect(page).toContain('dcp-recap-calendar');
     expect(page).not.toMatch(/business day|shortly|has reviewed/i);
   });
 
   it('shows discussion intent under the visitor\'s summary without implying approval', () => {
     const page = recap({ chosen: 'heloan' });
-    expect(page).toContain('Your summary');
+    expect(page).toContain('View your saved numbers');
     expect(page).not.toMatch(/option[^<]*(was|were) sent/i);
   });
 });
@@ -147,7 +147,7 @@ describe('the confirmation', () => {
 describe('the page', () => {
   it('replaces the steps with the confirmation once submitted', () => {
     const page = html(<DebtPage v={{ ...filled, submitted: true }} overlays={null} />);
-    expect(page).toContain('Your request has been received.');
+    expect(page).toContain('Your inquiry is saved. Loading the next step…');
     expect(page).not.toContain('class="dcp-steps"');
   });
 
@@ -225,7 +225,7 @@ describe('the comparison is honest at the edges', () => {
     expect(page).toContain('New mortgage of $75,000 for your debts');
     expect(page).toContain('With no mortgage there is no payoff date to keep');
     expect(page).not.toContain('Mortgage: replaced');
-    expect(page).not.toContain('current mortgage');
+    expect(page).not.toContain('Keeps your current mortgage');
   });
 });
 
@@ -244,7 +244,7 @@ describe('the payoff comparison keeps its disclosures', () => {
 
   it('warns that unsecured debt becomes secured by the home', () => {
     expect(page).toContain('Debt previously unsecured becomes secured by your home.');
-    expect(page).toContain('a loan secured by your home can put your home at risk');
+    expect(page).toContain('A loan secured by your home can put your home at risk');
   });
 
   it('keeps the APR assumptions', () => {
@@ -265,7 +265,7 @@ describe('the payoff comparison keeps its disclosures', () => {
     expect(heloc).not.toContain('Estimated payment difference:');
     expect(heloc).not.toContain('$202,500/mo');
     const cards = page.slice(page.indexOf('dcp-option-today'));
-    const order = ['Today', 'HELOC', 'Fixed home equity loan', 'Est. Cash-Out Refi'].map((t) => cards.indexOf('dcp-option-title">'+t+'<'));
+    const order = ['Today', 'HELOC', 'Fixed home equity loan', 'Cash-out refinance'].map((t) => cards.indexOf('dcp-option-title">'+t+'<'));
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
   it('handles zero and missing borrowing room without promising unavailable credit',()=>{
@@ -290,4 +290,38 @@ describe('the payoff comparison keeps its disclosures', () => {
     const recap=html(<DebtRecap v={{...filled,chosen:'heloc',submitted:true}}/>);
     expect(recap).toContain('$202,500 illustrative borrowing room');expect(recap).toContain('Not approved credit.');expect(recap).not.toContain('$202,500/mo');
   });
+});
+
+it('keeps three product columns and changes refinance figure, APR and intent together', async () => {
+  const host = document.createElement('div'); document.body.append(host); const root = createRoot(host);
+  const setChosen = vi.fn(), goStep = vi.fn(), submitLead = vi.fn();
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  try {
+    function Comparison() {
+      const [refiTerm, setRefiTerm] = useState<'30' | 'same'>('30');
+      return <StepCompare v={{ ...filled, refiTerm, setRefiTerm, mt: 20, sameTermYears: 20,
+        refiSameTermPmt: 3145, refiSameTermSave: 655, chosen: '', setChosen, goStep, submitLead }} />;
+    }
+    await act(async () => root.render(<Comparison />));
+    expect(host.querySelectorAll('.dcp-primary-options > .dcp-option')).toHaveLength(3);
+    const refi = host.querySelectorAll('.dcp-primary-options > .dcp-option')[2];
+    expect(refi.textContent).toContain('$2,661');
+    expect(refi.querySelector('[data-apr-years]')?.getAttribute('data-apr-years')).toBe('30');
+    const term = host.querySelector('#refi-comparison-term') as HTMLButtonElement;
+    vi.spyOn(term, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 144, left: 20, right: 220, width: 200, height: 44, x: 20, y: 100, toJSON() {} });
+    await act(async () => term.click());
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role=option]')).find(e => e.textContent?.includes('Same payoff date'))!;
+    await act(async () => option.click());
+    expect(refi.textContent).toContain('$3,145');
+    expect(refi.textContent).toContain('$655/mo lower');
+    expect(refi.querySelector('[data-apr-years]')?.getAttribute('data-apr-years')).toBe('20');
+    const details = Array.from(host.querySelectorAll('details')).find(e => e.textContent?.includes('Cash-out refinance calculation details'))!;
+    expect(details.textContent).toContain('$3,145');
+    expect(details.textContent).not.toContain('$2,661');
+    expect(setChosen).not.toHaveBeenCalled();
+    await act(async () => (refi.querySelector('.dcp-pick') as HTMLButtonElement).click());
+    expect(setChosen).toHaveBeenCalledWith('refiSame'); expect(goStep).toHaveBeenCalledWith(4);
+    expect(submitLead).not.toHaveBeenCalled();
+    expect(host.querySelectorAll('[data-apr-years]')).toHaveLength(1); // only the priced refinance, not an invented HELOAN
+  } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
 });

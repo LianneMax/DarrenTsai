@@ -104,20 +104,20 @@ describe('isolated ADU design journey',()=>{
     const expected=buildAduLead({firstName:'TEST',lastName:'Local Preview',email:'test@example.com',phone:'(714) 555-0191',state:'CA',homeValue:650000,mortgageBalance:350000,projectCost:175000,amountToFinance:75000,purpose:'ADU for family'});
     const {timestamp:_,...stable}=expected;expect(posted[0]).toMatchObject(stable);
     expect(posted[0]).toMatchObject({submissionId:expect.stringMatching(/^[0-9a-f-]{36}$/),formId:'adu-calculator',source:'adu',propertyUse:'primary',propertyState:'CA',privacyAcknowledged:true,smsConsent:false,smsInformationalConsent:false,smsMarketingConsent:false});
-    expect(text()).toContain('Your request has been received.');
+    expect(text()).toContain('Your inquiry is saved. Loading the next step…');
   });
   it('keeps an editable request on a rejected email and never shows confirmation',async()=>{
     await project();await home();await contact();await act(async()=>host.querySelector<HTMLInputElement>('[data-privacy-form]')!.click());
     vi.mocked(fetch).mockResolvedValueOnce(new Response('{"field":"email","message":"Please check this email address."}',{status:422}));
-    await button('Send my project');expect(text()).toContain('Please check this email address.');expect(host.querySelector('#lead-email')).not.toBeNull();expect(text()).not.toContain('Your request has been received.');
+    await button('Send my project');expect(text()).toContain('Please check this email address.');expect(host.querySelector('#lead-email')).not.toBeNull();expect(text()).not.toContain('Your inquiry is saved. Loading the next step…');
   });
   it('never turns a connection failure into confirmation',async()=>{
     await project();await home();await contact();await act(async()=>host.querySelector<HTMLInputElement>('[data-privacy-form]')!.click());
-    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));await button('Send my project');expect(text()).toContain("couldn't confirm whether your request was saved");expect(text()).not.toContain('Your request has been received.');
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));await button('Send my project');expect(text()).toContain("couldn't confirm whether your request was saved");expect(text()).not.toContain('Your inquiry is saved. Loading the next step…');
     const originalBody=vi.mocked(fetch).mock.calls[0][1]!.body;
     await button('Send my project');
     expect(vi.mocked(fetch).mock.calls[1][1]!.body).toBe(originalBody);
     expect(posted).toHaveLength(1);
-    expect(text()).toContain('Your request has been received.');
+    expect(text()).toContain('Your inquiry is saved. Loading the next step…');
   });
 });

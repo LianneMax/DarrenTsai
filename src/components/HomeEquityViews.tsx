@@ -162,11 +162,17 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
             onChange={(e) => v.setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
           <ZipFeedback check={zipCheck} />
         </div>
-        {zipDone && (
+        {(zipDone || v.propertyState) && (
           <div>
             <label className="input-label" htmlFor="he-state">State of the home you&apos;re borrowing against</label>
             <select id="he-state" className="form-input" value={v.propertyState}
-              onChange={(e) => v.setPropertyState(e.target.value)}>
+              onChange={(e) => {
+                const state = e.target.value;
+                // A state has many ZIPs. Never invent one when the visitor
+                // corrects the state; clear the old known/pending ZIP instead.
+                if (state !== v.propertyState && v.zip && !zipCheck.needsConfirmation) v.setZip('');
+                v.setPropertyState(state);
+              }}>
               <option value="">Choose the property state</option>
               {PROPERTY_STATES.map((s) => <option key={s} value={s}>{PROPERTY_STATE_LABELS[s]}</option>)}
             </select>
@@ -196,7 +202,7 @@ export function StepEquityGoal({ v }: { v: EquityPageView }) {
       <h3 className="dcp-h3">Your credit, roughly</h3>
       <Chips options={CREDIT_RANGES} value={v.creditRange} onChange={v.setCreditRange} label="Credit range" />
 
-      <h3 className="dcp-h3">About how much cash?</h3>
+      <h3 className="dcp-h3">How much cash would you like to access?</h3>
       <Chips options={CASH_RANGES} value={v.cashRange} onChange={v.setCashRange} label="Cash range" />
 
       <h3 className="dcp-h3">Is your mortgage current?</h3>
@@ -315,19 +321,14 @@ export function EquityDeclined({ v }: { v: EquityPageView }) {
 export function EquityRecap({ v }: { v: EquityPageView }) {
   return (
     <div className="dcp-panel dcp-recap">
-      <div className="success-check" role="img" aria-label="Success">✓</div>
-      <h2 className="dcp-h2 dcp-h2-lg">Your request has been received.</h2>
-      <p className="dcp-lead">Your estimate and answers were sent with it, so you will not need to start over. Darren will be in touch.</p>
-
+      <SavedLeadCalendar firstName={v.fname} />
+      <details className="dcp-recap-details"><summary>View your saved answers</summary>
       <div className="dcp-recap-rows">
-        <span className="dcp-eyebrow dcp-eyebrow-dark">Your summary</span>
         <Row label="Estimated equity" value={v.equity >= 0 ? formatCurrency(v.equity) : 'None at these numbers'} />
         <Row label="Goal" value={v.goal} />
-        <Row label="Cash range" value={v.cashRange} />
+        <Row label="Cash you’d like to access" value={v.cashRange} />
         {v.preference && <Row label="Option of interest" value={v.preference} />}
-      </div>
-
-      <SavedLeadCalendar firstName={v.fname} />
+      </div></details>
       <p className="dcp-caption">Estimates only. Actual options depend on a personal review.</p>
     </div>
   );

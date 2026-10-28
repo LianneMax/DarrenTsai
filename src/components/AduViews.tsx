@@ -8,6 +8,7 @@ import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep } from '
 import AduHouseExplorer from './AduHouseExplorer';
 import { MarketingFaq } from './Marketing';
 import JourneyTimeline from './JourneyTimeline';
+import SavedLeadCalendar from './SavedLeadCalendar';
 
 export interface AduPageView {
   step: number; goStep: (n: number) => void;
@@ -113,10 +114,10 @@ export function StepAduContact({v}:{v:AduPageView}) {
 }
 
 export function AduRecap({v}:{v:AduPageView}) {
-  return <div className="adu-stage adu-recap"><span className="adu-recap-check" aria-hidden="true"><Check/></span><h2 id="adu-step-heading" tabIndex={-1}>Your request has been received.</h2>
-    <p className="adu-stage-intro">Your project and estimates have been saved. Darren will be in touch. Take the next step when you’re ready.</p>
+  return <div className="adu-stage adu-recap"><SavedLeadCalendar firstName={v.fname}/>
+    <details className="dcp-recap-details"><summary>View your saved project</summary>
     <div className="adu-recap-summary"><Row label="Project" value={v.purpose}/><Row label="Project cost" value={formatCurrency(v.cost)}/><Row label="Amount to finance" value={formatCurrency(v.fin)}/></div>
-    <button type="button" className="design-primary" onClick={v.openBooking}>Book a Call <Arrow/></button>
+    </details>
   </div>;
 }
 

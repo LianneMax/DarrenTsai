@@ -1764,6 +1764,7 @@
       } catch (e) { /* never let a convenience break a saved lead */ }
       formFields.classList.add('hide');
       leadSuccess.classList.add('show');
+      if (window.DTBooking && window.DTBooking.afterSubmit) window.DTBooking.afterSubmit(leadSuccess);
     } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Get the Free Calculator';

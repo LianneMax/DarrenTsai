@@ -9,10 +9,10 @@ import type { MortgageInputs } from '../types/mortgage';
 import { EMAIL } from '../config';
 import { outOfMarketPage } from '../utils/serviceArea';
 import CustomSelect from './CustomSelect';
-import { openBooking } from '../utils/booking';
 import { milestone } from '../utils/attribution';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/emailSuggest';
+import SavedLeadCalendar from './SavedLeadCalendar';
 
 const emailSchema = z.string().email();
 
@@ -222,8 +222,7 @@ export default function LeadForm({
   if (status === 'success') {
     return (
       <div className="success-state" style={{ padding: '16px 0 8px' }}>
-        <div className="success-check" role="img" aria-label="Success">✓</div>
-        <h3 className="success-heading">You're all set, {form.firstName}!</h3>
+        <SavedLeadCalendar firstName={form.firstName}/>
         {/* Only claim numbers when numbers were sent. The four-field submit is
             the common case and it says "your numbers" to someone who gave
             none, which is the same promise the page could not keep elsewhere. */}
@@ -232,12 +231,6 @@ export default function LeadForm({
             ? `Your numbers were sent with your request. Darren will be in touch. ${nextStep}`
             : 'Darren will be in touch.'}
         </p>
-        <button
-          onClick={openBooking}
-          className="btn btn-outline-navy btn-full success-cta"
-        >
-          Book a Free Strategy Call
-        </button>
         <button
           onClick={onClose}
           className="btn btn-teal btn-full"

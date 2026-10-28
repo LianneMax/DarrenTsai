@@ -256,7 +256,7 @@ describe('the Monthly Reset answers nothing on the visitor behalf', () => {
   it('prices no HELOAN until a tier and a term are chosen', () => {
     expect(CALC).toContain('const heloanPriced = tierRate > 0 && tierYears > 0;');
     expect(CALC).toContain('const heloanPmt   = heloanPriced ? calcPmt(heloanAmt, tierRate, tierYears) : 0;');
-    expect(VIEWS).toContain('Pick your credit range and a term above to price this option.');
+    expect(VIEWS).toContain('Pick your credit range and a term to estimate this option.');
   });
 
   it('sends blank rather than zero for anything not given', () => {

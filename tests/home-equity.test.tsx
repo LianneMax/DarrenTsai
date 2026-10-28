@@ -6,7 +6,9 @@
  * the page says. The page itself is drawn from props, like the debt page, so each
  * step renders here on its own, including the ones behind the gates.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { act, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -160,6 +162,39 @@ const filled = view({
   fname: 'Ava', lname: 'Owner', email: 'ava@example.com',
 });
 
+it('clears a stale ZIP after a manual state change, then verifies the new ZIP', async () => {
+  const originalFetch = window.fetch;
+  window.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ '92646': ['Huntington Beach', 'CA'], '50309': ['Des Moines', 'IA'] }) });
+  const host = document.createElement('div'); document.body.appendChild(host);
+  const root = createRoot(host);
+  function Scenario() {
+    const [zip, setZip] = useState('92646');
+    const [propertyState, setPropertyState] = useState('CA');
+    return <StepEquityHome v={{ ...filled, zip, setZip, propertyState, setPropertyState }} />;
+  }
+  try {
+    await act(async () => root.render(<Scenario />));
+    expect(host.textContent).toContain('Huntington Beach, CA');
+    await act(async () => {
+      const select = host.querySelector<HTMLSelectElement>('#he-state')!;
+      select.value = 'IA'; select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(host.querySelector<HTMLInputElement>('#he-zip')!.value).toBe('');
+    expect(host.querySelector<HTMLSelectElement>('#he-state')!.value).toBe('IA');
+    expect(host.textContent).not.toContain('Huntington Beach, CA');
+    expect(host.querySelector<HTMLButtonElement>('.dcp-actions button')!.disabled).toBe(true);
+    await act(async () => {
+      const zip = host.querySelector<HTMLInputElement>('#he-zip')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(zip, '50309');
+      zip.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(host.textContent).toContain('Des Moines, IA');
+    expect(host.querySelector<HTMLButtonElement>('.dcp-actions button')!.disabled).toBe(false);
+  } finally {
+    await act(async () => root.unmount()); host.remove(); window.fetch = originalFetch;
+  }
+});
+
 /**
  * Held until Saxton approves them (15 Oct 2026). Checked across the whole
  * page source, not just one render, so a later step cannot slip one in.
@@ -234,10 +269,10 @@ describe('what the page says', () => {
 
   it('confirms with the estimate and answers it sent, and promises no time', () => {
     const page = html(<EquityRecap v={{ ...filled, submitted: true }} />);
-    expect(page).toContain('Your request has been received.');
+    expect(page).toContain('Your inquiry is saved. Loading the next step…');
     expect(page).toContain('$300,000');
     expect(page).toContain('Home improvement');
-    expect(page).toContain('Darren will be in touch.');
+    expect(page).toContain('dcp-recap-calendar');
     expect(page).toContain('dcp-recap-calendar');
     expect(page).not.toMatch(/business day|shortly|has reviewed/i);
   });

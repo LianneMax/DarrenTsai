@@ -30,7 +30,7 @@ const COMPLIANCE = readFileSync(resolve(__dirname, '../public/compliance.js'), '
 const POLICY = JSON.parse(readFileSync(resolve(__dirname, '../public/service-area-policy.json'), 'utf8'));
 const TEST_URL = 'https://calendar.google.com/calendar/appointments/schedules/test?gv=true';
 
-type Booking = { open: () => void; close: () => void; mount: (el: Element) => void; calendar: (el: Element, lead: object) => boolean; identify: (l: { name?: string; email?: string }) => void };
+type Booking = { open: () => void; close: () => void; mount: (el: Element) => void; afterSubmit: (el: Element) => void; calendar: (el: Element, lead: object) => boolean; identify: (l: { name?: string; email?: string }) => void };
 
 let booking: Booking;
 let track: ReturnType<typeof vi.fn>;
@@ -701,6 +701,27 @@ describe('saved inquiry continuation across every funnel', () => {
       propertyUse: formId.includes('dscr') ? 'investment' : 'primary', propertyState: 'CA',
       privacyAcknowledged: true, serviceAreaVersion: POLICY.version, ...extra });
   }
+  it.each(Object.entries(POLICY.inquiryForms))('%s advances straight to an inline calendar exactly once', async (formId, source) => {
+    const host = document.createElement('div');
+    host.innerHTML = '<h3>Request received</h3><button id="openLeadBookingBtn">Book a Call</button>';
+    document.body.appendChild(host);
+    booking.afterSubmit(host); expect(host.querySelector('iframe')).toBeNull();
+    await capture(formId, source);
+    booking.afterSubmit(host); booking.afterSubmit(host);
+    expect(host.querySelectorAll('iframe')).toHaveLength(1);
+    expect(host.querySelector<HTMLButtonElement>('#openLeadBookingBtn')!.hidden).toBe(true);
+    expect(host.querySelector('form')).toBeNull();
+    expect(leadFetch).toHaveBeenCalledTimes(1);
+  });
+  it('keeps the saved success and recovery action if scheduling cannot be inserted', async () => {
+    await capture();
+    const host = document.createElement('div');
+    host.innerHTML = '<h3>Request received</h3><button id="openLeadBookingBtn">Book a Call</button>';
+    vi.spyOn(host, 'insertBefore').mockImplementation(() => { throw Error('Display unavailable'); });
+    expect(() => booking.afterSubmit(host)).not.toThrow();
+    expect(host.querySelector<HTMLButtonElement>('#openLeadBookingBtn')!.hidden).toBe(false);
+    expect(leadFetch).toHaveBeenCalledTimes(1);
+  });
   it.each(Object.entries(POLICY.inquiryForms))('%s continues without creating a second inquiry', async (formId, source) => {
     await capture(formId, source);
     booking.open();

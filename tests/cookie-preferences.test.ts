@@ -74,12 +74,10 @@ describe('explicit opt-in tracking respects privacy choices', () => {
     expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1);
     expect(document.querySelectorAll('script[src*="callrail"]')).toHaveLength(1);
   });
-  it('Manage saves an opt-out without starting vendors', () => {
-    const browser = cookieRuntime(); click('manage');
-    (document.querySelector('.dt-cookie-manage input') as HTMLInputElement).checked = false;
-    click('save');
-    expect(browser.DTConsent!.isAllowed()).toBe(false);
-    expect(browser.location.reload).not.toHaveBeenCalled();
+  it('offers exactly Accept and Reject without an extra preference step', () => {
+    load();
+    expect(Array.from(document.querySelectorAll('.dt-cookie-actions button')).map(b => b.textContent)).toEqual(['Accept', 'Reject']);
+    expect(document.querySelector('[data-choice="manage"]')).toBeNull();
   });
   it('withdraws an existing acceptance, clears attribution and reloads to stop loaded vendors', () => {
     window.localStorage.setItem('dt_cookie_preferences', JSON.stringify({optional:true,ts:Date.now()}));

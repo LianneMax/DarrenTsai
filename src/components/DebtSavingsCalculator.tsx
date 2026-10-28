@@ -11,6 +11,8 @@ import { milestone } from '../utils/attribution';
 import { outOfMarketPage } from '../utils/serviceArea';
 import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import './payoff.css';
+import { ErrorDialog } from './PageParts';
+import { estimateApr } from '../utils/apr';
 
 const emailSchema = z.string().email();
 
@@ -91,6 +93,9 @@ function formatRateDate(iso: string): string {
  * DebtConsolidation, form id debt-savings-calculator).
  */
 export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?: string } = {}) {
+  const [refiTerm, setRefiTerm] = useState<'30' | 'same'>('30');
+  const [aprFees, setAprFees] = useState({ heloan: '', refi: '' });
+  const setAprFee = (option: 'heloan' | 'refi', fees: string) => setAprFees(previous => ({ ...previous, [option]: fees }));
   const [step, setStep] = useState(1);
   const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'debt-savings-calculator',error_code:'validation'}); setErrorKind('validation'); setErrorMsg(message); };
   useEffect(() => { window.DTLead?.begin('debt-savings-calculator'); }, []);
@@ -152,6 +157,12 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // Retained in the existing submission snapshot, not a new source or CRM loan
   // type. A HELOC discussion is interest in an option, not an approved product.
   const [chosen, setChosen] = useState<DebtOption>('');
+  const changeRefiTerm = (term: '30' | 'same') => {
+    setRefiTerm(term);
+    // Returning to a previously selected refinance must not leave its recorded
+    // discussion choice pointing at the other term after the visitor edits it.
+    if (chosen === 'refi' || chosen === 'refiSame') setChosen(term === 'same' ? 'refiSame' : 'refi');
+  };
 
   // Lead form
   const [fname,     setFname]     = useState('');
@@ -354,6 +365,13 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     validationError('');
 
     const payload = {
+      // Comparison fields unmount before contact submission. Carry their actual
+      // fee/term assumptions from state rather than scraping the now-empty DOM.
+      refiIllustrationTermYears: refiTerm === 'same' ? sameTermYears : 30,
+      aprEstimates: [
+        ...(heloanPriced && heloanPmt > 0 ? [{ principal: heloanAmt, noteRate: tierRate, termYears: tierYears, upfrontFinanceCharges: Number(aprFees.heloan || 0), estimatedApr: estimateApr(heloanAmt, tierRate, tierYears, Number(aprFees.heloan || 0)), estimateOnly: true }] : []),
+        ...((refiTerm === 'same' ? refiSameTermPmt : refiPmt) > 0 ? [{ principal: newLoan, noteRate: rate30, termYears: refiTerm === 'same' ? sameTermYears : 30, upfrontFinanceCharges: Number(aprFees.refi || 0), estimatedApr: estimateApr(newLoan, rate30, refiTerm === 'same' ? sameTermYears : 30, Number(aprFees.refi || 0)), estimateOnly: true }] : []),
+      ],
       firstName: fname.trim(), lastName: lname.trim(), phone, email, message,
       ...(chosen ? { comparisonOption: chosen } : {}),
       ...(chosen === 'heloc' && helocRoom !== null ? {
@@ -481,51 +499,8 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     </p>
   );
 
-  const overlays = (
-    <>
-      {errorMsg && (
-        <div
-          className="modal-overlay"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="dsc-error-title"
-          onClick={() => setErrorMsg(null)}
-        >
-          <div className="modal-panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: 'var(--rose)', flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                <h2 id="dsc-error-title" className="modal-title" style={{ fontSize: '1.15rem' }}>
-                  {errorKind === 'save' ? 'Save not confirmed' : "Something's missing"}
-                </h2>
-              </div>
-              <button
-                className="modal-close"
-                onClick={() => setErrorMsg(null)}
-                aria-label="Close"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="modal-sub" style={{ marginBottom: 24 }}>{errorMsg}</p>
-              <button
-                className="btn btn-teal btn-full"
-                onClick={() => setErrorMsg(null)}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  const overlays = <ErrorDialog message={errorMsg} kind={errorKind}
+    onClose={() => setErrorMsg(null)} id="dsc-error-title" />;
 
   // ── Render: /home-equity/'s "Pay off high-interest debt" path ─────────────
 
@@ -536,7 +511,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     homeValue, setHomeValue, mtgBalance, setMtgBalance, mtgPayment, setMtgPayment,
     mtgRate, setMtgRate, mtgTerm, setMtgTerm,
     hv, mb, mp, mr, mt, hasHome, balanceGiven,
-    rate30, todayTotal, newLoan, refiPmt, refiSave, refiLtv,
+    rate30, refiTerm, setRefiTerm: changeRefiTerm, aprFees, setAprFee, todayTotal, newLoan, refiPmt, refiSave, refiLtv,
     sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
     heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
     tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, leftoverPmt, heloanTotal, heloanSave, cltv,

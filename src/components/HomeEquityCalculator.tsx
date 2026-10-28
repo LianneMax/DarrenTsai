@@ -47,7 +47,7 @@ const TITLES: Record<EquityPath, string> = {
 export default function HomeEquityCalculator() {
   const [path, setPathState] = useState<EquityPath>(initialPath);
   const [step, setStep] = useState(1);
-  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'home-equity-calculator',error_code:'validation'}); setErrorMsg(message); };
+  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'home-equity-calculator',error_code:'validation'}); setErrorKind('validation'); setErrorMsg(message); };
   useEffect(() => { window.DTLead?.begin('home-equity-calculator'); }, []);
 
   // The URL, the hero (html.goal-payoff) and the title follow the path, so a
@@ -102,6 +102,7 @@ export default function HomeEquityCalculator() {
   const [emailHint, setEmailHint] = useState<EmailSuggestion | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [declined, setDeclined] = useState<'' | 'property-type' | 'knockout'>('');
+  const [errorKind, setErrorKind] = useState<'validation' | 'save'>('validation');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   // State is read from the render already on screen, so two clicks in one tick
@@ -218,10 +219,12 @@ export default function HomeEquityCalculator() {
       setSending(false);
     }
     if (!result.ok && result.kind === 'fieldError') {
+      setErrorKind('validation');
       setErrorMsg(result.message);
       return;
     }
     if (!result.ok) {
+      setErrorKind('save');
       setErrorMsg(
         "We couldn't confirm whether your request was saved. " +
         `Retry here with the same details, or email ${EMAIL} for help.`
@@ -265,7 +268,7 @@ export default function HomeEquityCalculator() {
     </p>
   );
 
-  const overlays = <ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} id="he-error-title" />;
+  const overlays = <ErrorDialog kind={errorKind} message={errorMsg} onClose={() => setErrorMsg(null)} id="he-error-title" />;
 
   return (
     <EquityPage v={view} overlays={overlays} disclosure={disclosure}

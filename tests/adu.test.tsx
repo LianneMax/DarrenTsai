@@ -148,7 +148,7 @@ describe('what the page says', () => {
 
   it('confirms with the project it sent, and promises no time', () => {
     const page = html(<AduRecap v={{ ...filled, submitted: true }} />);
-    expect(page).toContain('Your request has been received.');
+    expect(page).toContain('Your inquiry is saved. Loading the next step…');
     expect(page).toContain('Rental ADU');
     expect(page).toContain('$175,000');
     expect(page).toContain('$75,000');

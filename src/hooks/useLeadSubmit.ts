@@ -110,7 +110,7 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
         // formId goes in the body as well as the GA4 event below, because
         // HubSpot's rdt_form_id is filled server-side from what arrives here.
           ...payload, ...getAttribution(), formId,
-          aprEstimates: Array.from(document.querySelectorAll<HTMLElement>('.apr-estimate[data-apr-principal]')).filter(el => Number(el.dataset.aprPrincipal) > 0).map(el => ({ principal: Number(el.dataset.aprPrincipal), noteRate: Number(el.dataset.aprRate), termYears: Number(el.dataset.aprYears), upfrontFinanceCharges: Number(el.dataset.aprFees), estimatedApr: el.dataset.aprResult ? Number(el.dataset.aprResult) : null, estimateOnly: true })),
+          aprEstimates: Array.isArray(payload.aprEstimates) ? payload.aprEstimates : Array.from(document.querySelectorAll<HTMLElement>('.apr-estimate[data-apr-principal]')).filter(el => Number(el.dataset.aprPrincipal) > 0).map(el => ({ principal: Number(el.dataset.aprPrincipal), noteRate: Number(el.dataset.aprRate), termYears: Number(el.dataset.aprYears), upfrontFinanceCharges: Number(el.dataset.aprFees), estimatedApr: el.dataset.aprResult ? Number(el.dataset.aprResult) : null, estimateOnly: true })),
           ...(screening ? { propertyUse, propertyState, serviceAreaResult: result, serviceAreaVersion: SERVICE_AREA_VERSION } : {}),
           smsConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
           privacyAcknowledged: acknowledgment?.checked === true, privacyVersion: '2026-10-13-v1',
