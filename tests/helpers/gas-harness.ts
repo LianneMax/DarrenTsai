@@ -149,6 +149,9 @@ function makeSheet(tab: Tab, tabs: Map<string, Tab>) {
     },
     getRange(row: number, col: number, numRows = 1, numCols = 1) {
       return {
+        getSheet: () => sheet,
+        getRow: () => row,
+        getColumn: () => col,
         getNumberFormats() {
           const out: string[][] = [];
           for (let r = 0; r < numRows; r++) {
@@ -230,6 +233,20 @@ export function loadGas<T = Record<string, unknown>>(options: GasOptions): GasHa
   const tabs = new Map<string, Tab>();
 
   const spreadsheet = options.spreadsheet === false ? {} : {
+    createTextFinder(text: string) {
+      let entire = false, caseSensitive = false, regex = false;
+      const finder = {
+        matchEntireCell(value: boolean) { entire = value; return finder; },
+        matchCase(value: boolean) { caseSensitive = value; return finder; },
+        useRegularExpression(value: boolean) { regex = value; return finder; },
+        findAll() {
+          const pattern = new RegExp((entire ? '^' : '') + (regex ? text : text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) + (entire ? '$' : ''), caseSensitive ? '' : 'i');
+          return [...tabs.values()].flatMap(tab => tab.rows.flatMap((row, r) => row.flatMap((value, c) =>
+            pattern.test(String(value)) ? [makeSheet(tab, tabs).getRange(r + 1, c + 1)] : [])));
+        },
+      };
+      return finder;
+    },
     getSheetByName(name: string) {
       const tab = tabs.get(name);
       return tab ? makeSheet(tab, tabs) : null;

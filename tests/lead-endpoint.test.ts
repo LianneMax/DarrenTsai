@@ -393,6 +393,24 @@ describe('configuration', () => {
 });
 
 describe('the happy path', () => {
+  it('retries only an explicit no-write busy refusal with the identical body and deadline', async () => {
+    vi.useFakeTimers();
+    const submissionId = '12345678-1234-4234-8234-123456789012';
+    responses = [
+      new Response(JSON.stringify({ success: false, code: 'capture_busy' })),
+      new Response(JSON.stringify({ success: true, submissionId, receipt: 'saved' })),
+    ];
+    const pending = handler(req({ ...LEAD, submissionId }), ctx);
+    await vi.runAllTimersAsync();
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, submissionId, receipt: 'saved' });
+    const attempts = calls.filter(c => c.url === UPSTREAM);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0].init.body).toBe(attempts[1].init.body);
+    expect(attempts[0].init.signal).toBe(attempts[1].init.signal);
+    expect(rescueSent()).toBe(false);
+  });
   it('returns the confirmed identity and replay marker without changing the request', async () => {
     const submissionId = '12345678-1234-4234-8234-123456789012';
     responses = [new Response(JSON.stringify({ success: true, submissionId, receipt: 'saved', replayed: true }))];
@@ -403,7 +421,6 @@ describe('the happy path', () => {
   it.each([
     ['submission_conflict', 409, 'rejected'],
     ['invalid_submission_id', 422, 'rejected'],
-    ['capture_busy', 503, 'uncertain'],
   ])('maps upstream %s without a success state or rescue copy', async (code, status, receipt) => {
     const submissionId = '12345678-1234-4234-8234-123456789012';
     responses = [new Response(JSON.stringify({ success: false, code }))];
@@ -411,6 +428,66 @@ describe('the happy path', () => {
     expect(response.status).toBe(status);
     expect(await response.json()).toMatchObject({ ok: false, code, submissionId, receipt });
     expect(rescueSent()).toBe(false);
+  });
+  it('bounds repeated no-write refusals without alerting or manufacturing success', async () => {
+    vi.useFakeTimers();
+    responses = Array.from({length: 12}, () => new Response(JSON.stringify({success:false,code:'capture_busy'})));
+    const started = Date.now();
+    const pending = handler(req({...LEAD,submissionId:'busy-exhaustion-123'}),ctx);
+    await vi.runAllTimersAsync();
+    const response = await pending;
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ok:false,code:'capture_busy',receipt:'uncertain'});
+    expect(calls.filter(c => c.url === UPSTREAM)).toHaveLength(12);
+    expect(Date.now() - started).toBeLessThan(25_000);
+    expect(rescueSent()).toBe(false);
+  });
+  it('does not retry a legacy request without a stable submission identity', async () => {
+    responses = [new Response(JSON.stringify({success:false,code:'capture_busy'}))];
+    expect((await handler(req(LEAD),ctx)).status).toBe(503);
+    expect(calls.filter(c => c.url === UPSTREAM)).toHaveLength(1);
+    expect(rescueSent()).toBe(false);
+  });
+  it('does not reset the deadline after a slow busy refusal', async () => {
+    vi.useFakeTimers();
+    const timeout = vi.spyOn(AbortSignal,'timeout');
+    vi.stubGlobal('fetch',vi.fn(async (url: string, init: RequestInit = {}) => {
+      calls.push({url,init});
+      vi.setSystemTime(Date.now() + 23_900);
+      return new Response(JSON.stringify({success:false,code:'capture_busy'}));
+    }));
+    const response = await handler(req({...LEAD,submissionId:'slow-busy-123'}),ctx);
+    expect(response.status).toBe(503);
+    expect(calls.filter(c => c.url === UPSTREAM)).toHaveLength(1);
+    expect(timeout).toHaveBeenCalledTimes(1);
+    expect(timeout.mock.calls[0][0]).toBeLessThanOrEqual(25_000);
+    expect(rescueSent()).toBe(false);
+  });
+  it('stops during backoff without another write or a false lost-lead alert', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    vi.spyOn(AbortSignal,'timeout').mockReturnValue(controller.signal);
+    responses = [new Response(JSON.stringify({success:false,code:'capture_busy'}))];
+    const pending = handler(req({...LEAD,submissionId:'abort-backoff-123'}),ctx);
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort();
+    expect((await pending).status).toBe(503);
+    expect(calls.filter(c => c.url === UPSTREAM)).toHaveLength(1);
+    expect(rescueSent()).toBe(false);
+  });
+  it.each(['network','malformed','mismatch','http','conflict'])('stops after busy then %s instead of replaying an uncertain or rejected write', async outcome => {
+    vi.useFakeTimers();
+    responses = [new Response(JSON.stringify({success:false,code:'capture_busy'})),
+      outcome === 'network' ? new Error('connection lost') : outcome === 'malformed' ? new Response('not json') :
+      outcome === 'http' ? new Response('unavailable',{status:503}) : outcome === 'conflict' ?
+      new Response(JSON.stringify({success:false,code:'submission_conflict'})) :
+      new Response(JSON.stringify({success:true,submissionId:'wrong',receipt:'saved'}))];
+    const pending = handler(req({...LEAD,submissionId:'busy-then-unknown-123'}),ctx);
+    await vi.runAllTimersAsync();
+    const response = await pending;
+    expect(response.status).toBe(outcome === 'conflict' ? 409 : 502);
+    expect(calls.filter(c => c.url === UPSTREAM)).toHaveLength(2);
+    expect(rescueSent()).toBe(outcome !== 'conflict');
   });
   it.each([{}, { submissionId: 'another', receipt: 'saved' }, { submissionId: '12345678-1234-4234-8234-123456789012' }])('refuses an unverified ID receipt: %j', async fields => {
     const submissionId = '12345678-1234-4234-8234-123456789012';

@@ -1695,24 +1695,35 @@ function canonicalSubmission(data) {
   return JSON.stringify(ordered(payload));
 }
 
-/** Called only under the capture lock. Header lookup preserves migrated tabs. */
+/** Called only under the capture lock. On 29 Oct, reading the ID column in
+ * every lead tab cost 4.0-5.2 seconds per save. A native exact-cell search took
+ * 0.7 seconds on the same workbook. Search the workbook once, then accept only
+ * active capture tabs' current Submission ID columns. All Leads, old recovery
+ * tabs and an ID pasted into a message are not capture receipts. No cached
+ * negative lookup or auxiliary index can silently weaken replay protection. */
 function capturedSubmission(ss, id) {
   const schemas = leadTabSchemas();
-  for (let i = 0; i < schemas.length; i++) {
-    const sheet = ss.getSheetByName(schemas[i].tab);
-    if (!sheet || sheet.getLastRow() < 2) continue;
-    const headers = liveHeaders(sheet);
-    const idColumn = headers.indexOf('Submission ID');
-    if (idColumn < 0) continue;
-    const ids = sheet.getRange(2, idColumn + 1, sheet.getLastRow() - 1, 1).getValues();
-    for (let j = 0; j < ids.length; j++) {
-      if (String(ids[j][0]) !== id) continue;
-      const snapshotColumn = headers.indexOf('Submission Snapshot');
-      let payload = null;
-      try { payload = JSON.parse(String(sheet.getRange(j + 2, snapshotColumn + 1, 1, 1).getValues()[0][0])); }
-      catch { /* A damaged/legacy snapshot is never permission to overwrite it. */ }
-      return { payload: payload };
-    }
+  const names = schemas.map(function (schema) { return schema.tab; });
+  const matches = ss.createTextFinder(id).matchEntireCell(true).matchCase(true)
+    .useRegularExpression(false).findAll().map(function (range) {
+      return { range: range, sheet: range.getSheet(), row: range.getRow(), column: range.getColumn() };
+    }).filter(function (hit) { return hit.row > 1 && names.indexOf(hit.sheet.getName()) >= 0; });
+  // Preserve the old schema/row precedence even if someone has reordered tabs.
+  matches.sort(function (a, b) {
+    return names.indexOf(a.sheet.getName()) - names.indexOf(b.sheet.getName()) || a.row - b.row;
+  });
+  const headersByTab = {};
+  for (let i = 0; i < matches.length; i++) {
+    const hit = matches[i];
+    const name = hit.sheet.getName();
+    const headers = headersByTab[name] || (headersByTab[name] = liveHeaders(hit.sheet));
+    if (headers.indexOf('Submission ID') + 1 !== hit.column) continue;
+    const snapshotColumn = headers.indexOf('Submission Snapshot');
+    let payload = null;
+    try {
+      if (snapshotColumn >= 0) payload = JSON.parse(String(hit.sheet.getRange(hit.row, snapshotColumn + 1, 1, 1).getValues()[0][0]));
+    } catch { /* A damaged/legacy snapshot is never permission to overwrite it. */ }
+    return { payload: payload };
   }
   return null;
 }

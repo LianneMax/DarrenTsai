@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadGas, TEST_PROXY_KEY } from './helpers/gas-harness';
 
 type Payload = Record<string, unknown>;
@@ -66,6 +66,43 @@ describe('capture retry identity', () => {
     const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });
     post(h.gas, { ...lead, _delivery: { version: 1, jobs: { hubspot: { state: 'sent' }, guide: { state: 'sent' } } } });
     expect(JSON.parse(String(h.rowOf('Follow-ups').Payload))._delivery).toBeUndefined();
+  });
+  it('finds a cross-form replay after columns and tabs move', () => {
+    const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });
+    post(h.gas, lead);
+    const tab = h.tabs.get('FHA')!;
+    tab.rows = tab.rows.map(row => [...row].reverse());
+    const queueBefore = JSON.stringify(h.tabs.get('Follow-ups'));
+    expect(post(h.gas, lead)).toMatchObject({success:true,replayed:true});
+    expect(post(h.gas, {...lead,source:'real-estate-investing',formId:'rei-magnet'})).toMatchObject({code:'submission_conflict'});
+    expect(tab.rows).toHaveLength(2);
+    expect(JSON.stringify(h.tabs.get('Follow-ups'))).toBe(queueBefore);
+  });
+  it('ignores All Leads, archive matches, non-ID columns, substrings and different case', () => {
+    const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });
+    const headers = ['Inquiry Message','Submission ID','Submission Snapshot'];
+    const snapshot = JSON.stringify({...lead,email:'someone-else@example.com'});
+    h.tabs.set('All Leads',{name:'All Leads',rows:[headers,[lead.submissionId,lead.submissionId,snapshot]]});
+    h.tabs.set('FHA (old 2026)',{name:'FHA (old 2026)',rows:[headers,['',lead.submissionId,snapshot]]});
+    h.tabs.set('Real Estate Investing',{name:'Real Estate Investing',rows:[headers,
+      [lead.submissionId,'unrelated',snapshot],['','prefix-'+lead.submissionId,snapshot],['','STABLE-1',snapshot]]});
+    expect(post(h.gas,lead)).toMatchObject({success:true,replayed:false});
+    expect(h.tabs.get('FHA')!.rows).toHaveLength(2);
+  });
+  it.each([false,true])('a damaged or missing original snapshot blocks overwrite (missing=%s)', missing => {
+    const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });
+    h.tabs.set('FHA',{name:'FHA',rows:missing ? [['Submission ID'],[lead.submissionId]] :
+      [['Submission ID','Submission Snapshot'],[lead.submissionId,'{broken-json']]});
+    const before = JSON.stringify([...h.tabs]);
+    expect(post(h.gas,lead)).toMatchObject({success:false,code:'submission_conflict'});
+    expect(JSON.stringify([...h.tabs])).toBe(before);
+  });
+  it('a new identity uses one native search without reading every active tab', () => {
+    const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });
+    const ss = h.gas.SpreadsheetApp.openById();
+    const reads = vi.spyOn(ss,'getSheetByName');
+    expect(post(h.gas,lead).success).toBe(true);
+    expect(reads.mock.calls.some(([name]) => ['Home Equity','ADU','DSCR','Real Estate Investing'].includes(name))).toBe(false);
   });
   it('returns bounded busy without writes; the same request can retry later', () => {
     const h = loadGas<Runtime>({ exports, props: { LEAD_PROXY_KEY: TEST_PROXY_KEY } });

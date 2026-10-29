@@ -800,60 +800,82 @@ export default async (req: Request, context: Context) => {
   // DNS and rate limiting eat into the same 25s capture budget. Keep the
   // remaining hosting headroom available for a genuine-failure rescue email.
   const timer = AbortSignal.timeout(
-    Math.max(1000, UPSTREAM_TIMEOUT_MS - (Date.now() - startedAt)),
+    Math.max(1, UPSTREAM_TIMEOUT_MS - (Date.now() - startedAt)),
   );
   try {
-    const res = await fetch(upstream, {
-      method: "POST",
-      // Apps Script reads e.postData.contents regardless of type, and text/plain
-      // avoids a preflight on the server hop.
-      headers: { "content-type": "text/plain;charset=utf-8" },
-      body: forwarded,
-      redirect: "follow", // server-side there is no CORS, so the 302 is just followed
-      signal: timer,
-    });
+    // A busy admission explicitly means Apps Script has NOT written anything.
+    // Retry only that answer, with this frozen body and original deadline. An
+    // unknown save, bad receipt or network failure must never be auto-replayed.
+    // Jitter separates a burst's contenders; the attempt cap and 3s reserve
+    // prevent retries from extending the 25s confirmation budget indefinitely.
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(upstream, {
+        method: "POST",
+        // Apps Script reads e.postData.contents regardless of type, and text/plain
+        // avoids a preflight on the server hop.
+        headers: { "content-type": "text/plain;charset=utf-8" },
+        body: forwarded,
+        redirect: "follow", // server-side there is no CORS, so the 302 is just followed
+        signal: timer,
+      });
 
-    const text = await res.text();
+      const text = await res.text();
 
-    if (!res.ok) {
-      await rescueEmail(`Apps Script returned HTTP ${res.status}`, raw);
-      return uncertain('upstream error');
-    }
-
-    // Apps Script answers 200 with {success:false, error} when it caught an
-    // exception internally, so a 2xx alone is not proof the lead was stored.
-    let parsed: { success?: boolean; error?: string; code?: string; field?: string; message?: string; submissionId?: string; receipt?: string; replayed?: boolean; disposition?: string } = {};
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      await rescueEmail(`Apps Script returned unparseable body: ${text.slice(0, 500)}`, raw);
-      return uncertain('upstream error');
-    }
-
-    if (parsed.success !== true) {
-      if (parsed.code === 'proxy_auth_not_configured') {
-        console.error('Apps Script authentication is not configured; request rejected');
-        return jsonResponse(503, {ok:false,receipt:'rejected',...(submissionId ? {submissionId}:{}),code:'proxy_auth_not_configured',error:'lead endpoint authentication is not configured'});
+      if (!res.ok) {
+        await rescueEmail(`Apps Script returned HTTP ${res.status}`, raw);
+        return uncertain('upstream error');
       }
-      if (parsed.code === 'submission_conflict') return jsonResponse(409, { ok: false, receipt: 'rejected', submissionId, code: parsed.code, field: 'submissionId', message: 'This request ID is already saved with different details. Please start a new request.' });
-      if (parsed.code === 'invalid_submission_id') return jsonResponse(422, { ok: false, receipt: 'rejected', submissionId, code: parsed.code, field: 'submissionId', message: 'Please start a new request before sending.' });
-      if (parsed.code === 'capture_busy') return jsonResponse(503, { ok: false, receipt: 'uncertain', submissionId, code: parsed.code, message: 'Your request is still being processed. Please retry with the same details.' });
-      await rescueEmail(`Apps Script reported failure: ${parsed.error ?? "unknown"}`, raw);
-      return uncertain('upstream error');
-    }
 
-    if (submissionId && (parsed.submissionId !== submissionId || parsed.receipt !== 'saved')) {
-      await rescueEmail('Apps Script did not confirm this submission identity', raw, true);
-      return uncertain('receipt mismatch');
+      // Apps Script answers 200 with {success:false, error} when it caught an
+      // exception internally, so a 2xx alone is not proof the lead was stored.
+      let parsed: { success?: boolean; error?: string; code?: string; field?: string; message?: string; submissionId?: string; receipt?: string; replayed?: boolean; disposition?: string } = {};
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        await rescueEmail(`Apps Script returned unparseable body: ${text.slice(0, 500)}`, raw);
+        return uncertain('upstream error');
+      }
+
+      if (parsed.success !== true) {
+        if (parsed.code === 'proxy_auth_not_configured') {
+          console.error('Apps Script authentication is not configured; request rejected');
+          return jsonResponse(503, {ok:false,receipt:'rejected',...(submissionId ? {submissionId}:{}),code:'proxy_auth_not_configured',error:'lead endpoint authentication is not configured'});
+        }
+        if (parsed.code === 'submission_conflict') return jsonResponse(409, { ok: false, receipt: 'rejected', submissionId, code: parsed.code, field: 'submissionId', message: 'This request ID is already saved with different details. Please start a new request.' });
+        if (parsed.code === 'invalid_submission_id') return jsonResponse(422, { ok: false, receipt: 'rejected', submissionId, code: parsed.code, field: 'submissionId', message: 'Please start a new request before sending.' });
+        if (parsed.code === 'capture_busy') {
+          const delay = Math.min(1200, 150 * 2 ** attempt) + Math.floor(Math.random() * 300);
+          if (submissionId && attempt < 11 && !timer.aborted &&
+            UPSTREAM_TIMEOUT_MS - (Date.now() - startedAt) > delay + 3000) {
+            // Abort during backoff is still a known no-write refusal, not a lost
+            // lead requiring a rescue alert. Remove the listener after each wait.
+            await new Promise<void>(resolve => {
+              const finish = () => { clearTimeout(wait); timer.removeEventListener('abort', finish); resolve(); };
+              const wait = setTimeout(finish, delay);
+              timer.addEventListener('abort', finish, { once: true });
+              if (timer.aborted) finish();
+            });
+            if (!timer.aborted) continue;
+          }
+          return jsonResponse(503, { ok: false, receipt: 'uncertain', submissionId, code: parsed.code, message: 'The save service is busy. Please retry here with the same details.' });
+        }
+        await rescueEmail(`Apps Script reported failure: ${parsed.error ?? "unknown"}`, raw);
+        return uncertain('upstream error');
+      }
+
+      if (submissionId && (parsed.submissionId !== submissionId || parsed.receipt !== 'saved')) {
+        await rescueEmail('Apps Script did not confirm this submission identity', raw, true);
+        return uncertain('receipt mismatch');
+      }
+      // A confirmed write alone cannot tell the UI which next step is allowed.
+      // During a staged rollout an older writer might save AND enqueue the new
+      // inquiry, so require the independent writer's Sheet-only acknowledgement.
+      if ((sheetOnly && parsed.disposition !== 'sheet-only') || (!sheetOnly && parsed.disposition === 'sheet-only')) {
+        await rescueEmail('Apps Script did not confirm the expected inquiry disposition', raw, true);
+        return uncertain('receipt disposition mismatch');
+      }
+      return jsonResponse(200, { ok: true, receipt: 'saved', ...(sheetOnly ? { disposition: 'sheet-only' } : {}), ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true });
     }
-    // A confirmed write alone cannot tell the UI which next step is allowed.
-    // During a staged rollout an older writer might save AND enqueue the new
-    // inquiry, so require the independent writer's Sheet-only acknowledgement.
-    if ((sheetOnly && parsed.disposition !== 'sheet-only') || (!sheetOnly && parsed.disposition === 'sheet-only')) {
-      await rescueEmail('Apps Script did not confirm the expected inquiry disposition', raw, true);
-      return uncertain('receipt disposition mismatch');
-    }
-    return jsonResponse(200, { ok: true, receipt: 'saved', ...(sheetOnly ? { disposition: 'sheet-only' } : {}), ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true });
   } catch (err) {
     const name = (err as { name?: string } | null)?.name;
     const timedOut = timer.aborted || name === "TimeoutError" || name === "AbortError";
