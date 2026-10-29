@@ -6,7 +6,57 @@ The one rule: **update the existing deployment in place.** Never `clasp deploy` 
 
 ## Server authentication and email opt-out rollout
 
-Publish the Netlify changes first, then update Apps Script in place. The proxy adds a server-only `_proxyKey`; the historical pre-authentication script ignored that extra field. Current Apps Script validates `LEAD_PROXY_KEY`, falling back to the existing `NETLIFY_CONTACT_CONFIRM_KEY`; Netlify uses the matching `LEAD_PROXY_KEY`, falling back to `CONTACT_CONFIRM_API_KEY`. Verify the private values match without printing them. Prefer a dedicated matching `LEAD_PROXY_KEY` for independent rotation. Current code fails closed when neither property is configured and rejects unsigned or mismatched submissions before any write. Configure matching keys before deployment; never roll back to an unsigned writer to restore service. Verify the deployed authentication behavior and a controlled TEST through the proxy before retiring the old deployment version.
+### Durable website inbox rollout
+
+For the inbox release, deploy the current Apps Script writer **first**, updating
+the existing deployment in place. Its health response must include
+`captureProtocol: "stable-id-v1"`. This advertises stable-ID replay/conflict
+protection; the inbox worker will not send requests to an older writer.
+The writer also reserves `inbox1-` IDs for authenticated `_inboxDelivery` posts.
+Never remove that guard to make a rollback appear successful.
+
+Then publish the Netlify admission handler, `lead-inbox-sync` scheduled function
+and upgraded `public/lead-request.js` together. New inquiries receive an
+`inbox1-` UUID. Historical/recovered IDs keep their original synchronous
+Sheet replay path. There is no historical-row migration or new public read API.
+
+Admission validates contact, privacy and service area before writing a private
+Netlify Blobs inbox record. An opaque pending pointer is written first, then an
+atomic create-only identity/body record, followed by strong readback. Only that
+confirmed receipt opens a supported visitor's calendar and permits the existing
+consent-gated lead event. It does not claim Sheet, CRM or email delivery is done.
+Unsupported inquiries keep their Sheet-only disposition and recorded exit page.
+
+The every-minute worker uses conditional per-record leases and a22-second work
+budget under Netlify's30-second scheduled limit. It forwards frozen bodies with
+the existing server key and requires a matching Sheet receipt/disposition before
+marking synchronized. Unknown transport outcomes may be replayed only through
+the verified stable-ID writer. Conflicts, damaged payloads and contradictory
+receipts are retained for review. Operational notices go only to Max and do not
+claim a lead was lost. Scheduled functions cannot be invoked at a public URL.
+
+Use Netlify's authenticated Blobs UI and function logs to inspect recovery state:
+`lead-inbox` contains authoritative `records/` plus `pending/` and `review/`
+pointers. Never delete/recreate an ID to clear an error. Unprocessed bodies remain
+durable; ordinary synchronized transport bodies are removed only after the
+confirmed Sheet/queue write, leaving receipt fingerprints. Marked TEST bodies
+and all Sheet/CRM history remain until explicitly authorized cleanup.
+
+Verify the installed schedule, a real browser receipt/calendar, outside-state
+exclusion, all retained data and eventual queue/email delivery. A capacity test
+must respect the10-per15min address limit; multiple legitimate execution
+locations are needed for15 concurrent public requests. Do not spoof headers.
+
+**Rollback:** revert the client to creating legacy UUIDs while keeping the new
+admission handler, worker and capable writer deployed. Already accepted inbox
+records must keep draining, and recovered inbox IDs must still be recognized.
+Do not roll the whole server or writer back while inbox work remains. An older
+writer makes the worker retain/back off rather than replay unsafely. Confirm
+all pending/review state and source-row preservation before any later removal.
+
+### Authentication and opt-out migration
+
+For the original authentication/opt-out migration only, publish the Netlify changes first, then update Apps Script in place. The proxy adds a server-only `_proxyKey`; the historical pre-authentication script ignored that extra field. Current Apps Script validates `LEAD_PROXY_KEY`, falling back to the existing `NETLIFY_CONTACT_CONFIRM_KEY`; Netlify uses the matching `LEAD_PROXY_KEY`, falling back to `CONTACT_CONFIRM_API_KEY`. Verify the private values match without printing them. Prefer a dedicated matching `LEAD_PROXY_KEY` for independent rotation. Current code fails closed when neither property is configured and rejects unsigned or mismatched submissions before any write. Configure matching keys before deployment; never roll back to an unsigned writer to restore service. Verify the deployed authentication behavior and a controlled TEST through the proxy before retiring the old deployment version.
 
 The shared email sender checks persistent suppression before every send and supplies token-based unsubscribe links plus one-click headers. Deploying Netlify enables website suppression; updating Apps Script marks suppressed queued sends as skipped and enables `recordEmailOptOut(email)`. This does not connect an inbox or synchronize native HubSpot subscriptions. Preserve all contacts and submission history. Previously sent mail retains its old footer.
 

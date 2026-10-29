@@ -10,11 +10,21 @@ beforeEach(() => { sessionStorage.clear(); vi.stubGlobal('DTConsent', { isAllowe
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('one identity for one submitted inquiry', () => {
+  it('retains a recovered historical identity rather than moving its retry into the new inbox namespace', () => {
+    const first=window.DTLead!.prepare('dscr-magnet',payload);
+    const drafts=JSON.parse(sessionStorage.getItem(key)!);
+    drafts['dscr-magnet'].submissionId='historical-id';
+    drafts['dscr-magnet'].body=JSON.stringify({...JSON.parse(first.body),submissionId:'historical-id'});
+    sessionStorage.setItem(key,JSON.stringify(drafts));
+    const recovered=boot().prepare('dscr-magnet',payload);
+    expect(recovered.submissionId).toBe('historical-id');
+    expect(recovered.body).toBe(drafts['dscr-magnet'].body);
+  });
   it('freezes the complete body across retry, preserving original consent and attribution', () => {
     const first = window.DTLead!.prepare('dscr-magnet', payload);
     const retry = window.DTLead!.prepare('dscr-magnet', { ...payload, timestamp: 'later', smsConsentAt: 'later', firstTouchTs: 'regenerated', utm_source: 'changed' });
     expect(retry.body).toBe(first.body);
-    expect(JSON.parse(first.body)).toMatchObject({ ...payload, submissionId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
+    expect(JSON.parse(first.body)).toMatchObject({ ...payload, submissionId: expect.stringMatching(/^inbox1-[0-9a-f-]{36}$/) });
   });
   it.each([{ rent: 2500 }, { email: 'another@example.com' }, { smsConsent: true }])('starts a new identity for edited answers or consent: %j', change => {
     const first = window.DTLead!.prepare('dscr-magnet', payload);

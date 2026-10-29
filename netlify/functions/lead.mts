@@ -35,6 +35,7 @@ import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 import { createHash } from "node:crypto";
 import { Resolver } from "node:dns/promises";
+import { admitLead } from './lead-inbox.mts';
 
 const FROM = "Darren Tsai <darren@realdarrentsai.com>";
 // Max, 21 Oct: technical capture/rescue alerts go only to Max. These are
@@ -406,7 +407,7 @@ export function normalizeSmsConsent(payload: Record<string, unknown>) {
   if ('smsMarketingConsent' in payload) payload.smsConsent = payload.smsMarketingConsent;
 }
 
-export function buildRescueEmail(reason: string, payload: string, uncertain: boolean) {
+export function buildRescueEmail(reason: string, payload: string, uncertain: boolean, location:'sheet'|'inbox'='sheet') {
   const rawShown =
     payload.length > RAW_MAX
       ? `${payload.slice(0, RAW_MAX)}\n\n[truncated, ${payload.length} characters total]`
@@ -427,7 +428,7 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
   const email = displayValue(lead.email);
   const phone = displayValue(lead.phone);
 
-  const headline = uncertain ? "Check the Sheet for this lead" : "This lead did not save";
+  const headline = location==='inbox' ? 'Check the website inbox for this inquiry' : uncertain ? "Check the Sheet for this lead" : "This lead did not save";
   const accent = uncertain ? "#b45309" : "#b42318";
   const accentSoft = uncertain ? "#fffaeb" : "#fef3f2";
   const accentBorder = uncertain ? "#fedf89" : "#fecdc9";
@@ -435,14 +436,14 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
   // phone, so it says what to DO and who it is about, in that order. Jargon
   // ("STATUS UNKNOWN") told the reader about our plumbing, not their next move.
   const who = name || email || "a new lead";
-  const subject = uncertain
+  const subject = location==='inbox' ? `Check the website inbox for ${who} - save confirmation unavailable` : uncertain
     ? `Check the Sheet for ${who} - lead may not have saved`
     : `Add ${who} by hand - lead did not save`;
 
-  const explanationHtml = uncertain
+  const explanationHtml = location==='inbox' ? 'The website could not confirm its durable inbox receipt. The inquiry may already be saved in the inbox and awaiting Sheet synchronization. This is an uncertain outcome, not proof of a lost lead.' : uncertain
     ? "This lead timed out before Apps Script confirmed it. Apps Script keeps running after we stop waiting, so it is <strong>probably saved already</strong>."
     : "This lead could not be written to Sheets. Nothing downstream has it.";
-  const action = uncertain
+  const action = location==='inbox' ? 'Check the private lead-inbox record in Netlify and the Sheet before any manual recovery. Retry only with the original submission ID and unchanged details; do not create a new inquiry to recover this one.' : uncertain
     ? "Search the Sheet for this email first. Only enter it by hand if it is genuinely missing, otherwise you will create a duplicate in the Sheet and HubSpot."
     : "Enter this lead by hand, then send whatever guide the form promised.";
 
@@ -533,7 +534,7 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
 
   const text =
     `${headline.toUpperCase()}\n\n` +
-    (uncertain
+    (location==='inbox' ? 'The website could not confirm its durable inbox receipt. Check the private website inbox and the Sheet before any manual recovery. It may already be saved. Preserve the original request ID and payload.\n' : uncertain
       ? "A lead submitted on realdarrentsai.com timed out before Apps Script confirmed it.\n" +
         "It is probably saved: check the Sheet for this email before entering it by hand, to avoid a duplicate.\n"
       : "A lead submitted on realdarrentsai.com could not be written to Sheets.\n") +
@@ -553,13 +554,13 @@ export function buildRescueEmail(reason: string, payload: string, uncertain: boo
 // A timeout is not a failed write: Apps Script keeps running after we stop
 // waiting, so the lead has very likely been saved. Saying "NOT SAVED" there sent
 // the operator a false alarm and invited a duplicate hand-entry.
-async function rescueEmail(reason: string, payload: string, uncertain = false) {
+async function rescueEmail(reason: string, payload: string, uncertain = false, location:'sheet'|'inbox'='sheet') {
   const resendKey = Netlify.env.get("RESEND_API_KEY");
   if (!resendKey) {
     console.error("no RESEND_API_KEY, lead could not be rescued", reason);
     return;
   }
-  const { subject, html, text } = buildRescueEmail(reason, payload, uncertain);
+  const { subject, html, text } = buildRescueEmail(reason, payload, uncertain,location);
   try {
     await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -642,6 +643,10 @@ export default async (req: Request, context: Context) => {
     return jsonResponse(422, { ok: false, receipt: 'rejected', field: 'submissionId', code: 'invalid_submission_id', message: 'Please start a new request before sending.' });
   }
   const uncertain = (error: string) => jsonResponse(502, { ok: false, receipt: 'uncertain', ...(submissionId ? { submissionId } : {}), error });
+  // The namespace is reserved for the upgraded shared client runtime. Historical
+  // IDs retain their Sheet replay/conflict checks instead of being acknowledged
+  // in a new inbox before their pre-existing Sheet snapshot can be compared.
+  const inboxAdmission=typeof submissionId==='string' && submissionId.startsWith('inbox1-');
 
   // Never let truthy strings (including "false") become permission to text.
   // Keep older clients' absent fields absent; invalid evidence must not lose a lead.
@@ -658,10 +663,14 @@ export default async (req: Request, context: Context) => {
   }
 
   const captureInquiry = isCaptureInquiry(payload.formId, payload.source);
-  if (isCaptureForm(payload.formId)) {
-    if (!captureInquiry) return jsonResponse(422, { field: 'source', message: 'Please refresh this form before sending.' });
+  if (isCaptureForm(payload.formId) || (inboxAdmission && payload.formId===BOOKING_PREQUAL_FORM)) {
+    // Modern booking admission must validate contact/privacy before it can
+    // acknowledge the inbox. The old proxy relied on the browser for supported
+    // booking consent, which is insufficient once calendar access is immediate.
+    if (isCaptureForm(payload.formId) && !captureInquiry) return jsonResponse(422, { field: 'source', message: 'Please refresh this form before sending.' });
     if (!submissionId || typeof payload.firstName !== 'string' || !payload.firstName.trim() ||
-      (isEquityForm(payload.formId) && (typeof payload.lastName !== 'string' || !payload.lastName.trim())) ||
+      (payload.lastName!==undefined && typeof payload.lastName!=='string') ||
+      ((isEquityForm(payload.formId) || payload.formId===BOOKING_PREQUAL_FORM) && (typeof payload.lastName !== 'string' || !payload.lastName.trim())) ||
       typeof payload.email !== 'string' || !isEmailFormat(payload.email) || !isUsPhone(payload.phone)) {
       return jsonResponse(422, { field: 'contact', message: 'Please complete your full name, email and phone.' });
     }
@@ -794,6 +803,21 @@ export default async (req: Request, context: Context) => {
     return jsonResponse(503, { ok: false, receipt: 'rejected', ...(submissionId ? { submissionId } : {}), code: 'proxy_auth_not_configured', error: 'lead endpoint authentication is not configured' });
   }
   delete payload._proxyKey;
+  // Expand-first rollout: deploy the capable writer first; publish this handler,
+  // scheduled drain and namespaced client together. Older IDs keep their path.
+  // Screening above owns calendar permission; a durable inbox acknowledgement
+  // is now the confirmed save point approved by Max, not a claim of CRM delivery.
+  if(inboxAdmission) {
+    try {
+      const admitted=await admitLead({...payload,...(hutk?{hutk}:{})},sheetOnly,
+        AbortSignal.timeout(Math.max(1,Math.min(8000,UPSTREAM_TIMEOUT_MS-(Date.now()-startedAt)))));
+      if(admitted.conflict) return jsonResponse(409,{ok:false,receipt:'rejected',submissionId,code:'submission_conflict',field:'submissionId',message:'This request ID is already saved with different details. Please start a new request.'});
+      return jsonResponse(200,{ok:true,receipt:'saved',storage:'inbox',submissionId,replayed:admitted.replayed,...(sheetOnly?{disposition:'sheet-only'}:{})});
+    } catch {
+      await rescueEmail('The durable website inbox could not confirm this request',raw,true,'inbox');
+      return uncertain('inbox confirmation unavailable');
+    }
+  }
   const forwarded = JSON.stringify({ ...payload, ...(hutk ? { hutk } : {}),
     ...(proxyKey ? { _proxyKey: proxyKey } : {}) });
 

@@ -1782,6 +1782,12 @@ function doPost(e) {
     }
     if (difference) return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
       .setMimeType(ContentService.MimeType.JSON);
+    // Reserve upgraded IDs for the durable inbox worker. Old proxy deployments
+    // must not write these directly during rollback and bypass inbox identity.
+    if (String(data.submissionId || '').indexOf('inbox1-') === 0 && data._inboxDelivery !== true) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'inbox_delivery_required' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     // Private queue checkpoints are minted only by this script. An anonymous
     // form must not inject completed jobs or a delivery lease into the queue.
     Object.keys(data).forEach(function (key) { if (key.charAt(0) === '_') delete data[key]; });
@@ -2724,6 +2730,6 @@ function installFollowUpTrigger() {
 
 function doGet() {
   return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok' }))
+    .createTextOutput(JSON.stringify({ status: 'ok', captureProtocol: 'stable-id-v1' }))
     .setMimeType(ContentService.MimeType.JSON);
 }

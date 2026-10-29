@@ -93,7 +93,7 @@ describe.each(PAGES)('/%s actionable rejection and safe retry', (page) => {
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {sent.push(String(init.body)); return new Response('{}',{status:503});}));
     await form.run(); await form.run();
     expect(sent).toHaveLength(2);
-    expect(JSON.parse(sent[0]).submissionId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(JSON.parse(sent[0]).submissionId).toMatch(/^inbox1-[0-9a-f-]{36}$/);
     expect(sent[1]).toBe(sent[0]);
     expect(form.error()).toMatch(/same details/i);
   });

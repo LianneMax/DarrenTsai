@@ -81,14 +81,17 @@
   Object.keys(pending).forEach(function (key) { expire(key, pending[key]); });
 
   function uuid() {
-    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    // New identities belong to the durable website inbox. Retain any recovered
+    // older identity unchanged so its historical Sheet conflict/replay checks
+    // remain authoritative through a mixed-version deployment.
+    if (window.crypto && window.crypto.randomUUID) return 'inbox1-' + window.crypto.randomUUID();
     var bytes = new window.Uint8Array(16);
     if (!window.crypto || !window.crypto.getRandomValues) throw new Error('Secure submission identity is unavailable. Please use a current browser.');
     window.crypto.getRandomValues(bytes);
     bytes[6] = (bytes[6] & 15) | 64;
     bytes[8] = (bytes[8] & 63) | 128;
     var hex = Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
-    return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20);
+    return 'inbox1-' + hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20);
   }
 
   function material(value, top) {

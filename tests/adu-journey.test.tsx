@@ -103,7 +103,7 @@ describe('isolated ADU design journey',()=>{
     await act(async()=>ack.click());await button('Send my project');expect(posted).toHaveLength(1);
     const expected=buildAduLead({firstName:'TEST',lastName:'Local Preview',email:'test@example.com',phone:'(714) 555-0191',state:'CA',homeValue:650000,mortgageBalance:350000,projectCost:175000,amountToFinance:75000,purpose:'ADU for family'});
     const {timestamp:_,...stable}=expected;expect(posted[0]).toMatchObject(stable);
-    expect(posted[0]).toMatchObject({submissionId:expect.stringMatching(/^[0-9a-f-]{36}$/),formId:'adu-calculator',source:'adu',propertyUse:'primary',propertyState:'CA',privacyAcknowledged:true,smsConsent:false,smsInformationalConsent:false,smsMarketingConsent:false});
+    expect(posted[0]).toMatchObject({submissionId:expect.stringMatching(/^inbox1-[0-9a-f-]{36}$/),formId:'adu-calculator',source:'adu',propertyUse:'primary',propertyState:'CA',privacyAcknowledged:true,smsConsent:false,smsInformationalConsent:false,smsMarketingConsent:false});
     expect(text()).toContain('Your inquiry is saved. Loading the next step…');
   });
   it('keeps an editable request on a rejected email and never shows confirmation',async()=>{
