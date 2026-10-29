@@ -21,7 +21,7 @@ vi.mock('@netlify/blobs', () => ({ getStore: (name: string) => ({
 }) }));
 
 import handler from '../netlify/functions/lead.mts';
-import { synchronizeLeads } from '../netlify/functions/lead-inbox.mts';
+import privateInboxModule, { synchronizeLeads } from '../netlify/functions/lead-inbox.mts';
 import syncHandler from '../netlify/functions/lead-inbox-sync.mts';
 
 const lead = (id: string) => ({submissionId:'inbox1-'+id,formId:'booking-prequal',source:'home-contact',bookingGoal:'equity',
@@ -50,6 +50,13 @@ function writer() {
 }
 
 describe('durable admission before Sheet synchronization',()=>{
+  it('exposes no HTTP inbox read or maintenance endpoint',async()=>{
+    const response=privateInboxModule();
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('');
+    expect(state.records.size).toBe(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('confirms fifteen concurrent validated inquiries without waiting on Apps Script',async()=>{
     const responses=await Promise.all(Array.from({length:15},(_,i)=>handler(request(lead('inbox-'+i)),{ip:'203.0.113.'+(i+1)} as never)));
     expect(responses.map(r=>r.status)).toEqual(Array(15).fill(200));

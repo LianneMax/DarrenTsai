@@ -1,6 +1,10 @@
 import { getStore } from '@netlify/blobs';
 import { createHash, randomUUID } from 'node:crypto';
 
+// Netlify also discovers top-level shared modules as functions. The inbox is
+// private; direct HTTP invocation must never become a read/maintenance route.
+export default function privateInboxModule() { return new Response(null,{status:404}); }
+
 // Max, 29 Oct: an acknowledged durable website inbox may open the calendar;
 // Google Sheets and its existing CRM/email queue synchronize afterward.
 // No public read endpoint exists. Keys are opaque and never contain contact data.
