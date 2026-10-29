@@ -37,9 +37,11 @@ export function savingsText(save: number): string {
     if (rounded < 0) return `Payment goes up ${money(-rounded)}/mo`;
     return 'No monthly savings';
   }
-  if (rounded > 0) return `Estimated payment difference: ${money(rounded)}/mo lower`;
-  if (rounded < 0) return `Estimated payment difference: ${money(-rounded)}/mo higher`;
-  return 'Estimated payment difference: none';
+  // The comparison already supplies the estimate and cost context. Keep the
+  // verdict short on cards and saved summaries without calling it total savings.
+  if (rounded > 0) return `${money(rounded)}/mo lower`;
+  if (rounded < 0) return `${money(-rounded)}/mo higher`;
+  return 'No monthly change';
 }
 
 /** The same verdict for a breakdown row, where the label already names it. */

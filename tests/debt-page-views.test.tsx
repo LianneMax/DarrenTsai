@@ -91,7 +91,8 @@ describe('an untouched page shows no figures', () => {
 describe('the comparison says what each option does to the payment', () => {
   it('a payment that goes up is said in those words, never as a negative saving', () => {
     const page = html(<StepCompare v={{ ...filled, refiPmt: 3940, refiSave: -140 }} />);
-    expect(page).toContain('Estimated payment difference: $140/mo higher');
+    expect(page).toContain('$140/mo higher');
+    expect(page).not.toContain('Estimated payment difference:');
     expect(page).not.toMatch(/Save -/);
   });
 
@@ -169,10 +170,11 @@ describe('the sticky savings bar', () => {
 
 describe('savingsText (RESULT_WORDING = payment-difference until Saxton confirms)', () => {
   it.each([
-    [1139.4, 'Estimated payment difference: $1,139/mo lower'],
-    [-140.2, 'Estimated payment difference: $140/mo higher'],
-    [0.3, 'Estimated payment difference: none'],
-    [-0.4, 'Estimated payment difference: none'],
+    [116.4, '$116/mo lower'],
+    [1139.4, '$1,139/mo lower'],
+    [-140.2, '$140/mo higher'],
+    [0.3, 'No monthly change'],
+    [-0.4, 'No monthly change'],
   ])('%s reads "%s"', (n, text) => {
     expect(savingsText(n)).toBe(text);
   });
@@ -186,6 +188,19 @@ describe('savingsText (RESULT_WORDING = payment-difference until Saxton confirms
 
   it('never says Save or Savings while the setting is payment-difference', () => {
     for (const n of [1139, -140, 0]) expect(savingsText(n) + savingsRowText(n)).not.toMatch(/sav/i);
+  });
+
+  it('uses the concise verdict on option cards and the saved recap while retaining disclosures', () => {
+    const v = { ...filled, refiSave: 116, chosen: 'refi' as const };
+    const card = html(<StepCompare v={v} />);
+    const recap = html(<DebtRecap v={{ ...v, submitted: true }} />);
+    for (const page of [card, recap]) {
+      expect(page).toContain('$116/mo lower');
+      expect(page).not.toContain('Estimated payment difference:');
+    }
+    expect(card).toContain('A lower monthly payment is not a calculation of total savings.');
+    expect(card).toContain('Estimated APR');
+    expect(card).toContain(RESULT_ROW_LABEL);
   });
 });
 
