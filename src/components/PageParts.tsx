@@ -233,7 +233,7 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack, 
       <h2 className="dcp-h2 dcp-h2-lg">{title}</h2>
       {!propertyAlreadyAsked && <ServiceAreaFields formId={formId} onStateChange={v.setUsState} deferScreening />}
       <p className="dcp-lead">
-        {lead ?? 'Your estimate is a starting point. A personal review helps you understand which options may fit your goals. No hard pull, no obligation.'}
+        {lead ?? 'Your estimate is a starting point. A personal review helps you understand which options may fit your goals. No obligation. Not a loan application.'}
       </p>
 
       <div className="dcp-grid-2">

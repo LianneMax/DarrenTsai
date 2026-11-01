@@ -95,7 +95,7 @@ const ADU_PURPOSES: Record<string, string> = {
 
 /** First person, because the email is signed by Darren. The site says "Darren will be in touch." */
 const NEXT_STEP =
-  "I will be in touch. If you would like to pick a time yourself, choose any 15 minutes that suits you. No credit pull, no obligation.";
+  "I will be in touch. If you would like to pick a time yourself, choose any 15 minutes that suits you. No obligation. Not a loan application.";
 
 const CONTEXTS: Record<string, Copy> = {
   // The live email. Do not edit without meaning to change what is being sent.
@@ -108,7 +108,7 @@ const CONTEXTS: Record<string, Copy> = {
       "Your details reached me and I will look at your numbers myself. This email is so you know it arrived rather than wondering.",
     body: [],
     closing:
-      "If you would rather not wait for me to reach you, pick any 15 minutes that suits you. No credit pull, no obligation.",
+      "If you would rather not wait for me to reach you, pick any 15 minutes that suits you. No obligation. Not a loan application.",
   },
   debt: {
     campaign: "debt-payoff",

@@ -431,7 +431,7 @@ export function StepContact({ v }: { v: DebtPageView }) {
         onUseChange={v.setPropertyUse} onStateChange={v.setPropertyState} deferScreening />
       <p className="dcp-lead">
         Your estimate is a starting point. A personal review helps you understand which options
-        may fit your goals. No hard pull, no obligation.
+        may fit your goals. No obligation. Not a loan application.
       </p>
 
       <div className="dcp-grid-2">

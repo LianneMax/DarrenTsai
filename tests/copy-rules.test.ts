@@ -46,6 +46,32 @@ describe('APR estimates disclose their assumptions', () => {
   });
 });
 
+describe('no credit-pull claim is made', () => {
+  // Saxton has not approved a credit-pull claim (held since 15 Oct). The
+  // home-equity test only renders that page, so "No hard pull" reached the
+  // shared contact step, the confirmation email and the FHA hero anyway.
+  // Replaced on 31 Oct with "No obligation. Not a loan application." This scan
+  // covers every visitor-facing file so the claim cannot return elsewhere.
+  const CLAIMS = [
+    /\bno (hard|credit) (pull|check|inquiry)/i,
+    /\bsoft[- ](pull|credit)/i,
+    /\bzero credit impact/i,
+    /\b(won.t|will not|doesn.t|does not) (affect|hurt|impact) your credit/i,
+  ];
+
+  it.each(FILES)('%s makes no credit-pull claim', (file) => {
+    const src = code(read(file));
+    for (const claim of CLAIMS) expect(src, String(claim)).not.toMatch(claim);
+  });
+
+  it('the scan includes the pages and email where the claim used to be', () => {
+    for (const file of ['src/components/PageParts.tsx', 'src/components/DebtPageViews.tsx',
+      'public/fha/index.html', 'netlify/functions/send-contact-confirmation.mts']) {
+      expect(FILES).toContain(file);
+    }
+  });
+});
+
 describe('no response time is promised', () => {
   const PROMISES = [
     /within \d+ (business )?(day|hour|minute)s?/i,

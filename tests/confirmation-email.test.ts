@@ -35,10 +35,13 @@ describe('the email being sent today is untouched', () => {
     // Re-captured 27 Oct 2026 after the visual release audit found that white
     // CTA text on #219ebc failed normal-text contrast. Only the button's
     // background changed to the site's #177f94; approved copy is retained.
+    // Re-captured 31 Oct 2026: "No credit pull, no obligation." became
+    // "No obligation. Not a loan application." (credit-pull claim not approved
+    // by Saxton). No other byte changed.
     expect(sha(buildEmailHtml({ firstName: 'Sam', email: 's@example.com', message: 'Want to clear two <cards> & a loan' })))
-      .toBe('c654ddfaf7ff455d80d6a73e2526f8bd075363e9162edbda36b02af0ee4c1348');
+      .toBe('30bbe100e165437e1673a88d3d1af17ba8bd1b77a54dc5b8c7c8c96e095415fe');
     expect(sha(buildEmailHtml({ email: 's@example.com' })))
-      .toBe('2a8e4ef609b10badb44b2cb4609f747d2fe246431d1da227edec1f88a98c5de1');
+      .toBe('ce0d0dfaa9f63974bcef7787ca822251a3fa05bf93749b6e46d98575f887cf3d');
   });
 
   it('is what a lead with no context, or one it has never heard of, gets', () => {
