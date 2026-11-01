@@ -123,7 +123,7 @@ export interface DebtPageView {
 /** The loan-to-value many lenders stop a cash-out refinance at. Said, not enforced. */
 const CASH_OUT_LIMIT = 80;
 
-const STEPS = [['Your debts','Start with your payments'],['Your home','The home behind the plan'],['Compare','Understand the tradeoffs'],['Talk to Darren','A personal next step']] as const;
+const STEPS = [['Your debts','Start with your payments'],['Your home','The home behind the plan'],['Compare','Understand the tradeoffs'],['Your details','How to reach you'],['Review','Preferences and send']] as const;
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
 
@@ -314,6 +314,11 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
       {v.hv > 0 && v.balanceGiven && <EquitySnapshot hv={v.hv} mb={v.mb} />}
 
+      {/* Moved here from the contact step 1 Nov (Max): one screen held this,
+          the contact fields, a note and three consent boxes. */}
+      <ServiceAreaFields formId="debt-savings-calculator" propertyUse={v.propertyUse} propertyState={v.propertyState}
+        onUseChange={v.setPropertyUse} onStateChange={v.setPropertyState} deferScreening />
+
       <StepNav
         back="← Back" onBack={() => v.goStep(1)}
         next={<>See My Comparison <Arrow /></>} onNext={() => v.goStep(3)}
@@ -448,13 +453,10 @@ export function StepCompare({ v }: { v: DebtPageView }) {
 // ─── Step 4: contact ──────────────────────────────────────────────────────────
 
 export function StepContact({ v }: { v: DebtPageView }) {
-  const outside = serviceArea(v.propertyUse, v.propertyState, 'debt-savings-calculator') === 'out-of-market';
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Talk through your comparison.</h2>
       {v.chosen === 'heloc' && <p className="dcp-hint">You’d like to discuss a HELOC. Darren can review the possible line amount, rate and payment with you.</p>}
-      <ServiceAreaFields formId="debt-savings-calculator" propertyUse={v.propertyUse} propertyState={v.propertyState}
-        onUseChange={v.setPropertyUse} onStateChange={v.setPropertyState} deferScreening />
       <p className="dcp-lead">
         Your estimate is a starting point. A personal review helps you understand which options
         may fit your goals. No obligation. Not a loan application.
@@ -499,10 +501,26 @@ export function StepContact({ v }: { v: DebtPageView }) {
 
       <InquiryMessage id="payoff-inquiry-message" value={v.message} onChange={v.setMessage} />
 
+      <StepNav
+        back="← Back" onBack={() => v.goStep(3)}
+        next={<>Continue <Arrow /></>} onNext={() => v.goStep(5)}
+      />
+    </div>
+  );
+}
+
+// ─── Step 5: preferences ──────────────────────────────────────────────────────
+
+export function StepPreferences({ v }: { v: DebtPageView }) {
+  const outside = serviceArea(v.propertyUse, v.propertyState, 'debt-savings-calculator') === 'out-of-market';
+  return (
+    <div className="dcp-panel">
+      <h2 className="dcp-h2 dcp-h2-lg">Your preferences.</h2>
+      <p className="dcp-lead">Review and send. Text messages are optional.</p>
       <ComplianceDisclosure formId="debt-savings-calculator" />
       {v.sending && <p className="dcp-hint" role="status">Saving your details. Your calendar will open after the save is confirmed. This can take a few seconds.</p>}
       <StepNav
-        back="← Back" onBack={() => v.goStep(3)}
+        back="← Back" onBack={() => v.goStep(4)}
         disabled={v.sending}
         next={v.sending
           ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
@@ -585,6 +603,7 @@ export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtP
         {!v.submitted && v.step === 2 && <StepHome v={v} />}
         {!v.submitted && v.step === 3 && <StepCompare v={v} />}
         {!v.submitted && v.step === 4 && <StepContact v={v} />}
+        {!v.submitted && v.step === 5 && <StepPreferences v={v} />}
 
         <div className="dcp-disclosure">{v.disclosure}</div>
         </div></div>

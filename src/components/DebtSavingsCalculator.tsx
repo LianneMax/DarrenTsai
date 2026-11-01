@@ -316,10 +316,19 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // not a lender's HELOC limit. Unlike the payoff HELOAN, borrowing room is not
   // capped at debt owed, and it never feeds monthly-payment/savings formulas.
   const helocRoom = hasHome ? Math.max(hv * COMMON_CLTV_LIMIT / 100 - mb, 0) : null;
-  const furthestStep = !hasDebt ? 1 : !hasHome ? 2 : 4;
+  // 1 Nov (Max): one short screen at a time. The property question sits with
+  // the home on step 2; contact details (4) and the consent boxes (5) are
+  // separate screens, as on /book/ and the guide forms.
+  const hasProperty = Boolean(propertyUse && propertyState);
+  const contactReady = Boolean(fname.trim() && lname.trim() && emailSchema.safeParse(email.trim()).success && isValidUsPhone(phone.trim()));
+  const furthestStep = !hasDebt ? 1 : !hasHome || !hasProperty ? 2 : contactReady ? 5 : 4;
   const gateMessage = !hasDebt
     ? 'Add at least one debt with a balance and a monthly payment, so the comparison is about your money and not an example.'
-    : 'Enter your home value, your mortgage balance (0 if the home is paid off) and, if you have a mortgage, its monthly payment. Without them there is nothing to compare your debts against.';
+    : !hasHome
+      ? 'Enter your home value, your mortgage balance (0 if the home is paid off) and, if you have a mortgage, its monthly payment. Without them there is nothing to compare your debts against.'
+      : !hasProperty
+        ? 'Please choose how you use the home and the state it is in.'
+        : 'Please fill in your full name, a valid email address and a US phone number.';
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

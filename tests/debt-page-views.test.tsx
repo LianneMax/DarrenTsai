@@ -16,7 +16,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import DebtPage, {
-  StepDebts, StepHome, StepCompare, StepContact, DebtRecap, type DebtPageView,
+  StepDebts, StepHome, StepCompare, StepContact, StepPreferences, DebtRecap, type DebtPageView,
 } from '../src/components/DebtPageViews';
 import { savingsText, savingsRowText, RESULT_WORDING, RESULT_ROW_LABEL } from '../src/utils/savingsText';
 
@@ -118,6 +118,30 @@ describe('step 4 asks only for contact details', () => {
     const page = html(<StepContact v={view({ step: 4 })} />);
     expect(page).not.toMatch(/Best Time/i);
     expect(page).not.toMatch(/How did you hear/i);
+  });
+});
+
+describe('one short screen at a time (Max, 1 Nov)', () => {
+  it('asks the property question with the home on step 2', () => {
+    const page = html(<StepHome v={view({ step: 2 })} />);
+    expect(page).toContain('data-service-area="debt-savings-calculator"');
+    expect(page).toContain('Where is the home you’re borrowing against?');
+  });
+
+  it('keeps step 4 to contact details and a note, with no consent boxes or property question', () => {
+    const page = html(<StepContact v={view({ step: 4 })} />);
+    for (const id of ['payoff-fname', 'payoff-lname', 'payoff-email', 'payoff-phone']) expect(page).toContain(`id="${id}"`);
+    expect(page).not.toContain('data-privacy-form');
+    expect(page).not.toContain('data-service-area');
+    expect(page).toContain('Continue');
+  });
+
+  it('puts the consent boxes alone on step 5, with the send button', () => {
+    const page = html(<StepPreferences v={view({ step: 5 })} />);
+    expect(page).toContain('data-privacy-form="debt-savings-calculator"');
+    expect(page).toContain('data-sms-info-form="debt-savings-calculator"');
+    expect(page).not.toContain('payoff-email');
+    expect(page).toMatch(/See Darren’s Calendar|Send my request|Record my inquiry/);
   });
 });
 
