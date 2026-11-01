@@ -1,27 +1,42 @@
 # Security review
 
 Review date: 20 October 2026
+Last updated: 1 November 2026
 
 Scope: public lead capture, the Apps Script webhook, Netlify lead handling,
 booking, attribution, consent, CRM/email handoff, and public static pages.
 
-| # | Severity | File | Lines | Vulnerability | Confidence |
-|---|----------|------|-------|---------------|------------|
-| 1 | 🟡 MEDIUM | `google-apps-script.js` | 1626-1638 | The public Apps Script `/exec` endpoint fails open when neither `LEAD_PROXY_KEY` nor `NETLIFY_CONTACT_CONFIRM_KEY` is configured. Because the deployment is accessible to anyone, a direct unauthenticated POST can create fabricated Sheet rows and follow-up jobs, potentially causing CRM poisoning and email abuse while bypassing the Netlify proxy's controls. | 10/10 |
+| # | Severity | File | Vulnerability | Status |
+|---|----------|------|---------------|--------|
+| 1 | 🟡 MEDIUM | `google-apps-script.js` (`doPost`) | The public Apps Script `/exec` endpoint failed open when neither `LEAD_PROXY_KEY` nor `NETLIFY_CONTACT_CONFIRM_KEY` was configured. A direct unauthenticated POST could create fabricated Sheet rows and follow-up jobs, bypassing the Netlify proxy's controls. | Fixed in `2ff2113`, deployed and verified 21 October 2026 |
+| 2 | 🟠 HIGH (dependency) | `package.json` (`zod`) | zod below 4.6.6 can exhaust memory while validating oversized constrained collections ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)). zod runs only in the browser lead forms, and `/api/lead` caps request bodies at 100,000 characters, so exposure was limited. | Fixed 1 November 2026: upgraded to zod 4.6.7; `npm audit --omit=dev` reports 0 vulnerabilities |
 
-## Recommended remediation
+## Finding 1: how it is fixed
 
-Fail closed when the deployed script has no proxy secret. Require a dedicated
-`LEAD_PROXY_KEY` in production rather than falling back to the confirmation-mail
-key, and add a deployment or health check that alerts when the required secret
-is absent. Verify the protected path with a controlled retained TEST record
-before retiring compatibility behavior.
+- `doPost` now rejects every request with `proxy_auth_not_configured` when no
+  proxy secret is set, before any Sheet access, lock, queue write, network call
+  or alert. A missing secret is treated as a configuration failure, never as an
+  open mode.
+- A supplied key is compared in constant time and stripped from the payload
+  before it is logged or stored.
+- `/api/lead` (`netlify/functions/lead.mts`) also refuses with HTTP 503 and the
+  same code when its side of the secret is missing, and passes the Apps Script
+  refusal through rather than reporting a saved lead.
+- `tests/apps-script-dopost.test.ts` covers the missing, blank and whitespace-only
+  secret cases.
+
+## Remaining hardening (not a vulnerability)
+
+- During rollout the script still accepts `NETLIFY_CONTACT_CONFIRM_KEY` as a
+  fallback when `LEAD_PROXY_KEY` is unset. A secret is still required either
+  way. Retire the fallback once both deployments have a verified dedicated
+  `LEAD_PROXY_KEY`, so the two keys can be rotated independently.
+- Development-only advisories (vite, vitest, undici, and the eslint tooling via
+  minimatch; 16 in `npm audit` on 1 November 2026) do not ship to visitors and
+  are tracked separately.
 
 ## Review notes
 
-- No critical or high-severity vulnerability was confirmed in this focused review.
-- The finding is an operational configuration weakness as well as a code-path
-  weakness: the deployment documentation currently permits compatibility mode
-  when both secrets are absent.
+- No critical vulnerability in site code was confirmed in this focused review.
 - This summary does not include credentials, account evidence, client data, or
   private audit material.
