@@ -82,15 +82,22 @@ describe('request guards', () => {
     expect(await response.json()).toMatchObject({ok:false,receipt:'rejected',code:'proxy_auth_not_configured'});
     expect(upstreamCalled()).toBe(false); expect(rescueSent()).toBe(false);
   });
-  it('retains the configured confirmation-key fallback during staged key rotation', async () => {
-    vi.stubGlobal('Netlify',{env:{get:(k:string)=>({APPS_SCRIPT_WEBHOOK_URL:UPSTREAM,CONTACT_CONFIRM_API_KEY:'fallback-test-key'})[k]}});
-    expect((await handler(req(LEAD),ctx)).status).toBe(200);
-    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))._proxyKey).toBe('fallback-test-key');
+  // 2 Nov 2026 (Max): the confirmation-mail key is no longer a fallback. With
+  // only that key configured, nothing is forwarded and the request fails closed.
+  it.each([
+    { APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, CONTACT_CONFIRM_API_KEY: 'confirmation-only' },
+    { APPS_SCRIPT_WEBHOOK_URL: UPSTREAM, LEAD_PROXY_KEY: '  ', CONTACT_CONFIRM_API_KEY: ' confirmation-only ' },
+  ])('does not fall back to the confirmation key (%j)', async (env) => {
+    vi.stubGlobal('Netlify',{env:{get:(k:string)=>(env as Record<string,string>)[k]}});
+    const response = await handler(req(LEAD),ctx);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ok:false,receipt:'rejected',code:'proxy_auth_not_configured'});
+    expect(upstreamCalled()).toBe(false);
   });
-  it('uses a nonblank fallback when the primary is whitespace, preserving exact secret bytes', async () => {
-    vi.stubGlobal('Netlify',{env:{get:(k:string)=>({APPS_SCRIPT_WEBHOOK_URL:UPSTREAM,LEAD_PROXY_KEY:'  ',CONTACT_CONFIRM_API_KEY:' fallback-test-key '})[k]}});
+  it('sends the dedicated key with its exact bytes', async () => {
+    vi.stubGlobal('Netlify',{env:{get:(k:string)=>({APPS_SCRIPT_WEBHOOK_URL:UPSTREAM,LEAD_PROXY_KEY:' dedicated-test-key ',CONTACT_CONFIRM_API_KEY:'confirmation-only'})[k]}});
     expect((await handler(req(LEAD),ctx)).status).toBe(200);
-    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))._proxyKey).toBe(' fallback-test-key ');
+    expect(JSON.parse(String(calls.find(c=>c.url===UPSTREAM)!.init.body))._proxyKey).toBe(' dedicated-test-key ');
   });
   it('maps the upstream explicit missing-auth configuration rejection without a rescue email', async () => {
     responses=[new Response('{"success":false,"code":"proxy_auth_not_configured"}')];

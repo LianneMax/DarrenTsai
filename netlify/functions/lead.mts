@@ -791,13 +791,13 @@ export default async (req: Request, context: Context) => {
   const hutk = readHutk(req.headers.get("cookie"));
   // The secret is added only on the server hop. Never trust a visitor-supplied
   // copy or include it in the rescue email, which continues to use raw.
-  const primaryProxyKey = Netlify.env.get('LEAD_PROXY_KEY') || '';
-  const compatibilityProxyKey = Netlify.env.get('CONTACT_CONFIRM_API_KEY') || '';
-  const proxyKey = primaryProxyKey.trim() ? primaryProxyKey : compatibilityProxyKey.trim() ? compatibilityProxyKey : '';
+  // Dedicated lead-writing secret only (2 Nov 2026, Max): the confirmation-mail
+  // key no longer doubles as a fallback, so each secret can rotate on its own.
+  const configuredProxyKey = Netlify.env.get('LEAD_PROXY_KEY') || '';
+  const proxyKey = configuredProxyKey.trim() ? configuredProxyKey : '';
   if (!proxyKey) {
-    // Fail closed if BOTH configured authentication paths are absent. Leaving
-    // the compatibility fallback in place avoids a key-rotation outage; never
-    // transmit an unauthenticated lead to a publicly reachable Apps Script URL.
+    // Fail closed when the secret is absent: never transmit an unauthenticated
+    // lead to a publicly reachable Apps Script URL.
     // A definite configuration rejection is not an unknown save. Do not turn
     // this public endpoint into a per-request email trigger during an outage.
     console.error('Lead endpoint authentication is not configured; not forwarded');

@@ -1,7 +1,7 @@
 # Security review
 
 Review date: 20 October 2026
-Last updated: 1 November 2026
+Last updated: 2 November 2026
 
 Scope: public lead capture, the Apps Script webhook, Netlify lead handling,
 booking, attribution, consent, CRM/email handoff, and public static pages.
@@ -27,10 +27,10 @@ booking, attribution, consent, CRM/email handoff, and public static pages.
 
 ## Remaining hardening (not a vulnerability)
 
-- During rollout the script still accepts `NETLIFY_CONTACT_CONFIRM_KEY` as a
-  fallback when `LEAD_PROXY_KEY` is unset. A secret is still required either
-  way. Retire the fallback once both deployments have a verified dedicated
-  `LEAD_PROXY_KEY`, so the two keys can be rotated independently.
+- Done 2 November 2026: lead writing now requires the dedicated
+  `LEAD_PROXY_KEY` on both sides. The confirmation-mail key is no longer a
+  fallback (tests prove a request carrying only that key is refused), so the
+  two secrets rotate independently.
 - Development-only advisories (vite, vitest, undici, and the eslint tooling via
   minimatch; 16 in `npm audit` on 1 November 2026) do not ship to visitors and
   are tracked separately.

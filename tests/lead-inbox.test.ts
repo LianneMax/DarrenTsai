@@ -57,6 +57,11 @@ describe('durable admission before Sheet synchronization',()=>{
     expect(state.records.size).toBe(0);
     expect(fetch).not.toHaveBeenCalled();
   });
+  it('will not sync with only the old confirmation key configured (2 Nov 2026)',async()=>{
+    vi.stubGlobal('Netlify',{env:{get:(key:string)=>({APPS_SCRIPT_WEBHOOK_URL:'https://script.google.com/macros/s/TEST/exec',CONTACT_CONFIRM_API_KEY:'confirmation-only'})[key]}});
+    await expect(synchronizeLeads()).rejects.toThrow('Inbox synchronization is not configured');
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('confirms fifteen concurrent validated inquiries without waiting on Apps Script',async()=>{
     const responses=await Promise.all(Array.from({length:15},(_,i)=>handler(request(lead('inbox-'+i)),{ip:'203.0.113.'+(i+1)} as never)));
     expect(responses.map(r=>r.status)).toEqual(Array(15).fill(200));

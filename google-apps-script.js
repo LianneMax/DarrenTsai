@@ -1761,19 +1761,16 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Invalid payload' }))
         .setMimeType(ContentService.MimeType.JSON);
     }
-    // The public exec URL formerly bypassed every proxy abuse guard. During
-    // rollout the existing confirmation key is a compatible private fallback;
-    // LEAD_PROXY_KEY permits independent rotation after both sides are ready.
+    // The public exec URL formerly bypassed every proxy abuse guard. Only the
+    // dedicated LEAD_PROXY_KEY is accepted (2 Nov 2026, Max): the confirmation
+    // key is no longer a fallback, so the two secrets rotate independently.
     // Reject before Sheet access or alerts, and remove credentials from logs.
-    const primaryKey = String(PropertiesService.getScriptProperties().getProperty('LEAD_PROXY_KEY') || '');
-    const fallbackKey = String(PropertiesService.getScriptProperties().getProperty('NETLIFY_CONTACT_CONFIRM_KEY') || '');
-    const proxyKey = primaryKey.trim() ? primaryKey : fallbackKey.trim() ? fallbackKey : '';
+    const configuredKey = String(PropertiesService.getScriptProperties().getProperty('LEAD_PROXY_KEY') || '');
+    const proxyKey = configuredKey.trim() ? configuredKey : '';
     const suppliedKey = typeof data._proxyKey === 'string' ? data._proxyKey : '';
     delete data._proxyKey;
     raw = JSON.stringify(data);
     // A missing secret is configuration failure, never a public/open mode.
-    // Keep the existing private fallback until both deployments have a verified
-    // dedicated key; failing closed must not accidentally rotate a live key.
     if (!proxyKey) return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'proxy_auth_not_configured',
       error: 'Lead endpoint authentication is not configured' })).setMimeType(ContentService.MimeType.JSON);
     let difference = suppliedKey.length ^ proxyKey.length;

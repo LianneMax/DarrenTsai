@@ -99,8 +99,9 @@ export async function notifyInboxWorkerFailure() {
 export async function synchronizeLeads() {
   const started=Date.now(), signal=AbortSignal.timeout(WORK_MS), store=inbox(signal);
   const url=Netlify.env.get('APPS_SCRIPT_WEBHOOK_URL') || Netlify.env.get('APP_SCRIPT_WEBHOOK_URL');
-  const primary=Netlify.env.get('LEAD_PROXY_KEY') || '', fallback=Netlify.env.get('CONTACT_CONFIRM_API_KEY') || '';
-  const key=primary.trim()?primary:fallback.trim()?fallback:'';
+  // Dedicated lead-writing secret only (2 Nov 2026); no confirmation-key fallback.
+  const configured=Netlify.env.get('LEAD_PROXY_KEY') || '';
+  const key=configured.trim()?configured:'';
   if(!url || !key) throw Error('Inbox synchronization is not configured');
   const remaining=()=>WORK_MS-(Date.now()-started);
   let protocol:boolean|undefined;

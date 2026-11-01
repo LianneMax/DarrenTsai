@@ -70,7 +70,9 @@ describe('server-hop authentication', () => {
     return { ...h, mail, http, accesses: () => ({ sheet: sheetAccess, lock: lockAccess }) };
   }
   it.each([{}, { LEAD_PROXY_KEY: '', NETLIFY_CONTACT_CONFIRM_KEY: '' },
-    { LEAD_PROXY_KEY: '   ', NETLIFY_CONTACT_CONFIRM_KEY: '\t' }])('fails closed with no configured secret before Sheet, lock, queue, network or alerts (%j)', props => {
+    { LEAD_PROXY_KEY: '   ', NETLIFY_CONTACT_CONFIRM_KEY: '\t' },
+    // 2 Nov 2026: the confirmation key alone no longer opens the lead endpoint.
+    { NETLIFY_CONTACT_CONFIRM_KEY: 'confirmation-only' }])('fails closed with no configured secret before Sheet, lock, queue, network or alerts (%j)', props => {
     const h = isolatedAuth(props);
     for (const supplied of [undefined, 'attacker-guessed-key']) {
       const response = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'dscr', email: 'qa@example.com', _proxyKey: supplied }) } }) as { __body: string };
@@ -91,16 +93,15 @@ describe('server-hop authentication', () => {
   });
   it.each([
     [{ LEAD_PROXY_KEY: TEST_PROXY_KEY }, TEST_PROXY_KEY],
-    [{ NETLIFY_CONTACT_CONFIRM_KEY: TEST_PROXY_KEY }, TEST_PROXY_KEY],
     [{ LEAD_PROXY_KEY: TEST_PROXY_KEY, NETLIFY_CONTACT_CONFIRM_KEY: 'legacy-fallback' }, TEST_PROXY_KEY],
-  ] as const)('accepts explicitly configured dedicated or fallback credentials (%j)', (props, key) => {
+  ] as const)('accepts the dedicated LEAD_PROXY_KEY (%j)', (props, key) => {
     const h = loadGas<{ doPost: Harness['doPost'] }>({ exports: ['doPost'], props });
     const response = h.gas.doPost({ postData: { contents: JSON.stringify({ source: 'dscr', email: 'qa@example.com', _proxyKey: key }) } }) as { __body: string };
     expect(JSON.parse(response.__body).success).toBe(true);
     expect(h.tabs.get('DSCR')!.rows).toHaveLength(2);
     expect(JSON.stringify([...h.tabs.values()])).not.toContain(key);
   });
-  it('does not accept the fallback after a dedicated key is configured', () => {
+  it('refuses a request carrying only the old confirmation key', () => {
     const h = isolatedAuth({ LEAD_PROXY_KEY: TEST_PROXY_KEY, NETLIFY_CONTACT_CONFIRM_KEY: 'legacy-fallback' });
     const response = h.gas.doPost({ postData: { contents: JSON.stringify({ email: 'qa@example.com', _proxyKey: 'legacy-fallback' }) } }) as { __body: string };
     expect(JSON.parse(response.__body)).toEqual({ success: false, error: 'Unauthorized' });
