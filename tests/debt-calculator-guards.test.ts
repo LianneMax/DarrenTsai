@@ -369,10 +369,13 @@ describe('a waiting page does not describe what it is waiting for', () => {
     expect(REI).toContain('<h3>Your case study is on its way to your inbox.</h3>');
   });
 
-  it('R5-5: the guide forms describe a guide request, not a mortgage review', () => {
-    for (const [page, guide] of [[FHA, 'the FHA spreadsheet'], [DSCR, 'the DSCR guide'], [REI, 'the case study']] as const) {
-      expect(page).toContain(`Submitting requests ${guide} by email and a follow-up from Darren Tsai`);
-      expect(page).not.toContain('Submitting requests a mortgage review');
+  it('R5-5: the guide forms carry no repeated licence line, and the footer keeps it', () => {
+    // Max, 1 Nov 2026: the "Submitting requests…" line and the second
+    // Privacy Policy · Terms links repeated the checkbox and the page footer.
+    for (const page of [FHA, DSCR, REI]) {
+      expect(page).not.toContain('Submitting requests');
+      expect(page).toMatch(/NMLS[^<]{0,6}2438102/);
+      expect(page).toContain('Equal Housing');
     }
   });
 

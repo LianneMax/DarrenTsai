@@ -513,7 +513,7 @@
         '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_LABEL) + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_LABEL) + '</span></label>' +
         '<p class="dt-book-note dt-book-note-sms">' + esc(SMS_TERMS) + SMS_LINKS + '</p>' +
-        '<p class="dt-book-note">Submitting records your inquiry and checks service availability. Calendar access depends on the property and your answers. Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
+        '<p class="dt-book-note">Submitting records your inquiry and checks service availability. Calendar access depends on the property and your answers.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
       var form = panel.querySelector('form');
       var consentVisible = false;
       contactView = function (show) {

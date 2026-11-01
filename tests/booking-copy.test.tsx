@@ -139,7 +139,9 @@ describe('SMS consent v6 keeps every 10DLC element on every form', () => {
 describe('the other consent words are untouched', () => {
   it('keeps the privacy acknowledgement and the booking disclosure', () => {
     expect(SOURCE).toContain('I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)');
-    expect(SOURCE).toContain('Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>');
+    // Max, 1 Nov 2026: the licence line repeated the page footer under every
+    // form, so it was removed. The footer keeps NMLS, DRE and Equal Housing.
+    expect(SOURCE).not.toContain('Ren Marketing Group LLC / Saxton Mortgage. Not a loan application');
   });
 
   it('describes recording and service screening without promising an unsupported inquiry a mortgage review', () => {

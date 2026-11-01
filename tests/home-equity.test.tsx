@@ -257,7 +257,9 @@ describe('what the page says', () => {
     expect(page).not.toMatch(/Best Time|How did you hear|data-property-state/i);
     expect(page).toContain(`data-service-area="${EQUITY_FORM_ID}"`);
     expect(page).toContain(`data-privacy-form="${EQUITY_FORM_ID}"`);
-    expect(page).toContain('Not a loan application, approval or commitment to lend.');
+    // The repeated licence line under the form was removed 1 Nov (Max); the
+    // page footer disclosure carries it.
+    expect(page).not.toContain('Submitting requests');
   });
 
   it('declines with no calendar and no phone number', () => {
