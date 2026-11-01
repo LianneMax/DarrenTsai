@@ -735,6 +735,24 @@ describe('saved inquiry continuation across every funnel', () => {
     expect(host.querySelector('form')).toBeNull();
     expect(leadFetch).toHaveBeenCalledTimes(1);
   });
+  // Audit item 7 (31 Oct QA review, Max chose "on its way" 1 Nov): a guide
+  // request leads with its delivery heading and line; the calendar follows as
+  // an optional step and focus lands on the heading, not the calendar.
+  it.each([['fha-magnet', 'FHA'], ['dscr-magnet', 'DSCR'], ['rei-magnet', 'REI']])('%s shows the delivery message first and the calendar as optional', async formId => {
+    const source = (POLICY.inquiryForms as Record<string, string>)[formId];
+    expect(source).toBeTruthy();
+    const host = document.createElement('div');
+    host.innerHTML = '<div class="check">✓</div><h3>Your guide is on its way to your inbox.</h3><p>Your request is saved. Existing email preferences will be honored.</p><button id="openLeadBookingBtn">Book a Call</button>';
+    document.body.appendChild(host);
+    await capture(formId, source);
+    booking.afterSubmit(host);
+    const order = Array.from(host.children).map(el => el.tagName === 'H3' ? 'heading' : el.tagName === 'P' ? 'message' : el.classList.contains('dcp-recap-calendar') ? 'calendar' : '');
+    expect(order.filter(Boolean)).toEqual(['heading', 'message', 'calendar']);
+    expect(host.querySelector('h3')!.hidden).toBe(false);
+    expect(document.activeElement).toBe(host.querySelector('h3'));
+    expect(host.querySelector('.dt-book-sub')?.textContent).toBe('Optional: choose a time for a 15-minute call if you would like to talk it through with Darren.');
+    host.remove();
+  });
   it('keeps the saved success and recovery action if scheduling cannot be inserted', async () => {
     await capture();
     const host = document.createElement('div');

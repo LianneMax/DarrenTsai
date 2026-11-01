@@ -1195,7 +1195,7 @@
         <section class="dscr-guide-step" data-guide-step="2" aria-labelledby="dscr-preferences-title">
           <h4 id="dscr-preferences-title" tabindex="-1">Your preferences.</h4>
           <p class="modal-sub">Review the disclosures below. Text messages are optional.</p>
-        <div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="dscr-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="dscr-magnet"> <span>I agree to receive texts from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments.</span></label><label class="sms-choice"><input type="checkbox" data-sms-form="dscr-magnet"> <span>I agree to receive marketing texts from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology.</span></label><p class="sms-details">Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt out. <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></p><p>Submitting requests a mortgage review from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
+        <div class="compliance-disclosure"><label class="sms-choice"><input type="checkbox" required data-privacy-form="dscr-magnet"> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label><label class="sms-choice"><input type="checkbox" data-sms-info-form="dscr-magnet"> <span>I agree to receive texts from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments.</span></label><label class="sms-choice"><input type="checkbox" data-sms-form="dscr-magnet"> <span>I agree to receive marketing texts from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology.</span></label><p class="sms-details">Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt out. <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a></p><p>Submitting requests the DSCR guide by email and a follow-up from Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p><p><a href="/privacy-policy">Privacy Policy</a> · <a href="/legal">Terms & Legal Disclosures</a></p></div>
         <button class="cta" id="submitLead" style="width:100%;justify-content:center;margin-top:6px;">Send My DSCR Breakdown</button>
         </section>
         <div class="dscr-guide-actions"><button type="button" id="guideBack">Back</button><span id="guideStepCount" aria-live="polite">Step 1 of 3</span><button type="button" class="cta" id="guideNext">Continue</button></div>
@@ -1205,7 +1205,7 @@
     <div class="modal-success" id="modalSuccess">
       <div class="modal-body">
         <div class="success-check" role="img" aria-label="Success">&#10003;</div>
-        <h3 class="success-heading">You're all set.</h3>
+        <h3 class="success-heading" id="magnetSuccessHeading">Your DSCR guide is on its way to your inbox.</h3>
         <p class="success-body" id="magnetSuccessBody">Your DSCR breakdown request is saved. Existing email preferences will be honored.</p>
         <button type="button" id="openSuccessBookingBtn" class="cta outline" style="width:100%;justify-content:center;margin-top:20px;">Book a Free Strategy Call</button>
         <button class="cta" id="closeSuccess" style="width:100%;margin-top:10px;">Done</button>
@@ -1822,11 +1822,19 @@
       // Say which email is actually on its way. An empty calculator gets the
       // guide alone, correctly (R3-3), and promising a breakdown of numbers that
       // were never run is the same defect one step further down the funnel.
+      // The heading says it first (31 Oct QA review): the email is what was
+      // asked for, and the calendar below it is optional.
+      var deliveryHeading = $('magnetSuccessHeading');
+      if (deliveryHeading) {
+        deliveryHeading.textContent = dscrReady
+          ? 'Your DSCR breakdown is on its way to your inbox.'
+          : 'Your DSCR guide is on its way to your inbox.';
+      }
       var successBody = $('magnetSuccessBody');
       if (successBody) {
         successBody.textContent = dscrReady
-          ? 'Your DSCR breakdown request is saved. Existing email preferences will be honored.'
-          : 'Your DSCR guide request is saved. Existing email preferences will be honored. You can run the calculator above to explore your own property or discuss the numbers on a call.';
+          ? 'Your request is saved. Existing email preferences will be honored.'
+          : 'Your request is saved. Existing email preferences will be honored. You can run the calculator above to explore your own property or discuss the numbers on a call.';
       }
       // R6-2. The success card's next step is a booking, and this form has just
       // asked for the two fields the booking form asks for. Handing them over

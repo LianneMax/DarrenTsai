@@ -93,6 +93,8 @@
   var EQUITY_PAGES = ['/home-equity/', '/adu/'];
   function isEquityLead(lead) { return !!lead && (lead.bookingGoal === 'equity' || EQUITY_FORMS.indexOf(lead.formId) !== -1); }
   function callName(equity) { return equity ? AUDIT_NAME : '15-minute call'; }
+  /** Guide requests: the email is what was asked for, so the call is optional. */
+  var GUIDE_FORMS = ['fha-magnet', 'dscr-magnet', 'rei-magnet'];
 
   /**
    * source per page, so a booking lead lands under the same label as that
@@ -691,7 +693,9 @@
     // Keep names and emails out of the third-party iframe URL.
     card.classList.add('dt-cal');
     card.innerHTML = '<div class="dt-book-calendar-heading"><h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' + (headerAction || '') + '</div>' +
-      '<p class="dt-book-sub">Your request is saved. Choose a time for your ' + callName(isEquityLead(lead)) + ' with Darren.</p>' +
+      '<p class="dt-book-sub">' + (GUIDE_FORMS.indexOf(lead.formId) !== -1
+        ? 'Optional: choose a time for a ' + callName(false) + ' if you would like to talk it through with Darren.'
+        : 'Your request is saved. Choose a time for your ' + callName(isEquityLead(lead)) + ' with Darren.') + '</p>' +
       '<p class="dt-book-calendar-help dt-book-calendar-status" role="status">Your request is saved. Loading Google Calendar...</p>' +
       '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a ' + callName(isEquityLead(lead)) + ' with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
       '<p class="dt-book-calendar-help">Google Calendar will ask you to confirm your booking details. If the calendar does not load, open it in a new tab.</p>' +
@@ -726,18 +730,25 @@
     var slot = document.createElement('div');
     slot.className = 'dcp-recap-calendar';
     if (!calendar(slot, {})) return;
-    host.insertBefore(slot, host.firstChild);
+    // The guide forms (FHA, DSCR, investing) are this host's only callers, and
+    // the visitor asked for an email, not a call (31 Oct QA review, audit
+    // item 7). The calendar used to go on top with the heading hidden, so "your
+    // request is saved" sat under a booking page. Now the delivery heading and
+    // its line come first and the calendar follows as the optional next step.
+    // It still appears straight away, as it has since 28 Oct.
+    var heading = host.querySelector('h3');
+    var message = heading ? host.querySelector('h3 ~ p') : null;
+    if (message) message.parentNode.insertBefore(slot, message.nextSibling);
+    else host.insertBefore(slot, host.firstChild);
     host.classList.add('dt-calendar-success');
     // Keep the original recovery action if a saved receipt cannot be reused.
     // Only a validated, supported receipt may replace the legacy success CTA.
     var oldAction = host.querySelector('#openLeadBookingBtn, #openSuccessBookingBtn');
     if (oldAction) oldAction.hidden = true;
-    var heading = host.querySelector('h3');
-    if (heading) heading.hidden = true;
     var check = host.querySelector('.success-check, .check');
     if (check) check.hidden = true;
-    var title = slot.querySelector('.dt-book-title');
-    if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
+    var focusTarget = message ? heading : slot.querySelector('.dt-book-title');
+    if (focusTarget) { focusTarget.setAttribute('tabindex', '-1'); focusTarget.focus({ preventScroll: true }); }
     } catch (e) { /* Scheduling display must never turn a confirmed save into a submission error. */ }
   }
 

@@ -350,12 +350,30 @@ describe('a waiting page does not describe what it is waiting for', () => {
     expect(FHA).toContain("put('fhaHoaOut', blankOrMoney(hoaEl, hoa))");
   });
 
-  it('R5-5: confirms the saved request without promising queued or suppressed guide delivery', () => {
+  // 1 Nov 2026, Max's decision (audit item 7): the guide confirmations lead
+  // with "on its way to your inbox", knowing that a visitor who opted out
+  // earlier is skipped by guide-shared.mts and Apps Script and will not get
+  // it. That is the one accepted exception, so "Existing email preferences
+  // will be honored" must stay beside every such heading. The heading still
+  // names only the email that is actually queued: breakdown or guide.
+  it('R5-5: names the email actually requested and keeps the preferences caveat', () => {
+    expect(DSCR).toContain('deliveryHeading.textContent = dscrReady');
+    expect(DSCR).toContain("? 'Your DSCR breakdown is on its way to your inbox.'");
+    expect(DSCR).toContain(": 'Your DSCR guide is on its way to your inbox.'");
     expect(DSCR).toContain('successBody.textContent = dscrReady');
-    expect(DSCR).toContain('Your DSCR guide request is saved.');
-    expect(DSCR).toContain('Your DSCR breakdown request is saved.');
-    expect(DSCR).toContain('Existing email preferences will be honored.');
-    expect(DSCR).not.toContain('Check your email for the DSCR guide.');
+    for (const page of [DSCR, FHA, REI]) {
+      expect(page).toContain('Your request is saved. Existing email preferences will be honored.');
+      expect(page).not.toContain('Check your email for the');
+    }
+    expect(FHA).toContain('<h3>Your FHA spreadsheet is on its way to your inbox.</h3>');
+    expect(REI).toContain('<h3>Your case study is on its way to your inbox.</h3>');
+  });
+
+  it('R5-5: the guide forms describe a guide request, not a mortgage review', () => {
+    for (const [page, guide] of [[FHA, 'the FHA spreadsheet'], [DSCR, 'the DSCR guide'], [REI, 'the case study']] as const) {
+      expect(page).toContain(`Submitting requests ${guide} by email and a follow-up from Darren Tsai`);
+      expect(page).not.toContain('Submitting requests a mortgage review');
+    }
   });
 
   it('R5-6: carries the visitor and the ad into the booking lead', () => {
