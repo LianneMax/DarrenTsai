@@ -218,7 +218,7 @@ describe('the comparison is honest at the edges', () => {
     expect(calc).toContain('const heloanTotal = heloanPmt > 0 ? mp + heloanPmt + leftoverPmt : 0;');
     const short = html(<StepCompare v={{ ...filled, heloanAmt: 40000, heloanPriced: true, tierRate: 9.99, tierYears: 15,
       heloanPmt: 430, leftoverPmt: 933, heloanTotal: 3163, heloanSave: 637 }} />);
-    expect(short).toContain('Mortgage + HELOAN + remaining debts');
+    expect(short).toContain('Mortgage + equity loan + remaining debts');
     expect(short).toContain('The rest stays with its current lenders, about $933/mo, and is included in the payment above.');
     expect(html(<StepCompare v={{ ...filled, heloanPriced: true, tierRate: 9.99, tierYears: 15, heloanPmt: 800, heloanTotal: 2600 }} />))
       .not.toContain('remaining debts');
@@ -339,4 +339,58 @@ it('keeps three product columns and changes refinance figure, APR and intent tog
     expect(submitLead).not.toHaveBeenCalled();
     expect(host.querySelectorAll('[data-apr-years]')).toHaveLength(1); // only the priced refinance, not an invented HELOAN
   } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+});
+
+/**
+ * 31 Oct 2026 QA review, audit item 5. Test case: 3.25% mortgage, $380k owed
+ * on a $700k home, $25k card at 24.99%. Only the cash-out refinance had a
+ * number at Compare, so it looked like the answer while it repriced a 3.25%
+ * mortgage at about 7.24%.
+ */
+describe('the payoff comparison does not favour the cash-out refinance', () => {
+  const lowRate = view({
+    ...filled, mr: 3.25, rate30: 7.24, hv: 700000, mb: 380000, mp: 1654,
+    totBal: 25000, totPmt: 625, todayTotal: 2279, newLoan: 405000, refiPmt: 2760, refiSave: -481,
+  });
+  const strip = (s: string) => s.replace(/<[^>]+>/g, ' ');
+
+  it('asks the fixed loan\'s credit range and term on the home step, unchosen', () => {
+    const page = html(<StepHome v={view({ step: 2 })} />);
+    expect(page).toContain('id="payoff-heloan-tier"');
+    expect(page).toContain('id="payoff-heloan-term"');
+    expect(page).toContain('Select range…');
+    expect(page).toContain('Select term…');
+    expect(page).toContain('A selected range is not a credit check.');
+  });
+  it('keeps the card\'s own selects so the answers can change at Compare', () => {
+    const page = html(<StepCompare v={lowRate} />);
+    expect(page).toContain('id="heloan-tier"');
+    expect(page).toContain('id="heloan-term"');
+  });
+  it('orders the cards HELOC, fixed home equity loan, cash-out refinance', () => {
+    const page = strip(html(<StepCompare v={lowRate} />));
+    const at = (t: string) => page.indexOf(t);
+    expect(at('HELOC')).toBeGreaterThan(-1);
+    expect(at('HELOC')).toBeLessThan(at('Fixed home equity loan'));
+    expect(at('Fixed home equity loan')).toBeLessThan(at('Cash-out refinance'));
+  });
+  it('says the cash-out refinance replaces a lower current rate on the whole balance', () => {
+    expect(html(<StepCompare v={lowRate} />))
+      .toContain('This replaces your 3.25% mortgage with a new loan at about 7.24% on the whole $405,000 balance.');
+  });
+  it.each([
+    ['no rate given', { mr: 0 }],
+    ['a current rate above today\'s', { mr: 8.1 }],
+    ['a paid-off home', { mb: 0, mr: 3.25 }],
+  ])('leaves the note out for %s', (_label, over) => {
+    expect(html(<StepCompare v={{ ...lowRate, ...over }} />)).not.toContain('This replaces your');
+  });
+  it('shows no visitor-facing "HELOAN" on the home or comparison steps', () => {
+    const priced = { ...lowRate, heloanPriced: true, tierRate: 10.49, tierYears: 15, heloanAmt: 25000, heloanPmt: 276, heloanTotal: 1930, heloanSave: 349 };
+    for (const page of [html(<StepHome v={view({ step: 2 })} />), html(<StepCompare v={priced} />), html(<StepCompare v={{ ...priced, heloanAmt: 10000 }} />)]) {
+      expect(strip(page)).not.toMatch(/HELOAN/);
+    }
+    const calc = readFileSync(resolve(__dirname, '../src/components/DebtSavingsCalculator.tsx'), 'utf8');
+    expect(calc).toContain('Fixed home equity loan parameters are based on');
+  });
 });

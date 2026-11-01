@@ -60,6 +60,13 @@
 .site-design .dcp-payoff .apr-assumption { font-size: 12px; }
 .site-design .dcp-payoff .apr-info > summary { display: block; min-height: 24px; padding: 0; font-size: 18px; line-height: 24px; }
 .site-design .dcp-payoff .apr-info > summary::after { content: none; }
+/* Home step: the fixed loan's two pricing answers, grouped under one legend. */
+.dcp-payoff .dcp-assumptions { border: 0; margin: 24px 0 0; padding: 20px 0 0; border-top: 1px solid var(--dcp-line); min-width: 0; }
+.dcp-payoff .dcp-assumptions legend { float: left; width: 100%; margin-bottom: 12px; font-weight: 600; }
+.dcp-payoff .dcp-assumptions .dcp-grid-2 { clear: both; margin-bottom: 0; }
+.dcp-payoff .dcp-assumptions .dcp-hint { margin-top: 10px; }
+/* Cash-out card: the rate it gives up, in ink rather than muted text. */
+.site-design .dcp-payoff .dcp-option-body p.dcp-rate-note { color: var(--dcp-ink); font-weight: 600; }
 .inquiry-message { margin: 24px 0; }
 .inquiry-message textarea { display: block; width: 100%; min-height: 104px; resize: vertical; }
 .inquiry-message .input-label span { font-weight: 400; }

@@ -291,6 +291,27 @@ export function StepHome({ v }: { v: DebtPageView }) {
         refinance context. The grey numbers are examples.
       </p>
 
+      {/* Asked here, not only inside the comparison card (31 Oct QA review).
+          Behind the card's own selects, the fixed loan reached Compare as
+          "Payment difference pending" while the cash-out refinance already had
+          a number, so the one priced option looked like the answer. Both still
+          start unchosen and stay optional, and the card keeps its selects, which
+          share this state, so either place can change them. */}
+      <fieldset className="dcp-assumptions">
+        <legend className="input-label">Fixed home equity loan estimate <span className="dcp-optional">· optional</span></legend>
+        <div className="dcp-grid-2">
+          <div>
+            <label className="input-label" htmlFor="payoff-heloan-tier">Credit range</label>
+            <CustomSelect id="payoff-heloan-tier" value={v.heloanTier} options={HELOAN_TIERS} onChange={v.setHeloanTier} placeholder="Select range…" />
+          </div>
+          <div>
+            <label className="input-label" htmlFor="payoff-heloan-term">Loan term</label>
+            <CustomSelect id="payoff-heloan-term" value={v.heloanTerm} options={HELOAN_TERMS} onChange={v.setHeloanTerm} placeholder="Select term…" />
+          </div>
+        </div>
+        <p className="dcp-hint">Used only to estimate the fixed loan&apos;s payment. A selected range is not a credit check.</p>
+      </fieldset>
+
       {v.hv > 0 && v.balanceGiven && <EquitySnapshot hv={v.hv} mb={v.mb} />}
 
       <StepNav
@@ -333,6 +354,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
   const heloanNoRoom = v.hasHome && v.heloanAmt <= 0;
   const heloanShort = v.heloanAmt > 0 && v.heloanAmt < v.totBal;
   const paidOff = v.mb === 0;
+  const rateUp = !paidOff && v.mr > 0 && v.mr < v.rate30;
   const refiOverLimit = v.refiLtv > CASH_OUT_LIMIT
     ? <>That is a new loan of about {Math.round(v.refiLtv)}% of your home&apos;s value; many lenders cap a cash-out refinance at {CASH_OUT_LIMIT}%. Darren can review what may be possible.</> : null;
   return <div className="dcp-panel">
@@ -365,7 +387,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       </div>
       <OptionCard id="heloan" title="Fixed home equity loan" v={v}
         payment={v.heloanPriced && v.heloanPmt > 0 ? v.heloanTotal : null}
-        scope={heloanShort ? (paidOff ? 'HELOAN + remaining debts' : 'Mortgage + HELOAN + remaining debts') : (paidOff ? 'HELOAN, the only loan on the home' : 'Combined mortgage + HELOAN')}
+        scope={heloanShort ? (paidOff ? 'Equity loan + remaining debts' : 'Mortgage + equity loan + remaining debts') : (paidOff ? 'Equity loan, the only loan on the home' : 'Combined mortgage + equity loan')}
         save={v.heloanSave} action="Discuss equity loan"
         controls={!heloanNoRoom && <div className="dcp-loan-controls">
           <label className="input-label" htmlFor="heloan-tier">Credit range</label>
@@ -389,6 +411,10 @@ export function StepCompare({ v }: { v: DebtPageView }) {
         </div>}
         unavailable={same && !paidOff ? <>Add your remaining term to see a refinance that keeps your current payoff date.<button type="button" className="dcp-link" onClick={() => v.goStep(2)}>Add mortgage details</button></> : <>A rate and repayment term are needed to estimate this payment.</>}>
         <p>{paidOff ? <>New mortgage of {formatCurrency(v.newLoan)} for your debts.</> : 'Mortgage: replaced.'} {formatRate(v.rate30)} fixed for {years(refiYears)}{!same && v.yearsAdded > 0 ? `, about ${years(v.yearsAdded)} longer` : ''}.</p>
+        {/* The tradeoff the payment hides (31 Oct QA review): at 3.25% owed and
+            ~7% today, a lower combined payment still reprices the whole mortgage.
+            Shown only when the visitor gave their rate and it is the lower one. */}
+        {rateUp && <p className="dcp-rate-note">This replaces your {formatRate(v.mr)} mortgage with a new loan at about {formatRate(v.rate30)} on the whole {formatCurrency(v.newLoan)} balance.</p>}
         <div className="dcp-card-apr">Estimated APR <AprEstimate principal={v.newLoan} rate={v.rate30} years={refiYears} fees={v.aprFees.refi} onFeesChange={fees => v.setAprFee('refi', fees)} /></div>
         {refiOverLimit && <p>{refiOverLimit}</p>}
       </OptionCard>
@@ -407,9 +433,9 @@ export function StepCompare({ v }: { v: DebtPageView }) {
     </details>
     <details className="dcp-details">
       <summary>Fixed home equity loan calculation details</summary>
-      <Row label="HELOAN Amount" value={v.heloanAmt > 0 ? formatCurrency(v.heloanAmt) : '—'} />
-      <Row label="HELOAN Rate / Term" value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
-      <Row label="HELOAN Monthly Payment" value={v.heloanPmt > 0 ? formatCurrency(v.heloanPmt) : '—'} />
+      <Row label="Equity Loan Amount" value={v.heloanAmt > 0 ? formatCurrency(v.heloanAmt) : '—'} />
+      <Row label="Equity Loan Rate / Term" value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
+      <Row label="Equity Loan Monthly Payment" value={v.heloanPmt > 0 ? formatCurrency(v.heloanPmt) : '—'} />
       <Row label="Existing Mortgage Payment" value={v.mp > 0 ? formatCurrency(v.mp) : '—'} />
       <Row label="Illustrative CLTV" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
       <Row strong label={BLENDED_ROW_LABEL} value={v.heloanPriced && v.heloanPmt > 0 ? savingsRowText(v.heloanSave) : '—'} />

@@ -484,7 +484,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       <strong>Important Disclosures:</strong> This tool provides estimates for educational
       purposes only. Actual rates, terms, and monthly payments depend on creditworthiness,
       property appraisal, loan-to-value ratio, and lender approval. Not a commitment to
-      lend. HELOAN parameters are based on current wholesale lender guidelines and are
+      lend. Fixed home equity loan parameters are based on current wholesale lender guidelines and are
       subject to change. Rates shown are Freddie Mac's Primary Mortgage Market Survey
       (PMMS) weekly national average, retrieved via FRED®, and are not a quote or a
       guarantee.
