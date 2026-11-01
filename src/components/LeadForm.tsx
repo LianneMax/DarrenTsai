@@ -3,8 +3,7 @@ import ServiceAreaFields from './ServiceAreaFields';
 import ComplianceDisclosure from './ComplianceDisclosure';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
-import { isValidPhoneNumber } from 'libphonenumber-js';
-import { formatUsPhone } from '../utils/phone';
+import { formatUsPhone, isValidUsPhone } from '../utils/phone';
 import type { MortgageInputs } from '../types/mortgage';
 import { EMAIL } from '../config';
 import { outOfMarketPage } from '../utils/serviceArea';
@@ -162,7 +161,7 @@ export default function LeadForm({
     }
     if (!form.phone.trim()) {
       errs.phone = 'Required';
-    } else if (!isValidPhoneNumber(form.phone.trim(), 'US')) {
+    } else if (!isValidUsPhone(form.phone.trim())) {
       errs.phone = 'Enter a valid US phone number';
     }
     if (!form.state)           errs.state    = 'Required';

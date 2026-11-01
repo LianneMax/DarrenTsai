@@ -12,7 +12,8 @@
     "test:layout": "vite build && node scripts/layout-check.mjs",
     "test:watch": "vitest",
     "images": "node scripts/build-images.mjs",
-    "emails": "node scripts/build-email-previews.mjs"
+    "emails": "node scripts/build-email-previews.mjs",
+    "phone-metadata": "node scripts/build-phone-metadata.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.1",

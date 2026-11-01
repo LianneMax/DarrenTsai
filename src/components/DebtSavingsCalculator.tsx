@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
-import { isValidPhoneNumber } from 'libphonenumber-js';
+import { isValidUsPhone } from '../utils/phone';
 import { RATES_ENDPOINT, EMAIL } from '../config';
 import { useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openBooking as openBookingPanel } from '../utils/booking';
@@ -358,7 +358,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       validationError('Please enter a valid email address.');
       return;
     }
-    if (!isValidPhoneNumber(phone.trim(), 'US')) {
+    if (!isValidUsPhone(phone.trim())) {
       validationError('Please enter a valid US phone number.');
       return;
     }

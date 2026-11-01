@@ -9,6 +9,19 @@ const HOUSE_SCENES = [
   {id:'renovation', label:'Renovation', title:'Make more of the home you love.', note:'Updated living areas and a new connection outdoors.', image:'/adu-scenes/renovation.webp'},
 ];
 
+// Smaller copies sit beside each original as name-420.webp and name-720.webp
+// (name-600.webp for the square house). The original stays the largest
+// candidate for wide or dense screens.
+function srcSet(scene: typeof HOUSE_SCENES[number]) {
+  const [full, widths] = scene.id === 'original' ? [840, [420, 600]] : [1100, [420, 720]];
+  const sized = widths.map((w) => `${scene.image.replace('.webp', `-${w}.webp`)} ${w}w`);
+  return [...sized, `${scene.image} ${full}w`].join(', ');
+}
+// The original home and the garage are drawn at 75% of the stage width.
+function sizes(id: string) {
+  return id === 'original' || id === 'garage' ? '(max-width: 600px) 70vw, 360px' : '(max-width: 600px) 92vw, 480px';
+}
+
 export default function AduHouseExplorer() {
   const [index, setIndex] = useState(0);
   // Hover or keyboard focus holds the current view while it is being read.
@@ -58,7 +71,7 @@ export default function AduHouseExplorer() {
   return <figure className="adu-house-explorer" ref={host} aria-label="Explore ADU and renovation ideas"
     onMouseEnter={()=>setHeld(true)} onMouseLeave={()=>setHeld(false)} onFocus={()=>setHeld(true)} onBlur={event=>{ if(!event.currentTarget.contains(event.relatedTarget as Node|null)) setHeld(false); }}>
     <div className="adu-house-stage" data-scene={active.id}>
-      {HOUSE_SCENES.map(scene=><img key={scene.id} src={scene.image} width={scene.id==='original'?840:1100} height={scene.id==='original'?840:733}
+      {HOUSE_SCENES.map(scene=><img key={scene.id} src={scene.image} srcSet={srcSet(scene)} sizes={sizes(scene.id)} width={scene.id==='original'?840:1100} height={scene.id==='original'?840:733}
         alt="" aria-hidden="true" draggable="false" className={`adu-house-image adu-house-${scene.id} ${scene.id===active.id&&available?'is-current':''} ${scene.id==='original'&&!available?'is-fallback':''}`}
         onLoad={()=>setLoaded(prior=>prior.includes(scene.id)?prior:[...prior,scene.id])}
         onError={()=>setUnavailable(prior=>prior.includes(scene.id)?prior:[...prior,scene.id])}/>) }

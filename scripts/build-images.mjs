@@ -70,3 +70,24 @@ for (let n = 1; n <= 6; n++) {
   after6 += statSync(out).size;
 }
 console.log(`fha carousel: ${before6.toLocaleString()} -> ${after6.toLocaleString()} bytes`);
+
+/**
+ * Smaller copies of the ADU explorer scenes (31 Oct QA plan, item 9).
+ *
+ * The scenes are drawn about 340px wide on a phone and at most about 480px on
+ * a desktop, but every visit downloaded the 1100px (840px for the house)
+ * originals, about 450KB for the five. The explorer lists these copies in
+ * srcset, so a phone fetches roughly a fifth of that. The originals stay as the
+ * sources and as the largest srcset candidate.
+ */
+const ADU_SCENES = [
+  { src: 'public/house-3d.webp', widths: [420, 600] },
+  ...['attached', 'detached', 'garage', 'renovation'].map((name) => ({ src: `public/adu-scenes/${name}.webp`, widths: [420, 720] })),
+];
+for (const { src, widths } of ADU_SCENES) {
+  for (const width of widths) {
+    const out = src.replace('.webp', `-${width}.webp`);
+    await sharp(readFileSync(src)).resize({ width }).webp({ quality: 80, alphaQuality: 90, effort: 6 }).toFile(out);
+    console.log(`${out}: ${statSync(out).size.toLocaleString()} bytes`);
+  }
+}

@@ -179,8 +179,10 @@ describe('React forms format a US number the same way (16 Oct 2026)', () => {
       expect(src, f).not.toContain('AsYouType');
     }
     for (const f of ['src/components/HomeEquityCalculator.tsx', 'src/components/AduCalculator.tsx', 'src/components/DebtSavingsCalculator.tsx', 'src/components/LeadForm.tsx']) {
-      expect(read(f), f).toMatch(/isValidPhoneNumber\(.*, 'US'\)/);
+      // isValidUsPhone is isValidPhoneNumber(value, 'US') on +1 metadata (item 9, 1 Nov).
+      expect(read(f), f).toMatch(/isValidUsPhone\(/);
     }
+    expect(read('src/utils/phone.ts')).toMatch(/isValidPhoneNumber\(value, 'US', /);
   });
 });
 
