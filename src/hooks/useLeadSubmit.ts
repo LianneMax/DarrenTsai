@@ -116,8 +116,8 @@ export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGate
           privacyAcknowledged: acknowledgment?.checked === true, privacyVersion: '2026-10-13-v1',
           smsInformationalConsent: document.querySelector<HTMLInputElement>('input[data-sms-info-form="' + formId + '"]')?.checked === true,
           smsMarketingConsent: document.querySelector<HTMLInputElement>('input[data-sms-form="' + formId + '"]')?.checked === true,
-          smsInformationalConsentText: 'By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.',
-          smsConsentVersion: '2026-10-15-v5', smsConsentText: 'By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.',
+          smsInformationalConsentText: 'I agree to receive texts from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg & data rates may apply. Reply HELP for help or STOP to opt out.',
+          smsConsentVersion: '2026-11-01-v6', smsConsentText: 'I agree to receive marketing texts from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg & data rates may apply. Reply HELP for help or STOP to opt out.',
           smsConsentAt: new Date().toISOString(),
       }, LEAD_ENDPOINT);
 

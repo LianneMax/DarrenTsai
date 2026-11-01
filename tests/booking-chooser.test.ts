@@ -126,11 +126,12 @@ describe('one config spot for the calendar', () => {
     expect(code.toLowerCase()).not.toContain('calendly');
   });
 
-  it('uses the Release 0 SMS wording, word for word with compliance.js', () => {
-    for (const m of SOURCE.matchAll(/var SMS_(?:INFO|MARKETING)_TEXT = '([^']+)'/g)) {
-      expect(COMPLIANCE).toContain(m[1]);
-    }
-    expect(SOURCE).toContain("SMS_CONSENT_VERSION = '2026-10-15-v5'");
+  it('records the v6 SMS wording, word for word with compliance.js', () => {
+    // The full 10DLC guard is in booking-copy.test.tsx; this pins the version.
+    const pieces = ['SMS_TERMS', 'SMS_INFO_LABEL', 'SMS_MARKETING_LABEL'].map(name => SOURCE.match(new RegExp(`var ${name} = '([^']+)'`))![1]);
+    expect(COMPLIANCE).toContain(`${pieces[1]} ${pieces[0]}`);
+    expect(COMPLIANCE).toContain(`${pieces[2]} ${pieces[0]}`);
+    expect(SOURCE).toContain("SMS_CONSENT_VERSION = '2026-11-01-v6'");
   });
 });
 

@@ -83,11 +83,62 @@ describe('/home-equity/ follows the same setting', () => {
   });
 });
 
-describe('the consent words are untouched (10DLC review)', () => {
-  it('keeps every consent string in the chooser identical to compliance.js', () => {
-    for (const m of SOURCE.matchAll(/var SMS_(?:INFO|MARKETING)_TEXT = '([^']+)'/g)) expect(read('public/compliance.js')).toContain(m[1]);
+/**
+ * SMS consent v6 (1 Nov 2026, Max approved). CallRail's 10DLC template was
+ * compressed: frequency, rates, HELP, STOP and the SMS Privacy Policy | Terms
+ * links are said once under both boxes, because Twilio's web form checklist is
+ * per form. What must not change: two separate, optional, unchecked boxes, the
+ * brand in each, "automated technology" on marketing, and every element of the
+ * shared line. The recorded consent text is each box plus that line, so the
+ * Sheet's evidence holds everything the visitor saw.
+ */
+describe('SMS consent v6 keeps every 10DLC element on every form', () => {
+  const INFO = 'I agree to receive texts from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments.';
+  const MARKETING = 'I agree to receive marketing texts from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology.';
+  const TERMS = 'Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg & data rates may apply. Reply HELP for help or STOP to opt out.';
+  const DISPLAY = ['src/components/ComplianceDisclosure.tsx', 'public/dscr/index.html', 'public/fha/index.html', 'public/realestateinvesting/index.html'];
+  const RECORDED = ['public/compliance.js', 'src/hooks/useLeadSubmit.ts'];
+
+  it('names the brand, the message type and the required disclosures', () => {
+    for (const label of [INFO, MARKETING]) expect(label).toContain('Darren Tsai (Ren Marketing Group LLC)');
+    expect(MARKETING).toContain('marketing texts');
+    expect(MARKETING).toContain('automated technology');
+    for (const element of ['Message frequency varies', 'Msg & data rates may apply', 'Reply HELP for help', 'STOP to opt out', 'not a condition of purchase']) expect(TERMS).toContain(element);
+  });
+  it.each(DISPLAY)('%s shows both boxes, the shared line and the SMS links once each', file => {
+    const src = read(file);
+    for (const text of [INFO, MARKETING, TERMS.replace('&', '&amp;')]) expect(src.split(text)).toHaveLength(2);
+    expect(src).toMatch(/opt out\. <a href="\/privacy-policy"[^>]*>SMS Privacy Policy<\/a> \| <a href="\/legal"[^>]*>Terms<\/a><\/p>/);
+    expect(src).not.toMatch(/By checking this box|Message frequency will vary|Text messages are optional and not a condition/);
+  });
+  it('the booking chooser draws the same pieces and records label plus line', () => {
+    const value = (name: string) => SOURCE.match(new RegExp(`var ${name} = '([^']+)'`))?.[1];
+    expect([value('SMS_INFO_LABEL'), value('SMS_MARKETING_LABEL'), value('SMS_TERMS')]).toEqual([INFO, MARKETING, TERMS]);
+    expect(SOURCE).toContain("var SMS_INFO_TEXT = SMS_INFO_LABEL + ' ' + SMS_TERMS;");
+    expect(SOURCE).toContain("var SMS_MARKETING_TEXT = SMS_MARKETING_LABEL + ' ' + SMS_TERMS;");
+    expect(SOURCE).toContain("esc(SMS_TERMS) + SMS_LINKS + '</p>'");
+    expect(SOURCE).toContain('smsInformationalConsentText: SMS_INFO_TEXT');
+    expect(SOURCE).toContain('smsConsentText: SMS_MARKETING_TEXT');
+  });
+  it.each(RECORDED)('%s records each box with the shared line under version v6', file => {
+    const src = read(file);
+    expect(src).toContain(`'${INFO} ${TERMS}'`);
+    expect(src).toContain(`'${MARKETING} ${TERMS}'`);
+    expect(src).toContain("'2026-11-01-v6'");
+    expect(src).not.toContain('2026-10-15-v5');
+  });
+  it('keeps the boxes optional and unchecked by default', () => {
+    for (const file of DISPLAY) {
+      expect(read(file)).not.toMatch(/data-sms(-info)?-form="[^"]*"[^>]*\b(checked|required)/);
+    }
+    expect(SOURCE).toContain(`name="smsInfo"' + (contact.smsInfo ? ' checked' : '')`);
+    expect(SOURCE).toContain(`name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '')`);
+  });
+});
+
+describe('the other consent words are untouched', () => {
+  it('keeps the privacy acknowledgement and the booking disclosure', () => {
     expect(SOURCE).toContain('I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)');
-    expect(SOURCE).toContain('>Text messages are optional and not a condition of purchase or of submitting this form.</p>');
     expect(SOURCE).toContain('Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p>');
   });
 

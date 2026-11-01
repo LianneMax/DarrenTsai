@@ -95,13 +95,20 @@
     '/realestateinvesting/': 'rei-contact'
   };
 
-  // Release 0 wording (CallRail's 10DLC template), word for word with
-  // compliance.js, so the evidence recorded matches what the visitor ticked.
+  // v6 (1 Nov 2026, Max): CallRail's 10DLC template, compressed. Twilio's web
+  // form checklist is per form, so frequency, rates, HELP, STOP and the links
+  // are said once under both boxes instead of twice; each box keeps the brand
+  // and its own consent, and the boxes stay separate, optional and unchecked.
+  // The recorded text is the box plus that shared line, word for word with
+  // compliance.js and useLeadSubmit.ts, so the evidence matches what was ticked.
   var PRIVACY_VERSION = '2026-10-13-v1';
-  var SMS_CONSENT_VERSION = '2026-10-15-v5';
-  var SMS_INFO_TEXT = 'By checking this box, I am agreeing to receive transactional/informational text messages from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.';
-  var SMS_MARKETING_TEXT = 'By checking this box, I am agreeing to receive marketing text messages from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology. Message frequency will vary. Msg & data rates may apply. Reply HELP for help or STOP to opt-out.';
-  var SMS_LINKS = ' View our <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a>';
+  var SMS_CONSENT_VERSION = '2026-11-01-v6';
+  var SMS_TERMS = 'Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg & data rates may apply. Reply HELP for help or STOP to opt out.';
+  var SMS_INFO_LABEL = 'I agree to receive texts from Darren Tsai (Ren Marketing Group LLC) about my inquiry and appointments.';
+  var SMS_MARKETING_LABEL = 'I agree to receive marketing texts from Darren Tsai (Ren Marketing Group LLC), which may be sent using automated technology.';
+  var SMS_INFO_TEXT = SMS_INFO_LABEL + ' ' + SMS_TERMS;
+  var SMS_MARKETING_TEXT = SMS_MARKETING_LABEL + ' ' + SMS_TERMS;
+  var SMS_LINKS = ' <a href="/privacy-policy" target="_blank" rel="noopener">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener">Terms</a>';
 
   var overlay = null;
   var savedOverlay = null;
@@ -485,9 +492,9 @@
       var note = answers.bookingGoal === 'not-sure' ? '' : '<label class="dt-book-field">Anything you’d like Darren to know? (optional)<textarea class="dt-book-situation" name="message" rows="3" maxlength="2000" aria-describedby="dt-book-message-help">' + esc(contact.message) + '</textarea></label><p id="dt-book-message-help" class="dt-book-note">Up to 2,000 characters. Please leave out account numbers, Social Security numbers and other sensitive details.</p>';
       draw(2, 'Contact details', 'Where should Darren reach you?', 'Your contact details stay here while you review your answers.', '<form novalidate><div class="dt-book-contact-details"><div class="dt-book-row"><label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(contact.firstName) + '"></label><label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(contact.lastName) + '"></label></div><label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(contact.email) + '"></label><label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required value="' + esc(contact.phone) + '"></label></div><div class="dt-book-consents" hidden>' +
         note + '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
-        '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_TEXT) + SMS_LINKS + '</span></label>' +
-        '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_TEXT) + SMS_LINKS + '</span></label>' +
-        '<p class="dt-book-note dt-book-note-sms">Text messages are optional and not a condition of purchase or of submitting this form.</p>' +
+        '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_LABEL) + '</span></label>' +
+        '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_LABEL) + '</span></label>' +
+        '<p class="dt-book-note dt-book-note-sms">' + esc(SMS_TERMS) + SMS_LINKS + '</p>' +
         '<p class="dt-book-note">Submitting records your inquiry and checks service availability. Calendar access depends on the property and your answers. Darren Tsai (NMLS #2438102 · CA DRE #02103705), Ren Marketing Group LLC / Saxton Mortgage. Not a loan application, approval or commitment to lend. Equal Housing Opportunity.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
       var form = panel.querySelector('form');
       var consentVisible = false;
