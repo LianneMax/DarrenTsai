@@ -81,6 +81,20 @@
   var STYLE_ID = 'dt-booking-style';
 
   /**
+   * The call's name (31 Oct QA review, audit item 6). Home equity is the front
+   * door and its one offer is the 15-Minute Equity Audit (positioning, 15 Oct).
+   * The same calendar also books DSCR, purchase and not-sure conversations,
+   * which are not an equity audit, so only an equity request is told it is one:
+   * the booking goal "equity", or a saved request from the equity, payoff or
+   * ADU calculators. Everyone else books a plain 15-minute call.
+   */
+  var AUDIT_NAME = '15-Minute Equity Audit';
+  var EQUITY_FORMS = ['home-equity-calculator', 'debt-savings-calculator', 'adu-calculator'];
+  var EQUITY_PAGES = ['/home-equity/', '/adu/'];
+  function isEquityLead(lead) { return !!lead && (lead.bookingGoal === 'equity' || EQUITY_FORMS.indexOf(lead.formId) !== -1); }
+  function callName(equity) { return equity ? AUDIT_NAME : '15-minute call'; }
+
+  /**
    * source per page, so a booking lead lands under the same label as that
    * entry page context. This is retained as entrySource; the chosen goal
    * determines source after screening, so bookings use targeted Sheet/CRM buckets.
@@ -374,7 +388,7 @@
     }
     card.classList.add('dt-book-shell');
     var checkIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
-    card.innerHTML = (inline ? '' : '<div class="dt-book-header"><a class="dt-book-brand" href="/" aria-label="Darren Tsai Home"><img src="/darren-avatar.png" width="44" height="44" alt=""><span><strong>Darren Tsai</strong><small>Senior Loan Officer · Saxton Mortgage</small></span></a><span class="dt-book-duration">15-minute conversation</span><button type="button" class="dt-book-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>') +
+    card.innerHTML = (inline ? '' : '<div class="dt-book-header"><a class="dt-book-brand" href="/" aria-label="Darren Tsai Home"><img src="/darren-avatar.png" width="44" height="44" alt=""><span><strong>Darren Tsai</strong><small>Senior Loan Officer · Saxton Mortgage</small></span></a><span class="dt-book-duration">' + callName(EQUITY_PAGES.indexOf(window.location.pathname) !== -1) + '</span><button type="button" class="dt-book-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>') +
       '<div class="dt-book-layout"><aside class="dt-book-guide"><div class="dt-book-intro"><h1>Book a call<br> with Darren.</h1><p>A few questions to help Darren prepare for your conversation.</p></div><nav class="dt-book-progress" aria-label="Booking progress"><ol></ol></nav><p class="dt-book-guide-note">This checks whether Darren can help with your property ' + COPY.when + '. It is not a loan application.</p></aside><section class="dt-book-panel" aria-label="Booking questions"></section></div><p class="dt-book-status" role="status" aria-live="polite"></p>';
     var panel = card.querySelector('.dt-book-panel');
     var progress = card.querySelector('.dt-book-progress');
@@ -433,6 +447,8 @@
       draw(0, '', 'What would you like to discuss?', 'Start with the option that’s closest to your plans.', goals, 'Continue');
       wireChoices(panel, answers, function () {
         panel.querySelector('.dt-book-situation-wrap').hidden = answers.bookingGoal !== 'not-sure';
+        var duration = card.querySelector('.dt-book-duration');
+        if (duration) duration.textContent = callName(answers.bookingGoal === 'equity');
         var uses = window.DTServiceArea.uses(ctx, answers.bookingGoal);
         if (uses.indexOf(answers.propertyUse) === -1) answers.propertyUse = uses.length === 1 ? uses[0] : '';
         changed();
@@ -675,9 +691,9 @@
     // Keep names and emails out of the third-party iframe URL.
     card.classList.add('dt-cal');
     card.innerHTML = '<div class="dt-book-calendar-heading"><h2 class="dt-book-title">Pick a time, ' + esc(lead.firstName) + '</h2>' + (headerAction || '') + '</div>' +
-      '<p class="dt-book-sub">Your request is saved. Choose a time for your 15-minute qualification call with Darren.</p>' +
+      '<p class="dt-book-sub">Your request is saved. Choose a time for your ' + callName(isEquityLead(lead)) + ' with Darren.</p>' +
       '<p class="dt-book-calendar-help dt-book-calendar-status" role="status">Your request is saved. Loading Google Calendar...</p>' +
-      '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a qualification call with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
+      '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a ' + callName(isEquityLead(lead)) + ' with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
       '<p class="dt-book-calendar-help">Google Calendar will ask you to confirm your booking details. If the calendar does not load, open it in a new tab.</p>' +
       '<a class="dt-book-calendar-link" href="' + esc(BOOKING_URL) + '" target="_blank" rel="noopener noreferrer">Open calendar in a new tab</a>' + call;
     // The saved receipt and Google's network request are separate waits. Do

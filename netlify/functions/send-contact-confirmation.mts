@@ -96,6 +96,14 @@ const ADU_PURPOSES: Record<string, string> = {
 /** First person, because the email is signed by Darren. The site says "Darren will be in touch." */
 const NEXT_STEP =
   "I will be in touch. If you would like to pick a time yourself, choose any 15 minutes that suits you. No obligation. Not a loan application.";
+/**
+ * The equity requests' version (31 Oct QA review, audit item 6): the call is
+ * the 15-Minute Equity Audit, the home-equity front door's one offer
+ * (positioning, 15 Oct). The mortgage review and the live contact email are
+ * not equity requests and keep the plain wording.
+ */
+const EQUITY_NEXT_STEP =
+  "I will be in touch. If you would like to pick a time yourself, book your 15-Minute Equity Audit at a time that suits you. No obligation. Not a loan application.";
 
 const CONTEXTS: Record<string, Copy> = {
   // The live email. Do not edit without meaning to change what is being sent.
@@ -121,7 +129,7 @@ const CONTEXTS: Record<string, Copy> = {
       "What you saw is an estimate. It shows how the monthly payment could change, which is not the same as what each option costs in total. Lower monthly payments do not necessarily mean lower total borrowing costs.",
       "On a call we can go through the actual rates, the fees, how long each option takes to pay off, and what it means to give up the rate on your current mortgage.",
     ],
-    closing: NEXT_STEP,
+    closing: EQUITY_NEXT_STEP,
   },
   "home-equity": {
     campaign: "home-equity",
@@ -136,7 +144,7 @@ const CONTEXTS: Record<string, Copy> = {
       "The equity figure you saw is an estimate: your home's value less what you owe on it. It is not an amount you have been approved to borrow. Lenders also look at credit, income, the property and how much of the value has to stay in the home.",
       "On a call we can look at which ways of using your equity could fit, what you may be eligible for, and the actual terms from lenders.",
     ],
-    closing: NEXT_STEP,
+    closing: EQUITY_NEXT_STEP,
   },
   adu: {
     campaign: "adu",
@@ -151,7 +159,7 @@ const CONTEXTS: Record<string, Copy> = {
       "There are two separate questions here. The first is funding: what you could borrow, how, and on what terms. That is the part I can help with. The second is the project: zoning, permits, site conditions, cost and timing. Your local planning department and your builder answer that one, and funding does not confirm that the project can be built.",
       "On a call we can go through your budget, how much of it you want to finance, and which funding paths are worth looking at.",
     ],
-    closing: NEXT_STEP,
+    closing: EQUITY_NEXT_STEP,
   },
   "mortgage-review": {
     campaign: "mortgage-calculator-review",

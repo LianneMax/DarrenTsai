@@ -371,10 +371,30 @@ describe('step 3: save the lead, then the calendar', () => {
     const src = container.getAttribute('src')!;
     expect(src).toBe(TEST_URL);
     expect(src).not.toMatch(/Ada|Lovelace|ada|firstname|lastname|email/);
-    expect(container.getAttribute('title')).toBe('Book a qualification call with Darren Tsai');
+    expect(container.getAttribute('title')).toBe('Book a 15-Minute Equity Audit with Darren Tsai');
     expect(card().querySelector('.dt-book-calendar-link')?.getAttribute('href')).toBe(TEST_URL);
     expect(document.querySelector('script[src*="MeetingsEmbedCode.js"]')).toBeNull();
     expect(card().querySelector('a[href^="tel:"]')).not.toBeNull();
+  });
+
+  // Audit item 6 (31 Oct QA review): the equity request books the
+  // 15-Minute Equity Audit; the same calendar for any other goal is a plain
+  // 15-minute call, never an equity audit, and nothing says "qualification".
+  it.each([
+    ['equity', 'primary', '15-Minute Equity Audit'],
+    ['dscr', 'investment', '15-minute call'],
+    ['own-home', 'primary', '15-minute call'],
+  ])('names the %s call "%s" in the header, the calendar and its title', async (goal, use, name) => {
+    booking.open();
+    tap('bookingGoal', goal);
+    expect(card().querySelector('.dt-book-duration')?.textContent).toBe(name);
+    passSteps(use, 'CA', goal);
+    fillContact();
+    await flush();
+    await flush();
+    expect(card().querySelector('.dt-book-sub')?.textContent).toBe(`Your request is saved. Choose a time for your ${name} with Darren.`);
+    expect(card().querySelector('.dt-book-frame iframe')?.getAttribute('title')).toBe(`Book a ${name} with Darren Tsai`);
+    expect(card().textContent).not.toMatch(/qualification/i);
   });
 
   it('fires generate_lead once, with no PII before consent, then booking_page_shown', async () => {

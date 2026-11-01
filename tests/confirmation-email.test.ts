@@ -168,3 +168,19 @@ describe('the previews', () => {
     expect(read('package.json')).toContain('"emails": "node scripts/build-email-previews.mjs"');
   });
 });
+
+describe('the equity requests name the 15-Minute Equity Audit', () => {
+  // Audit item 6 (31 Oct QA review): the home-equity front door's one offer
+  // (positioning, 15 Oct). Only the equity contexts say it; the live contact
+  // email and the mortgage review are not equity requests.
+  it.each(['debt', 'home-equity', 'adu'])('%s offers the Audit in its closing line', context => {
+    expect(copyFor({ context } as never).closing).toContain('book your 15-Minute Equity Audit');
+  });
+  it.each(['contact', 'mortgage-review'])('%s keeps the plain wording', context => {
+    expect(copyFor({ context } as never).closing).not.toContain('Equity Audit');
+    expect(copyFor({ context } as never).closing).toContain('any 15 minutes that suits you');
+  });
+  it('never calls it a qualification call', () => {
+    for (const context of CONTEXT_NAMES) expect(buildEmailHtml({ email: 's@example.com', context } as never)).not.toMatch(/qualification/i);
+  });
+});
