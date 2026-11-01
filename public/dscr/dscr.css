@@ -153,9 +153,9 @@ body.dscr-guide-open { overflow:hidden; }
   .dscr-guide-sidebar { position:static; padding:0; }
   .dscr-guide-sidebar>p,.dscr-guide-person { display:none; }
   .dscr-guide-timeline { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .dscr-guide-timeline li { display:block; min-height:66px; }
-  .dscr-guide-timeline li:not(:last-child)::after { left:35px; right:0; top:17px; bottom:auto; height:1px; width:auto; }
-  .dscr-guide-timeline li>span { position:relative; z-index:1; }
+  .dscr-guide-timeline li { display:block; min-height:66px; text-align:center; }
+  .dscr-guide-timeline li:not(:last-child)::after { left:calc(50% + 17.5px); right:calc(-50% + 17.5px); top:17px; bottom:auto; height:1px; width:auto; }
+  .dscr-guide-timeline li>span { position:relative; z-index:1; margin:0 auto; } /* centred in its column (1 Nov, Max) */
   .dscr-guide-timeline strong { font-size:14px; margin-top:6px; }
   .dscr-guide-timeline small { display:none; }
 }

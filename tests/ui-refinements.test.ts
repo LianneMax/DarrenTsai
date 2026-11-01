@@ -26,4 +26,19 @@ describe('/book/ step row on tablets and phones', () => {
     expect(tablet).toContain('left:calc(50% + 17.5px);right:calc(-50% + 17.5px)');
     expect(css).toContain('left:calc(50% + 14.5px);right:calc(-50% + 14.5px)');
   });
+
+  it('centres the calculator step bars (home equity, payoff, ADU) the same way', () => {
+    const css = read('src/components/journey-timeline.css');
+    expect(css).toContain('.journey-progress button{flex-direction:column;align-items:center;text-align:center;gap:10px}');
+    expect(css).toContain('left:calc(50% + 15px)');
+    expect(css).toContain('left:calc(50% + 13.5px)');
+  });
+
+  it.each([['public/fha/fha.css', 'fha'], ['public/realestateinvesting/rei.css', 'rei'], ['public/dscr/dscr.css', 'dscr']])(
+    'centres the %s guide pop-up step bar', (file, prefix) => {
+      const css = read(file);
+      expect(css).toContain(`.${prefix}-guide-timeline li { display:block; min-height:66px; text-align:center; }`);
+      expect(css).toContain(`.${prefix}-guide-timeline li>span { position:relative; z-index:1; margin:0 auto; }`);
+      expect(css).toContain('left:calc(50% + 17.5px); right:calc(-50% + 17.5px)');
+    });
 });
