@@ -70,7 +70,7 @@ export function outOfMarketPage(propertyUse: unknown) {
 /** The questions, worded for the loan the form is about. */
 export function serviceAreaWording(formId = '') {
   const id = formId.toLowerCase();
-  if (id.includes('fha')) return { legend: 'Where is the home?', use: 'How will you use the home?', state: 'Home state' };
+  if (id.includes('fha')) return { legend: 'Where are you buying?', use: 'How will you use the home?', state: 'Home state' };
   if (id.includes('dscr')) return { legend: 'Where is the investment property?', use: 'Property use', state: 'Investment property state' };
   if (!id.includes('contact') && /home-equity|debt|adu/.test(id)) {
     return { legend: 'Where is the home you’re borrowing against?', use: 'How do you use that home?', state: 'State of the home you’re borrowing against' };

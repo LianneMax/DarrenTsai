@@ -55,7 +55,7 @@
   }
   function wording(id) {
     var w = String(id).toLowerCase() + ' ' + (window.location ? window.location.pathname : '');
-    if (w.indexOf('fha') >= 0) return { legend: 'Where is the home?', use: 'How will you use the home?', state: 'Home state' };
+    if (w.indexOf('fha') >= 0) return { legend: 'Where are you buying?', use: 'How will you use the home?', state: 'Home state' };
     if (w.indexOf('dscr') >= 0) return { legend: 'Where is the investment property?', use: 'Property use', state: 'Investment property state' };
     if (String(id).indexOf('contact') < 0 && /home-equity|debt|adu/.test(String(id))) return { legend: 'Where is the home you’re borrowing against?', use: 'How do you use that home?', state: 'State of the home you’re borrowing against' };
     return { legend: 'Where is the property?', use: 'Property use', state: 'Property state' };

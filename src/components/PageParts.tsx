@@ -65,7 +65,9 @@ export function EquitySnapshot({ hv, mb }: { hv: number; mb: number }) {
     <div className="dcp-snapshot">
       <div className="dcp-snapshot-head">
         <span className="dcp-eyebrow dcp-eyebrow-dark">Estimated Home Equity</span>
-        <span className="dcp-ltv">Current LTV <strong>{ltv.toFixed(1)}%</strong></span>
+        {mb > 0 && ltv <= 100 && (
+          <span className="dcp-ltv">You owe about <strong>{Math.round(ltv)}%</strong> of the home&apos;s value</span>
+        )}
       </div>
       <div className="dcp-snapshot-number">
         {equity >= 0 ? formatCurrency(equity) : 'None at these numbers'}

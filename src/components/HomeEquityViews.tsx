@@ -179,7 +179,7 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
           </div>
         )}
       </div>
-      <p className="dcp-hint">ZIP of the home you&apos;re borrowing against. It checks that Darren can lend on it; where you use the cash doesn&apos;t matter.</p>
+      <p className="dcp-hint">The ZIP checks that Darren lends in that area. It is not an address or eligibility check, and where you use the cash doesn&apos;t matter.</p>
 
       <div className="dcp-actions">
         <small className="dcp-caption dcp-actions-note">No application required to see this estimate.</small>
