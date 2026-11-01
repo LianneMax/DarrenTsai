@@ -415,7 +415,7 @@ describe('the happy path', () => {
     const submissionId = '12345678-1234-4234-8234-123456789012';
     responses = [new Response(JSON.stringify({ success: true, submissionId, receipt: 'saved', replayed: true }))];
     const response = await handler(req({ ...LEAD, submissionId }), ctx);
-    expect(await response.json()).toEqual({ ok: true, submissionId, receipt: 'saved', replayed: true });
+    expect(await response.json()).toEqual({ ok: true, submissionId, receipt: 'saved', replayed: true, test: true });
     expect(JSON.parse(String(calls.find(c => c.url === UPSTREAM)!.init.body)).submissionId).toBe(submissionId);
   });
   it.each([
@@ -514,7 +514,9 @@ describe('the happy path', () => {
     const res = await handler(req(LEAD), ctx);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, receipt: 'saved', replayed: false });
+    // LEAD's phone is in the fictional 555-01xx range, so the receipt marks it
+    // TEST (src/utils/testLead.ts). The body forwarded upstream is unchanged.
+    expect(await res.json()).toEqual({ ok: true, receipt: 'saved', replayed: false, test: true });
 
     const forwarded = calls.find((c) => c.url === UPSTREAM)!;
     expect(JSON.parse(forwarded.init.body as string)).toEqual({...LEAD, _proxyKey:'private-test-key'});

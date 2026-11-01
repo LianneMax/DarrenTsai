@@ -1,5 +1,6 @@
 import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses, prequalAnswered, propertyUses, isCaptureInquiry, isCaptureForm, isEquityForm, INQUIRY_MESSAGE_LIMIT } from '../../src/utils/serviceArea';
 import { bookingBucket } from '../../src/utils/bookingBucket';
+import { isTestLead } from '../../src/utils/testLead';
 // Netlify Function: lead
 //
 // The single server-side entry point for every lead on the site. All eight
@@ -803,6 +804,10 @@ export default async (req: Request, context: Context) => {
     return jsonResponse(503, { ok: false, receipt: 'rejected', ...(submissionId ? { submissionId } : {}), code: 'proxy_auth_not_configured', error: 'lead endpoint authentication is not configured' });
   }
   delete payload._proxyKey;
+  // A saved TEST lead says so in its receipt, so public/lead-request.js can
+  // keep it out of generate_lead (src/utils/testLead.ts explains why). It is
+  // a flag only: nothing about the save, the queue or the next step changes.
+  const testFlag = isTestLead(payload) ? { test: true } : {};
   // Expand-first rollout: deploy the capable writer first; publish this handler,
   // scheduled drain and namespaced client together. Older IDs keep their path.
   // Screening above owns calendar permission; a durable inbox acknowledgement
@@ -812,7 +817,7 @@ export default async (req: Request, context: Context) => {
       const admitted=await admitLead({...payload,...(hutk?{hutk}:{})},sheetOnly,
         AbortSignal.timeout(Math.max(1,Math.min(8000,UPSTREAM_TIMEOUT_MS-(Date.now()-startedAt)))));
       if(admitted.conflict) return jsonResponse(409,{ok:false,receipt:'rejected',submissionId,code:'submission_conflict',field:'submissionId',message:'This request ID is already saved with different details. Please start a new request.'});
-      return jsonResponse(200,{ok:true,receipt:'saved',storage:'inbox',submissionId,replayed:admitted.replayed,...(sheetOnly?{disposition:'sheet-only'}:{})});
+      return jsonResponse(200,{ok:true,receipt:'saved',storage:'inbox',submissionId,replayed:admitted.replayed,...(sheetOnly?{disposition:'sheet-only'}:{}),...testFlag});
     } catch {
       await rescueEmail('The durable website inbox could not confirm this request',raw,true,'inbox');
       return uncertain('inbox confirmation unavailable');
@@ -898,7 +903,7 @@ export default async (req: Request, context: Context) => {
         await rescueEmail('Apps Script did not confirm the expected inquiry disposition', raw, true);
         return uncertain('receipt disposition mismatch');
       }
-      return jsonResponse(200, { ok: true, receipt: 'saved', ...(sheetOnly ? { disposition: 'sheet-only' } : {}), ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true });
+      return jsonResponse(200, { ok: true, receipt: 'saved', ...(sheetOnly ? { disposition: 'sheet-only' } : {}), ...(parsed.submissionId || submissionId ? { submissionId: parsed.submissionId || submissionId } : {}), replayed: parsed.replayed === true, ...testFlag });
     }
   } catch (err) {
     const name = (err as { name?: string } | null)?.name;

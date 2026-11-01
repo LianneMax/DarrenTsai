@@ -151,6 +151,9 @@
           throw new Error('The saved receipt could not be confirmed. Retry this request with the same details.');
         }
         record.disposition = receipt.disposition === 'sheet-only' ? 'sheet-only' : '';
+        // The server marks a TEST lead (src/utils/testLead.ts). It is saved and
+        // shown the same next step, but never claims the generate_lead conversion.
+        record.test = receipt.test === true;
         record.confirmed = true;
         receipts.set(response, record);
         rememberInquiry(record);
@@ -163,7 +166,7 @@
   function recordFor(formId, response) { return response ? receipts.get(response) : pending[formId]; }
   function claimConversion(formId, response) {
     var record = recordFor(formId, response);
-    if (!record || !record.confirmed || record.disposition === 'sheet-only' || converted[record.submissionId]) return false;
+    if (!record || !record.confirmed || record.disposition === 'sheet-only' || record.test || converted[record.submissionId]) return false;
     converted[record.submissionId] = true;
     return true;
   }
