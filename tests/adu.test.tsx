@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildAduLead, aduNumbers } from '../src/utils/adu';
-import AduPage, { AduPageHero, StepAduProject, StepAduSnapshot, StepAduContact, AduRecap, type AduPageView } from '../src/components/AduViews';
+import AduPage, { AduPageHero, StepAduProject, StepAduSnapshot, StepAduContact, StepAduReview, AduRecap, type AduPageView } from '../src/components/AduViews';
 import { loadGas, recordingFetch, TEST_PROXY_KEY, type FetchCall } from './helpers/gas-harness';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
@@ -143,7 +143,11 @@ describe('what the page says', () => {
   it('asks only for contact details, and says the request confirms no permit', () => {
     const page = html(<StepAduContact v={view({ step: 2 })} />);
     expect(page).not.toMatch(/Best Time|How did you hear/i);
-    expect(page).toContain('does not confirm permits or feasibility');
+    expect(page).not.toContain('data-privacy-form');
+    // The caption and consent boxes moved to the Review step 1 Nov (Max).
+    const review = html(<StepAduReview v={view({ step: 5 })} />);
+    expect(review).toContain('does not confirm permits or feasibility');
+    expect(review).toContain('data-privacy-form="adu-calculator"');
   });
 
   it('confirms with the project it sent, and promises no time', () => {

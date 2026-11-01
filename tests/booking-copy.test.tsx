@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { bookingCalendarReady } from '../booking-ready.config';
 import { BOOKING_CALENDAR_READY } from '../src/utils/booking';
-import { StepEquityContact, EquityPageHero, type EquityPageView } from '../src/components/HomeEquityViews';
+import { StepEquityContact, StepEquityPreferences, EquityPageHero, type EquityPageView } from '../src/components/HomeEquityViews';
 
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 const SOURCE = read('public/booking-chooser.js');
@@ -76,9 +76,9 @@ describe('/home-equity/ follows the same setting', () => {
     emailHint: null, setEmailHint: () => {}, phone: '', setPhone: () => {}, message:'', setMessage:()=>{}, goStep: () => {}, submitLead: () => {} } as unknown as EquityPageView;
 
   it('offers the calendar after a saved request when the schedule is configured', () => {
-    const page = renderToStaticMarkup(<StepEquityContact v={v} />);
-    expect(page).toContain('See Darren&#x27;s Calendar');
-    expect(page).toContain('pick a time on Darren');
+    // The send button moved to its own Review step 1 Nov (Max).
+    expect(renderToStaticMarkup(<StepEquityPreferences v={v} />)).toContain('See Darren&#x27;s Calendar');
+    expect(renderToStaticMarkup(<StepEquityContact v={v} />)).toContain('pick a time on Darren');
     expect(renderToStaticMarkup(<EquityPageHero />)).not.toContain('Calendar');
   });
 });

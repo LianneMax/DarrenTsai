@@ -80,6 +80,9 @@ function gatedUserData(payload: LeadPayload): Record<string, unknown> {
   }
 }
 
+/** Server field errors a visitor fixes on the contact screen, one step before consent (1 Nov). */
+export const CONTACT_FIELD = /^(email|phone|contact|firstName|lastName|name)$/;
+
 export function useLeadSubmit({ formId, thankYouPath, thankYouTitle, consentGatedUserData }: LeadSubmitConfig) {
   return async function submitLead(payload: LeadPayload): Promise<SubmitResult> {
     // A form that asks property use and state as its own steps (/home-equity/)

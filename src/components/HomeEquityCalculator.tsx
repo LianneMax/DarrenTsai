@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidUsPhone } from '../utils/phone';
 import { EMAIL } from '../config';
-import { useLeadSubmit } from '../hooks/useLeadSubmit';
+import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
 import { serviceArea, prequalPasses, outOfMarketPage } from '../utils/serviceArea';
@@ -178,6 +178,25 @@ export default function HomeEquityCalculator() {
       milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 2 });
       setStep(3);
       scrollToFlow();
+      return;
+    }
+    // 1 Nov (Max): contact details and the consent boxes are separate screens.
+    if (step === 3) {
+      if (!fname.trim() || !lname.trim() || !phone || !email) {
+        validationError('Please fill in your name, phone and email.');
+        return;
+      }
+      if (!emailSchema.safeParse(email.trim()).success) {
+        validationError('Please enter a valid email address.');
+        return;
+      }
+      if (!isValidUsPhone(phone.trim())) {
+        validationError('Please enter a valid US phone number.');
+        return;
+      }
+      milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 3 });
+      setStep(4);
+      scrollToFlow();
     }
   };
 
@@ -221,6 +240,8 @@ export default function HomeEquityCalculator() {
     if (!result.ok && result.kind === 'fieldError') {
       setErrorKind('validation');
       setErrorMsg(result.message);
+      // Contact fields sit one screen back since 1 Nov: return there to fix them.
+      if (CONTACT_FIELD.test(result.field)) setStep(3);
       return;
     }
     if (!result.ok) {

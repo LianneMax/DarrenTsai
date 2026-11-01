@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { isValidUsPhone } from '../utils/phone';
 import { RATES_ENDPOINT, EMAIL } from '../config';
-import { useLeadSubmit } from '../hooks/useLeadSubmit';
+import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openBooking as openBookingPanel } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import DebtPage, { type DebtPageView } from './DebtPageViews';
@@ -447,6 +447,8 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     if (!result.ok && result.kind === 'fieldError') {
       setErrorKind('validation');
       setErrorMsg(result.message);
+      // Contact fields sit one screen back since 1 Nov: return there to fix them.
+      if (CONTACT_FIELD.test(result.field)) setStep(4);
       return;
     }
 

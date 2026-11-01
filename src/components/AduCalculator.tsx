@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { isValidUsPhone } from '../utils/phone';
 import { EMAIL } from '../config';
-import { useLeadSubmit } from '../hooks/useLeadSubmit';
+import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openBooking } from '../utils/booking';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { aduNumbers, buildAduLead } from '../utils/adu';
@@ -73,7 +73,7 @@ export default function AduCalculator() {
    * to Darren without the project's cost and the amount to finance.
    */
   const goStep = (n: number) => {
-    if (inFlight.current || n < 1 || n > 4) return;
+    if (inFlight.current || n < 1 || n > 5) return;
     if (n > step) {
       if (!purpose || cost <= 0 || fin <= 0) {
         validationError('Choose your project and enter its estimated cost and the amount you would like to finance.'); return;
@@ -84,6 +84,12 @@ export default function AduCalculator() {
       if (n >= 3 && serviceArea(propertyUse, usState, 'adu') === 'incomplete') {
         milestone('form_error', {form_id:'adu-calculator',error_code:propertyUse && usState ? 'policy_exit':'validation',field_category:'property'});
         setErrorMsg('Choose how you use the home and the state it is in.'); return;
+      }
+      // 1 Nov (Max): the consent boxes are their own screen after the contact details.
+      if (n >= 5) {
+        if (!fname.trim() || !phone || !email) { validationError('Please fill in your name, phone and email.'); return; }
+        if (!emailSchema.safeParse(email.trim()).success) { validationError('Please enter a valid email address.'); return; }
+        if (!isValidUsPhone(phone.trim())) { validationError('Please enter a valid US phone number.'); return; }
       }
     }
     if (n > step) milestone('form_step', { form_id: 'adu-calculator', step_id: step });
@@ -119,6 +125,8 @@ export default function AduCalculator() {
     }
     if (!result.ok && result.kind === 'fieldError') {
       setErrorMsg(result.message);
+      // Contact fields sit one screen back since 1 Nov: return there to fix them.
+      if (CONTACT_FIELD.test(result.field)) setStep(4);
       return;
     }
     if (!result.ok) {

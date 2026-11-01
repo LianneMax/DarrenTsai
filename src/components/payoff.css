@@ -73,7 +73,7 @@
 .site-design .equity-journey-layout.payoff-comparison-layout { grid-template-columns: minmax(0, 1fr); }
 .payoff-comparison-layout .dcp-panel { max-width: 980px; }
 .payoff-comparison-layout .journey-progress { position: static; padding: 0; }
-.payoff-comparison-layout .journey-progress ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.payoff-comparison-layout .journey-progress ol { display: grid; grid-template-columns: repeat(var(--journey-count), minmax(0, 1fr)); gap: 12px; }
 .payoff-comparison-layout .journey-progress li:not(:last-child)::before,
 .payoff-comparison-layout .journey-guide { display: none; }
 .payoff-comparison-layout .journey-progress li { padding-bottom: 0; }

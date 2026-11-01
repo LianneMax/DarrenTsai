@@ -20,7 +20,7 @@ async function input(id:string,value:string) {
 }
 async function project(){await button('ADU for family');await input('adu-cost','175000');await input('adu-finance','75000');await button('Add my home');}
 async function home(state='CA',balance='350000'){await input('adu-value','650000');await input('adu-balance',balance);await input('adu-calculator-property-use','primary');await input('adu-calculator-property-state',state);await button('See my snapshot');}
-async function contact(){await button('Talk through my plan');await input('lead-fname','TEST');await input('lead-lname','Local Preview');await input('lead-email','test@example.com');await input('lead-phone','7145550191');}
+async function contact(){await button('Talk through my plan');await input('lead-fname','TEST');await input('lead-lname','Local Preview');await input('lead-email','test@example.com');await input('lead-phone','7145550191');await button('Continue');}
 beforeEach(async()=>{
   window.DTLead?.reset('adu-calculator');
   document.body.innerHTML='';host=document.createElement('div');document.body.append(host);root=createRoot(host);posted=[];
@@ -74,8 +74,8 @@ describe('isolated ADU design journey',()=>{
   it('starts empty and does not allow skipping incomplete project or home steps',async()=>{
     expect(Array.from(host.querySelectorAll('input')).every(el=>el.value==='')).toBe(true);
     expect(host.querySelector('.adu-purpose[aria-pressed="true"]')).toBeNull();
-    await button('Talk to Darren');expect(heading()).toBe('What are you planning?');expect(posted).toHaveLength(0);
-    await project();await button('Talk to Darren');expect(heading()).toBe('The home behind your plan.');expect(posted).toHaveLength(0);
+    await button('Details');expect(heading()).toBe('What are you planning?');expect(posted).toHaveLength(0);
+    await project();await button('Details');expect(heading()).toBe('The home behind your plan.');expect(posted).toHaveLength(0);
   });
   it('shows correct project and equity figures before asking for contact',async()=>{
     await project();await home();expect(heading()).toBe('Your project, in perspective.');
@@ -89,7 +89,7 @@ describe('isolated ADU design journey',()=>{
   });
   it('lets unsupported property locations reach contact without saving before privacy acknowledgment',async()=>{
     await project();await home('NY');expect(heading()).toBe('Your project, in perspective.');expect(text()).toContain('$100,000');
-    await button('Talk through my plan');expect(host.querySelector('#lead-email')).not.toBeNull();expect(text()).toContain('your inquiry is recorded without a calendar');expect(posted).toHaveLength(0);
+    await button('Talk through my plan');expect(host.querySelector('#lead-email')).not.toBeNull();expect(host.querySelector('[data-privacy-form]')).toBeNull();await input('lead-fname','TEST');await input('lead-email','test@example.com');await input('lead-phone','7145550191');await button('Continue');expect(host.querySelector('[data-privacy-form]')).not.toBeNull();expect(text()).toContain('your inquiry is recorded without a calendar');expect(posted).toHaveLength(0);
   });
   it('handles a paid-off home and an underwater home without implying available credit',async()=>{
     await project();await home('CA','0');expect(text()).toContain('$650,000');await button('Back');await input('adu-balance','700000');await button('See my snapshot');

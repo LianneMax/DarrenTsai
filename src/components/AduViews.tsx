@@ -4,7 +4,7 @@ import { type EmailSuggestion } from '../utils/emailSuggest';
 import { ADU_PURPOSES } from '../utils/adu';
 import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
-import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep } from './PageParts';
+import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep, LeadPreferencesStep } from './PageParts';
 import AduHouseExplorer from './AduHouseExplorer';
 import { MarketingFaq } from './Marketing';
 import JourneyTimeline from './JourneyTimeline';
@@ -23,7 +23,7 @@ export interface AduPageView {
   usState: string; setUsState: (v: string) => void; sending: boolean; submitted: boolean;
   submitLead: () => void; openBooking: () => void; errorMsg: string | null;
 }
-const STEPS = [['Your project','What you have in mind'],['Your home','The home behind the plan'],['Your snapshot','Bring the numbers together'],['Talk to Darren','A personal next step']] as const;
+const STEPS = [['Your project','What you have in mind'],['Your home','The home behind the plan'],['Your snapshot','Bring the numbers together'],['Details','How to reach you'],['Review','Preferences and send']] as const;
 const PURPOSE_NOTES = ['Make room for someone close.','Explore a space for tenants.','Improve the home you have.','Talk through a different project.'];
 
 function ProjectIcon({ index }: { index: number }) {
@@ -109,8 +109,14 @@ export function StepAduSnapshot({v}:{v:AduPageView}) {
 export function StepAduContact({v}:{v:AduPageView}) {
   return <div className="adu-contact-stage"><span data-service-area="adu-calculator" hidden/><LeadContactStep v={v} formId="adu-calculator" propertyAlreadyAsked title="Bring your plan to Darren."
     lead="Your project, numbers and optional note go with your request. Availability is checked after you acknowledge privacy and submit."
+    onBack={()=>v.goStep(3)} onContinue={()=>v.goStep(5)}/></div>;
+}
+
+/** Consent and send on their own screen (1 Nov, Max). */
+export function StepAduReview({v}:{v:AduPageView}) {
+  return <div className="adu-contact-stage"><span data-service-area="adu-calculator" hidden/><LeadPreferencesStep v={v} formId="adu-calculator"
     caption="Outside our service area, your inquiry is recorded without a calendar or financing review. This request is not a loan application and does not confirm permits or feasibility."
-    submitLabel="Send my project" onBack={()=>v.goStep(3)}/></div>;
+    submitLabel="Send my project" onBack={()=>v.goStep(4)}/></div>;
 }
 
 export function AduRecap({v}:{v:AduPageView}) {
@@ -141,9 +147,9 @@ export default function AduPage({v,disclosure}:{v:AduPageView;overlays?:ReactNod
   return <section className="dcp adu-revamp"><AduPageHero/>
     <section id="project" className="adu-workspace design-wrap" aria-label="Your project funding snapshot" data-dt-form="adu-calculator">
       <JourneyTimeline steps={STEPS} current={v.step} complete={v.submitted} disabled={v.sending} onStep={v.goStep}/>
-      <div className="adu-work-area"><div className="adu-stage-state"><span>{v.submitted?'Request received':`${v.step} of 4`}</span></div>
+      <div className="adu-work-area"><div className="adu-stage-state"><span>{v.submitted?'Request received':`${v.step} of ${STEPS.length}`}</span></div>
         {v.errorMsg&&<div className="adu-inline-error" role="alert">{v.errorMsg}</div>}
-        {v.submitted?<AduRecap v={v}/>:v.step===1?<StepAduProject v={v}/>:v.step===2?<StepAduHome v={v}/>:v.step===3?<StepAduSnapshot v={v}/>:<StepAduContact v={v}/>}</div>
+        {v.submitted?<AduRecap v={v}/>:v.step===1?<StepAduProject v={v}/>:v.step===2?<StepAduHome v={v}/>:v.step===3?<StepAduSnapshot v={v}/>:v.step===4?<StepAduContact v={v}/>:<StepAduReview v={v}/>}</div>
     </section><PlanningChecks/>
     <div className="adu-faq-section"><MarketingFaq onOpenContact={v.openBooking} groups={ADU_FAQ} promptTitle="A project in mind?" promptDescription="Talk through the numbers and the possibilities with Darren."/></div>
     <section className="adu-disclosures design-wrap" aria-label="Important disclosures"><h2>Important disclosures</h2>{disclosure}</section>

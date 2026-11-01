@@ -223,12 +223,13 @@ export interface ContactView {
 }
 
 /**
- * The "talk to Darren" step of /home-equity/ and /adu/: name, email, phone and
- * state, nothing else (no best time to call, no "how did you hear": tracked
- * attribution answers the second, and both came off the debt form on 8 Oct).
+ * The contact step of /adu/: name, email, phone and an optional note, nothing
+ * else (no best time to call, no "how did you hear": tracked attribution
+ * answers the second, and both came off the debt form on 8 Oct). Consent and
+ * send follow on LeadPreferencesStep.
  */
-export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack, propertyAlreadyAsked = false, formId = 'home-equity-calculator' }: {
-  v: ContactView; title: string; lead?: string; caption: string; submitLabel: string; onBack: () => void; propertyAlreadyAsked?: boolean; formId?: string;
+export function LeadContactStep({ v, title, lead, onBack, onContinue, propertyAlreadyAsked = false, formId = 'home-equity-calculator' }: {
+  v: ContactView; title: string; lead?: string; onBack: () => void; onContinue: () => void; propertyAlreadyAsked?: boolean; formId?: string;
 }) {
   return (
     <div className="dcp-panel">
@@ -276,7 +277,24 @@ export function LeadContactStep({ v, title, lead, caption, submitLabel, onBack, 
       </div>
 
       <InquiryMessage id={`${formId}-message`} value={v.message} onChange={v.setMessage} />
-{caption && <p className="dcp-caption">{caption}</p>}
+
+      <StepNav back="← Back" onBack={onBack} next={<>Continue <Arrow /></>} onNext={onContinue} />
+    </div>
+  );
+}
+
+/**
+ * The consent boxes and the send button, on their own screen after the
+ * contact details (1 Nov, Max: one short screen at a time).
+ */
+export function LeadPreferencesStep({ v, caption, submitLabel, onBack, formId = 'home-equity-calculator' }: {
+  v: ContactView; caption?: string; submitLabel: string; onBack: () => void; formId?: string;
+}) {
+  return (
+    <div className="dcp-panel">
+      <h2 className="dcp-h2 dcp-h2-lg">Your preferences.</h2>
+      <p className="dcp-lead">Review and send. Text messages are optional.</p>
+      {caption && <p className="dcp-caption">{caption}</p>}
       <ComplianceDisclosure formId={formId} />
 
       <StepNav

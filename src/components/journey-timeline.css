@@ -11,3 +11,5 @@
 @media(max-width:1050px){.site-design .equity-journey-layout{grid-template-columns:195px minmax(0,1fr);gap:25px}}
 @media(max-width:800px){.site-design .equity-journey-layout{display:block}.journey-progress{position:static;padding:0;margin-bottom:24px}.journey-progress ol{display:grid;grid-template-columns:repeat(var(--journey-count),minmax(0,1fr));gap:8px}.journey-progress li{padding-bottom:0}.journey-progress li:not(:last-child)::before{left:30px;top:14px;height:2px;bottom:auto;width:calc(100% - 22px)}.journey-progress button{flex-direction:column;gap:10px}.journey-progress strong{font-size:15px}.journey-progress small,.journey-guide{display:none}}
 @media(max-width:600px){.journey-progress strong{font-size:14px;min-height:34px}.journey-node{width:27px;height:27px;font-size:14px}.journey-progress li:not(:last-child)::before{left:27px;top:13px;width:calc(100% - 19px)}}
+/* Five steps since 1 Nov: keep two-word labels such as "Your snapshot" clear of the next one on a 320px phone. */
+@media(max-width:360px){.journey-progress ol{gap:4px}.journey-progress strong{font-size:13px}}

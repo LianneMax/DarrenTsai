@@ -17,7 +17,7 @@ import { buildEquityLead, equityNumbers } from '../src/utils/homeEquity';
 import { stateForZip } from '../src/utils/zipState';
 import { prequalPasses } from '../src/utils/serviceArea';
 import EquityPage, {
-  EquityPageHero, StepEquityHome, StepEquityGoal, StepEquityContact, EquityRecap, EquityDeclined, EquityProducts,
+  EquityPageHero, StepEquityHome, StepEquityGoal, StepEquityContact, StepEquityPreferences, EquityRecap, EquityDeclined, EquityProducts,
   EQUITY_FORM_ID, type EquityPageView,
 } from '../src/components/HomeEquityViews';
 import { loadGas, recordingFetch, TEST_PROXY_KEY, type FetchCall } from './helpers/gas-harness';
@@ -252,11 +252,20 @@ describe('what the page says', () => {
     expect(src).not.toMatch(/income|employer|start date|co-?borrower/i);
   });
 
-  it('asks only contact and consent on step 3, with no second state question', () => {
+  it('asks only contact details on step 3, with no second state question and no consent boxes', () => {
     const page = html(<StepEquityContact v={view({ step: 3 })} />);
     expect(page).not.toMatch(/Best Time|How did you hear|data-property-state/i);
     expect(page).toContain(`data-service-area="${EQUITY_FORM_ID}"`);
+    // Consent moved to its own Review step 1 Nov (Max): one short screen at a time.
+    expect(page).not.toContain('data-privacy-form');
+    expect(page).toContain('Continue');
+  });
+
+  it('puts the consent boxes and the send button alone on step 4', () => {
+    const page = html(<StepEquityPreferences v={view({ step: 4 })} />);
+    expect(page).toContain(`data-service-area="${EQUITY_FORM_ID}"`);
     expect(page).toContain(`data-privacy-form="${EQUITY_FORM_ID}"`);
+    expect(page).not.toContain('lead-email');
     // The repeated licence line under the form was removed 1 Nov (Max); the
     // page footer disclosure carries it.
     expect(page).not.toContain('Submitting requests');

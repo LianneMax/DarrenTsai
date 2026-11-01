@@ -75,7 +75,7 @@ export interface EquityPageView {
   submitLead: () => void;
 }
 
-const STEPS = [['Your home','Value, mortgage and property'],['Your goal','What you have in mind'],['Talk to Darren','A personal next step']] as const;
+const STEPS = [['Your home','Value, mortgage and property'],['Your goal','What you have in mind'],['Your details','How to reach you'],['Review','Preferences and send']] as const;
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
@@ -235,7 +235,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
       <p className="dcp-lead">Your estimate and answers go with your request. {outside
         ? <>You can record your inquiry, but a call is unavailable for this property’s state and use.</>
         : BOOKING_CALENDAR_READY
-        ? <>Next, you can pick a time on Darren&apos;s calendar.</>
+        ? <>After you review and send, you can pick a time on Darren&apos;s calendar.</>
         : <>Darren will call you to set a time.</>}</p>
       <span data-service-area={EQUITY_FORM_ID} hidden />
 
@@ -277,10 +277,24 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
       </div>
 
       <InquiryMessage id="equity-inquiry-message" value={v.message} onChange={v.setMessage} />
+
+      <StepNav back="← Your Goal" onBack={() => v.goStep(2)} next={<>Continue <Arrow /></>} onNext={v.next} />
+    </div>
+  );
+}
+
+/** The consent boxes and the send button, on their own screen (1 Nov, Max). */
+export function StepEquityPreferences({ v }: { v: EquityPageView }) {
+  const outside = serviceArea(v.propertyUse, v.propertyState, 'home-equity') === 'out-of-market';
+  return (
+    <div className="dcp-panel">
+      <h2 className="dcp-h2 dcp-h2-lg">Your preferences.</h2>
+      <p className="dcp-lead">Review and send. Text messages are optional.</p>
+      <span data-service-area={EQUITY_FORM_ID} hidden />
       <ComplianceDisclosure formId={EQUITY_FORM_ID} />
 
       <StepNav
-        back="← Your Goal" onBack={() => v.goStep(2)}
+        back="← Your Details" onBack={() => v.goStep(3)}
         disabled={v.sending}
         next={v.sending
           ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
@@ -417,12 +431,13 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
         <div className={done?'':'equity-journey-layout'}>
         {!done&&<JourneyTimeline steps={STEPS} current={v.step} disabled={v.sending} onStep={v.goStep}/>}
         <div className="equity-journey-content">
-        {!done && <p className="equity-stage-state">{v.step} of 3</p>}
+        {!done && <p className="equity-stage-state">{v.step} of {STEPS.length}</p>}
         {v.submitted && <EquityRecap v={v} />}
         {!v.submitted && v.declined && <EquityDeclined v={v} />}
         {!done && v.step === 1 && <StepEquityHome v={v} />}
         {!done && v.step === 2 && <StepEquityGoal v={v} />}
         {!done && v.step === 3 && <StepEquityContact v={v} />}
+        {!done && v.step === 4 && <StepEquityPreferences v={v} />}
 
         {/* Product education follows the calculator in the shared options section. */}
 
