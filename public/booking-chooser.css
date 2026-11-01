@@ -105,8 +105,10 @@ body.booking-page{background:#f5f8fa}
   .dt-book-progress{position:sticky;top:73px;z-index:5;margin:0;padding:12px 0 10px;background:#f5f8fa}
   .dt-book-progress ol{grid-template-columns:repeat(4,minmax(0,1fr))}
   .dt-book-progress li{min-height:66px}
-  .dt-book-progress button{flex-direction:column;gap:7px}
-  .dt-book-progress li:not(:last-child):after{left:35px;right:0;top:17px;bottom:auto;width:auto;height:1px}
+  /* Centre each step in its column (1 Nov, Max): left-aligned steps left the
+     last column mostly empty, so the row looked shifted left under the card. */
+  .dt-book-progress button{flex-direction:column;align-items:center;gap:7px;text-align:center}
+  .dt-book-progress li:not(:last-child):after{left:calc(50% + 17.5px);right:calc(-50% + 17.5px);top:17px;bottom:auto;width:auto;height:1px}
   .dt-book-progress strong{padding:0;font-size:14px;line-height:1.35}
   .dt-book-progress small{display:none}
   .dt-book-panel{scroll-margin-top:174px}
@@ -125,7 +127,7 @@ body.booking-page{background:#f5f8fa}
   .dt-book-marker{width:29px;height:29px;font-size:14px}
   .dt-book-progress{top:69px}
   .dt-book-progress strong{font-size:14px;max-width:9ch}
-  .dt-book-progress li:not(:last-child):after{left:29px;top:14px}
+  .dt-book-progress li:not(:last-child):after{left:calc(50% + 14.5px);right:calc(-50% + 14.5px);top:14px}
   .dt-book-panel{padding:24px 20px}
   .dt-book-shell .dt-book-title{font-size:25px}
   .dt-book-meta{font-size:14px}
