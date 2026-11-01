@@ -101,6 +101,22 @@ function measure() {
   return { vw, sw, over, small: [...new Set(small)] };
 }
 
+/**
+ * The cookie panel is a bottom sheet that covers about half of a 320px screen
+ * while the booking step bar sticks to the top. A visitor scrolls a choice into
+ * the gap or closes the panel; Playwright scrolls each target to the centre or
+ * an edge, so on /book/ every click landed under one of the two (item 15,
+ * 1 Nov). Flows that click on phones close it first, as a visitor would. The
+ * close button keeps the page; Reject reloads it.
+ */
+async function closeCookiePanel(page) {
+  const close = page.getByRole('button', { name: 'Close cookie preferences', exact: true });
+  if (await close.isVisible()) {
+    await close.click();
+    await page.locator('.dt-cookie-panel').waitFor({ state: 'hidden' });
+  }
+}
+
 const failures = [];
 let browser;
 let checks = 0;
@@ -154,7 +170,13 @@ try {
         for (const button of await book.all()) {
           if (!await button.isVisible()) continue;
           await button.click();
-          await page.locator('.dt-book-overlay .dt-book-card [data-q="bookingGoal"]').waitFor({ state: 'visible' });
+          // Record the page instead of throwing, so one stuck button does not hide the rest of the run.
+          const opened = await page.locator('.dt-book-overlay .dt-book-card [data-q="bookingGoal"]').waitFor({ state: 'visible', timeout: 10000 }).then(() => true, () => false);
+          if (!opened) {
+            failures.push(`${path}: Book a Call did not open the booking goal question`);
+            await page.keyboard.press('Escape');
+            continue;
+          }
           const actionColor = await page.locator('.dt-book-overlay .dt-book-next').evaluate(node => getComputedStyle(node).color);
           if (actionColor !== 'rgb(255, 255, 255)') failures.push(`${path}: booking action text must be white, got ${actionColor}`);
           await page.locator('.dt-book-overlay').getByRole('button', { name: 'Close', exact: true }).click();
@@ -224,6 +246,7 @@ try {
       // bounds, accessible title and working fallback still belong to this site.
       if (path === '/book/' && [320, 1280].includes(width)) {
         await page.route('**/api/lead', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, receipt: 'saved', submissionId: route.request().postDataJSON().submissionId }) }));
+        await closeCookiePanel(page);
         const card = page.locator('#dt-book-mount .dt-book-card');
         const bookingGoal = width === 320 ? 'not-sure' : 'equity';
         await card.locator('[data-q="bookingGoal"] [data-value="' + bookingGoal + '"]').click();
@@ -250,7 +273,9 @@ try {
         await card.getByRole('button', { name: 'Review preferences', exact: true }).click();
         await card.locator('[name="privacy"]').check();
         await card.getByRole('button', { name: "See Darren's calendar", exact: true }).click();
-        const frame = card.locator('iframe[title="Book a qualification call with Darren Tsai"]');
+        // Item 6 (1 Nov): equity requests book the 15-Minute Equity Audit, other goals a 15-minute call.
+        const callName = bookingGoal === 'equity' ? '15-Minute Equity Audit' : '15-minute call';
+        const frame = card.locator(`iframe[title="Book a ${callName} with Darren Tsai"]`);
         await frame.waitFor({ state: 'attached' });
         const bounds = await frame.boundingBox();
         const saved = await page.evaluate(measure);
@@ -258,12 +283,15 @@ try {
         if (!bounds || bounds.x < 0 || bounds.x + bounds.width > width || saved.sw > saved.vw) failures.push(width + 'px booking calendar overflows');
         if (!await card.getByRole('link', { name: 'Open calendar in a new tab', exact: true }).isVisible()) failures.push(width + 'px booking recovery link missing');
         if (!(await frame.getAttribute('src')).startsWith('https://calendar.google.com/calendar/appointments/schedules/')) failures.push('Wrong booking provider');
+        // The saved receipt makes every later Book a Call go straight to the
+        // calendar (by design: a returning visitor is not asked twice). Forget
+        // it so the pages after /book/ are checked as a first visit.
+        await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
       }
       // An empty first screen cannot expose an APR popover overflowing a phone.
       // Exercise the real calculated state and its editable-fee explanation.
       if (path === '/mortgage-calculator/' && width < 600) {
-        const reject = page.getByRole('button', { name: 'Reject optional', exact: true });
-        if (await reject.isVisible()) await reject.click();
+        await closeCookiePanel(page);
         await page.getByRole('textbox', { name: 'Loan Amount', exact: true }).fill('330000');
         await page.getByRole('spinbutton', { name: 'Annual Interest Rate', exact: true }).fill('4');
         await page.getByLabel('About this estimated APR', { exact: true }).click();
