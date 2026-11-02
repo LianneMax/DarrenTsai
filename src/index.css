@@ -2054,6 +2054,8 @@ button.email-hint { text-decoration: underline; cursor: pointer; }
 .dcp-h3 { font-size: 18px; font-weight: 600; margin: 24px 0 14px; }
 .dcp-lead { color: var(--dcp-muted); font-size: 16px; line-height: 1.65; margin-bottom: 22px; }
 .dcp-hint, .dcp-caption { font-size: 14px; line-height: 1.5; color: var(--dcp-muted); margin-top: 14px; }
+/* Links inside running text need more than colour to stand out (WCAG 1.4.1). */
+.dcp-caption a { text-decoration: underline; text-underline-offset: 3px; }
 .dcp-optional { font-weight: 400; color: var(--dcp-muted); }
 .dcp-panel .input-label { color: var(--dcp-ink); }
 .dcp-panel .btn-teal { background: var(--dcp-action); }
