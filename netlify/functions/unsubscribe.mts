@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions';
-import { emailForToken, stopEmail } from './email-preferences.mts';
-import { emailPreferencePage as page } from './email-preference-view.mts';
+import { emailForToken, stopEmail } from '../lib/email-preferences.mts';
+import { emailPreferencePage as page } from '../lib/email-preference-view.mts';
 
 const headers = {
   'content-type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store',

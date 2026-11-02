@@ -12,9 +12,9 @@ vi.mock('@netlify/blobs', () => ({ getStore: vi.fn((_name, options) => {
     delete: async (key: string) => { storage.delete(key); },
   };
 }) }));
-import { stopEmail, unsubscribeLinkFor, isEmailSuppressed } from '../netlify/functions/email-preferences.mts';
+import { stopEmail, unsubscribeLinkFor, isEmailSuppressed } from '../netlify/lib/email-preferences.mts';
 import unsubscribe from '../netlify/functions/unsubscribe.mts';
-import { guideSender } from '../netlify/functions/guide-shared.mts';
+import { guideSender } from '../netlify/lib/guide-shared.mts';
 import stopEmailRequest from '../netlify/functions/stop-email.mts';
 import { loadGas } from './helpers/gas-harness';
 

@@ -19,7 +19,7 @@
 // it sends a real email on every call, so it isn't left open to the public.
 
 import type { Config } from "@netlify/functions";
-import { cachedBytes, escapeHtml, guideSender, toBase64 } from "./guide-shared.mts";
+import { cachedBytes, escapeHtml, guideSender, toBase64 } from "../lib/guide-shared.mts";
 
 const PDF_URL = "https://realdarrentsai.com/magnets/real-estate-investing-case-study.pdf";
 

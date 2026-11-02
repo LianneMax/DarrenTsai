@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { timingSafeEqual, createHash } from 'node:crypto';
-import { stopEmail, pendingSheetOptOuts, acknowledgeSheetOptOut } from './email-preferences.mts';
+import { stopEmail, pendingSheetOptOuts, acknowledgeSheetOptOut } from '../lib/email-preferences.mts';
 
 // The existing server-to-server confirmation key authorizes recording an
 // explicit reply/manual opt-out. Never put it in a browser or an email link.

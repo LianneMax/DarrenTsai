@@ -31,7 +31,7 @@
 // real email on every call, so it is not left open.
 
 import type { Config } from "@netlify/functions";
-import { escapeHtml, guideSender } from "./guide-shared.mts";
+import { escapeHtml, guideSender } from "../lib/guide-shared.mts";
 
 const BOOK_BASE =
   "https://realdarrentsai.com/book/?utm_source=email&utm_medium=confirmation&utm_campaign=";

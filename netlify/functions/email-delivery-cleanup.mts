@@ -1,5 +1,5 @@
 import type { Config } from '@netlify/functions';
-import { purgeExpiredEmailDeliveries } from './guide-shared.mts';
+import { purgeExpiredEmailDeliveries } from '../lib/guide-shared.mts';
 
 // Only expired frozen provider requests are removed. Replay tombstones and
 // suppression are separate and retained; this never sends an email or lead.

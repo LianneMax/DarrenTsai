@@ -21,11 +21,11 @@ vi.mock('@netlify/blobs', () => ({ getStore: () => ({
     return Promise.resolve(result);
   },
 }) }));
-vi.mock('../netlify/functions/email-preferences.mts', () => ({
+vi.mock('../netlify/lib/email-preferences.mts', () => ({
   isEmailSuppressed: vi.fn(async () => false), unsubscribeLinkFor: vi.fn(async () => 'https://example.com/unsubscribe'),
 }));
-import { isEmailSuppressed } from '../netlify/functions/email-preferences.mts';
-import { guideSender, purgeExpiredEmailDeliveries } from '../netlify/functions/guide-shared.mts';
+import { isEmailSuppressed } from '../netlify/lib/email-preferences.mts';
+import { guideSender, purgeExpiredEmailDeliveries } from '../netlify/lib/guide-shared.mts';
 
 const handler = guideSender({ name: 'guide-test', apiKeyEnv: 'GUIDE_KEY', subject: 'Requested guide', buildEmailHtml: () => '<p>Your guide</p>', buildAttachments: async () => [] });
 const body = () => ({ email: 'qa@example.com', submissionId: 'stable-1', deliveryStartedAt: new Date().toISOString() });

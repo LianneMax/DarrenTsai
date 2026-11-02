@@ -22,7 +22,7 @@
 //     client bundle, which is how the old key ended up visible.
 
 import type { Config, Context } from "@netlify/functions";
-import { RATE_SOURCE_LABEL, isStale, readRates, refreshRates } from "./rates-shared.mts";
+import { RATE_SOURCE_LABEL, isStale, readRates, refreshRates } from "../lib/rates-shared.mts";
 
 /**
  * How long a response is reused. PMMS publishes once a week, so six hours is

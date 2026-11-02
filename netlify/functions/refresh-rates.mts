@@ -14,7 +14,7 @@
 // Netlify runs this on its own; no trigger to install and nothing to remember.
 
 import type { Config } from "@netlify/functions";
-import { refreshRates } from "./rates-shared.mts";
+import { refreshRates } from "../lib/rates-shared.mts";
 
 export default async () => {
   const key = Netlify.env.get("FRED_API_KEY");

@@ -22,7 +22,7 @@
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { Config } from "@netlify/functions";
-import { escapeHtml, guideSender, toBase64 } from "./guide-shared.mts";
+import { escapeHtml, guideSender, toBase64 } from "../lib/guide-shared.mts";
 
 const TEMPLATE_URL = "https://realdarrentsai.com/magnets/dscr-rate-cashflow-guide.pdf";
 const FONT_URLS = {
