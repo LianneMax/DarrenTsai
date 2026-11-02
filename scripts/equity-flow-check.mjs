@@ -1,6 +1,9 @@
 /** Local browser acceptance for both equity journeys. All API calls are mocked,
  * all non-local requests are blocked. This never creates a real lead/booking.
  * Run after npm run build: node scripts/equity-flow-check.mjs
+ * Rebuilt 2 Nov 2026 for the split steps: location sits on the home step,
+ * contact and preferences are separate steps, and every supported save opens
+ * the calendar (SavedLeadCalendar) instead of a "received" heading.
  */
 /* global document, window, getComputedStyle */
 import { chromium } from 'playwright';
@@ -51,7 +54,7 @@ async function pageFor(width, payoff=false) {
     return route.continue();
   });
   await page.goto(base+'/home-equity/'+(payoff?'?goal=payoff':''));
-  const reject=page.getByRole('button',{name:'Reject optional',exact:true}); if(await reject.isVisible())await reject.click();
+  const closeCookies=page.getByRole('button',{name:'Close cookie preferences',exact:true}); if(await closeCookies.isVisible())await closeCookies.click();
   await page.waitForSelector('#equity .dcp-panel');
   await page.evaluate(()=>{
     window.DT={attr:()=>({utm_source:'local-acceptance'}),track:e=>window.localTrack(e)};
@@ -76,13 +79,17 @@ async function equityGoal(page,knockout=false) {
 async function contact(page,payoff=false) {
   for(const [field,value] of [['fname','LOCAL'],['lname','Acceptance'],['email','local@example.com'],['phone','7145550123']])await page.locator('#'+(payoff?'payoff-':'lead-')+field).fill(value);
   await page.locator(payoff?'#payoff-inquiry-message':'#equity-inquiry-message').fill('Local browser check only. No real submission.');
+  await page.locator('#equity .dcp-actions .dcp-next').click();
+  await page.getByRole('heading',{name:'Your preferences.'}).waitFor();
 }
-async function payoffToCompare(page,home=['650000','300000','1800','3.5','24']) {
+const saved=page=>page.locator('.dcp-recap').waitFor();
+async function payoffToCompare(page,home=['650000','300000','1800','3.5','24'],use='primary',state='CA') {
   await page.locator('[id^=debt-type-]').first().click();await page.getByRole('option',{name:'Credit Card',exact:true}).click();
   await page.locator('[id^=debt-balance-]').first().fill('25000');await page.locator('[id^=debt-payment-]').first().fill('750');await page.locator('[id^=debt-rate-]').first().fill('24.99');
   await page.getByRole('button',{name:'Continue to Home Info'}).click();
   const fields=page.locator('#equity .dcp-panel input[type=number]');
   for(const [i,value] of home.entries())await fields.nth(i).fill(value);
+  await page.locator('#equity [data-property-use]').selectOption(use);await page.locator('#equity [data-property-state]').selectOption(state);
   await page.getByRole('button',{name:'See My Comparison'}).click();
 }
 try {
@@ -94,32 +101,32 @@ try {
     await checkLayout(page,`debt entry ${width}`);
     if(width===320)await page.locator('#equity').screenshot({path:`${output}/debt-entry-${width}.png`});
     await payoffToCompare(page);await checkLayout(page,`comparison ${width}`);
-    const cards=page.locator('.dcp-primary-options > .dcp-option');assert.equal(await cards.count(),4);
+    const cards=page.locator('.dcp-primary-options > .dcp-option');assert.equal(await cards.count(),3);
     if(width>=768){
       // Read both boxes in one frame: goStep scrolls smoothly, and two separate
       // browser calls can otherwise compare different scroll positions.
       const [a,b]=await cards.evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}));
       await page.locator('#equity').screenshot({path:`${output}/grid-${width}.png`});
       const grid=await page.locator('.dcp-primary-options').evaluate(el=>({columns:getComputedStyle(el).gridTemplateColumns,display:getComputedStyle(el).display,children:[...el.children].map(c=>({tag:c.tagName,className:c.className,gridColumn:getComputedStyle(c).gridColumn}))}));
-      assert.ok(Math.abs(a.y-b.y)<2,JSON.stringify({width,a,b,grid}));assert.ok(a.width>=270,JSON.stringify({width,a,b,grid}));
+      assert.ok(Math.abs(a.y-b.y)<2,JSON.stringify({width,a,b,grid}));assert.ok(a.width>=180,JSON.stringify({width,a,b,grid}));// three columns above 700px since 3230e72
     }
     await page.locator('#heloan-tier').click();await page.getByRole('option').first().click();
     await page.locator('#heloan-term').click();await page.getByRole('option').first().click();
     await page.locator('.dcp-details > summary').first().click();await checkLayout(page,`priced and expanded ${width}`);
     await page.locator('.dcp-primary-options').screenshot({path:`${output}/comparison-${width}.png`});
     if(width===390||width===1440)await page.locator('#equity').screenshot({path:`${output}/payoff-flow-${width}.png`});
-    await page.getByRole('button',{name:'Have Darren Compare Full Costs'}).click();await checkLayout(page,`payoff contact ${width}`);
-    assert.equal(await page.locator('#us-state').count(),0);checks++;
+    await page.getByRole('button',{name:'Compare with Darren'}).click();await checkLayout(page,`payoff contact ${width}`);
+    assert.equal(await page.locator('#equity [data-property-state]').count(),0,'location is asked on the home step only');checks++;
     await ctx.close();
   }
   for(const payoff of [false,true])for(const [use,state,outside,knockout=false] of [['primary','CO',true],['investment','NY',true],['primary','CA',false],['investment','CO',false],...(!payoff?[['primary','CO',true,true]]:[])]){
     const {ctx,page,posted,events,setMode}=await pageFor(390,payoff);setMode(outside?'sheet-only':'supported');
     const formId=payoff?'debt-savings-calculator':'home-equity-calculator';
-    if(payoff){await payoffToCompare(page);await page.getByRole('button',{name:'Have Darren Compare Full Costs'}).click();await page.locator('[data-property-use]').selectOption(use);await page.locator('[data-property-state]').selectOption(state);}
+    if(payoff){await payoffToCompare(page,undefined,use,state);await page.getByRole('button',{name:'Compare with Darren'}).click();}
     else{await equityHome(page,use==='primary'?'Primary home':'Rental',state,knockout?'Mobile home or land':'Single family or condo');await equityGoal(page,knockout);}
     assert.equal(posted.length,0);assert.ok(page.url().includes('/home-equity/'));
     await contact(page,payoff);await checkLayout(page,`${formId} ${state}/${use}`);
-    const submit=page.locator('#equity .dcp-actions button').last();
+    const submit=page.locator('#equity .dcp-actions .dcp-next');
     await submit.click();assert.equal(posted.length,0,'unchecked privacy must not post');
     const dialog=page.getByRole('alertdialog');if(await dialog.isVisible())await dialog.getByRole('button').last().click();
     await page.locator(`[data-privacy-form="${formId}"]`).check();assert.equal(posted.length,0,'acknowledgment alone must not post');
@@ -128,7 +135,7 @@ try {
     const failure=page.getByRole('alertdialog');
     if(await failure.isVisible())assert.fail(`${formId}/${state}/${use}: ${await failure.textContent()}; submitted ${JSON.stringify(posted.map(p=>({state:p.propertyState,use:p.propertyUse})))}`);
     if(outside){await page.waitForURL('**/out-of-market-'+(use==='investment'?'dscr':'primary')+'/#recorded');assert.equal(events.filter(e=>e==='generate_lead').length,0);}
-    else{await page.getByRole('heading',{name:'Your request has been received.'}).waitFor();assert.equal(events.filter(e=>e==='generate_lead').length,1);if(!payoff)assert.equal(await page.evaluate(()=>window.localCalendarCalls),1);}
+    else{await saved(page);assert.equal(events.filter(e=>e==='generate_lead').length,1);assert.ok(await page.evaluate(()=>window.localCalendarCalls)>=1,'supported save opens the calendar');}
     assert.equal(posted.length,1);assert.equal(posted[0].propertyState,state);assert.equal(posted[0].state,state);assert.equal(posted[0].privacyAcknowledged,true);assert.ok(posted[0].message.includes('No real submission'));checks++;
     await ctx.close();
   }
@@ -136,14 +143,14 @@ try {
   // including a paid-off home and no room. Choosing the option never submits.
   for(const [balance,room] of [['350000',202500],['0',552500],['600000',0]]){
     const {ctx,page,posted}=await pageFor(390,true);
-    await payoffToCompare(page,['650000',balance,balance==='0'?'0':'1800','3.5','24']);
+    await payoffToCompare(page,['650000',balance,balance==='0'?'0':'1800','3.5','24'],'primary','CA');
     const card=page.locator('.dcp-option-heloc');
     assert.equal(await card.locator('.dcp-option-pay').textContent(),room.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}));
     assert.ok((await card.textContent()).includes('Not a monthly payment'));await checkLayout(page,'HELOC room '+balance);
     await card.getByRole('button',{name:'Discuss a HELOC'}).click();assert.equal(posted.length,0);
     await page.getByText('You’d like to discuss a HELOC.',{exact:false}).waitFor();
-    await page.locator('[data-property-use]').selectOption('primary');await page.locator('[data-property-state]').selectOption('CA');await contact(page,true);await page.locator('[data-privacy-form]').check();
-    await page.getByRole('button',{name:'Send My Numbers to Darren'}).click();await page.getByRole('heading',{name:'Your request has been received.'}).waitFor();
+    await contact(page,true);await page.locator('[data-privacy-form]').check();
+    await page.locator('#equity .dcp-actions .dcp-next').click();await saved(page);
     assert.equal(posted[0].comparisonOption,'heloc');assert.equal(posted[0].helocIllustration.amount,room);assert.equal(posted[0].helocIllustration.illustrationOnly,true);
     assert.equal(posted[0].heloanMonthlyPayment,'');await ctx.close();checks++;
   }
