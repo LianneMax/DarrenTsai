@@ -89,7 +89,7 @@ describe('wiring', () => {
     expect(src).toContain("closest('#root')");
   });
 
-  it.each(['../src/components/LeadForm.tsx', '../src/components/PageParts.tsx', '../src/components/DebtPageViews.tsx'])(
+  it.each(['../src/components/PageParts.tsx', '../src/components/DebtPageViews.tsx'])(
     '%s renders its own hint on blur, once the tap has landed',
     (file) => {
       const src = readFileSync(resolve(__dirname, file), 'utf8');

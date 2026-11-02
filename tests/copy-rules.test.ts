@@ -92,7 +92,7 @@ describe('no response time is promised', () => {
   it('completed React captures lead with scheduling instead of a waiting message', () => {
     // Max, 27 Oct: a large received/wait-for-contact state made scheduling
     // easy to miss. Keep the no-deadline rules above, but make booking next.
-    for (const file of ['DebtPageViews', 'HomeEquityViews', 'AduViews', 'LeadForm']) {
+    for (const file of ['DebtPageViews', 'HomeEquityViews', 'AduViews']) {
       const src = read(`src/components/${file}.tsx`).replace(/\s+/g, ' ');
       expect(src, file).toContain('<SavedLeadCalendar');
     }

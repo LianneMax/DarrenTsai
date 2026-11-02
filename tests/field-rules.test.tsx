@@ -28,7 +28,6 @@ const PAGES: Array<[string, string]> = [
   ['homepage calculator', 'src/components/DebtSavingsCalculator.tsx'],
   ['/debt-consolidation/ page', 'src/components/DebtPageViews.tsx'],
   ['mortgage calculator', 'src/components/Calculator.tsx'],
-  ['contact modal', 'src/components/LeadForm.tsx'],
   ['/dscr/', 'public/dscr/index.html'],
   ['/fha/', 'public/fha/index.html'],
   ['/realestateinvesting/', 'public/realestateinvesting/index.html'],
@@ -65,7 +64,6 @@ describe('no numeric field arrives pre-filled', () => {
 
 describe('nothing is sent that the visitor did not give', () => {
   const CALC = read('src/components/DebtSavingsCalculator.tsx');
-  const LEAD_FORM = read('src/components/LeadForm.tsx');
 
   it('has no `|| 30` term fallback left anywhere', () => {
     // R3-9. No Contact form on this site asks for a term, and every one of
@@ -74,15 +72,6 @@ describe('nothing is sent that the visitor did not give', () => {
       expect(src, `${name} still defaults a term`).not.toMatch(/termYears:\s*30\b/);
       expect(src, `${name} still falls back to 30`).not.toMatch(/parseInt\(form\.termYears\)\s*\|\|\s*30/);
     }
-  });
-
-  it('sends the term only when the mortgage calculator was used', () => {
-    expect(LEAD_FORM).toContain("termYears:  prefillNumbers ? (parseInt(form.termYears) || '') : ''");
-  });
-
-  it('sends blank rather than 0 for the optional loan and rate', () => {
-    expect(LEAD_FORM).toContain("loanAmount: parseFloat(form.loanAmount.replace(/[^0-9.]/g, '')) || ''");
-    expect(LEAD_FORM).toContain("annualRate: parseFloat(form.annualRate) || ''");
   });
 
   it('sends blank rather than 0 for the optional mortgage rate and term', () => {
@@ -153,11 +142,6 @@ describe('success copy matches what was actually sent', () => {
   it('does not claim "your numbers" from a four-field submit', () => {
     // R4-3. Every Contact form said "Darren will review your numbers",
     // including the minimal submit, which gives none.
-    const LEAD_FORM = read('src/components/LeadForm.tsx');
-    expect(LEAD_FORM).toContain("'Darren will be in touch.'");
-    expect(LEAD_FORM).toContain('Your numbers were sent with your request. Darren will be in touch.');
-    expect(LEAD_FORM).toContain('form.loanAmount.trim() || form.annualRate.trim()');
-
     for (const page of ['public/dscr/index.html', 'public/fha/index.html', 'public/realestateinvesting/index.html']) {
       const src = read(page);
       expect(src, `${page} still hard-codes the claim`).not.toContain(
@@ -263,45 +247,5 @@ describe('nothing shows a value on first paint', () => {
     for (const tag of inputs) {
       expect(valueOf(tag), `rendered with a value: ${tag}`).toBe('');
     }
-  });
-
-  it('the contact modal opens with no loan or rate on a page without a calculator', async () => {
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { default: LeadForm } = await import('../src/components/LeadForm');
-    const { defaultInputs } = await import('../src/hooks/useMortgageInputs');
-
-    const html = renderToStaticMarkup(
-      <LeadForm
-        currentInputs={{ ...defaultInputs, loanAmount: 330000, annualRate: 6.41 }}
-        onClose={() => {}}
-        leadSource="home-contact"
-        formId="home-contact-modal"
-        nextStep="x"
-      />,
-    );
-    for (const tag of numericInputs(html)) {
-      expect(valueOf(tag), `rendered with a value: ${tag}`).toBe('');
-    }
-  });
-
-  it('the contact modal does fill them when the calculator was used', async () => {
-    // The other half of the rule: prefillNumbers is what /mortgage-calculator/
-    // passes once its inputs hold something, and there the numbers ARE the
-    // visitor's own.
-    const { renderToStaticMarkup } = await import('react-dom/server');
-    const { default: LeadForm } = await import('../src/components/LeadForm');
-    const { defaultInputs } = await import('../src/hooks/useMortgageInputs');
-
-    const html = renderToStaticMarkup(
-      <LeadForm
-        currentInputs={{ ...defaultInputs, loanAmount: 400000, annualRate: 6.5 }}
-        onClose={() => {}}
-        leadSource="mortgage-calculator-contact"
-        formId="mortgage-calculator-contact-modal"
-        prefillNumbers
-        nextStep="x"
-      />,
-    );
-    expect(html).toContain('value="400,000"');
   });
 });

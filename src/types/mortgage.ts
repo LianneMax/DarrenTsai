@@ -46,15 +46,3 @@ export interface MortgageSummary {
   yearlyData: YearlySummary[];
 }
 
-export interface LeadFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  loanAmount: number;
-  termYears: number;
-  annualRate: number;
-  message: string;
-source: string;
-  timestamp: string;
-}

@@ -175,12 +175,12 @@ describe('React forms format a US number the same way (16 Oct 2026)', () => {
   });
 
   it('is what every React phone field uses, still validated as a US number', () => {
-    for (const f of ['src/components/DebtPageViews.tsx', 'src/components/HomeEquityViews.tsx', 'src/components/PageParts.tsx', 'src/components/LeadForm.tsx']) {
+    for (const f of ['src/components/DebtPageViews.tsx', 'src/components/HomeEquityViews.tsx', 'src/components/PageParts.tsx']) {
       const src = read(f);
       expect(src, f).toContain('formatUsPhone(');
       expect(src, f).not.toContain('AsYouType');
     }
-    for (const f of ['src/components/HomeEquityCalculator.tsx', 'src/components/AduCalculator.tsx', 'src/components/DebtSavingsCalculator.tsx', 'src/components/LeadForm.tsx']) {
+    for (const f of ['src/components/HomeEquityCalculator.tsx', 'src/components/AduCalculator.tsx', 'src/components/DebtSavingsCalculator.tsx']) {
       // isValidUsPhone is isValidPhoneNumber(value, 'US') on +1 metadata (item 9, 1 Nov).
       expect(read(f), f).toMatch(/isValidUsPhone\(/);
     }
