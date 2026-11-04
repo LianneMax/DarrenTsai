@@ -128,6 +128,56 @@ again, so rename each "(old ...)" tab back over its new one first.
 
 ---
 
+## 0.7 Pre-launch live smoke test and rollback (added 4 Nov 2026)
+
+Run the day before ads start (and after any release in launch week). It takes
+about two minutes and creates seven TEST leads, one per live form, which are
+kept like every other TEST lead.
+
+```powershell
+node scripts/live-smoke.mjs --confirm-live
+```
+
+It refuses to run without `--confirm-live`. Do not run it twice within 15
+minutes: the site allows 10 lead posts per connection per 15 minutes.
+
+**What the script proves on its own** (results and a screenshot per form in
+`.local-notes/live-smoke-<date>/`, which is not published):
+
+- each form (home equity, payoff, ADU, DSCR, FHA, investing, Book a Call)
+  submits at phone width without sideways scrolling;
+- `/api/lead` answers `saved` to the durable inbox and marks it a TEST;
+- the calendar step appears after the save;
+- no `generate_lead` conversion fires for a TEST lead.
+
+**What a person checks afterwards** (the script cannot read the Sheet or
+Gmail). Each lead is named `TEST Smoke <form> <date>` and uses
+`liannemaxbalbastro+smoke-<form>-<date>@gmail.com`:
+
+1. Within about two minutes, one row in each tab: Home Equity (two: the
+   calculator and Book a Call), Debt Consolidation, ADU, DSCR, FHA and
+   Real Estate Investing.
+2. Follow-ups: each of the seven reads `done`.
+3. Gmail: a confirmation email for home equity, payoff, ADU and Book a Call,
+   and the guide email with its PDF for DSCR, FHA and investing.
+4. HubSpot: no new contacts (TEST leads are skipped while
+   `HUBSPOT_SEND_TESTS` is false).
+
+**Rollback, if something is wrong.** Pick the smallest step that fixes it.
+
+- Website or Netlify functions: in Netlify, Deploys, open the last good deploy
+  and choose "Publish deploy" (instant), then revert the commit on `main`.
+- Apps Script Sheet writer: `clasp update-deployment <the AKfycbybhK2j...
+  deployment ID> -V <previous version>` (see `docs/APPS-SCRIPT-DEPLOY.md`;
+  the URL never changes). The every-minute follow-up job runs the latest
+  pushed code, so also push the previous `google-apps-script.js`.
+- Leads already submitted are safe either way: the website inbox keeps them
+  and retries until the Sheet accepts them.
+- Ads: pause the campaigns first if pages or forms are broken; there is no
+  point paying for clicks while a fix goes out.
+
+---
+
 ## 1. The five funnels
 
 One case each. For every case: fill the form, submit, then check the three places

@@ -696,7 +696,7 @@
       '<p class="dt-book-sub">' + (GUIDE_FORMS.indexOf(lead.formId) !== -1
         ? 'Optional: choose a time for a ' + callName(false) + ' if you would like to talk it through with Darren.'
         : 'Your request is saved. Choose a time for your ' + callName(isEquityLead(lead)) + ' with Darren.') + '</p>' +
-      '<p class="dt-book-calendar-help dt-book-calendar-status" role="status">Your request is saved. Loading Google Calendar...</p>' +
+      '<p class="dt-book-calendar-help dt-book-calendar-status" role="status">Loading Google Calendar...</p>' +
       '<div class="dt-book-frame"><iframe src="' + esc(BOOKING_URL) + '" title="Book a ' + callName(isEquityLead(lead)) + ' with Darren Tsai" width="100%" height="680" referrerpolicy="strict-origin" loading="eager"></iframe></div>' +
       '<p class="dt-book-calendar-help">Google Calendar will ask you to confirm your booking details. If the calendar does not load, open it in a new tab.</p>' +
       '<a class="dt-book-calendar-link" href="' + esc(BOOKING_URL) + '" target="_blank" rel="noopener noreferrer">Open calendar in a new tab</a>' + call;
@@ -705,8 +705,10 @@
     // load means only that Google responded, never an appointment confirmation.
     var frame = card.querySelector('iframe');
     frame.addEventListener('load', function () {
+      // 4 Nov 2026: the line above already says to choose a time and the one
+      // below offers the new tab, so the loading note just goes away.
       var loading = card.querySelector('.dt-book-calendar-status');
-      if (loading) loading.textContent = 'Choose a time below. You can also open the calendar in a new tab.';
+      if (loading) loading.hidden = true;
     });
     track('booking_page_shown', { page_path: window.location.pathname });
     refreshCallNumber(card);

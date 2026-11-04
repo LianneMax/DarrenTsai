@@ -708,9 +708,11 @@ describe('acknowledged unsupported inquiry capture', () => {
     booking.open(); passSteps('investment','CO','dscr'); fillContact(); await flush(); await flush();
     expect(leadBody().serviceAreaResult).toBe('supported'); expect(assign).not.toHaveBeenCalled();
     expect(card().querySelector('iframe')).not.toBeNull(); expect(track.mock.calls.filter(c=>c[0]==='generate_lead')).toHaveLength(1);
-    expect(card().querySelector('.dt-book-calendar-status')?.textContent).toMatch(/Loading Google Calendar/);
+    expect(card().querySelector('.dt-book-calendar-status')?.textContent).toBe('Loading Google Calendar...');
+    // "Your request is saved" is said once, in the line above the calendar.
+    expect(card().textContent!.match(/Your request is saved/g)).toHaveLength(1);
     card().querySelector('iframe')!.dispatchEvent(new Event('load'));
-    expect(card().querySelector('.dt-book-calendar-status')?.textContent).toMatch(/Choose a time/);
+    expect((card().querySelector('.dt-book-calendar-status') as HTMLElement).hidden).toBe(true);
     expect(track.mock.calls.map(c=>c[0])).not.toContain('meeting_booked');
   });
 });
