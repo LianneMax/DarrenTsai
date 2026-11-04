@@ -2477,9 +2477,14 @@ function checkpointFollowUp(sheet, claim, job, result, finished) {
 // as the worker admission guard. Acquire ONE authoritative property under the
 // script lock before any Sheet read. It contains only a token/timestamp, stays
 // constant-sized, and never holds the script lock across provider HTTP.
-// The ten-minute lease exceeds Apps Script's six-minute execution cap, so a
-// crashed worker expires safely before the existing orphan recovery runs.
+// A live run is stopped by Apps Script at six minutes, so a lease older than
+// seven belongs to a run that ended without releasing it. 3 Nov 2026: a run
+// that could not get the Sheet lock to release its lease left every follow-up
+// waiting out the old ten-minute expiry (a TEST lead reached HubSpot about five
+// minutes late). Rows a dead run had claimed keep the longer FOLLOWUP_ORPHAN_MS
+// before anyone retries them, so a shorter lease never re-sends their work.
 const FOLLOWUP_WORKER_LEASE = 'followup_worker_lease_v1';
+const FOLLOWUP_WORKER_ORPHAN_MS = 7 * 60 * 1000;
 function acquireFollowUpWorker() {
   return withSheetLock(function () {
     const props = PropertiesService.getScriptProperties();
@@ -2489,7 +2494,7 @@ function acquireFollowUpWorker() {
       if (!current || typeof current.token !== 'string' || typeof current.startedAt !== 'number' || !isFinite(current.startedAt)) {
         throw new Error('Invalid follow-up worker lease; manual review required');
       }
-      if (Date.now() - current.startedAt < FOLLOWUP_ORPHAN_MS) return null;
+      if (Date.now() - current.startedAt < FOLLOWUP_WORKER_ORPHAN_MS) return null;
     }
     const token = Utilities.getUuid();
     props.setProperty(FOLLOWUP_WORKER_LEASE, JSON.stringify({ token: token, startedAt: Date.now() }));
@@ -2498,13 +2503,25 @@ function acquireFollowUpWorker() {
 }
 
 function releaseFollowUpWorker(token) {
-  return withSheetLock(function () {
-    const props = PropertiesService.getScriptProperties();
+  const props = PropertiesService.getScriptProperties();
+  function releaseIfOwned(requireFresh) {
     const raw = props.getProperty(FOLLOWUP_WORKER_LEASE);
-    if (!raw || JSON.parse(raw).token !== token) return false;
+    if (!raw) return false;
+    const current = JSON.parse(raw);
+    if (!current || current.token !== token) return false;
+    if (requireFresh && !(Date.now() - current.startedAt < FOLLOWUP_WORKER_ORPHAN_MS)) return false;
     props.deleteProperty(FOLLOWUP_WORKER_LEASE);
     return true;
-  });
+  }
+  try {
+    return withSheetLock(function () { return releaseIfOwned(false); });
+  } catch (err) {
+    if (!err || err.sheetLockWaitFailed !== true) throw err;
+    // The Sheet lock stayed busy (a long lead write). While this run's lease is
+    // still fresh no other run can replace it, so reading and deleting our own
+    // token without the lock cannot remove a successor's lease.
+    return releaseIfOwned(true);
+  }
 }
 
 function processFollowUps() {

@@ -64,6 +64,40 @@ describe('authoritative worker admission, independent of cached Sheet rows', () 
     expect(h.gas.releaseFollowUpWorker(replacement)).toBe(true);
     expect(Object.keys(props)).toEqual([]);
   });
+  it('treats a lease older than seven minutes as abandoned, but never a live six-minute run (3 Nov 2026)', () => {
+    // A run is stopped by Apps Script at six minutes. The old ten-minute expiry
+    // left a TEST lead waiting about five minutes behind an unreleased lease.
+    const props: Record<string, string> = {};
+    const h = loadGas<WorkerRuntime>({ exports, props });
+    const first = h.gas.acquireFollowUpWorker()!;
+    const lease = JSON.parse(props[WORKER_LEASE_KEY]);
+    props[WORKER_LEASE_KEY] = JSON.stringify({ ...lease, startedAt: Date.now() - 6 * 60_000 });
+    expect(h.gas.acquireFollowUpWorker()).toBeNull();
+    props[WORKER_LEASE_KEY] = JSON.stringify({ ...lease, startedAt: Date.now() - 7 * 60_000 - 1000 });
+    const replacement = h.gas.acquireFollowUpWorker()!;
+    expect(replacement).toBeTruthy();
+    expect(replacement).not.toBe(first);
+  });
+  it('releases its own fresh lease even when the Sheet lock stays busy', () => {
+    type LockRuntime = WorkerRuntime & { LockService: { getScriptLock: () => unknown } };
+    const props: Record<string, string> = {};
+    const h = loadGas<LockRuntime>({ exports: [...exports, 'LockService'], props });
+    const token = h.gas.acquireFollowUpWorker()!;
+    const freeLock = h.gas.LockService.getScriptLock;
+    h.gas.LockService.getScriptLock = () => ({ waitLock: () => { throw new Error('Lock timeout'); }, releaseLock: () => {} });
+    // Someone else's token is never removed without the lock.
+    expect(h.gas.releaseFollowUpWorker('not-this-run')).toBe(false);
+    expect(JSON.parse(props[WORKER_LEASE_KEY]).token).toBe(token);
+    expect(h.gas.releaseFollowUpWorker(token)).toBe(true);
+    expect(props[WORKER_LEASE_KEY]).toBeUndefined();
+    // An expired lease of ours is left for the next acquirer, which holds the lock.
+    h.gas.LockService.getScriptLock = freeLock;
+    const second = h.gas.acquireFollowUpWorker()!;
+    props[WORKER_LEASE_KEY] = JSON.stringify({ token: second, startedAt: Date.now() - 8 * 60_000 });
+    h.gas.LockService.getScriptLock = () => ({ waitLock: () => { throw new Error('Lock timeout'); }, releaseLock: () => {} });
+    expect(h.gas.releaseFollowUpWorker(second)).toBe(false);
+    expect(JSON.parse(props[WORKER_LEASE_KEY]).token).toBe(second);
+  });
   it('releases admission after an exception so the next run can recover checkpointed work', () => {
     const props: Record<string, string> = {};
     const h = loadGas<WorkerRuntime>({ exports, props });
