@@ -119,6 +119,53 @@ describe('server-hop authentication', () => {
     expect(mail).toEqual([]);
   });
 
+  describe('wrong-key guard (4 Nov 2026, current key kept)', () => {
+    type GuardRuntime = { doPost: Harness['doPost']; CacheService: { getScriptCache: () => unknown } };
+    function guarded() {
+      const mail: Array<{ to: string; subject: string; body: string }> = [];
+      const props: Record<string, string> = { LEAD_PROXY_KEY: TEST_PROXY_KEY };
+      const h = loadGas<GuardRuntime>({ exports: ['doPost', 'CacheService'], props, onMail: m => mail.push(m) });
+      // The harness cache forgets everything; the guard needs one that counts.
+      const store = new Map<string, string>();
+      h.gas.CacheService.getScriptCache = () => ({
+        get: (k: string) => store.get(k) ?? null, put: (k: string, v: string) => { store.set(k, v); }, remove: (k: string) => { store.delete(k); },
+      });
+      const post = (body: Record<string, unknown>) =>
+        JSON.parse((h.gas.doPost({ postData: { contents: JSON.stringify(body) } }) as { __body: string }).__body);
+      return { h, props, mail, post };
+    }
+    const lead = { source: 'dscr', email: 'qa@example.com' };
+
+    it('pauses every write after 20 wrong keys, refuses even the right key, and emails Max once', () => {
+      const { h, props, mail, post } = guarded();
+      for (let i = 0; i < 19; i++) expect(post({ ...lead, _proxyKey: 'guess-' + i })).toEqual({ success: false, error: 'Unauthorized' });
+      expect(props.PROXY_AUTH_PAUSED_UNTIL).toBeUndefined();
+      expect(post({ ...lead, _proxyKey: TEST_PROXY_KEY }).success).toBe(true); // still open below the limit
+      expect(post({ ...lead, _proxyKey: 'guess-19' })).toEqual({ success: false, error: 'Unauthorized' });
+      expect(Number(props.PROXY_AUTH_PAUSED_UNTIL)).toBeGreaterThan(Date.now() + 29 * 60_000);
+      expect(mail).toHaveLength(1);
+      expect(mail[0].subject).toContain('Lead writer paused');
+      expect(mail[0].body).not.toContain(TEST_PROXY_KEY);
+      // A correct guess during the pause gets nothing, and nothing is written.
+      const rows = h.tabs.get('DSCR')!.rows.length;
+      expect(post({ ...lead, _proxyKey: TEST_PROXY_KEY })).toEqual({ success: false, code: 'auth_paused', error: 'Temporarily unavailable' });
+      expect(h.tabs.get('DSCR')!.rows).toHaveLength(rows);
+      post({ ...lead, _proxyKey: 'guess-more' });
+      expect(mail).toHaveLength(1);
+    });
+    it('reopens when the pause ends', () => {
+      const { props, post } = guarded();
+      props.PROXY_AUTH_PAUSED_UNTIL = String(Date.now() - 1000);
+      expect(post({ ...lead, _proxyKey: TEST_PROXY_KEY }).success).toBe(true);
+    });
+    it('does not count requests that carry no key at all', () => {
+      const { props, mail, post } = guarded();
+      for (let i = 0; i < 40; i++) expect(post(lead)).toEqual({ success: false, error: 'Unauthorized' });
+      expect(props.PROXY_AUTH_PAUSED_UNTIL).toBeUndefined();
+      expect(mail).toEqual([]);
+    });
+  });
+
   it('accepts an authenticated lead and never stores the credential', () => {
     const { gas, tabs } = loadGas<{ doPost: Harness['doPost'] }>({ exports: ['doPost'], props: { LEAD_PROXY_KEY: 'private-test-key' } });
     const result = gas.doPost({ postData: { contents: JSON.stringify({ email: 'test@gmail.com', source: 'home-contact', _proxyKey: 'private-test-key' }) } }) as { __body: string };

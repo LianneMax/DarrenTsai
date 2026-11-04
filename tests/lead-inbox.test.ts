@@ -214,6 +214,18 @@ describe('durable synchronization and recovery',()=>{
     expect(body.text).toContain('safely saved');expect(body.text).not.toContain('RAW PAYLOAD');
     expect(record('delayed').payload).toBeDefined();
   });
+  it('keeps and retries a lead while the writer is paused for repeated wrong keys (4 Nov 2026)',async()=>{
+    await handler(request(lead('paused')),{} as never);
+    const w=writer(),original=w.fetcher.getMockImplementation()!;
+    let paused=true;
+    w.fetcher.mockImplementation(async(url,init={})=>paused&&init.method==='POST'
+      ?new Response('{"success":false,"code":"auth_paused","error":"Temporarily unavailable"}'):original(url,init));
+    await synchronizeLeads();
+    expect(record('paused')).toMatchObject({status:'retry',lastCode:'upstream_unconfirmed'});
+    expect(record('paused').payload).toBeDefined();expect(pointers()).toHaveLength(1);
+    paused=false;record('paused').nextAt=0;
+    expect(await synchronizeLeads()).toMatchObject({synced:1});
+  });
   it('reports a worker/storage interruption without claiming an individual lost lead',async()=>{
     state.down=true;
     vi.stubGlobal('Netlify',{env:{get:(key:string)=>({APPS_SCRIPT_WEBHOOK_URL:'https://example.com/writer',LEAD_PROXY_KEY:'private-test-key',RESEND_API_KEY:'test-resend'})[key]}});

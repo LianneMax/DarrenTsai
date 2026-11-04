@@ -1741,6 +1741,47 @@ function queuedSubmission(ss, id) {
   return null;
 }
 
+// Wrong-key guard (4 Nov 2026). Max kept the existing LEAD_PROXY_KEY instead
+// of rotating it, so repeated guessing is made impractical here: after
+// PROXY_AUTH_FAIL_LIMIT wrong keys in one window, every POST is refused
+// unchecked for PROXY_AUTH_PAUSE_MS and Max is emailed once. Apps Script cannot
+// see the caller's address, so the pause is global. Real leads are not lost:
+// the Netlify inbox keeps them and retries after the pause. Only posts that
+// carry some key count; a request with no key cannot guess anything.
+// The counter lives in CacheService and is approximate under concurrency;
+// that only shifts the threshold slightly.
+const PROXY_AUTH_FAIL_LIMIT = 20;
+const PROXY_AUTH_FAIL_WINDOW_S = 600;
+const PROXY_AUTH_PAUSE_MS = 30 * 60 * 1000;
+const PROXY_AUTH_PAUSE_PROP = 'PROXY_AUTH_PAUSED_UNTIL';
+
+function proxyAuthPaused() {
+  const until = Number(PropertiesService.getScriptProperties().getProperty(PROXY_AUTH_PAUSE_PROP) || 0);
+  return until > Date.now();
+}
+
+function recordProxyAuthFailure() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const bucket = 'proxy_auth_fail_' + Math.floor(Date.now() / (PROXY_AUTH_FAIL_WINDOW_S * 1000));
+    const count = Number(cache.get(bucket) || 0) + 1;
+    cache.put(bucket, String(count), PROXY_AUTH_FAIL_WINDOW_S);
+    if (count < PROXY_AUTH_FAIL_LIMIT || proxyAuthPaused()) return;
+    const until = Date.now() + PROXY_AUTH_PAUSE_MS;
+    PropertiesService.getScriptProperties().setProperty(PROXY_AUTH_PAUSE_PROP, String(until));
+    MailApp.sendEmail({
+      to: ALERT_EMAIL,
+      subject: 'Lead writer paused after repeated wrong keys (realdarrentsai.com)',
+      body: 'The Google Sheet lead writer received ' + count + ' requests with a wrong key within ' +
+        (PROXY_AUTH_FAIL_WINDOW_S / 60) + ' minutes, so it is refusing all writes until ' + new Date(until).toISOString() + '.\n\n' +
+        'No lead is lost: the website inbox keeps every inquiry and retries after the pause. ' +
+        'Someone may be trying to guess LEAD_PROXY_KEY. If this repeats, replace the key in Netlify and Apps Script together.'
+    });
+  } catch (err) {
+    Logger.log('Proxy auth guard needs review: ' + err);
+  }
+}
+
 function doPost(e) {
   let raw = '{}';
   // Only the sheet write and the follow-up enqueue are serialised; no HTTP
@@ -1773,12 +1814,19 @@ function doPost(e) {
     // A missing secret is configuration failure, never a public/open mode.
     if (!proxyKey) return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'proxy_auth_not_configured',
       error: 'Lead endpoint authentication is not configured' })).setMimeType(ContentService.MimeType.JSON);
+    // While paused for repeated wrong keys, nothing is checked, so a guess
+    // cannot succeed. The website inbox keeps every real lead and retries.
+    if (proxyAuthPaused()) return ContentService.createTextOutput(JSON.stringify({ success: false, code: 'auth_paused',
+      error: 'Temporarily unavailable' })).setMimeType(ContentService.MimeType.JSON);
     let difference = suppliedKey.length ^ proxyKey.length;
     for (let i = 0; i < proxyKey.length; i++) {
       difference |= proxyKey.charCodeAt(i) ^ (suppliedKey.charCodeAt(i) || 0);
     }
-    if (difference) return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    if (difference) {
+      if (suppliedKey) recordProxyAuthFailure();
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     // Reserve upgraded IDs for the durable inbox worker. Old proxy deployments
     // must not write these directly during rollback and bypass inbox identity.
     if (String(data.submissionId || '').indexOf('inbox1-') === 0 && data._inboxDelivery !== true) {

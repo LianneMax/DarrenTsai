@@ -21,6 +21,7 @@ import type { Context } from "@netlify/functions";
 import { getStore } from '@netlify/blobs';
 import { createHash } from 'node:crypto';
 import { isEmailSuppressed, unsubscribeLinkFor } from './email-preferences.mts';
+import { guardKey } from './key-guard.mts';
 
 export const FROM = "Darren Tsai <darren@realdarrentsai.com>";
 
@@ -146,13 +147,12 @@ export async function purgeExpiredEmailDeliveries(now = Date.now()) {
  * what keeps an unauthenticated caller from reaching any parsing at all.
  */
 export function guideSender(spec: GuideSpec) {
-  return async (req: Request, _context: Context) => {
+  return async (req: Request, context: Context) => {
     if (req.method !== "POST") return jsonResponse(405, { error: "POST only" });
 
-    const apiKey = req.headers.get("x-api-key");
-    if (!apiKey || apiKey !== Netlify.env.get(spec.apiKeyEnv)) {
-      return jsonResponse(401, { error: "unauthorized" });
-    }
+    // Constant-time key check, plus the wrong-key guard (4 Nov 2026).
+    const refused = await guardKey(req, context?.ip, Netlify.env.get(spec.apiKeyEnv), jsonResponse);
+    if (refused) return refused;
 
     const resendKey = Netlify.env.get("RESEND_API_KEY");
     if (!resendKey) return jsonResponse(500, { error: "RESEND_API_KEY not configured" });

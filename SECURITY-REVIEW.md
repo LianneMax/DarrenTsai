@@ -1,7 +1,7 @@
 # Security review
 
 Review date: 20 October 2026
-Last updated: 2 November 2026
+Last updated: 4 November 2026
 
 Scope: public lead capture, the Apps Script webhook, Netlify lead handling,
 booking, attribution, consent, CRM/email handoff, and public static pages.
@@ -31,6 +31,16 @@ booking, attribution, consent, CRM/email handoff, and public static pages.
   `LEAD_PROXY_KEY` on both sides. The confirmation-mail key is no longer a
   fallback (tests prove a request carrying only that key is refused), so the
   two secrets rotate independently.
+- Done 4 November 2026: wrong-key guards, so the existing keys need not be
+  rotated. The Apps Script writer pauses all writes for 30 minutes after 20
+  wrong `LEAD_PROXY_KEY` attempts in 10 minutes and emails Max; during the
+  pause no key is compared, so a guess cannot succeed, and the website inbox
+  keeps and retries every real lead. The Netlify email endpoints
+  (`send-*-guide`, `send-contact-confirmation`, `stop-email`) block an address
+  for an hour after 5 wrong keys in 15 minutes and now compare keys in
+  constant time. Requests without any key are refused without counting. The
+  writer pause is global (Apps Script cannot see the caller's address), so a
+  sustained attack can delay, but not lose, Sheet writes.
 - Development-only advisories (vite, vitest, undici, and the eslint tooling via
   minimatch; 16 in `npm audit` on 1 November 2026) do not ship to visitors and
   are tracked separately.
