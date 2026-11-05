@@ -25,7 +25,7 @@ vi.mock('@netlify/blobs', () => ({
   })),
 }));
 
-import handler, { nextCount, withinRateLimit, LEAD_LIMIT, LEAD_WINDOW_MS, RATE_LIMIT_MESSAGE } from '../netlify/functions/lead.mts';
+import handler, { nextCount, withinRateLimit, LEAD_LIMIT, LEAD_WINDOW_MS, RATE_LIMIT_MESSAGE, nextSiteCount, withinSiteLimit, SITE_LEAD_LIMIT, SITE_LEAD_WINDOW_MS, SITE_LIMIT_MESSAGE } from '../netlify/functions/lead.mts';
 
 const UPSTREAM = 'https://script.google.com/macros/s/TEST/exec';
 let urls: string[] = [];
@@ -116,6 +116,50 @@ describe('the endpoint', () => {
     const res = await handler(post(), ctx);
     expect(res.status).toBe(429);
     expect(await res.json()).toMatchObject({ field: 'rate', message: RATE_LIMIT_MESSAGE });
+    expect(urls).toEqual([]);
+  });
+});
+
+describe("the site-wide cap (6 Nov 2026)", () => {
+  it("counts within an hour and starts again after, clearing the alert flag", () => {
+    expect(nextSiteCount(null, 1000)).toEqual({ count: 1, windowStart: 1000 });
+    expect(nextSiteCount({ count: 5, windowStart: 1000, alerted: true }, 1000 + SITE_LEAD_WINDOW_MS)).toEqual({ count: 1, windowStart: 1000 + SITE_LEAD_WINDOW_MS });
+  });
+
+  it("lets SITE_LEAD_LIMIT through across simultaneous requests, refuses the rest and alerts once", async () => {
+    const alert = vi.fn(async () => {});
+    const results = await Promise.all(Array.from({ length: SITE_LEAD_LIMIT + 20 }, () => withinSiteLimit(5000, alert)));
+    expect(results.filter(Boolean)).toHaveLength(SITE_LEAD_LIMIT);
+    expect(await withinSiteLimit(6000, alert)).toBe(false);
+    expect(alert).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens again in the next hour", async () => {
+    for (let i = 0; i < SITE_LEAD_LIMIT; i++) await withinSiteLimit(1000, async () => {});
+    expect(await withinSiteLimit(2000, async () => {})).toBe(false);
+    expect(await withinSiteLimit(1000 + SITE_LEAD_WINDOW_MS, async () => {})).toBe(true);
+  });
+
+  it("fails open when Blobs throws or is slow", async () => {
+    mode = "throw";
+    expect(await withinSiteLimit()).toBe(true);
+    mode = "slow";
+    expect(await withinSiteLimit()).toBe(true);
+  });
+
+  it("refuses at the endpoint across many addresses, forwards nothing and emails Max once", async () => {
+    for (let i = 0; i < SITE_LEAD_LIMIT; i++) {
+      const res = await handler(post(), { ip: `198.51.100.${i}` } as never);
+      expect(res.status).toBe(200);
+    }
+    urls = [];
+    const res = await handler(post(), { ip: "192.0.2.50" } as never);
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ field: "rate", message: SITE_LIMIT_MESSAGE });
+    expect(urls).not.toContain(UPSTREAM);
+    expect(urls.filter((u) => u.includes("api.resend.com"))).toHaveLength(1);
+    urls = [];
+    await handler(post(), { ip: "192.0.2.51" } as never);
     expect(urls).toEqual([]);
   });
 });

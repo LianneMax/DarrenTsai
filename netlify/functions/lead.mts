@@ -128,6 +128,90 @@ export async function withinRateLimit(ip: string | undefined, now = Date.now()):
   }
 }
 
+// ── Site-wide cap ───────────────────────────────────────────────────────────
+//
+// WHY. The limit above counts one address. A flood spread over many addresses
+// (a botnet, or a script rotating proxies) passes it and would still write a
+// row, create a HubSpot contact and send a confirmation email for every fake
+// lead. Max asked for an overall cap on 6 Nov 2026.
+//
+// THE NUMBER. Real volume is a handful of leads a day, so SITE_LEAD_LIMIT
+// valid requests in one hour is many times any real peak. Only requests that
+// passed every check reach this count, so junk posts cannot use it up.
+//
+// FAILS OPEN, like the per-address limit: any Blobs error or slow answer lets
+// the lead through. When the cap trips, Max gets one email for that hour, and
+// visitors are told to try later or call. A refused request is answered before
+// anything is saved, so no rescue email is sent for it.
+export const SITE_LEAD_LIMIT = 30;
+export const SITE_LEAD_WINDOW_MS = 60 * 60 * 1000;
+const SITE_LIMIT_KEY = "site-wide";
+export const SITE_LIMIT_MESSAGE =
+  "We're receiving an unusual number of requests right now. Please try again in a little while, or call (714) 887-5432.";
+
+type SiteCounter = Counter & { alerted?: boolean };
+
+/** The next site-wide count. Pure, so the hour window is testable. */
+export function nextSiteCount(prev: SiteCounter | null, now: number): SiteCounter {
+  if (!prev || now - prev.windowStart >= SITE_LEAD_WINDOW_MS) return { count: 1, windowStart: now };
+  return { ...prev, count: prev.count + 1 };
+}
+
+/**
+ * False only when the site is known, for certain, to be over the hourly cap.
+ * `onFirstRefusal` runs once per window, for the alert.
+ */
+export async function withinSiteLimit(now = Date.now(), onFirstRefusal: () => Promise<void> = siteLimitAlert): Promise<boolean> {
+  const check = (async () => {
+    const store = getStore({ name: LIMIT_STORE, consistency: "strong" });
+    for (let attempt = 0; attempt < 32; attempt++) {
+      const current = await store.getWithMetadata(SITE_LIMIT_KEY, { type: "json", consistency: "strong" });
+      if (current && !current.etag) throw new Error("Site counter has no version");
+      const prev = current?.data as SiteCounter | null;
+      const next = nextSiteCount(prev, now);
+      if (next.count > SITE_LEAD_LIMIT) {
+        if (prev && !prev.alerted) {
+          const marked = await store.setJSON(SITE_LIMIT_KEY, { ...prev, alerted: true }, { onlyIfMatch: current!.etag });
+          if (marked.modified) await onFirstRefusal().catch(() => {});
+        }
+        return false;
+      }
+      const result = await store.setJSON(SITE_LIMIT_KEY, next, current
+        ? { onlyIfMatch: current.etag }
+        : { onlyIfNew: true });
+      if (result.modified) return true;
+    }
+    // Heavy contention on one key means a burst well past any real peak.
+    return false;
+  })();
+  const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(true), LIMIT_BUDGET_MS));
+  try {
+    return await Promise.race([check.catch(() => true), timeout]);
+  } catch {
+    return true;
+  }
+}
+
+/** One email to Max when the site-wide cap first trips in an hour. Never throws. */
+async function siteLimitAlert() {
+  const resendKey = Netlify.env.get("RESEND_API_KEY");
+  if (!resendKey) return;
+  const text =
+    `realdarrentsai.com received more than ${SITE_LEAD_LIMIT} valid lead requests within an hour, ` +
+    `so further requests are being refused until the hour is up. Visitors see a message to try again later or call.\n\n` +
+    `This usually means automated fake submissions. Check the Sheet for a burst of similar rows. ` +
+    `If they are real leads, raise SITE_LEAD_LIMIT in netlify/functions/lead.mts.`;
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "content-type": "application/json" },
+      body: JSON.stringify({ from: FROM, to: ALERT_TO, subject: "Lead form cap reached on realdarrentsai.com", text }),
+    });
+  } catch (err) {
+    console.error("site limit alert failed", err);
+  }
+}
+
 // ── Email domain check ──────────────────────────────────────────────────────
 //
 // WHY. Resend answers 422 "Invalid `to` field" for an address whose domain
@@ -804,6 +888,11 @@ export default async (req: Request, context: Context) => {
     return jsonResponse(503, { ok: false, receipt: 'rejected', ...(submissionId ? { submissionId } : {}), code: 'proxy_auth_not_configured', error: 'lead endpoint authentication is not configured' });
   }
   delete payload._proxyKey;
+  // Last check before anything is stored: the site-wide hourly cap.
+  if (!(await withinSiteLimit())) {
+    console.warn("lead: site-wide cap reached");
+    return jsonResponse(429, { ok: false, error: "site limit", field: "rate", message: SITE_LIMIT_MESSAGE });
+  }
   // A saved TEST lead says so in its receipt, so public/lead-request.js can
   // keep it out of generate_lead (src/utils/testLead.ts explains why). It is
   // a flag only: nothing about the save, the queue or the next step changes.

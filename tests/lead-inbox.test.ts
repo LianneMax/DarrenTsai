@@ -103,7 +103,7 @@ describe('durable admission before Sheet synchronization',()=>{
     state.fault=fault;
     const result=await handler(request(lead('interrupted')),{} as never);
     expect(result.status).toBe(502);expect(await result.json()).toMatchObject({receipt:'uncertain',submissionId:'inbox1-interrupted'});
-    if(fault==='pointer') expect(state.records.size).toBe(0);
+    if(fault==='pointer') expect([...state.records.keys()].filter(k=>k.startsWith('lead-inbox/'))).toHaveLength(0);
     if(fault==='record') expect(pointers()).toHaveLength(1);
     state.fault='';
     expect((await handler(request(lead('interrupted')),{} as never)).status).toBe(200);
