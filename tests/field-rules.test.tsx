@@ -74,6 +74,13 @@ describe('nothing is sent that the visitor did not give', () => {
     }
   });
 
+  it('lets a five-digit ZIP open the comparison and sends it (6 Nov 2026)', () => {
+    // A lost backslash (/^d{5}$/) once matched no real ZIP, so the payoff
+    // never left the home step. The browser check caught it; this keeps it caught.
+    expect(CALC).toContain('propertyState && /^\\d{5}$/.test(zip)');
+    expect(CALC).toContain('propertyZip: zip');
+  });
+
   it('sends blank rather than 0 for the optional mortgage rate and term', () => {
     expect(CALC).toContain("mortgageRate: mr > 0 ? mr : '', mortgageTerm: mt > 0 ? mt : ''");
   });

@@ -9,6 +9,7 @@ import DebtPage, { type DebtPageView } from './DebtPageViews';
 import { type DebtOption } from './debtOptions';
 import { milestone } from '../utils/attribution';
 import { outOfMarketPage } from '../utils/serviceArea';
+import { stateForZip } from '../utils/zipState';
 import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import './payoff.css';
 import { ErrorDialog } from './PageParts';
@@ -174,7 +175,13 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // to the Sheet as the visitor's answer: Best Time to Call and Lead Source
   // were the form's own defaults on every untouched submit. They stay optional,
   // so an untouched dropdown sends blank rather than blocking the lead.
+  const [zip, setZipRaw] = useState('');
   const [propertyState, setPropertyState] = useState('');
+  // The ZIP proposes the state; the visitor can still change it (as /home-equity/).
+  const setZip = (value: string) => {
+    setZipRaw(value);
+    setPropertyState(stateForZip(value));
+  };
   const [propertyUse, setPropertyUse] = useState('');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -319,7 +326,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // 1 Nov (Max): one short screen at a time. The property question sits with
   // the home on step 2; contact details (4) and the consent boxes (5) are
   // separate screens, as on /book/ and the guide forms.
-  const hasProperty = Boolean(propertyUse && propertyState);
+  const hasProperty = Boolean(propertyUse && propertyState && /^\d{5}$/.test(zip));
   const contactReady = Boolean(fname.trim() && lname.trim() && emailSchema.safeParse(email.trim()).success && isValidUsPhone(phone.trim()));
   const furthestStep = !hasDebt ? 1 : !hasHome || !hasProperty ? 2 : contactReady ? 5 : 4;
   const gateMessage = !hasDebt
@@ -327,7 +334,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     : !hasHome
       ? 'Enter your home value, your mortgage balance (0 if the home is paid off) and, if you have a mortgage, its monthly payment. Without them there is nothing to compare your debts against.'
       : !hasProperty
-        ? 'Please choose how you use the home and the state it is in.'
+        ? 'Please choose how you use the home and enter its ZIP.'
         : 'Please fill in your full name, a valid email address and a US phone number.';
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -386,7 +393,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       ...(chosen === 'heloc' && helocRoom !== null ? {
         helocIllustration: { amount: helocRoom, assumedCltvPercent: COMMON_CLTV_LIMIT, homeValue: hv, mortgageBalance: mb, illustrationOnly: true },
       } : {}),
-      state: propertyState, propertyState, propertyUse,
+      state: propertyState, propertyState, propertyUse, propertyZip: zip,
       // Signed: negative means the best priced option still raises the payment.
       // It used to be sent only when positive, so "costs more" and "never
       // computed" were the same blank cell. (Best Time to Call and Lead Source
@@ -528,7 +535,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, leftoverPmt, heloanTotal, heloanSave, cltv,
     chosen, setChosen, helocRoom,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
-    emailHint, setEmailHint, propertyState, setPropertyState, propertyUse, setPropertyUse, message, setMessage,
+    emailHint, setEmailHint, zip, setZip, propertyState, setPropertyState, propertyUse, setPropertyUse, message, setMessage,
     sending, submitted, submitLead, openBooking,
     rateBadge, disclosure,
   };

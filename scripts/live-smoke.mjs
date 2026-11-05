@@ -81,7 +81,7 @@ const fill = {
     for (const [field, value] of [['balance', '25000'], ['payment', '750'], ['rate', '24.99']]) await page.locator('[id^=debt-' + field + '-]').first().fill(value);
     await page.getByRole('button', { name: 'Continue to Home Info' }).click();
     for (const [i, value] of ['650000', '300000', '1800', '3.5', '24'].entries()) await page.locator('#equity .dcp-panel input[type=number]').nth(i).fill(value);
-    await page.locator('#equity [data-property-use]').selectOption('primary'); await page.locator('#equity [data-property-state]').selectOption('CA');
+    await choose(page, 'Property use', 'Primary home'); await page.locator('#payoff-zip').fill('92646'); await page.locator('#payoff-state').waitFor(); await page.locator('#payoff-state').selectOption('CA');
     await page.getByRole('button', { name: 'See My Comparison' }).click();
     assert.equal(await page.locator('.dcp-primary-options > .dcp-option').count(), 3, 'three comparison cards');
     await noSidewaysScroll(page, 'payoff comparison');

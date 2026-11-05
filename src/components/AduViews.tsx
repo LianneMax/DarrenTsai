@@ -4,7 +4,7 @@ import { type EmailSuggestion } from '../utils/emailSuggest';
 import { ADU_PURPOSES } from '../utils/adu';
 import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
-import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep, LeadPreferencesStep } from './PageParts';
+import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep, LeadPreferencesStep, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
 import AduHouseExplorer from './AduHouseExplorer';
 import { MarketingFaq } from './Marketing';
 import JourneyTimeline from './JourneyTimeline';
@@ -67,9 +67,9 @@ export function StepAduProject({v}:{v:AduPageView}) {
 export function StepAduHome({v}:{v:AduPageView}) {
   return <div className="adu-stage"><h2 id="adu-step-heading" tabIndex={-1}>The home behind your plan.</h2>
     <p className="adu-stage-intro">Tell us about the home you would borrow against, even if the project is somewhere else.</p>
-    <div className="dcp-grid-2"><MoneyInput id="adu-value" label="Current home value" value={v.homeValue} onChange={v.setHomeValue} placeholder="e.g. 650,000"/>
-      <MoneyInput id="adu-balance" label="Current mortgage balance" value={v.mtgBalance} onChange={v.setMtgBalance} placeholder="e.g. 350,000"/></div>
-    <p className="adu-help">Enter 0 if your home is paid off. Grey numbers are examples, not your figures.</p>
+    <div className="dcp-grid-2"><MoneyInput id="adu-value" label="Current home value" value={v.homeValue} onChange={v.setHomeValue} placeholder="e.g. 650,000" help={HOME_VALUE_TIPS}/>
+      <MoneyInput id="adu-balance" label="Current mortgage balance" value={v.mtgBalance} onChange={v.setMtgBalance} placeholder="e.g. 350,000" help={MORTGAGE_BALANCE_TIPS}/></div>
+    <p className="adu-help">Close estimates are fine, and you can change them later. Enter 0 if your home is paid off. Grey numbers are examples, not your figures.</p>
     {v.hasHome&&<EquitySnapshot hv={v.hv} mb={v.mb}/>}
     <fieldset className="adu-home-location"><legend>Where is that home?</legend><div className="dcp-grid-2">
       <div><label className="input-label" htmlFor="adu-calculator-property-use">How do you use that home?</label><select id="adu-calculator-property-use" className="form-input" value={v.propertyUse} onChange={e=>v.setPropertyUse(e.target.value)}>

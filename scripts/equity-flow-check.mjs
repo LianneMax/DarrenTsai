@@ -89,7 +89,10 @@ async function payoffToCompare(page,home=['650000','300000','1800','3.5','24'],u
   await page.getByRole('button',{name:'Continue to Home Info'}).click();
   const fields=page.locator('#equity .dcp-panel input[type=number]');
   for(const [i,value] of home.entries())await fields.nth(i).fill(value);
-  await page.locator('#equity [data-property-use]').selectOption(use);await page.locator('#equity [data-property-state]').selectOption(state);
+  // 6 Nov: the payoff asks use and ZIP like /home-equity/ step 1.
+  await choose(page,'Property use',{primary:'Primary home','second-home':'Second home',investment:'Rental'}[use]);
+  await page.locator('#payoff-zip').fill(state==='CA'?'92646':state==='NY'?'10001':'80202');
+  await page.locator('#payoff-state').waitFor();await page.locator('#payoff-state').selectOption(state);
   await page.getByRole('button',{name:'See My Comparison'}).click();
 }
 try {

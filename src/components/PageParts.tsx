@@ -194,8 +194,10 @@ export function Chips({ options, value, onChange, label }: {
   );
 }
 
-export function MoneyInput({ id, label, value, onChange, placeholder, optional }: {
+export function MoneyInput({ id, label, value, onChange, placeholder, optional, help }: {
   id: string; label: ReactNode; value: string; onChange: (v: string) => void; placeholder: string; optional?: boolean;
+  /** Where-to-find-it tips, shown on request under the field. */
+  help?: readonly string[];
 }) {
   return (
     <div>
@@ -207,6 +209,47 @@ export function MoneyInput({ id, label, value, onChange, placeholder, optional }
         <input id={id} type="number" inputMode="decimal" className="form-input input-has-prefix"
           placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
       </div>
+      {help && <FieldHelp id={id} tips={help} />}
+    </div>
+  );
+}
+
+/**
+ * 6 Nov 2026 (P2 confidence review): visitors arriving from a video often do
+ * not know their home value or balance exactly, and a blank they cannot fill
+ * stops them. These say where to look and that a close estimate is enough.
+ * Nothing here is a valuation, and no number is suggested for them.
+ */
+export const HOME_VALUE_TIPS = [
+  'Think of a round number you could sell for today. Recent sales of similar homes nearby, or an online home value estimate, are a good start.',
+  'Your property tax assessment is often lower than what the home would sell for, so it can understate your equity.',
+  'A close estimate is fine. A real value only comes later, from an appraisal, if you decide to go ahead.',
+] as const;
+
+export const MORTGAGE_BALANCE_TIPS = [
+  'Your latest mortgage statement, or your lender’s app or website, shows it as the principal balance.',
+  'Rounded to the nearest $5,000 or $10,000 is fine.',
+  'Paid off? Enter 0.',
+] as const;
+
+/** A quiet "Not sure?" toggle that opens short tips under one field. */
+export function FieldHelp({ id, tips }: { id: string; tips: readonly string[] }) {
+  const [open, setOpen] = useState(false);
+  const panelId = `${id}-help`;
+  return (
+    <div className="dcp-field-help">
+      <button type="button" className="dcp-help-toggle" aria-expanded={open} aria-controls={panelId}
+        onClick={() => setOpen((o) => !o)}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+          <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {open ? 'Hide tips' : 'Not sure? Where to find it'}
+      </button>
+      {/* Always in the DOM so aria-controls points at something; hidden when closed. */}
+      <ul id={panelId} className="dcp-help-panel" hidden={!open}>
+        {tips.map((tip) => <li key={tip}>{tip}</li>)}
+      </ul>
     </div>
   );
 }

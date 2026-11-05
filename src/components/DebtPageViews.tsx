@@ -1,4 +1,5 @@
-import ServiceAreaFields from './ServiceAreaFields';
+import { useZipLookup } from '../hooks/useZipLookup';
+import { PropertyZipState, Choices } from './PropertyLocationFields';
 import JourneyTimeline from './JourneyTimeline';
 import ComplianceDisclosure from './ComplianceDisclosure';
 /**
@@ -33,9 +34,9 @@ import { emailHintMessage, hintAfterBlur, type EmailSuggestion } from '../utils/
 import CustomSelect from './CustomSelect';
 import AprEstimate from './AprEstimate';
 import InquiryMessage from './InquiryMessage';
-import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
+import { COMMON_CLTV_LIMIT, PROPERTY_USES } from '../utils/homeEquity';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
-import { Arrow, Check, Row, StepNav, EquitySnapshot } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, FieldHelp, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
 
 export interface DebtRow {
   id: number;
@@ -107,6 +108,7 @@ export interface DebtPageView {
   phone: string; setPhone: (v: string) => void;
   email: string; setEmail: (v: string) => void;
   emailHint: EmailSuggestion | null; setEmailHint: (h: EmailSuggestion | null) => void;
+  zip: string; setZip: (v: string) => void;
   propertyState: string; setPropertyState: (v: string) => void;
   propertyUse: string; setPropertyUse: (v: string) => void;
   message: string; setMessage: (v: string) => void;
@@ -230,6 +232,7 @@ export function StepDebts({ v }: { v: DebtPageView }) {
 // ─── Step 2: home ─────────────────────────────────────────────────────────────
 
 export function StepHome({ v }: { v: DebtPageView }) {
+  const zipCheck = useZipLookup(v.zip);
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2">Your Home &amp; Mortgage</h2>
@@ -243,6 +246,7 @@ export function StepHome({ v }: { v: DebtPageView }) {
               placeholder="e.g. 650,000" value={v.homeValue}
               onChange={(e) => v.setHomeValue(e.target.value)} />
           </div>
+          <FieldHelp id="payoff-home-value" tips={HOME_VALUE_TIPS} />
         </div>
         <div>
           <label className="input-label" htmlFor="payoff-mortgage-balance">Current Mortgage Balance</label>
@@ -252,6 +256,7 @@ export function StepHome({ v }: { v: DebtPageView }) {
               placeholder="e.g. 350,000" value={v.mtgBalance}
               onChange={(e) => v.setMtgBalance(e.target.value)} />
           </div>
+          <FieldHelp id="payoff-mortgage-balance" tips={MORTGAGE_BALANCE_TIPS} />
         </div>
       </div>
 
@@ -286,8 +291,9 @@ export function StepHome({ v }: { v: DebtPageView }) {
       </div>
 
       <p className="dcp-hint">
-        Home value, mortgage balance and monthly payment establish your comparison. If the home is
-        paid off, enter 0 for the balance and leave the payment blank. Rate and remaining term add
+        Home value, mortgage balance and monthly payment establish your comparison. Close estimates
+        are fine, and you can change them later. If the home is paid off, enter 0 for the balance and
+        leave the payment blank. Rate and remaining term add
         refinance context. The grey numbers are examples.
       </p>
 
@@ -314,14 +320,17 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
       {v.hv > 0 && v.balanceGiven && <EquitySnapshot hv={v.hv} mb={v.mb} />}
 
-      {/* Moved here from the contact step 1 Nov (Max): one screen held this,
-          the contact fields, a note and three consent boxes. */}
-      <ServiceAreaFields formId="debt-savings-calculator" propertyUse={v.propertyUse} propertyState={v.propertyState}
-        onUseChange={v.setPropertyUse} onStateChange={v.setPropertyState} deferScreening />
+      {/* Moved here from the contact step 1 Nov (Max). Since 6 Nov the same
+          taps and ZIP lookup as /home-equity/ step 1, instead of two dropdowns. */}
+      <h3 className="dcp-h3">How do you use the home you&apos;re borrowing against?</h3>
+      <Choices options={PROPERTY_USES} value={v.propertyUse} onChange={v.setPropertyUse} label="Property use" />
+      <PropertyZipState idPrefix="payoff" zip={v.zip} setZip={v.setZip} propertyState={v.propertyState}
+        setPropertyState={v.setPropertyState} check={zipCheck} />
 
       <StepNav
         back="← Back" onBack={() => v.goStep(1)}
         next={<>See My Comparison <Arrow /></>} onNext={() => v.goStep(3)}
+        disabled={!zipCheck.canContinue}
       />
     </div>
   );

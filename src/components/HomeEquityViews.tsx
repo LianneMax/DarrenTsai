@@ -1,6 +1,6 @@
 import { useZipLookup } from '../hooks/useZipLookup';
 import JourneyTimeline from './JourneyTimeline';
-import ZipFeedback from './ZipFeedback';
+import { PropertyZipState, Choices } from './PropertyLocationFields';
 /**
  * What /home-equity/ looks like.
  *
@@ -22,15 +22,15 @@ import ZipFeedback from './ZipFeedback';
  * available equity), "Your request has been received" (not "Darren has
  * reviewed"). Never approved, qualify or available credit.
  */
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import SavedLeadCalendar from './SavedLeadCalendar';
 import { formatCurrency } from '../utils/formatters';
 import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/emailSuggest';
 import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
-import { PROPERTY_STATES, PROPERTY_STATE_LABELS, serviceArea } from '../utils/serviceArea';
+import { serviceArea } from '../utils/serviceArea';
 import InquiryMessage from './InquiryMessage';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
-import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
 import ComplianceDisclosure from './ComplianceDisclosure';
 import { HouseOptions } from './Marketing';
 import { formatUsPhone } from '../utils/phone';
@@ -103,21 +103,7 @@ export function PathSwitch({ path, onPath }: { path: EquityPath; onPath: (p: Equ
 
 // ─── Small pieces ─────────────────────────────────────────────────────────────
 
-/** Single-choice taps whose stored value differs from the label. */
-function Choices({ options, value, onChange, label }: {
-  options: ReadonlyArray<readonly [string, string]>; value: string; onChange: (v: string) => void; label: string;
-}) {
-  return (
-    <div className="dcp-chips" role="group" aria-label={label}>
-      {options.map(([v, text]) => (
-        <button key={v} type="button" className="dcp-chip" aria-pressed={value === v}
-          onClick={() => onChange(value === v ? '' : v)}>
-          {text}
-        </button>
-      ))}
-    </div>
-  );
-}
+// Choices (single-choice taps) lives in PropertyLocationFields.tsx, shared with the payoff.
 
 const YES_NO_NONE = [['yes', 'Yes'], ['no', 'No'], ['no-mortgage', 'No mortgage']] as const;
 const NO_YES = [['no', 'No'], ['yes', 'Yes']] as const;
@@ -125,14 +111,7 @@ const NO_YES = [['no', 'No'], ['yes', 'Yes']] as const;
 // ─── Step 1: home ─────────────────────────────────────────────────────────────
 
 export function StepEquityHome({ v }: { v: EquityPageView }) {
-  const zipDone = /^\d{5}$/.test(v.zip);
   const zipCheck = useZipLookup(v.zip);
-  const { setPropertyState } = v;
-  const { status: zipStatus, state: zipState, needsConfirmation } = zipCheck;
-  useEffect(() => {
-    if (zipStatus === 'found') setPropertyState(zipState || '');
-    else if (needsConfirmation || zipStatus === 'invalid') setPropertyState('');
-  }, [zipStatus, zipState, needsConfirmation, setPropertyState]);
   return (
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Your home, at a glance.</h2>
@@ -140,11 +119,11 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
 
       <div className="dcp-grid-2">
         <MoneyInput id="he-value" label="Current Home Value" value={v.homeValue}
-          onChange={v.setHomeValue} placeholder="e.g. 650,000" />
+          onChange={v.setHomeValue} placeholder="e.g. 650,000" help={HOME_VALUE_TIPS} />
         <MoneyInput id="he-balance" label="Current Mortgage Balance" value={v.mtgBalance}
-          onChange={v.setMtgBalance} placeholder="e.g. 350,000" />
+          onChange={v.setMtgBalance} placeholder="e.g. 350,000" help={MORTGAGE_BALANCE_TIPS} />
       </div>
-      <p className="dcp-hint">Enter 0 if the home is paid off. The grey numbers are examples, not your figures.</p>
+      <p className="dcp-hint">Close estimates are fine, and you can change them later. Enter 0 if the home is paid off. The grey numbers are examples, not your figures.</p>
 
       {v.hasHome && <EquitySnapshot hv={v.hv} mb={v.mb} />}
 
@@ -154,32 +133,8 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
       <h3 className="dcp-h3">How do you use the home you&apos;re borrowing against?</h3>
       <Choices options={PROPERTY_USES} value={v.propertyUse} onChange={v.setPropertyUse} label="Property use" />
 
-      <div className="dcp-grid-2">
-        <div>
-          <label className="input-label" htmlFor="he-zip">ZIP of the home you&apos;re borrowing against</label>
-          <input id="he-zip" className="form-input" inputMode="numeric" autoComplete="postal-code"
-            maxLength={5} placeholder="e.g. 92646" value={v.zip} aria-describedby="he-zip-feedback" aria-invalid={zipCheck.status === 'invalid'}
-            onChange={(e) => v.setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
-          <ZipFeedback check={zipCheck} />
-        </div>
-        {(zipDone || v.propertyState) && (
-          <div>
-            <label className="input-label" htmlFor="he-state">State of the home you&apos;re borrowing against</label>
-            <select id="he-state" className="form-input" value={v.propertyState}
-              onChange={(e) => {
-                const state = e.target.value;
-                // A state has many ZIPs. Never invent one when the visitor
-                // corrects the state; clear the old known/pending ZIP instead.
-                if (state !== v.propertyState && v.zip && !zipCheck.needsConfirmation) v.setZip('');
-                v.setPropertyState(state);
-              }}>
-              <option value="">Choose the property state</option>
-              {PROPERTY_STATES.map((s) => <option key={s} value={s}>{PROPERTY_STATE_LABELS[s]}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
-      <p className="dcp-hint">The ZIP checks that Darren lends in that area. It is not an address or eligibility check, and where you use the cash doesn&apos;t matter.</p>
+      <PropertyZipState idPrefix="he" zip={v.zip} setZip={v.setZip} propertyState={v.propertyState}
+        setPropertyState={v.setPropertyState} check={zipCheck} />
 
       <div className="dcp-actions">
         <small className="dcp-caption dcp-actions-note">No application required to see this estimate.</small>

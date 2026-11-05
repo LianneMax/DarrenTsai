@@ -40,7 +40,7 @@ function view(over: Partial<DebtPageView> = {}): DebtPageView {
     chosen: '', setChosen: noop, helocRoom: null,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop,
-    propertyState: '', setPropertyState: noop, propertyUse: '', setPropertyUse: noop, message: '', setMessage: noop,
+    zip: '', setZip: noop, propertyState: '', setPropertyState: noop, propertyUse: '', setPropertyUse: noop, message: '', setMessage: noop,
     sending: false, submitted: false, submitLead: noop, openBooking: noop,
     rateBadge: null, disclosure: null,
     ...over,
@@ -64,10 +64,10 @@ it('gives every home-step number an associated visible label', () => {
   const host = document.createElement('div');
   host.innerHTML = html(<StepHome v={view({ step: 2 })} />);
   const inputs = Array.from(host.querySelectorAll('input'));
-  expect(inputs).toHaveLength(5);
+  expect(inputs).toHaveLength(6);
   expect(inputs.map(input => input.labels?.[0]?.textContent)).toEqual([
     'Current Home Value', 'Current Mortgage Balance', 'Monthly Payment (P&I)',
-    'Mortgage Rate · optional', 'Remaining Term · optional',
+    'Mortgage Rate · optional', 'Remaining Term · optional', "ZIP of the home you're borrowing against",
   ]);
 });
 
@@ -124,8 +124,12 @@ describe('step 4 asks only for contact details', () => {
 describe('one short screen at a time (Max, 1 Nov)', () => {
   it('asks the property question with the home on step 2', () => {
     const page = html(<StepHome v={view({ step: 2 })} />);
-    expect(page).toContain('data-service-area="debt-savings-calculator"');
-    expect(page).toContain('Where is the home you’re borrowing against?');
+    // 6 Nov (Max): the same use taps and ZIP lookup as /home-equity/ step 1.
+    expect(page).toContain('aria-label="Property use"');
+    expect(page).toContain('id="payoff-zip"');
+    expect(page).not.toContain('data-property-state');
+    // The state appears once the ZIP is in, proposed by the lookup.
+    expect(html(<StepHome v={view({ step: 2, zip: '92646', propertyState: 'CA' })} />)).toContain('id="payoff-state"');
   });
 
   it('keeps step 4 to contact details and a note, with no consent boxes or property question', () => {
