@@ -167,7 +167,8 @@ export default defineConfig({
       adu: 'adu/index.html',
       },
     },
-    // recharts (~537KB) used to be forced into a named `charts` chunk here.
+    // recharts (removed 6 Nov 2026 for a hand-drawn SVG chart) used to be
+    // forced into a named `charts` chunk here.
     // That is now counterproductive: AmortizationChart is imported lazily
     // (Calculator.tsx), which already splits recharts out on its own, and the
     // manualChunks entry promoted it back into the entry's preload graph as a

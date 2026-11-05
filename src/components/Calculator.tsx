@@ -6,7 +6,7 @@ import AmortizationTable from './AmortizationTable';
 import AprEstimate from './AprEstimate';
 import './mortgage-calculator.css';
 
-// Keep recharts in its lazy chunk, outside the initial preload graph. The
+// Keep the chart in its lazy chunk, outside the initial preload graph. The
 // empty calculator renders no chart; entering the visitor's own loan and rate
 // loads it on demand, with the placeholder below reserving its height.
 const AmortizationChart = lazy(() => import('./AmortizationChart'));

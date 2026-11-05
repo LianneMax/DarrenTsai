@@ -1,91 +1,89 @@
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ReferenceLine,
-  CartesianGrid,
-  Legend,
-} from 'recharts';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { MonthlyRow, YearlySummary } from '../types/mortgage';
+import { chartPoints, niceTicks, formatYAxis, monotonePath } from '../utils/chartMath';
 import { formatCurrency } from '../utils/formatters';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+
+/**
+ * The yearly amortization chart on /mortgage-calculator/.
+ *
+ * Drawn as plain SVG since 6 Nov 2026 (Max approved). It used recharts, which
+ * put a 396 KB (109 KB gzipped) chunk behind three lines, a legend and a
+ * tooltip. Same series, colours, legend and tooltip as before; the tooltip
+ * now also works from the keyboard (focus the chart, then the arrow keys).
+ */
 
 interface Props {
   schedule: MonthlyRow[];
   yearlyData: YearlySummary[];
 }
 
-interface ChartPoint {
-  year: number;
-  balance: number;
-  cumulativeInterest: number;
-  cumulativePrincipal: number;
-}
 
-interface TooltipProps {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
-  label?: number;
-}
+const SERIES = [
+  { key: 'balance', name: 'Remaining Balance', color: 'var(--navy)' },
+  { key: 'cumulativeInterest', name: 'Cumulative Interest', color: 'var(--rose)' },
+  { key: 'cumulativePrincipal', name: 'Cumulative Principal', color: 'var(--teal)' },
+] as const;
 
-function CustomTooltip({ active, payload, label }: TooltipProps) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="chart-tooltip">
-      <p className="chart-tooltip-year">Year {label}</p>
-      {payload.map((entry) => (
-        <div key={entry.name} className="chart-tooltip-row">
-          <span className="chart-tooltip-dot" style={{ background: entry.color }} />
-          <span className="chart-tooltip-label">{entry.name}</span>
-          <span className="chart-tooltip-val">{formatCurrency(entry.value)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function formatYAxis(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
-  return `$${value}`;
-}
-
-function CustomLegend() {
-  return (
-    <div className="chart-legend">
-      <div className="chart-legend-item">
-        <span className="chart-legend-line" style={{ background: 'var(--navy)' }} />
-        <span>Remaining Balance</span>
-      </div>
-      <div className="chart-legend-item">
-        <span className="chart-legend-line" style={{ background: 'var(--rose)' }} />
-        <span>Cumulative Interest</span>
-      </div>
-      <div className="chart-legend-item">
-        <span className="chart-legend-line" style={{ background: 'var(--teal)' }} />
-        <span>Cumulative Principal</span>
-      </div>
-    </div>
-  );
-}
+const HEIGHT = 320;
+const M = { top: 8, right: 24, bottom: 30, left: 76 };
+const FONT = "'Outfit', 'Outfit Fallback', sans-serif";
 
 export default function AmortizationChart({ yearlyData }: Props) {
   const ref = useScrollReveal<HTMLDivElement>(80);
+  const plotRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const [active, setActive] = useState<number | null>(null);
 
-  const data: ChartPoint[] = yearlyData.map((row, i) => {
-    const prevRows = yearlyData.slice(0, i + 1);
-    const cumulativeInterest = prevRows.reduce((sum, r) => sum + r.totalInterest, 0);
-    const cumulativePrincipal = prevRows.reduce((sum, r) => sum + r.totalPrincipal, 0);
-    return {
-      year: row.year,
-      balance: Math.max(0, row.endingBalance),
-      cumulativeInterest,
-      cumulativePrincipal,
-    };
-  });
+  useEffect(() => {
+    const el = plotRef.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const data = chartPoints(yearlyData);
+  const max = Math.max(0, ...data.flatMap((p) => [p.balance, p.cumulativeInterest, p.cumulativePrincipal]));
+  const ticks = niceTicks(max);
+  const top = ticks[ticks.length - 1] || 1;
+  const innerW = Math.max(0, width - M.left - M.right);
+  const innerH = HEIGHT - M.top - M.bottom;
+  const first = data[0]?.year ?? 0;
+  const last = data[data.length - 1]?.year ?? 0;
+  const span = Math.max(1, last - first);
+  const x = (year: number) => M.left + ((year - first) / span) * innerW;
+  const y = (v: number) => M.top + innerH - (v / top) * innerH;
+  // About one year label per 56px, so labels never collide on a phone.
+  const every = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(innerW / 56))));
+
+  const pick = (e: PointerEvent<SVGSVGElement>) => {
+    if (!data.length || innerW <= 0) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    const year = first + ((e.clientX - box.left - M.left) / innerW) * span;
+    setActive(Math.min(data.length - 1, Math.max(0, Math.round(year - first))));
+  };
+  const keys = (e: KeyboardEvent<SVGSVGElement>) => {
+    if (!data.length) return;
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (e.key === 'Home') setActive(0);
+    else if (e.key === 'End') setActive(data.length - 1);
+    else if (step) setActive((i) => Math.min(data.length - 1, Math.max(0, (i ?? -1) + step)));
+    else if (e.key === 'Escape') setActive(null);
+    else return;
+    e.preventDefault();
+  };
+
+  const point = active === null ? null : data[active];
+  const narrow = width > 0 && width < 520;
+  const tipLeft = point ? Math.min(Math.max(x(point.year) + 12, 0), Math.max(0, width - 220)) : 0;
+  const lastPoint = data[data.length - 1];
+  const summary = lastPoint
+    ? `Chart of the loan from ${first} to ${last}. The balance falls to ${formatCurrency(lastPoint.balance)}; total interest reaches ${formatCurrency(lastPoint.cumulativeInterest)} and total principal ${formatCurrency(lastPoint.cumulativePrincipal)}. Use the arrow keys to read each year; the table below lists every figure.`
+    : 'Amortization chart';
 
   return (
     <div ref={ref} className="chart-wrapper card reveal">
@@ -95,60 +93,77 @@ export default function AmortizationChart({ yearlyData }: Props) {
         </svg>
         Amortization Over Time
       </h3>
-      <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={data} margin={{ top: 8, right: 24, bottom: 8, left: 16 }}>
-          <CartesianGrid vertical={false} stroke="#e5e7eb" strokeDasharray="4 4" />
-          <XAxis
-            dataKey="year"
-            tick={{ fontSize: 12, fill: 'var(--text-muted)', fontFamily: "'Outfit', 'Outfit Fallback', sans-serif" }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis
-            tickFormatter={formatYAxis}
-            tick={{ fontSize: 12, fill: 'var(--text-muted)', fontFamily: "'Outfit', 'Outfit Fallback', sans-serif" }}
-            tickLine={false}
-            axisLine={false}
-            width={60}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={0} stroke="#e5e7eb" />
-          <Line
-            type="monotone"
-            dataKey="balance"
-            name="Remaining Balance"
-            stroke="var(--navy)"
-            strokeWidth={2.5}
-            dot={false}
-            isAnimationActive
-            animationDuration={1200}
-            animationEasing="ease-out"
-          />
-          <Line
-            type="monotone"
-            dataKey="cumulativeInterest"
-            name="Cumulative Interest"
-            stroke="var(--rose)"
-            strokeWidth={2.5}
-            dot={false}
-            isAnimationActive
-            animationDuration={1200}
-            animationEasing="ease-out"
-          />
-          <Line
-            type="monotone"
-            dataKey="cumulativePrincipal"
-            name="Cumulative Principal"
-            stroke="var(--teal)"
-            strokeWidth={2.5}
-            dot={false}
-            isAnimationActive
-            animationDuration={1200}
-            animationEasing="ease-out"
-          />
-          <Legend content={<CustomLegend />} />
-        </LineChart>
-      </ResponsiveContainer>
+      <div ref={plotRef} className="chart-plot" style={{ height: HEIGHT }}>
+        {width > 0 && (
+          <svg width={width} height={HEIGHT} role="img" aria-label={summary} tabIndex={0}
+            onPointerMove={pick} onPointerDown={pick} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setActive(null); }}
+            onKeyDown={keys} onBlur={() => setActive(null)} style={{ touchAction: 'pan-y' }}>
+            {ticks.map((v) => (
+              <g key={v}>
+                <line x1={M.left} x2={M.left + innerW} y1={y(v)} y2={y(v)}
+                  stroke="#e5e7eb" strokeDasharray={v === 0 ? undefined : '4 4'} />
+                <text x={M.left - 10} y={y(v)} dy="0.32em" textAnchor="end" fontSize={12}
+                  fontFamily={FONT} style={{ fill: 'var(--text-muted)' }}>{formatYAxis(v)}</text>
+              </g>
+            ))}
+            {data.map((p, i) => (i % every === 0 || i === data.length - 1) && (
+              <text key={p.year} x={x(p.year)} y={HEIGHT - 8} textAnchor="middle" fontSize={12}
+                fontFamily={FONT} style={{ fill: 'var(--text-muted)' }}>{p.year}</text>
+            ))}
+            {point && <line x1={x(point.year)} x2={x(point.year)} y1={M.top} y2={M.top + innerH} stroke="#cbd5dc" />}
+            {SERIES.map((s) => (
+              <path key={s.key} className="chart-line" pathLength={1} fill="none" strokeWidth={2.5}
+                strokeLinecap="round" strokeLinejoin="round" style={{ stroke: s.color }}
+                d={monotonePath(data.map((p) => [x(p.year), y(p[s.key])]))} />
+            ))}
+            {point && SERIES.map((s) => (
+              <circle key={s.key} cx={x(point.year)} cy={y(point[s.key])} r={4.5} fill="#fff" strokeWidth={2.5} style={{ stroke: s.color }} />
+            ))}
+          </svg>
+        )}
+        {point && !narrow && (
+          <div className="chart-tooltip chart-tooltip-float" style={{ left: tipLeft }} aria-hidden="true">
+            <p className="chart-tooltip-year">Year {point.year}</p>
+            {SERIES.map((s) => (
+              <div key={s.key} className="chart-tooltip-row">
+                <span className="chart-tooltip-dot" style={{ background: s.color }} />
+                <span className="chart-tooltip-label">{s.name}</span>
+                <span className="chart-tooltip-val">{formatCurrency(point[s.key])}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Phones: a floating box would cover most of the lines, so the figures
+          sit in a fixed slot under the chart (its height is reserved). */}
+      {narrow && (
+        <div className="chart-readout" aria-hidden="true">
+          {point ? (
+            <>
+              <p className="chart-tooltip-year">Year {point.year}</p>
+              {SERIES.map((s) => (
+                <div key={s.key} className="chart-tooltip-row">
+                  <span className="chart-tooltip-dot" style={{ background: s.color }} />
+                  <span className="chart-tooltip-label">{s.name}</span>
+                  <span className="chart-tooltip-val">{formatCurrency(point[s.key])}</span>
+                </div>
+              ))}
+            </>
+          ) : <p className="chart-readout-hint">Tap or drag across the chart to read any year.</p>}
+        </div>
+      )}
+      <div className="chart-legend" aria-hidden="true">
+        {SERIES.map((s) => (
+          <div key={s.key} className="chart-legend-item">
+            <span className="chart-legend-line" style={{ background: s.color }} />
+            <span>{s.name}</span>
+          </div>
+        ))}
+      </div>
+      {/* Screen readers hear the focused year; the table below has every figure. */}
+      <p className="sr-only" aria-live="polite">
+        {point ? `Year ${point.year}: ${SERIES.map((s) => `${s.name} ${formatCurrency(point[s.key])}`).join(', ')}` : ''}
+      </p>
     </div>
   );
 }
