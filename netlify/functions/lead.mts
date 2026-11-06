@@ -84,12 +84,14 @@ const ALLOWED_HOSTS = ["realdarrentsai.com", "www.realdarrentsai.com"];
 //
 // The address is stored hashed, not as typed: the count needs to recognise it,
 // not to know it.
+// The limit messages use a CallRail website-pool number (Max, 6 Nov 2026): a
+// server message is never swapped by CallRail, and calls should stay tracked.
 export const LEAD_LIMIT = 10;
 export const LEAD_WINDOW_MS = 15 * 60 * 1000;
 const LIMIT_BUDGET_MS = 600;
 const LIMIT_STORE = "lead-rate";
 export const RATE_LIMIT_MESSAGE =
-  "Too many requests from this connection. Please wait a few minutes and try again, or call (714) 887-5432.";
+  "Too many requests from this connection. Please wait a few minutes and try again, or call (714) 942-2756.";
 
 type Counter = { count: number; windowStart: number };
 
@@ -147,7 +149,7 @@ export const SITE_LEAD_LIMIT = 30;
 export const SITE_LEAD_WINDOW_MS = 60 * 60 * 1000;
 const SITE_LIMIT_KEY = "site-wide";
 export const SITE_LIMIT_MESSAGE =
-  "We're receiving an unusual number of requests right now. Please try again in a little while, or call (714) 887-5432.";
+  "We're receiving an unusual number of requests right now. Please try again in a little while, or call (714) 942-2756.";
 
 type SiteCounter = Counter & { alerted?: boolean };
 
