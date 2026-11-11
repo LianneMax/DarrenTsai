@@ -165,7 +165,10 @@ try {
   await booking.page.route('**/api/lead', async route => {
     booking.posts.push(route.request().postDataJSON());
     if (mode === 'retry' && booking.posts.length === 1) return route.abort('connectionfailed');
-    await route.fulfill({ status: mode === 'uncertain' ? 502 : 200, contentType: 'application/json', body: mode === 'uncertain' ? '{"error":"unconfirmed"}' : '{"ok":true}' });
+    // Same receipt shape as production: DTLead only trusts a saved receipt
+    // that echoes the browser's submission ID.
+    const submissionId = route.request().postDataJSON().submissionId;
+    await route.fulfill({ status: mode === 'uncertain' ? 502 : 200, json: mode === 'uncertain' ? { ok: false, receipt: 'uncertain', submissionId } : { ok: true, receipt: 'saved', submissionId } });
   });
   await booking.page.locator('.calc-cta').click();
   const shell = booking.page.locator('.dt-book-overlay .dt-book-shell');
@@ -185,7 +188,7 @@ try {
   assert.equal(booking.posts.length, 0);
   await shell.locator('[name=privacy]').check(); await next();
   if (mode === 'retry') {
-    await shell.locator('.dt-book-err').getByText(/could not reach/).waitFor();
+    await shell.locator('.dt-book-err').getByText(/Check your connection and retry/).waitFor();
     assert.equal(await shell.locator('iframe').count(), 0);
     assert.equal(booking.posts.length, 1);
     // The transport failure leaves an explicit retry on the same consent screen.
@@ -194,10 +197,12 @@ try {
     assert.equal(booking.posts.length, 2);
     checks += 3;
   } else {
-    await shell.getByRole('heading', { name: 'We couldn’t confirm your request', exact: true }).waitFor();
+    // Current copy: an unconfirmed save stays on the consent step and offers a
+    // same-details retry (the submission ID makes that retry safe).
+    await shell.locator('.dt-book-err').getByText(/couldn’t confirm whether your request was saved/).waitFor();
     assert.equal(await shell.locator('iframe').count(), 0);
     assert.doesNotMatch(await shell.innerText(), /your details reached Darren/);
-    assert.match(await shell.innerText(), /do not submit again immediately/);
+    assert.match(await shell.innerText(), /Retry here with the same details/);
     assert.equal(booking.posts.length, 1);
     checks += 4;
   }
