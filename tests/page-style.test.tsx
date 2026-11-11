@@ -85,9 +85,9 @@ function mount(node: React.ReactNode) {
 
 describe('the mobile action bar', () => {
   it('jumps to the tool and calls with a real tel: link', () => {
-    const el = mount(<><div id="savings" /><MobileActionBar target="savings" label="See My Comparison" /></>);
+    const el = mount(<><div id="savings" /><MobileActionBar target="savings" label="See my comparison" /></>);
     expect(el.querySelector('.dcp-mobile-bar-cta')?.getAttribute('href')).toBe('#savings');
-    expect(el.querySelector('.dcp-mobile-bar-cta')?.textContent).toBe('See My Comparison');
+    expect(el.querySelector('.dcp-mobile-bar-cta')?.textContent).toBe('See my comparison');
     expect(el.querySelector('.dcp-mobile-bar-call')?.getAttribute('href')).toBe('tel:7148875432');
   });
 

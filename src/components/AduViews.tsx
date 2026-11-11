@@ -6,7 +6,7 @@ import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
 import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep, LeadPreferencesStep, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
 import AduHouseExplorer from './AduHouseExplorer';
-import { MarketingFaq } from './Marketing';
+import { ArrowIcon, MarketingFaq } from './Marketing';
 import JourneyTimeline from './JourneyTimeline';
 import SavedLeadCalendar from './SavedLeadCalendar';
 
@@ -39,7 +39,7 @@ export function AduPageHero() {
   return <header className="adu-hero-surface"><div className="adu-opening design-wrap">
     <div className="adu-opening-copy"><h1>More room for <em>your plans.</em></h1>
       <p>Explore how your home equity could support a renovation or an ADU.</p>
-      <a href="#project" className="design-primary large">Start my project <Arrow/></a>
+      <a href="#project" className="design-primary large">Start my project <ArrowIcon /></a>
       <span className="adu-opening-note">Your numbers first. A conversation when you’re ready.</span>
     </div>
     <AduHouseExplorer/>

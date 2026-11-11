@@ -86,14 +86,14 @@ const saved=page=>page.locator('.dcp-recap').waitFor();
 async function payoffToCompare(page,home=['650000','300000','1800','3.5','24'],use='primary',state='CA') {
   await page.locator('[id^=debt-type-]').first().click();await page.getByRole('option',{name:'Credit Card',exact:true}).click();
   await page.locator('[id^=debt-balance-]').first().fill('25000');await page.locator('[id^=debt-payment-]').first().fill('750');await page.locator('[id^=debt-rate-]').first().fill('24.99');
-  await page.getByRole('button',{name:'Continue to Home Info'}).click();
+  await page.getByRole('button',{name:'Continue to home info'}).click();
   const fields=page.locator('#equity .dcp-panel input[type=number]');
   for(const [i,value] of home.entries())await fields.nth(i).fill(value);
   // 6 Nov: the payoff asks use and ZIP like /home-equity/ step 1.
   await choose(page,'Property use',{primary:'Primary home','second-home':'Second home',investment:'Rental'}[use]);
   await page.locator('#payoff-zip').fill(state==='CA'?'92646':state==='NY'?'10001':'80202');
   await page.locator('#payoff-state').waitFor();await page.locator('#payoff-state').selectOption(state);
-  await page.getByRole('button',{name:'See My Comparison'}).click();
+  await page.getByRole('button',{name:'See my comparison'}).click();
 }
 try {
   for(let i=0;i<60;i++){try{if((await fetch(base)).ok)break;}catch{ /* Preview server is not ready yet. */ }await new Promise(resolve=>setTimeout(resolve,250));}

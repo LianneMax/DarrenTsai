@@ -108,7 +108,7 @@ describe.each(PAGES)('/%s actionable rejection and safe retry', (page) => {
 });
 
 /**
- * /fha/ "Have Darren Review My Payment" (revamp brief section 9, preview v4).
+ * /fha/ "Have Darren review my payment" (revamp brief section 9, preview v4).
  * The estimate's button opens the contact modal under its own form id, with the
  * estimate's loan and rate prefilled once a payment is showing. Checked in
  * Chromium on 10 Oct: a review posts formId fha-payment-review, and the nav's
@@ -118,8 +118,8 @@ describe('/fha/ review button', () => {
   const FHA_PAGE = readFileSync(resolve(__dirname, '../public/fha/index.html'), 'utf8');
 
   it('opens the contact modal as a payment review, not the guide form', () => {
-    expect(FHA_PAGE).toContain('>Have Darren Review My Payment</button>');
-    expect(FHA_PAGE).toContain("window.openContactModal({ formId: 'fha-payment-review', title: 'Have Darren Review My Payment' });");
+    expect(FHA_PAGE).toContain('>Have Darren review my payment</button>');
+    expect(FHA_PAGE).toContain("window.openContactModal({ formId: 'fha-payment-review', title: 'Have Darren review my payment' });");
   });
 
   it('routes reviews into the shared screened booking flow', () => {

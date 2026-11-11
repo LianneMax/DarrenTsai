@@ -31,7 +31,7 @@ export default function AduApp() {
         <AduCalculator />
       </main>
       <Footer />
-      <MobileActionBar target="project" label="Explore My Project" />
+      <MobileActionBar target="project" label="Explore my project" />
 
 
     </>

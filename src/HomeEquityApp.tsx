@@ -34,7 +34,7 @@ export default function HomeEquityApp() {
         <MarketingFaq onOpenContact={openContact} />
       </main>
       <Footer />
-      <MobileActionBar target="equity" label={<><span className="hv-equity">Check My Home Equity</span><span className="hv-payoff">See My Comparison</span></>} />
+      <MobileActionBar target="equity" label={<><span className="hv-equity">Check my home equity</span><span className="hv-payoff">See my comparison</span></>} />
 
 
     </>

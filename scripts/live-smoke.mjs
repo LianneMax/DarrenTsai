@@ -79,10 +79,10 @@ const fill = {
   async payoff(page, p) {
     await page.locator('[id^=debt-type-]').first().click(); await page.getByRole('option', { name: 'Credit Card', exact: true }).click();
     for (const [field, value] of [['balance', '25000'], ['payment', '750'], ['rate', '24.99']]) await page.locator('[id^=debt-' + field + '-]').first().fill(value);
-    await page.getByRole('button', { name: 'Continue to Home Info' }).click();
+    await page.getByRole('button', { name: 'Continue to home info' }).click();
     for (const [i, value] of ['650000', '300000', '1800', '3.5', '24'].entries()) await page.locator('#equity .dcp-panel input[type=number]').nth(i).fill(value);
     await choose(page, 'Property use', 'Primary home'); await page.locator('#payoff-zip').fill('92646'); await page.locator('#payoff-state').waitFor(); await page.locator('#payoff-state').selectOption('CA');
-    await page.getByRole('button', { name: 'See My Comparison' }).click();
+    await page.getByRole('button', { name: 'See my comparison' }).click();
     assert.equal(await page.locator('.dcp-primary-options > .dcp-option').count(), 3, 'three comparison cards');
     await noSidewaysScroll(page, 'payoff comparison');
     await page.getByRole('button', { name: 'Discuss a HELOC' }).click();

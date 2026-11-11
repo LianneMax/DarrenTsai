@@ -137,7 +137,7 @@ export function LicensedStrip() {
  *
  * Unlike theirs it steps aside while the calculator is on screen. Their bar
  * points at a form further down; here the calculator starts right under the
- * hero, so a bar saying "See My Comparison" over the comparison would only
+ * hero, so a bar saying "See my comparison" over the comparison would only
  * cover its buttons. It comes back once the visitor has scrolled past (the
  * footer), where it is the way back up. Without IntersectionObserver it stays.
  *

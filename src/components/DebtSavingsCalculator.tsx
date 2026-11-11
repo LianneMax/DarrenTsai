@@ -495,10 +495,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   );
 
   const disclosure = (
-    <p style={{
-      fontSize: 11, color: 'var(--text-muted)', marginTop: 24, lineHeight: 1.6,
-      borderTop: '1px solid #e2e5ed', paddingTop: 14,
-    }}>
+    <p className="dcp-caption">
       <strong>Important Disclosures:</strong> This tool provides estimates for educational
       purposes only. Actual rates, terms, and monthly payments depend on creditworthiness,
       property appraisal, loan-to-value ratio, and lender approval. Not a commitment to

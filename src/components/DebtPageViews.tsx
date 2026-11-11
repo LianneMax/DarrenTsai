@@ -223,7 +223,7 @@ export function StepDebts({ v }: { v: DebtPageView }) {
       )}
 
       <button type="button" className="btn btn-teal btn-full" onClick={() => v.goStep(2)}>
-        Continue to Home Info <Arrow />
+        Continue to home info <Arrow />
       </button>
     </div>
   );
@@ -329,7 +329,7 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
       <StepNav
         back="← Back" onBack={() => v.goStep(1)}
-        next={<>See My Comparison <Arrow /></>} onNext={() => v.goStep(3)}
+        next={<>See my comparison <Arrow /></>} onNext={() => v.goStep(3)}
         disabled={!zipCheck.canContinue}
       />
     </div>
