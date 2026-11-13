@@ -54,6 +54,8 @@ export default function AduCalculator() {
     formId: 'adu-calculator',
     thankYouPath: '/thank-you/adu',
     thankYouTitle: 'Thank You — ADU',
+    // GTM now loads by default (13 Nov 2026); contact details stay Accept-only.
+    consentGatedUserData: true,
   });
 
   // ── Derived values ─────────────────────────────────────────────────────────

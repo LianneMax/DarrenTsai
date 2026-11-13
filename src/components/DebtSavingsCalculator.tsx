@@ -204,6 +204,8 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     formId: 'debt-savings-calculator',
     thankYouPath: '/thank-you/debt-savings',
     thankYouTitle: 'Thank You — Debt Savings',
+    // GTM now loads by default (13 Nov 2026); contact details stay Accept-only.
+    consentGatedUserData: true,
   });
 
   // ── Derived values ─────────────────────────────────────────────────────────

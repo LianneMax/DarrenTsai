@@ -179,6 +179,11 @@ describe('Google on unless rejected, HubSpot and CallRail on Accept only', () =>
     expect(head).toContain('G-627RJ4FDSP');
     expect(html).not.toContain('gtag/js');
   });
+  it.each(['src/components/AduCalculator.tsx', 'src/components/DebtSavingsCalculator.tsx', 'src/components/HomeEquityCalculator.tsx'])('keeps contact details out of generate_lead until Accept in %s, now that GTM loads by default', (path) => {
+    const code = readFileSync(resolve(__dirname, '..', path), 'utf8');
+    const call = code.slice(code.indexOf('useLeadSubmit({'), code.indexOf('});', code.indexOf('useLeadSubmit({')));
+    expect(call).toContain('consentGatedUserData: true');
+  });
   it('places the consent gate before attribution and makes raw CallRail inert on every entry', () => {
     for (const path of ['index.html','home-equity/index.html','adu/index.html','mortgage-calculator/index.html','public/dscr/index.html','public/fha/index.html','public/realestateinvesting/index.html']) {
       const html = readFileSync(resolve(__dirname, '..', path), 'utf8');
