@@ -229,12 +229,14 @@
   /**
    * Friction measurements deliberately do not use track(): it adds the whole
    * attribution snapshot and queues before GTM loads. These observations need
-   * explicit consent at the instant of interaction, an allowlist, and no
-   * replay of pre-consent activity after a visitor later accepts cookies.
+   * Google consent at the instant of interaction (on unless rejected), an
+   * allowlist, and no replay of activity from before a choice was changed.
    */
   function milestone(event, params) {
     try {
-      if (!window.DTConsent || !window.DTConsent.isAllowed()) return;
+      // GA4-only observations, so they follow the Google rule (on unless rejected).
+      var c = window.DTConsent;
+      if (!c || !(c.isGoogleAllowed ? c.isGoogleAllowed() : c.isAllowed())) return;
       if (['form_start', 'form_step', 'form_error'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
       var path = window.location.pathname;
       var paths = ['/', '/book/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/about/', '/reviews/', '/legal/', '/privacy-policy/'];
@@ -289,6 +291,7 @@
     // prequal, which fires booking_page_shown and meeting_booked itself.
   }, true);
 
+  // Fallback loader for isolated harnesses without DTConsent.loadGoogleTag.
   function startGTM() {
     if (!GTM_ID) return;
     writeStore(state);
@@ -305,6 +308,13 @@
       else if (d.head) d.head.appendChild(j);
     })(window, document, 'script', 'dataLayer', GTM_ID);
   }
-  if (window.DTConsent) window.DTConsent.whenAllowed(startGTM);
+  if (window.DTConsent && window.DTConsent.loadGoogleTag) {
+    // GTM itself is started by the inline call in each page's <head>
+    // (Google on unless rejected; non-Google tags in the container blocked
+    // until Accept). Calling it again here is a no-op once it has loaded.
+    if (GTM_ID) window.DTConsent.loadGoogleTag(GTM_ID);
+    // Persistent attribution keeps its explicit-Accept rule.
+    window.DTConsent.whenAllowed(function () { writeStore(state); });
+  } else if (window.DTConsent) window.DTConsent.whenAllowed(startGTM);
   else startGTM(); // Isolated harnesses retain their original runtime contract.
 })();
