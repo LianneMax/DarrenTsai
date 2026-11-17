@@ -10,8 +10,8 @@ Darren asked for a HubSpot task to call every new lead the day it arrives. Workf
 
 It is dark until both Script Properties are set:
 
-1. In HubSpot (Super Admin or a user with the "Develop apps" permission): Settings > Integrations > Private Apps > Create a private app, name it "Lead call tasks", scopes `crm.objects.contacts.read` and `crm.objects.contacts.write` (plus any tasks scope the screen offers). Copy the access token.
-2. Apps Script > Project Settings > Script Properties: `HUBSPOT_PRIVATE_APP_TOKEN` = the token, `HUBSPOT_TASKS_ENABLED` = `true`. Optional `HUBSPOT_TASK_OWNER_ID` (defaults to Darren, 99169757).
+1. In HubSpot, create a **Service Key** (legacy private apps can no longer be created in this account since 26 Oct 2026). Settings > Integrations > Service Keys, or Development > Keys > Service Keys. Needs the user permission "Developer Tools access", not Super Admin. Name it "Lead call tasks", scopes `crm.objects.contacts.read` and `crm.objects.contacts.write` (plus any tasks scope offered). Copy the key; it is sent as a Bearer token, the same as a private app token.
+2. Apps Script > Project Settings > Script Properties: `HUBSPOT_PRIVATE_APP_TOKEN` = the Service Key, `HUBSPOT_TASKS_ENABLED` = `true`. Optional `HUBSPOT_TASK_OWNER_ID` (defaults to Darren, 99169757).
 3. Deploy in place as below (same `/exec` URL).
 4. Verify: with `HUBSPOT_SEND_TESTS` = `true`, send one TEST lead (555-01xx phone). Within a few minutes the HubSpot Tasks tab shows `sent` with a Task ID and Darren has a task "TEST Call ...". Delete that task, set `HUBSPOT_SEND_TESTS` back, and leave the TEST contact as the retention rule says.
 

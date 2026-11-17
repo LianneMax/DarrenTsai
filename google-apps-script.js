@@ -2649,8 +2649,9 @@ function processFollowUps() {
 // in. HubSpot workflows need Sales Hub Pro, so the script creates the task
 // through the CRM API with a private app token instead.
 //
-// Dark until HUBSPOT_TASKS_ENABLED = true and HUBSPOT_PRIVATE_APP_TOKEN is set.
-// Private app scopes: crm.objects.contacts.read (find the contact by email)
+// Dark until HUBSPOT_TASKS_ENABLED = true and HUBSPOT_PRIVATE_APP_TOKEN is set
+// (a HubSpot Service Key; legacy private apps can no longer be created).
+// Scopes: crm.objects.contacts.read (find the contact by email)
 // and crm.objects.contacts.write (HubSpot files task writes and the contact
 // association under it; also tick any tasks scope the app screen offers).
 // HUBSPOT_TASK_OWNER_ID defaults to Darren (99169757).
