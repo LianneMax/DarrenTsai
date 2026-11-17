@@ -4,6 +4,19 @@ How to put a new version of `google-apps-script.js` live **without changing the 
 
 The one rule: **update the existing deployment in place.** Never `clasp deploy` without `-i`/`--deploymentId`: that creates a new deployment with a new `/exec` URL, and every form on the site keeps posting to the old one.
 
+## Same-day HubSpot call task (17 Nov 2026)
+
+Darren asked for a HubSpot task to call every new lead the day it arrives. Workflows need Sales Hub Pro, so after `pushToHubSpot` succeeds the follow-up worker queues a row on a new **HubSpot Tasks** tab and `processHubSpotTasks` creates the task through the CRM API: subject `Call <name> (new <Google Ads|YouTube|website> lead)`, type Call, priority High, owner Darren, due at creation time, associated with the contact once HubSpot has created it (it waits up to 30 minutes, then creates the task unlinked). A task POST with an unknown or rejected result goes to `needs-review` and is never repeated automatically.
+
+It is dark until both Script Properties are set:
+
+1. In HubSpot (Super Admin or a user with the "Develop apps" permission): Settings > Integrations > Private Apps > Create a private app, name it "Lead call tasks", scopes `crm.objects.contacts.read` and `crm.objects.contacts.write` (plus any tasks scope the screen offers). Copy the access token.
+2. Apps Script > Project Settings > Script Properties: `HUBSPOT_PRIVATE_APP_TOKEN` = the token, `HUBSPOT_TASKS_ENABLED` = `true`. Optional `HUBSPOT_TASK_OWNER_ID` (defaults to Darren, 99169757).
+3. Deploy in place as below (same `/exec` URL).
+4. Verify: with `HUBSPOT_SEND_TESTS` = `true`, send one TEST lead (555-01xx phone). Within a few minutes the HubSpot Tasks tab shows `sent` with a Task ID and Darren has a task "TEST Call ...". Delete that task, set `HUBSPOT_SEND_TESTS` back, and leave the TEST contact as the retention rule says.
+
+Rollback: set `HUBSPOT_TASKS_ENABLED` to anything but `true`. Rows already queued stay for review.
+
 ## Server authentication and email opt-out rollout
 
 ### Durable website inbox rollout

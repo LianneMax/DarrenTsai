@@ -2612,6 +2612,12 @@ function processFollowUps() {
           const running = { state: 'inflight', startedAt: prior.startedAt || new Date().toISOString(), retrySafe: prior.retrySafe === true };
           if (!checkpointFollowUp(sheet, claim, job, running, false)) break;
           const result = job === 'hubspot' ? pushToHubSpot(ss, claim.data) : sendGuideFor(ss, claim.data);
+          // Darren's same-day call task. Queued only once HubSpot has the lead,
+          // in its own tab, so a task problem can never change this row's status.
+          if (job === 'hubspot' && result.outcome === 'sent') {
+            try { enqueueHubSpotTask(ss, claim.data); }
+            catch (err) { logDebug(ss, 'HubSpot task enqueue needs review: ' + err.toString(), claim.data.email); }
+          }
           if (!checkpointFollowUp(sheet, claim, job, { state: result.outcome, detail: result.detail || '', startedAt: running.startedAt,
             retrySafe: result.retrySafe === true || running.retrySafe }, false)) break;
         }
@@ -2628,10 +2634,169 @@ function processFollowUps() {
     if (Date.now() - started < FOLLOWUP_MAX_RUN_MS) {
       try { processCallRailSync(ss); }
       catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
+      try { processHubSpotTasks(ss); }
+      catch (err) { logDebug(ss, 'HubSpot task needs review: ' + err.toString(), ''); }
     }
   } finally {
     try { releaseFollowUpWorker(worker); }
     catch (err) { Logger.log('Follow-up worker lease release deferred; expiry will recover it'); }
+  }
+}
+
+// ── HubSpot call task for Darren (17 Nov 2026) ───────────────────────────────
+//
+// Darren asked for a HubSpot task to call every new lead the same day it comes
+// in. HubSpot workflows need Sales Hub Pro, so the script creates the task
+// through the CRM API with a private app token instead.
+//
+// Dark until HUBSPOT_TASKS_ENABLED = true and HUBSPOT_PRIVATE_APP_TOKEN is set.
+// Private app scopes: crm.objects.contacts.read (find the contact by email)
+// and crm.objects.contacts.write (HubSpot files task writes and the contact
+// association under it; also tick any tasks scope the app screen offers).
+// HUBSPOT_TASK_OWNER_ID defaults to Darren (99169757).
+//
+// Same safety model as the CallRail queue: its own tab, one row per
+// submission ID, a POST whose result is unknown is never blindly repeated
+// (HubSpot task creation has no idempotency key), and nothing here can change
+// a lead's Follow-ups status or block its guide email.
+//
+// The Forms API creates the contact asynchronously, so the task waits until a
+// search by email finds it (read-only, safe to repeat). If the contact still
+// is not there after HUBSPOT_TASK_CONTACT_WAIT_MS the task is created without
+// the association, so Darren still gets the call reminder.
+const HUBSPOT_TASK_TAB = 'HubSpot Tasks';
+const HUBSPOT_TASK_HEADERS = ['Submission ID', 'Queued At', 'Payload', 'Status', 'Task ID', 'Detail'];
+const HUBSPOT_TASK_OWNER_DEFAULT = '99169757';
+const HUBSPOT_TASK_CONTACT_WAIT_MS = 30 * 60 * 1000;
+const HUBSPOT_TASK_PER_RUN = 3;
+const HUBSPOT_API_HOST = 'https://api.hubapi.com';
+
+function hubspotTasksConfig() {
+  const props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('HUBSPOT_TASKS_ENABLED') || '').trim() !== 'true') return null;
+  const token = String(props.getProperty('HUBSPOT_PRIVATE_APP_TOKEN') || '').trim();
+  if (!token) return null;
+  const owner = String(props.getProperty('HUBSPOT_TASK_OWNER_ID') || '').trim() || HUBSPOT_TASK_OWNER_DEFAULT;
+  return { token: token, owner: owner };
+}
+
+function enqueueHubSpotTask(ss, data) {
+  if (isSheetOnlyInquiry(data) || !hubspotTasksConfig()) return;
+  if (!String(data.email || '').trim() || !data.submissionId) return;
+  withSheetLock(function () {
+    let sheet = ss.getSheetByName(HUBSPOT_TASK_TAB);
+    if (!sheet) { sheet = ss.insertSheet(HUBSPOT_TASK_TAB); appendSafeRow(sheet, HUBSPOT_TASK_HEADERS); }
+    if (sheet.getLastRow() > 1 && sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues()
+      .some(function (row) { return row[0] === data.submissionId; })) return;
+    appendSafeRow(sheet, [data.submissionId, new Date().toISOString(), JSON.stringify(leadSnapshot(data)), 'pending', '', '']);
+  });
+}
+
+/** Where the lead came from, in words Darren reads at a glance. */
+function hubspotTaskSourceLabel(d) {
+  const src = String(d.utm_source || d.firstUtmSource || '').toLowerCase();
+  const medium = String(d.utm_medium || d.firstUtmMedium || '').toLowerCase();
+  if (d.clickIdType === 'gclid' || d.firstClickIdType === 'gclid' || src === 'adwords' || src === 'google' && /cpc|ppc|paid/.test(medium)) return 'Google Ads';
+  if (src === 'youtube') return 'YouTube';
+  if (src) return src;
+  return 'website';
+}
+
+/** The task's subject and body. Pure, so the wording is testable. */
+function hubspotTaskContent(d) {
+  const name = [d.firstName, d.lastName].map(function (p) { return String(p || '').trim(); }).filter(Boolean).join(' ') || String(d.email || 'new lead');
+  const source = hubspotTaskSourceLabel(d);
+  const test = isTestLead(d) ? 'TEST ' : '';
+  const lines = [
+    'New ' + source + ' lead from the ' + String(d.source || 'website') + ' form' + (d.timestamp ? ' (' + d.timestamp + ')' : '') + '.',
+    'Phone: ' + (d.phone || 'not given'),
+    'Email: ' + (d.email || 'not given'),
+  ];
+  if (d.propertyState) lines.push('Property state: ' + d.propertyState);
+  if (d.utm_term) lines.push('Search term: ' + d.utm_term);
+  if (d.utm_campaign) lines.push('Campaign: ' + d.utm_campaign);
+  lines.push(d.smsConsent === true || d.smsMarketingConsent === true || d.smsInformationalConsent === true
+    ? 'Texting: opted in.' : 'Texting: no opt-in, call or email only.');
+  lines.push('Full answers: Calculator Leads sheet (submission ' + (d.submissionId || '') + ').');
+  return { subject: test + 'Call ' + name + ' (new ' + source + ' lead)', body: lines.join('\n') };
+}
+
+function hubspotApi(config, method, path, body) {
+  const options = { method: method, contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + config.token } };
+  if (body) options.payload = JSON.stringify(body);
+  const resp = UrlFetchApp.fetch(HUBSPOT_API_HOST + path, options);
+  let json = {};
+  try { json = JSON.parse(String(resp.getContentText() || '{}')); } catch { json = {}; }
+  return { code: resp.getResponseCode(), json: json };
+}
+
+/** Contact ID for an email, '' when HubSpot has no such contact yet. Throws on API errors. */
+function hubspotContactIdByEmail(config, email) {
+  const res = hubspotApi(config, 'post', '/crm/v3/objects/contacts/search', {
+    filterGroups: [{ filters: [{ propertyName: 'email', operator: 'EQ', value: String(email).trim().toLowerCase() }] }],
+    properties: ['email'], limit: 1,
+  });
+  if (res.code !== 200) throw new Error('contact search HTTP ' + res.code);
+  const hit = (res.json.results || [])[0];
+  return hit && hit.id ? String(hit.id) : '';
+}
+
+function processHubSpotTasks(ss) {
+  const config = hubspotTasksConfig();
+  if (!config) return;
+  const sheet = ss.getSheetByName(HUBSPOT_TASK_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HUBSPOT_TASK_HEADERS.length).getValues();
+  let posts = 0;
+  for (let i = 0; i < rows.length && posts < HUBSPOT_TASK_PER_RUN; i++) {
+    if (rows[i][3] !== 'pending') continue;
+    const row = i + 2;
+    let data;
+    try { data = JSON.parse(String(rows[i][2])); }
+    catch { sheet.getRange(row, 4, 1, 3).setValues([['needs-review', '', 'Unreadable payload']]); continue; }
+
+    let contactId = '';
+    try { contactId = hubspotContactIdByEmail(config, data.email); }
+    catch (err) {
+      // Read-only, so leave it pending and try again next minute.
+      sheet.getRange(row, 6, 1, 1).setValues([['Waiting: ' + err.toString()]]);
+      continue;
+    }
+    const queuedAt = Date.parse(String(rows[i][1] || ''));
+    if (!contactId && !isNaN(queuedAt) && Date.now() - queuedAt < HUBSPOT_TASK_CONTACT_WAIT_MS) {
+      sheet.getRange(row, 6, 1, 1).setValues([['Waiting for HubSpot to create the contact']]);
+      continue;
+    }
+
+    const content = hubspotTaskContent(data);
+    const task = { properties: {
+      hs_task_subject: content.subject,
+      hs_task_body: content.body,
+      hs_task_status: 'NOT_STARTED',
+      hs_task_priority: 'HIGH',
+      hs_task_type: 'CALL',
+      hs_timestamp: new Date().toISOString(), // due now: same day, in Darren's queue at once
+      hubspot_owner_id: config.owner,
+    } };
+    if (contactId) task.associations = [{ to: { id: contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 204 }] }];
+
+    // Claim before the POST: a crash leaves 'sending' for review, never a duplicate task.
+    sheet.getRange(row, 4, 1, 1).setValues([['sending']]);
+    SpreadsheetApp.flush();
+    posts++;
+    try {
+      const res = hubspotApi(config, 'post', '/crm/v3/objects/tasks', task);
+      if (res.code === 201 && res.json.id) {
+        sheet.getRange(row, 4, 1, 3).setValues([[contactId ? 'sent' : 'sent-unlinked', String(res.json.id),
+          contactId ? 'Contact ' + contactId : 'Contact not found after 30 min; task created without it']]);
+      } else {
+        sheet.getRange(row, 4, 1, 3).setValues([['needs-review', '', 'HTTP ' + res.code + ' ' + JSON.stringify(res.json).slice(0, 300)]]);
+        logDebug(ss, 'HubSpot task rejected: HTTP ' + res.code, data.email);
+      }
+    } catch (err) {
+      sheet.getRange(row, 4, 1, 3).setValues([['needs-review', '', 'Task result unknown; check HubSpot before retrying: ' + err.toString()]]);
+    }
   }
 }
 
