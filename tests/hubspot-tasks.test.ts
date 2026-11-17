@@ -12,6 +12,7 @@ type Runtime = {
   processHubSpotTasks: (ss: unknown) => void;
   processFollowUps: () => void;
   hubspotTaskContent: (d: Record<string, unknown>) => { subject: string; body: string };
+  hubspotTaskDueAt: (nowMs: number) => string;
 };
 
 const config = { HUBSPOT_TASKS_ENABLED: 'true', HUBSPOT_PRIVATE_APP_TOKEN: 'pat-test' };
@@ -36,7 +37,7 @@ function hubspotFetch(searchHits: string[] = ['123'], taskCode = 201) {
 
 function setup(props: Record<string, string> = config, fetch = hubspotFetch()) {
   const h = loadGas<Runtime>({
-    exports: ['SpreadsheetApp', 'enqueueHubSpotTask', 'processHubSpotTasks', 'processFollowUps', 'hubspotTaskContent'],
+    exports: ['SpreadsheetApp', 'enqueueHubSpotTask', 'processHubSpotTasks', 'processFollowUps', 'hubspotTaskContent', 'hubspotTaskDueAt'],
     props, fetch,
   });
   return { h, fetch, ss: h.gas.SpreadsheetApp.openById('sheet') };
@@ -53,7 +54,7 @@ describe('HubSpot call task for Darren', () => {
     }
   });
 
-  it('creates one high-priority call task for Darren, linked to the contact, due now', () => {
+  it('creates one high-priority call task for Darren, linked to the contact, due the same day', () => {
     const { h, fetch, ss } = setup();
     h.gas.enqueueHubSpotTask(ss, lead);
     h.gas.enqueueHubSpotTask(ss, lead); // same submission: no second row
@@ -69,10 +70,13 @@ describe('HubSpot call task for Darren', () => {
       hs_task_subject: 'Call Richard Montez (new Google Ads lead)',
       hs_task_type: 'CALL', hs_task_priority: 'HIGH', hs_task_status: 'NOT_STARTED', hubspot_owner_id: '99169757',
     });
-    expect(Math.abs(Date.parse(task.properties.hs_timestamp) - Date.now())).toBeLessThan(60_000);
+    expect(Math.abs(Date.parse(task.properties.hs_timestamp) - Date.parse(h.gas.hubspotTaskDueAt(Date.now())))).toBeLessThan(60_000);
+    expect(Date.parse(task.properties.hs_timestamp) - Date.now()).toBeGreaterThan(110 * 60_000);
     expect(task.associations).toEqual([{ to: { id: '123' }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 204 }] }]);
     expect(task.properties.hs_task_body).toContain('Search term: home equity loan rates');
     expect(task.properties.hs_task_body).toContain('Texting: no opt-in, call or email only.');
+    expect(task.properties.hs_task_body).toContain('<br>Phone: (760) 555-2100<br>Email: Rich@Example.com<br>');
+    expect(task.properties.hs_task_body).not.toContain('\n');
     const search = JSON.parse(String(fetch.mock.calls[0][1].payload));
     expect(search.filterGroups[0].filters[0]).toMatchObject({ propertyName: 'email', value: 'rich@example.com' });
     expect(h.rowOf('HubSpot Tasks')).toMatchObject({ Status: 'sent', 'Task ID': 'T1' });
@@ -120,6 +124,22 @@ describe('HubSpot call task for Darren', () => {
     h.queue({ ...lead, source: 'home-equity' });
     h.gas.processFollowUps();
     expect(h.rowOf('HubSpot Tasks')).toMatchObject({ 'Submission ID': 'inbox1-abc', Status: 'sent', 'Task ID': 'T9' });
+  });
+
+  it('is due at 5 PM Pacific that day, or two hours after the lead if later', () => {
+    const { h } = setup();
+    const due = (iso: string) => h.gas.hubspotTaskDueAt(Date.parse(iso));
+    expect(due('2026-11-17T18:00:00Z')).toBe('2026-11-18T01:00:00.000Z'); // 10 AM PST -> 5 PM PST
+    expect(due('2026-11-18T00:30:00Z')).toBe('2026-11-18T02:30:00.000Z'); // 4:30 PM PST -> 6:30 PM
+    expect(due('2026-07-15T16:00:00Z')).toBe('2026-07-16T00:00:00.000Z'); // 9 AM PDT -> 5 PM PDT
+    expect(due('2026-11-18T05:00:00Z')).toBe('2026-11-18T07:00:00.000Z'); // 9 PM PST -> 11 PM
+  });
+
+  it('keeps visitor text as text in the task notes', () => {
+    const { h } = setup();
+    const body = h.gas.hubspotTaskContent({ ...lead, utm_term: '<b>rates</b> & "more"' }).body;
+    expect(body).toContain('Search term: &lt;b&gt;rates&lt;/b&gt; &amp; &quot;more&quot;');
+    expect(body).not.toContain('<b>');
   });
 
   it('labels YouTube and test leads plainly', () => {

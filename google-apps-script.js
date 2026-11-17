@@ -2719,7 +2719,34 @@ function hubspotTaskContent(d) {
   lines.push(d.smsConsent === true || d.smsMarketingConsent === true || d.smsInformationalConsent === true
     ? 'Texting: opted in.' : 'Texting: no opt-in, call or email only.');
   lines.push('Full answers: Calculator Leads sheet (submission ' + (d.submissionId || '') + ').');
-  return { subject: test + 'Call ' + name + ' (new ' + source + ' lead)', body: lines.join('\n') };
+  // HubSpot renders the task body as HTML and drops plain newlines, so each
+  // item gets its own line with <br>. Visitor text is escaped, never markup.
+  const html = function (s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+  return { subject: test + 'Call ' + name + ' (new ' + source + ' lead)', body: lines.map(html).join('<br>') };
+}
+
+/**
+ * When the call task is due: 5 PM Pacific on the day the lead arrives, or two
+ * hours after it arrives if that is later. Due "now" showed as Overdue the
+ * moment Darren opened it (17 Nov 2026). Pure, so it is testable.
+ */
+function hubspotTaskDueAt(nowMs) {
+  const later = nowMs + 2 * 60 * 60 * 1000;
+  try {
+    const parts = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      .formatToParts(new Date(nowMs)).forEach(function (p) { parts[p.type] = Number(p.value); });
+    const wallMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    const offsetMs = Math.round((wallMs - nowMs) / 60000) * 60000;
+    const fivePm = Date.UTC(parts.year, parts.month - 1, parts.day, 17, 0, 0) - offsetMs;
+    if (!isFinite(fivePm)) return new Date(later).toISOString();
+    return new Date(Math.max(fivePm, later)).toISOString();
+  } catch {
+    return new Date(later).toISOString();
+  }
 }
 
 function hubspotApi(config, method, path, body) {
@@ -2777,7 +2804,7 @@ function processHubSpotTasks(ss) {
       hs_task_status: 'NOT_STARTED',
       hs_task_priority: 'HIGH',
       hs_task_type: 'CALL',
-      hs_timestamp: new Date().toISOString(), // due now: same day, in Darren's queue at once
+      hs_timestamp: hubspotTaskDueAt(Date.now()), // same day: 5 PM Pacific, or 2 h after the lead if later
       hubspot_owner_id: config.owner,
     } };
     if (contactId) task.associations = [{ to: { id: contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 204 }] }];

@@ -6,7 +6,7 @@ The one rule: **update the existing deployment in place.** Never `clasp deploy` 
 
 ## Same-day HubSpot call task (17 Nov 2026)
 
-Darren asked for a HubSpot task to call every new lead the day it arrives. Workflows need Sales Hub Pro, so after `pushToHubSpot` succeeds the follow-up worker queues a row on a new **HubSpot Tasks** tab and `processHubSpotTasks` creates the task through the CRM API: subject `Call <name> (new <Google Ads|YouTube|website> lead)`, type Call, priority High, owner Darren, due at creation time, associated with the contact once HubSpot has created it (it waits up to 30 minutes, then creates the task unlinked). A task POST with an unknown or rejected result goes to `needs-review` and is never repeated automatically.
+Darren asked for a HubSpot task to call every new lead the day it arrives. Workflows need Sales Hub Pro, so after `pushToHubSpot` succeeds the follow-up worker queues a row on a new **HubSpot Tasks** tab and `processHubSpotTasks` creates the task through the CRM API: subject `Call <name> (new <Google Ads|YouTube|website> lead)`, type Call, priority High, owner Darren, due 5 PM Pacific that day (or two hours after the lead if later), notes one item per line, associated with the contact once HubSpot has created it (it waits up to 30 minutes, then creates the task unlinked). A task POST with an unknown or rejected result goes to `needs-review` and is never repeated automatically.
 
 It is dark until both Script Properties are set:
 
