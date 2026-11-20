@@ -250,3 +250,21 @@ export function guideSender(spec: GuideSpec) {
     }
   };
 }
+
+// ── Email font (21 Nov 2026) ─────────────────────────────────────────────────
+//
+// Outfit first, as on the site, then the reader's own system font, then Arial.
+// Copied from how HubSpot's emails do it (system-ui, Helvetica, Arial):
+// - Apple Mail and iOS Mail load Outfit from the site through the @font-face.
+// - Gmail drops @font-face, so it skips Outfit and shows the device's own font
+//   (Segoe UI on Windows, San Francisco on Apple, Roboto on Android).
+// - Classic Outlook on Windows shows Times New Roman when the first font in a
+//   stack is a web font it cannot load, so the [if mso] block pins it to Arial.
+// Single quotes only: these strings go inside style="..." attributes.
+export const EMAIL_FONT =
+  "Outfit,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+export const EMAIL_FONT_HEAD = `<style>
+  @font-face{font-family:'Outfit';font-style:normal;font-weight:400 800;src:url(https://realdarrentsai.com/fonts/outfit-v15-latin.woff2) format('woff2');}
+</style>
+<!--[if mso]><style>body,table,td,div,p,a,span{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->`;

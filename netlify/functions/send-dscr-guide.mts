@@ -22,7 +22,7 @@
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { Config } from "@netlify/functions";
-import { escapeHtml, guideSender, toBase64 } from "../lib/guide-shared.mts";
+import { escapeHtml, guideSender, toBase64, EMAIL_FONT, EMAIL_FONT_HEAD } from "../lib/guide-shared.mts";
 
 const TEMPLATE_URL = "https://realdarrentsai.com/magnets/dscr-rate-cashflow-guide.pdf";
 const FONT_URLS = {
@@ -88,12 +88,13 @@ export function hasSnapshot(lead: { dscr?: string }) {
 function buildEmailHtml(lead: { firstName?: string; dscr?: string }) {
   const firstName = escapeHtml(lead.firstName || "there");
   const snapshot = hasSnapshot(lead);
-  const FONT = "Arial,Helvetica,sans-serif";
+  const FONT = EMAIL_FONT;
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+${EMAIL_FONT_HEAD}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">

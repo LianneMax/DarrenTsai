@@ -38,10 +38,12 @@ describe('the email being sent today is untouched', () => {
     // Re-captured 31 Oct 2026: "No credit pull, no obligation." became
     // "No obligation. Not a loan application." (credit-pull claim not approved
     // by Saxton). No other byte changed.
+    // Re-captured 21 Nov 2026: the font stack only (Outfit, then the device's
+    // system font, then Arial; plus the Outlook [if mso] pin). No copy changed.
     expect(sha(buildEmailHtml({ firstName: 'Sam', email: 's@example.com', message: 'Want to clear two <cards> & a loan' })))
-      .toBe('30bbe100e165437e1673a88d3d1af17ba8bd1b77a54dc5b8c7c8c96e095415fe');
+      .toBe('5ba6edd87fb0f7aeb1a1cba5b85035f356bd805b6105f2df76ff5eb630248bec');
     expect(sha(buildEmailHtml({ email: 's@example.com' })))
-      .toBe('ce0d0dfaa9f63974bcef7787ca822251a3fa05bf93749b6e46d98575f887cf3d');
+      .toBe('6803c8546b479772f16915a439d73a60b7e9cdefe7ba004456832c4320a13062');
   });
 
   it('is what a lead with no context, or one it has never heard of, gets', () => {
@@ -182,5 +184,23 @@ describe('the equity requests name the 15-Minute Equity Audit', () => {
   });
   it('never calls it a qualification call', () => {
     for (const context of CONTEXT_NAMES) expect(buildEmailHtml({ email: 's@example.com', context } as never)).not.toMatch(/qualification/i);
+  });
+});
+
+describe('email font stack (21 Nov 2026)', () => {
+  const files = ['send-contact-confirmation', 'send-dscr-guide', 'send-fha-guide', 'send-rei-guide'];
+  it.each(files)('%s uses the shared stack, not Arial first', (f) => {
+    const src = read(`netlify/functions/${f}.mts`);
+    expect(src).toContain('const FONT = EMAIL_FONT;');
+    expect(src).toContain('${EMAIL_FONT_HEAD}');
+    expect(src).not.toMatch(/"Arial,Helvetica,sans-serif"/);
+  });
+  it('the live email starts with Outfit and still falls back to Arial', () => {
+    const html = buildEmailHtml({ firstName: 'Sam', email: 's@example.com' });
+    expect(html).toContain("font-family:Outfit,system-ui,");
+    expect(html).toContain("Arial,sans-serif");
+    expect(html).toContain('outfit-v15-latin.woff2');
+    expect(html).toContain('<!--[if mso]>');
+    expect(html).not.toMatch(/style="[^"]*font-family:[^"]*"[^"]*Segoe/);
   });
 });

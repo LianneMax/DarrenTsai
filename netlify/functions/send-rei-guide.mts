@@ -19,7 +19,7 @@
 // it sends a real email on every call, so it isn't left open to the public.
 
 import type { Config } from "@netlify/functions";
-import { cachedBytes, escapeHtml, guideSender, toBase64 } from "../lib/guide-shared.mts";
+import { cachedBytes, escapeHtml, guideSender, toBase64, EMAIL_FONT, EMAIL_FONT_HEAD } from "../lib/guide-shared.mts";
 
 const PDF_URL = "https://realdarrentsai.com/magnets/real-estate-investing-case-study.pdf";
 
@@ -28,12 +28,13 @@ const getPdfBytes = cachedBytes(PDF_URL, "pdf");
 
 function buildEmailHtml(lead: { firstName?: string }) {
   const firstName = escapeHtml(lead.firstName || "there");
-  const FONT = "Arial,Helvetica,sans-serif";
+  const FONT = EMAIL_FONT;
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+${EMAIL_FONT_HEAD}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">

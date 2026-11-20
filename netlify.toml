@@ -65,6 +65,9 @@
   for = "/fonts/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+    # Emails load Outfit from here (21 Nov 2026). A font from another origin
+    # needs this header, or Apple Mail falls back to the system font.
+    Access-Control-Allow-Origin = "*"
 
 # The landing pages are edited by hand and are ad destinations, so they must not
 # go stale, but they should still revalidate cheaply rather than refetch.

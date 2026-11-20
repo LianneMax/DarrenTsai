@@ -31,7 +31,7 @@
 // real email on every call, so it is not left open.
 
 import type { Config } from "@netlify/functions";
-import { escapeHtml, guideSender } from "../lib/guide-shared.mts";
+import { escapeHtml, guideSender, EMAIL_FONT, EMAIL_FONT_HEAD } from "../lib/guide-shared.mts";
 
 const BOOK_BASE =
   "https://realdarrentsai.com/book/?utm_source=email&utm_medium=confirmation&utm_campaign=";
@@ -188,7 +188,7 @@ export const CONTEXT_NAMES = Object.keys(CONTEXTS);
 function goalLine(lead: Lead) {
   const message = (lead.message || "").trim();
   if (!message) return "";
-  const FONT = "Arial,Helvetica,sans-serif";
+  const FONT = EMAIL_FONT;
   return `
   <tr>
     <td class="pad" style="padding:24px 40px 0 40px;">
@@ -206,7 +206,7 @@ function goalLine(lead: Lead) {
 
 export function buildEmailHtml(lead: Lead) {
   const firstName = escapeHtml(lead.firstName || "there");
-  const FONT = "Arial,Helvetica,sans-serif";
+  const FONT = EMAIL_FONT;
   const copy = copyFor(lead);
   const booking = BOOK_BASE + copy.campaign;
   const paragraph = (text: string) => `
@@ -220,6 +220,7 @@ export function buildEmailHtml(lead: Lead) {
 <html lang="en">
 <head>
 <meta charset="utf-8">
+${EMAIL_FONT_HEAD}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
