@@ -181,3 +181,13 @@ Same command as step 7 with the previous version: `clasp deploy -i <DEPLOYMENT_I
 ## What to send back
 
 The output of step 4's `--stat`, step 6 (the version number), and step 8, plus whether the test lead's First Name showed as text. With those I can confirm @45 is exactly the reviewed file and update the checklist.
+
+## Call reminder and Confirm my call (21 Nov 2026, site side only)
+
+The site now has the two endpoints the booking follow-up needs; the Apps Script side is not built yet because it needs the booking details on Darren's calendar (waiting on his Workspace calendar sharing).
+
+- `POST /api/send-call-reminder` with `x-api-key` = the existing `NETLIFY_CONTACT_CONFIRM_KEY`, body `{ email, firstName, bookingId, callStart (ISO), leadTimeZone? }`. Sends the 24-hour reminder with the Confirm my call button. Same status contract as the guide senders.
+- `GET /api/confirm-call?status=1&b=<bookingId>` with the same key returns `{ confirmed, confirmedAt }`. The unconfirmed check (3 hours before the call, or 5 PM Pacific the evening before when that lands before 8 AM) gives Darren a HubSpot task only when `confirmed` is false.
+- `GET /api/send-call-reminder?preview=1` shows a sample reminder for a `test-` booking and sends nothing. Its button is real, so the confirm page can be checked on the live site.
+
+No new Netlify variable: the confirm link is signed with a key derived from `CONTACT_CONFIRM_API_KEY`.

@@ -40,10 +40,14 @@ describe('the email being sent today is untouched', () => {
     // by Saxton). No other byte changed.
     // Re-captured 21 Nov 2026: the font stack only (Outfit, then the device's
     // system font, then Arial; plus the Outlook [if mso] pin). No copy changed.
+    // Re-captured 21 Nov 2026 (later): the redesign Max approved that day. The
+    // shared layout (netlify/lib/email-layout.mts) and Darren's voice for all
+    // five contexts. The hash still pins the contact email between deliberate
+    // changes.
     expect(sha(buildEmailHtml({ firstName: 'Sam', email: 's@example.com', message: 'Want to clear two <cards> & a loan' })))
-      .toBe('5ba6edd87fb0f7aeb1a1cba5b85035f356bd805b6105f2df76ff5eb630248bec');
+      .toBe('8b9d8b7e37802201bfb6ef1d6ef6140e8e1aed8b3e84198106a3a18f3f774335');
     expect(sha(buildEmailHtml({ email: 's@example.com' })))
-      .toBe('6803c8546b479772f16915a439d73a60b7e9cdefe7ba004456832c4320a13062');
+      .toBe('b09b939f50b6580fb7317a24489d278d9750431bc4c2a32c150c8086ad878569');
   });
 
   it('is what a lead with no context, or one it has never heard of, gets', () => {
@@ -51,7 +55,7 @@ describe('the email being sent today is untouched', () => {
     for (const context of ['', 'contact', 'nonsense', '__proto__', 'constructor']) {
       expect(buildEmailHtml({ firstName: 'Sam', message: 'hello', context }), context).toBe(live);
     }
-    expect(copyFor({}).subject).toBe('Got your details, here is my calendar');
+    expect(copyFor({}).subject).toBe("Got your info, here's my calendar");
   });
 
   it('is still what every contact lead is sent: the Apps Script names no context for them', () => {
@@ -76,24 +80,25 @@ describe.each(DRAFTS)('the %s draft', (context) => {
   const html = buildEmailHtml(lead);
   const live = buildEmailHtml({ firstName: 'Alex' });
   /** Everything from the divider above the footer to the end. */
-  const footer = (s: string) => s.slice(s.indexOf('<tr><td style="border-top:1px solid #e6ebf0;'));
+  const footer = (s: string) => s.slice(s.indexOf('<!-- footer -->'));
   /** Everything before the headline: the head, the styles and the teal header. */
   const top = (s: string) => s.slice(s.indexOf('<body'), s.indexOf('<div class="h1"'));
 
-  it('keeps the live design: same header, signature, licence footer and unsubscribe', () => {
+  it('shares the contact email design: same header, signature, licence footer and unsubscribe', () => {
     expect(footer(html)).toBe(footer(live));
     expect(footer(html)).toContain('Saxton Mortgage, LLC | NMLS #1717191');
     expect(footer(html)).toContain('Unsubscribe');
     // The header block differs only by the hidden inbox preview line.
     const strip = (s: string) => s.replace(/<span style="display:none[^>]*>[^<]*<\/span>/, '');
     expect(strip(top(html))).toBe(strip(top(live)));
+    expect(html).toContain('All the best,<br>');
     expect(html).toContain('<span style="font-weight:600;color:#223d55;">Darren</span>');
     expect(html).toContain('Hi Alex,');
   });
 
-  it('says the request was received, and that Darren will be in touch, with no deadline', () => {
-    expect(html).toContain('>Your request has been received</div>');
-    expect(html).toContain('I will be in touch.');
+  it('says Darren will reach out, with no deadline', () => {
+    expect(html).toContain('Got your ');
+    expect(html).toContain("If you'd rather not wait for me to reach out");
     for (const promise of [/within \d/i, /business day/i, /\bshortly\b/i, /\btoday\b/i, /\bsoon as\b/i]) {
       expect(html, String(promise)).not.toMatch(promise);
     }
@@ -106,7 +111,7 @@ describe.each(DRAFTS)('the %s draft', (context) => {
   });
 
   it('repeats no figure from a calculator and promises no attachment', () => {
-    const body = html.slice(html.indexOf('<div class="h1"'), html.indexOf('<tr><td style="border-top:1px solid #e6ebf0;'));
+    const body = html.slice(html.indexOf('<div class="h1"'), html.indexOf('<!-- footer -->'));
     const said = body.replace(/<[^>]+>/g, ' ').replace(/Keep the payment under 2,800\./, '').replace(/\(714\) 887-5432/, '');
     expect(said).not.toMatch(/\$\s?\d/);
     expect(said).not.toMatch(/\d+(\.\d+)?\s?%/);
@@ -124,33 +129,33 @@ describe.each(DRAFTS)('the %s draft', (context) => {
 
   it('carries no em-dash and has a subject of its own', () => {
     expect(html).not.toContain('—');
-    expect(copyFor(lead).subject).not.toBe('Got your details, here is my calendar');
+    expect(copyFor(lead).subject).not.toBe(copyFor({}).subject);
     expect(html).toContain(`<title>${copyFor(lead).subject}</title>`);
   });
 });
 
 describe('what a visitor chose is named from a fixed list, never echoed', () => {
   it('names a home equity goal the form offers', () => {
-    expect(buildEmailHtml({ context: 'home-equity', goal: 'Pay Off Debt' })).toContain('You told me this is for paying off debt.');
+    expect(buildEmailHtml({ context: 'home-equity', goal: 'Pay Off Debt' })).toContain("You mentioned it's for paying off debt.");
     expect(buildEmailHtml({ context: 'home-equity', goal: 'Major Expense' })).toContain('for a major expense.');
   });
 
   it('names an ADU purpose the form offers', () => {
-    expect(buildEmailHtml({ context: 'adu', projectPurpose: 'ADU for family' })).toContain('You told me it is an ADU for family.');
+    expect(buildEmailHtml({ context: 'adu', projectPurpose: 'ADU for family' })).toContain("You mentioned it's an ADU for family.");
   });
 
   it('says nothing for "Something Else", "Other", or no answer', () => {
     for (const goal of ['Something Else', '', undefined]) {
-      expect(buildEmailHtml({ context: 'home-equity', goal })).not.toContain('You told me');
+      expect(buildEmailHtml({ context: 'home-equity', goal })).not.toContain('You mentioned');
     }
-    expect(buildEmailHtml({ context: 'adu', projectPurpose: 'Other' })).not.toContain('You told me');
+    expect(buildEmailHtml({ context: 'adu', projectPurpose: 'Other' })).not.toContain('You mentioned');
   });
 
   it('drops a posted value it does not recognise instead of printing it', () => {
     const html = buildEmailHtml({ context: 'home-equity', goal: '<script>alert(1)</script>', projectPurpose: '<img src=x>' });
     expect(html).not.toContain('<script>');
     expect(html).not.toContain('alert(1)');
-    expect(buildEmailHtml({ context: 'adu', projectPurpose: 'constructor' })).not.toContain('You told me');
+    expect(buildEmailHtml({ context: 'adu', projectPurpose: 'constructor' })).not.toContain('You mentioned');
   });
 
   it('still escapes the free text in the "What you told me" box', () => {
@@ -180,7 +185,7 @@ describe('the equity requests name the 15-Minute Equity Audit', () => {
   });
   it.each(['contact', 'mortgage-review'])('%s keeps the plain wording', context => {
     expect(copyFor({ context } as never).closing).not.toContain('Equity Audit');
-    expect(copyFor({ context } as never).closing).toContain('any 15 minutes that suits you');
+    expect(copyFor({ context } as never).closing).toContain('grab 15 minutes on my calendar');
   });
   it('never calls it a qualification call', () => {
     for (const context of CONTEXT_NAMES) expect(buildEmailHtml({ email: 's@example.com', context } as never)).not.toMatch(/qualification/i);
@@ -189,11 +194,15 @@ describe('the equity requests name the 15-Minute Equity Audit', () => {
 
 describe('email font stack (21 Nov 2026)', () => {
   const files = ['send-contact-confirmation', 'send-dscr-guide', 'send-fha-guide', 'send-rei-guide'];
-  it.each(files)('%s uses the shared stack, not Arial first', (f) => {
+  it.each(files)('%s renders through the shared layout, not its own font', (f) => {
     const src = read(`netlify/functions/${f}.mts`);
+    expect(src).toContain('renderEmail(');
+    expect(src).not.toMatch(/"Arial,Helvetica,sans-serif"/);
+  });
+  it('the shared layout uses the shared stack and head', () => {
+    const src = read('netlify/lib/email-layout.mts');
     expect(src).toContain('const FONT = EMAIL_FONT;');
     expect(src).toContain('${EMAIL_FONT_HEAD}');
-    expect(src).not.toMatch(/"Arial,Helvetica,sans-serif"/);
   });
   it('the live email starts with Outfit and still falls back to Arial', () => {
     const html = buildEmailHtml({ firstName: 'Sam', email: 's@example.com' });

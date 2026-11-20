@@ -140,8 +140,18 @@ describe('L8: one company NMLS everywhere', () => {
     (n) => `netlify/functions/send-${n}.mts`,
   );
 
-  it.each(SENDERS)('%s names Saxton Mortgage, LLC NMLS #1717191 only', (file) => {
+  // 21 Nov 2026: the footer lives once, in the shared email layout, and every
+  // sender (the call reminder too) renders through it.
+  it.each([...SENDERS, 'netlify/functions/send-call-reminder.mts'])('%s names Saxton Mortgage, LLC NMLS #1717191 only', (file) => {
     const src = read(file);
+    expect(src).toContain('renderEmail(');
+    expect(src).toContain('compliance: COMPLIANCE.');
+    expect(src).not.toContain('2525913');
+    expect(src).not.toContain('Dream Home');
+  });
+
+  it('the shared email layout carries the one company NMLS and the consumer access link', () => {
+    const src = read('netlify/lib/email-layout.mts');
     expect(src).toContain('Saxton Mortgage, LLC | NMLS #1717191');
     expect(src).toContain('https://www.nmlsconsumeraccess.org/');
     expect(src).not.toContain('2525913');

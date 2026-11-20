@@ -28,22 +28,22 @@ const { buildEmailHtml, copyFor } = await import(
  */
 const PREVIEWS = [
   {
-    file: 'debt-consolidation.html', name: 'Debt Consolidation', status: 'draft',
+    file: 'debt-consolidation.html', name: 'Debt Consolidation', status: 'live',
     sentTo: 'A lead from the debt calculator, on / or /debt-consolidation/.',
     lead: { context: 'debt', firstName: 'Alex' },
   },
   {
-    file: 'home-equity.html', name: 'Home Equity', status: 'draft',
-    sentTo: 'A lead from /home-equity/ (page not built yet). Sample goal: Renovation / ADU.',
+    file: 'home-equity.html', name: 'Home Equity', status: 'live',
+    sentTo: 'A lead from /home-equity/ Sample goal: Renovation / ADU.',
     lead: { context: 'home-equity', firstName: 'Alex', goal: 'Renovation / ADU' },
   },
   {
-    file: 'adu.html', name: 'Renovation / ADU', status: 'draft',
-    sentTo: 'A lead from /adu/ (page not built yet). Sample purpose: Rental ADU.',
+    file: 'adu.html', name: 'Renovation / ADU', status: 'live',
+    sentTo: 'A lead from /adu/ Sample purpose: Rental ADU.',
     lead: { context: 'adu', firstName: 'Alex', projectPurpose: 'Rental ADU' },
   },
   {
-    file: 'mortgage-calculator-review.html', name: 'Mortgage Calculator review', status: 'draft',
+    file: 'mortgage-calculator-review.html', name: 'Mortgage Calculator review', status: 'live',
     sentTo: 'A lead who asks for a review from /mortgage-calculator/. Sample message included.',
     lead: {
       context: 'mortgage-review', firstName: 'Alex',
@@ -52,7 +52,7 @@ const PREVIEWS = [
   },
   {
     file: 'contact-live.html', name: 'Contact modal', status: 'live',
-    sentTo: 'Sent today to every contact modal lead. Unchanged, shown for comparison.',
+    sentTo: 'Sent to every contact modal lead.',
     lead: { firstName: 'Alex', message: 'Want to clear two credit cards before the end of the year.' },
   },
 ];
@@ -66,7 +66,7 @@ for (const p of PREVIEWS) {
   const copy = copyFor(p.lead);
   rows.push(`
     <tr>
-      <td><a href="${p.file}">${esc(p.name)}</a><br><span class="tag ${p.status}">${p.status === 'live' ? 'LIVE, unchanged' : 'DRAFT, not sent'}</span></td>
+      <td><a href="${p.file}">${esc(p.name)}</a><br><span class="tag ${p.status}">${p.status === 'live' ? 'LIVE' : 'DRAFT, not sent'}</span></td>
       <td><strong>${esc(copy.subject)}</strong><br><span class="muted">${esc(copy.preheader)}</span></td>
       <td class="muted">${esc(p.sentTo)}</td>
     </tr>`);
