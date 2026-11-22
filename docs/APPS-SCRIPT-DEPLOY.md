@@ -24,7 +24,7 @@ The site can't see a booking (Google's calendar is an iframe), and Google sends 
 - adds a note on the contact with the call time;
 - moves lifecycle stage Lead -> **Marketing Qualified Lead** (never backward; TEST contacts skipped). In this account MQL means "booked a call": HubSpot's existing Google Ads conversion event (lifecycle becomes MQL) sends it to Ads, credited to the stored click ID.
 
-Lead Status is not touched. Dark until:
+Cancellations (Google's "Appointment canceled:" or "Canceled event:" notice) get a note on the contact; lifecycle is not changed, so the earlier booking still counts. The note says whether the stage moved to MQL or was kept. Lead Status is not touched. Dark until:
 
 1. The Service Key in `HUBSPOT_PRIVATE_APP_TOKEN` also has the scope **`sales-email-read`** (HubSpot > Development > Keys > Service Keys > edit scopes). Without it the search returns 403 and the Debug tab says so.
 2. Script Property `HUBSPOT_BOOKINGS_ENABLED` = `true`. Optional: `HUBSPOT_BOOKINGS_SINCE` (epoch ms) to set where the first run starts; default is 30 days back.

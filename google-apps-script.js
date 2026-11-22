@@ -2858,7 +2858,12 @@ const HUBSPOT_BOOKINGS_EVERY_MS = 10 * 60 * 1000;
 const HUBSPOT_BOOKINGS_LOOKBACK_DAYS = 30;
 const HUBSPOT_BOOKINGS_PER_RUN = 10;
 const HUBSPOT_BOOKING_SUBJECT = /^Appointment booked:/i;
+// Google's organizer notice when a booking is cancelled (Max, 23 Nov 2026:
+// flag cancellations with a note; MQL stays, because a stage never moves back).
+const HUBSPOT_CANCEL_SUBJECT = /^(Appointment\s+cancell?ed|Cancell?ed\s+event)\s*:/i;
 const HUBSPOT_EARLY_STAGES = ['', 'subscriber', 'lead'];
+const HUBSPOT_STAGE_LABELS = { subscriber: 'Subscriber', lead: 'Lead', marketingqualifiedlead: 'Marketing Qualified Lead',
+  salesqualifiedlead: 'Sales Qualified Lead', opportunity: 'Opportunity', customer: 'Customer', evangelist: 'Evangelist', other: 'Other' };
 
 function hubspotBookingsConfig() {
   const props = PropertiesService.getScriptProperties();
@@ -2875,13 +2880,26 @@ function hubspotBookingWhen(subject) {
   return m ? m[1].replace(/\s+/g, ' ').trim() : '';
 }
 
-/** Note body for a booking. Pure, escaped. */
-function hubspotBookingNote(subject) {
+/**
+ * Note body. Pure, escaped. `kind` is 'booked' or 'canceled'; `stage` is
+ * 'mql' when the tracker moved the contact to MQL, otherwise the stage it kept.
+ * The wording says only what actually happened (23 Nov 2026: a kept
+ * Opportunity was told "set to MQL").
+ */
+function hubspotBookingNote(subject, kind, stage) {
   const when = hubspotBookingWhen(subject);
   const esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-  return 'Booked a 15-minute call' + (when ? ': ' + esc(when) : '') + '.<br>' +
-    'From Google\'s "Appointment booked" email logged in HubSpot. Lifecycle set to Marketing Qualified Lead (= booked a call), ' +
-    'which HubSpot sends to Google Ads as a booked-call conversion. Added automatically by the booking tracker.';
+  const at = when ? ': ' + esc(when) : '';
+  if (kind === 'canceled') {
+    return 'Booking cancelled' + at + '.<br>' +
+      'From Google\'s cancellation email logged in HubSpot. Lifecycle stage is not changed (a stage never moves back), ' +
+      'so the earlier booking still counts in Google Ads. Added automatically by the booking tracker.';
+  }
+  const lifecycle = stage === 'mql'
+    ? 'Lifecycle moved to Marketing Qualified Lead (= booked a call), which HubSpot sends to Google Ads as a booked-call conversion.'
+    : 'Lifecycle kept at ' + esc(HUBSPOT_STAGE_LABELS[stage] || stage || 'its current stage') + ' (already past Lead, so no change).';
+  return 'Booked a 15-minute call' + at + '.<br>' +
+    'From Google\'s "Appointment booked" email logged in HubSpot. ' + lifecycle + ' Added automatically by the booking tracker.';
 }
 
 function hubspotBookingContactId(config, emailId) {
@@ -2905,11 +2923,14 @@ function processHubSpotBookings(ss) {
   if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) { seen[String(r[0])] = true; });
 
   const since = Number(props.getProperty('HUBSPOT_BOOKINGS_SINCE') || 0) || Date.now() - HUBSPOT_BOOKINGS_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  // Filter groups are ORed: booking notices, plus Google's cancellation notices.
   const search = hubspotApi(config, 'post', '/crm/v3/objects/emails/search', {
-    filterGroups: [{ filters: [
-      { propertyName: 'hs_email_subject', operator: 'CONTAINS_TOKEN', value: 'Appointment' },
-      { propertyName: 'hs_timestamp', operator: 'GTE', value: String(since) },
-    ] }],
+    filterGroups: ['Appointment', 'Canceled', 'Cancelled'].map(function (token) {
+      return { filters: [
+        { propertyName: 'hs_email_subject', operator: 'CONTAINS_TOKEN', value: token },
+        { propertyName: 'hs_timestamp', operator: 'GTE', value: String(since) },
+      ] };
+    }),
     sorts: [{ propertyName: 'hs_timestamp', direction: 'ASCENDING' }],
     properties: ['hs_email_subject', 'hs_timestamp'], limit: 50,
   });
@@ -2925,7 +2946,8 @@ function processHubSpotBookings(ss) {
     const email = results[i];
     const subject = String((email.properties || {}).hs_email_subject || '');
     const at = Date.parse(String((email.properties || {}).hs_timestamp || ''));
-    if (!HUBSPOT_BOOKING_SUBJECT.test(subject) || seen[String(email.id)]) { if (!isNaN(at)) cursor = Math.max(cursor, at); continue; }
+    const kind = HUBSPOT_BOOKING_SUBJECT.test(subject) ? 'booked' : HUBSPOT_CANCEL_SUBJECT.test(subject) ? 'canceled' : '';
+    if (!kind || seen[String(email.id)]) { if (!isNaN(at)) cursor = Math.max(cursor, at); continue; }
     handled++;
     let contactId = '';
     try { contactId = hubspotBookingContactId(config, email.id); }
@@ -2956,15 +2978,19 @@ function processHubSpotBookings(ss) {
     const details = [];
     try {
       const stage = String(p.lifecyclestage || '').toLowerCase();
-      if (HUBSPOT_EARLY_STAGES.indexOf(stage) !== -1) {
+      let noteStage = stage;
+      if (kind === 'canceled') {
+        details.push('cancellation, lifecycle unchanged (' + (stage || 'blank') + ')');
+      } else if (HUBSPOT_EARLY_STAGES.indexOf(stage) !== -1) {
         const upd = hubspotApi(config, 'patch', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId),
           { properties: { lifecyclestage: 'marketingqualifiedlead' } });
+        if (upd.code === 200) noteStage = 'mql';
         details.push(upd.code === 200 ? 'lifecycle ' + (stage || 'blank') + ' -> MQL' : 'lifecycle update HTTP ' + upd.code);
       } else {
         details.push('lifecycle kept (' + stage + ')');
       }
       const note = hubspotApi(config, 'post', '/crm/v3/objects/notes', {
-        properties: { hs_note_body: hubspotBookingNote(subject), hs_timestamp: new Date().toISOString(), hubspot_owner_id: config.owner },
+        properties: { hs_note_body: hubspotBookingNote(subject, kind, noteStage), hs_timestamp: new Date().toISOString(), hubspot_owner_id: config.owner },
         associations: [{ to: { id: contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],
       });
       details.push(note.code === 201 ? 'note added' : 'note HTTP ' + note.code);

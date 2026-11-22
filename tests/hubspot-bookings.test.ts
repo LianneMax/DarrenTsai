@@ -11,7 +11,7 @@ type Runtime = {
   SpreadsheetApp: { openById: (id: string) => unknown };
   processHubSpotBookings: (ss: unknown) => void;
   hubspotBookingWhen: (s: string) => string;
-  hubspotBookingNote: (s: string) => string;
+  hubspotBookingNote: (s: string, kind?: string, stage?: string) => string;
 };
 
 const SUBJECT = 'Appointment booked: 15-min Qualification Call with Darren (Kariyana Isom) @ Fri Nov 20, 2026 11:40am - 11:55am (PST) (Darren Tsai)';
@@ -61,6 +61,9 @@ describe('HubSpot booked-call tracker', () => {
     expect(note.associations[0].types[0].associationTypeId).toBe(202);
     expect(h.rowOf('HubSpot Bookings')).toMatchObject({ 'Email ID': 'E1', 'Contact ID': '602603450073', Status: 'done' });
     expect(String(h.rowOf('HubSpot Bookings').Detail)).toContain('lifecycle lead -> MQL');
+    expect(note.properties.hs_note_body).toContain('Lifecycle moved to Marketing Qualified Lead');
+    const search = JSON.parse(String(calls(fetch, 'post', /emails\/search$/)[0][1].payload));
+    expect(search.filterGroups.map((g: { filters: Array<{ value: string }> }) => g.filters[0].value)).toEqual(['Appointment', 'Canceled', 'Cancelled']);
   });
 
   it('never moves lifecycle backward, but still notes the booking', () => {
@@ -69,6 +72,24 @@ describe('HubSpot booked-call tracker', () => {
     expect(calls(fetch, 'patch', /contacts\//)).toHaveLength(0);
     expect(calls(fetch, 'post', /\/objects\/notes$/)).toHaveLength(1);
     expect(String(h.rowOf('HubSpot Bookings').Detail)).toContain('lifecycle kept (customer)');
+    const body = JSON.parse(String(calls(fetch, 'post', /\/objects\/notes$/)[0][1].payload)).properties.hs_note_body;
+    expect(body).toContain('Lifecycle kept at Customer');
+    expect(body).not.toContain('moved to Marketing Qualified Lead');
+  });
+
+  it.each([
+    'Appointment canceled: 15-min Qualification Call with Darren (Kariyana Isom) @ Fri Nov 20, 2026 11:40am - 11:55am (PST) (Darren Tsai)',
+    'Canceled event: 15-min Qualification Call with Darren (Kariyana Isom) @ Fri Nov 20, 2026 11:40am - 11:55am (PST) (darren@realdarrentsai.com)',
+  ])('flags a cancellation with a note and leaves lifecycle alone: %s', (subject) => {
+    const { h, fetch, ss } = setup({ ...config }, hubspot({ stage: 'marketingqualifiedlead', emails: [{ id: 'C1', subject }] }));
+    h.gas.processHubSpotBookings(ss);
+    expect(calls(fetch, 'patch', /contacts\//)).toHaveLength(0);
+    const notes = calls(fetch, 'post', /\/objects\/notes$/);
+    expect(notes).toHaveLength(1);
+    const body = JSON.parse(String(notes[0][1].payload)).properties.hs_note_body;
+    expect(body).toContain('Booking cancelled: Fri Nov 20, 2026 11:40am - 11:55am (PST)');
+    expect(h.rowOf('HubSpot Bookings')).toMatchObject({ 'Email ID': 'C1', Status: 'done' });
+    expect(String(h.rowOf('HubSpot Bookings').Detail)).toContain('cancellation, lifecycle unchanged');
   });
 
   it('skips TEST bookings and ignores other "Appointment" emails', () => {
