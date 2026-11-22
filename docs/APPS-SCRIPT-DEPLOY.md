@@ -17,6 +17,22 @@ It is dark until both Script Properties are set:
 
 Rollback: set `HUBSPOT_TASKS_ENABLED` to anything but `true`. Rows already queued stay for review.
 
+## Booked calls from HubSpot (21 Nov 2026)
+
+The site can't see a booking (Google's calendar is an iframe), and Google sends the "Appointment booked" email as darren@, so Gmail forwarding skips it. HubSpot logs that email on the lead's contact. `processHubSpotBookings` (follow-up worker, at most every 10 minutes) searches those logged emails and, once per email ID (tab **HubSpot Bookings**):
+
+- adds a note on the contact with the call time;
+- moves lifecycle stage Lead -> **Marketing Qualified Lead** (never backward; TEST contacts skipped). In this account MQL means "booked a call": HubSpot's existing Google Ads conversion event (lifecycle becomes MQL) sends it to Ads, credited to the stored click ID.
+
+Lead Status is not touched. Dark until:
+
+1. The Service Key in `HUBSPOT_PRIVATE_APP_TOKEN` also has the scope **`sales-email-read`** (HubSpot > Development > Keys > Service Keys > edit scopes). Without it the search returns 403 and the Debug tab says so.
+2. Script Property `HUBSPOT_BOOKINGS_ENABLED` = `true`. Optional: `HUBSPOT_BOOKINGS_SINCE` (epoch ms) to set where the first run starts; default is 30 days back.
+3. Deploy in place as below. No new trigger: the existing every-minute `processFollowUps` calls it.
+4. Verify: within 10 minutes the HubSpot Bookings tab lists recent bookings with Status `done` and Detail `lifecycle lead -> MQL; note added` (or `lifecycle kept (...)`). In HubSpot > Ads > Conversion Events, "Sent (Last 7d)" rises; in Google Ads the HubSpot import leaves Misconfigured once a conversion arrives.
+
+Rollback: set `HUBSPOT_BOOKINGS_ENABLED` to anything but `true`.
+
 ## Server authentication and email opt-out rollout
 
 ### Durable website inbox rollout

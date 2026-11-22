@@ -2636,6 +2636,8 @@ function processFollowUps() {
       catch (err) { logDebug(ss, 'CallRail sync needs review: ' + err.toString(), ''); }
       try { processHubSpotTasks(ss); }
       catch (err) { logDebug(ss, 'HubSpot task needs review: ' + err.toString(), ''); }
+      try { processHubSpotBookings(ss); }
+      catch (err) { logDebug(ss, 'HubSpot booking tracker needs review: ' + err.toString(), ''); }
     }
   } finally {
     try { releaseFollowUpWorker(worker); }
@@ -2826,6 +2828,155 @@ function processHubSpotTasks(ss) {
       sheet.getRange(row, 4, 1, 3).setValues([['needs-review', '', 'Task result unknown; check HubSpot before retrying: ' + err.toString()]]);
     }
   }
+}
+
+// ── Booked calls from HubSpot (21 Nov 2026) ──────────────────────────────────
+//
+// The site cannot see a booking: the calendar is Google's appointment page in
+// an iframe and reports nothing back. Google's "Appointment booked" email is
+// sent as darren@ (so Gmail forwarding skips it), but HubSpot logs it on the
+// lead's contact through Darren's connected inbox. This reads those logged
+// emails and marks each booking:
+//   - a note on the contact with the call time, and
+//   - lifecycle stage Lead -> Marketing Qualified Lead. HubSpot's existing
+//     Google Ads conversion event (lifecycle becomes MQL, Google Ads Data
+//     Manager) then sends the booking to Ads, credited to the stored click ID.
+//     MQL means "booked a call" in this account (Max, 21 Nov 2026).
+// Lifecycle only moves forward: a contact already past Lead (opportunity,
+// customer, other) keeps its stage and still gets the note. TEST contacts are
+// skipped. Lead Status is Darren's and is not touched.
+//
+// Dark until HUBSPOT_BOOKINGS_ENABLED = true. Uses HUBSPOT_PRIVATE_APP_TOKEN
+// (the Service Key), which also needs the scope sales-email-read to search
+// logged emails. Runs at most every HUBSPOT_BOOKINGS_EVERY_MS from the
+// follow-up worker. One row per HubSpot email ID on the "HubSpot Bookings" tab,
+// so a booking is handled once; a write whose result is unknown is left for
+// review, never repeated. First run looks back HUBSPOT_BOOKINGS_LOOKBACK_DAYS.
+const HUBSPOT_BOOKINGS_TAB = 'HubSpot Bookings';
+const HUBSPOT_BOOKINGS_HEADERS = ['Email ID', 'Booked At', 'Subject', 'Contact ID', 'Status', 'Detail'];
+const HUBSPOT_BOOKINGS_EVERY_MS = 10 * 60 * 1000;
+const HUBSPOT_BOOKINGS_LOOKBACK_DAYS = 30;
+const HUBSPOT_BOOKINGS_PER_RUN = 10;
+const HUBSPOT_BOOKING_SUBJECT = /^Appointment booked:/i;
+const HUBSPOT_EARLY_STAGES = ['', 'subscriber', 'lead'];
+
+function hubspotBookingsConfig() {
+  const props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('HUBSPOT_BOOKINGS_ENABLED') || '').trim() !== 'true') return null;
+  const token = String(props.getProperty('HUBSPOT_PRIVATE_APP_TOKEN') || '').trim();
+  if (!token) return null;
+  const owner = String(props.getProperty('HUBSPOT_TASK_OWNER_ID') || '').trim() || HUBSPOT_TASK_OWNER_DEFAULT;
+  return { token: token, owner: owner };
+}
+
+/** "Fri Nov 20, 2026 11:40am - 11:55am (PST)" from Google's subject, '' if absent. Pure. */
+function hubspotBookingWhen(subject) {
+  const m = String(subject || '').match(/@\s*(.+?\(\s*[A-Z]{2,4}\s*\))/);
+  return m ? m[1].replace(/\s+/g, ' ').trim() : '';
+}
+
+/** Note body for a booking. Pure, escaped. */
+function hubspotBookingNote(subject) {
+  const when = hubspotBookingWhen(subject);
+  const esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  return 'Booked a 15-minute call' + (when ? ': ' + esc(when) : '') + '.<br>' +
+    'From Google\'s "Appointment booked" email logged in HubSpot. Lifecycle set to Marketing Qualified Lead (= booked a call), ' +
+    'which HubSpot sends to Google Ads as a booked-call conversion. Added automatically by the booking tracker.';
+}
+
+function hubspotBookingContactId(config, emailId) {
+  const res = hubspotApi(config, 'get', '/crm/v4/objects/emails/' + encodeURIComponent(emailId) + '/associations/contacts');
+  if (res.code !== 200) throw new Error('email associations HTTP ' + res.code);
+  const hit = (res.json.results || [])[0];
+  return hit && hit.toObjectId ? String(hit.toObjectId) : '';
+}
+
+function processHubSpotBookings(ss) {
+  const config = hubspotBookingsConfig();
+  if (!config) return;
+  const props = PropertiesService.getScriptProperties();
+  const last = Number(props.getProperty('HUBSPOT_BOOKINGS_LAST_RUN') || 0);
+  if (last && Date.now() - last < HUBSPOT_BOOKINGS_EVERY_MS) return;
+  props.setProperty('HUBSPOT_BOOKINGS_LAST_RUN', String(Date.now()));
+
+  let sheet = ss.getSheetByName(HUBSPOT_BOOKINGS_TAB);
+  if (!sheet) { sheet = ss.insertSheet(HUBSPOT_BOOKINGS_TAB); appendSafeRow(sheet, HUBSPOT_BOOKINGS_HEADERS); }
+  const seen = {};
+  if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) { seen[String(r[0])] = true; });
+
+  const since = Number(props.getProperty('HUBSPOT_BOOKINGS_SINCE') || 0) || Date.now() - HUBSPOT_BOOKINGS_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  const search = hubspotApi(config, 'post', '/crm/v3/objects/emails/search', {
+    filterGroups: [{ filters: [
+      { propertyName: 'hs_email_subject', operator: 'CONTAINS_TOKEN', value: 'Appointment' },
+      { propertyName: 'hs_timestamp', operator: 'GTE', value: String(since) },
+    ] }],
+    sorts: [{ propertyName: 'hs_timestamp', direction: 'ASCENDING' }],
+    properties: ['hs_email_subject', 'hs_timestamp'], limit: 50,
+  });
+  if (search.code !== 200) {
+    logDebug(ss, 'HubSpot booking search HTTP ' + search.code + ' (Service Key needs sales-email-read)', '');
+    return;
+  }
+
+  let handled = 0;
+  let cursor = since;
+  const results = search.json.results || [];
+  for (let i = 0; i < results.length && handled < HUBSPOT_BOOKINGS_PER_RUN; i++) {
+    const email = results[i];
+    const subject = String((email.properties || {}).hs_email_subject || '');
+    const at = Date.parse(String((email.properties || {}).hs_timestamp || ''));
+    if (!HUBSPOT_BOOKING_SUBJECT.test(subject) || seen[String(email.id)]) { if (!isNaN(at)) cursor = Math.max(cursor, at); continue; }
+    handled++;
+    let contactId = '';
+    try { contactId = hubspotBookingContactId(config, email.id); }
+    catch (err) { logDebug(ss, 'HubSpot booking association lookup failed, will retry: ' + err.toString(), ''); break; }
+    const row = [String(email.id), isNaN(at) ? '' : new Date(at).toISOString(), subject.slice(0, 200), contactId, '', ''];
+    if (!contactId) {
+      row[4] = 'needs-review'; row[5] = 'No contact linked to this booking email';
+      appendSafeRow(sheet, row);
+      if (!isNaN(at)) cursor = Math.max(cursor, at);
+      continue;
+    }
+    const got = hubspotApi(config, 'get', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId) +
+      '?properties=lifecyclestage,rdt_test_lead,firstname,lastname,email');
+    if (got.code !== 200) { logDebug(ss, 'HubSpot booking contact read HTTP ' + got.code + ', will retry', ''); break; }
+    const p = got.json.properties || {};
+    const name = [p.firstname, p.lastname].join(' ');
+    if (String(p.rdt_test_lead || '').toLowerCase() === 'yes' || /\bTEST\b/.test(name) || /\bTEST\b/.test(subject)) {
+      row[4] = 'skipped-test';
+      appendSafeRow(sheet, row);
+      if (!isNaN(at)) cursor = Math.max(cursor, at);
+      continue;
+    }
+    // Claim the row before writing, so a crash can never mark the same booking twice.
+    row[4] = 'sending';
+    appendSafeRow(sheet, row);
+    SpreadsheetApp.flush();
+    const rowIndex = sheet.getLastRow();
+    const details = [];
+    try {
+      const stage = String(p.lifecyclestage || '').toLowerCase();
+      if (HUBSPOT_EARLY_STAGES.indexOf(stage) !== -1) {
+        const upd = hubspotApi(config, 'patch', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId),
+          { properties: { lifecyclestage: 'marketingqualifiedlead' } });
+        details.push(upd.code === 200 ? 'lifecycle ' + (stage || 'blank') + ' -> MQL' : 'lifecycle update HTTP ' + upd.code);
+      } else {
+        details.push('lifecycle kept (' + stage + ')');
+      }
+      const note = hubspotApi(config, 'post', '/crm/v3/objects/notes', {
+        properties: { hs_note_body: hubspotBookingNote(subject), hs_timestamp: new Date().toISOString(), hubspot_owner_id: config.owner },
+        associations: [{ to: { id: contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],
+      });
+      details.push(note.code === 201 ? 'note added' : 'note HTTP ' + note.code);
+      const ok = details.every(function (d) { return !/HTTP/.test(d); });
+      sheet.getRange(rowIndex, 5, 1, 2).setValues([[ok ? 'done' : 'needs-review', details.join('; ')]]);
+    } catch (err) {
+      sheet.getRange(rowIndex, 5, 1, 2).setValues([['needs-review', 'Result unknown; check HubSpot before retrying: ' + err.toString()]]);
+    }
+    if (!isNaN(at)) cursor = Math.max(cursor, at);
+  }
+  // Re-read the newest minute next time; the Email ID column stops repeats.
+  props.setProperty('HUBSPOT_BOOKINGS_SINCE', String(Math.max(since, cursor - 60 * 1000)));
 }
 
 // Additional CRM visibility is deliberately dark until account configuration
