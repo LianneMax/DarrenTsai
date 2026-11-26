@@ -84,9 +84,14 @@ const STEPS = [['Your home','Value, mortgage and property'],['Your goal','What y
  * (src/prerender.tsx), so it paints with the first frame and is the LCP
  * element. Static on purpose, as on /debt-consolidation/: no JavaScript, no
  * fade-in, no phone number for CallRail to swap. The button is a real anchor.
+ *
+ * `equity-opening-art` is hidden on phones (site-design.css, 26 Nov 2026): the
+ * illustration stacked under the heading was 541px tall at 375px wide and put
+ * the first question 1,371px down, about 1.7 screens, while 72 of the first 82
+ * Google Ads clicks came from phones at roughly 3.5x the desktop cost per lead.
  */
 export function EquityPageHero({path='equity',onPath}:{path?:EquityPath;onPath?:(p:EquityPath)=>void}) {
- return <div className="equity-opening wrap"><div><h1>What could your <em>home equity</em> help you do?</h1><PathSwitch path={path} onPath={onPath || (()=>{})}/><p className="intent-context"><span className="hv-equity">Enter your home value and mortgage balance below to see your estimated equity.</span><span className="hv-payoff">Start with your current debts below. Then compare using home equity to pay them off.</span></p></div><div><HouseOptions large/></div></div>;
+ return <div className="equity-opening wrap"><div><h1>What could your <em>home equity</em> help you do?</h1><PathSwitch path={path} onPath={onPath || (()=>{})}/><p className="intent-context"><span className="hv-equity">Enter your home value and mortgage balance below to see your estimated equity.</span><span className="hv-payoff">Start with your current debts below. Then compare using home equity to pay them off.</span></p></div><div className="equity-opening-art"><HouseOptions large/></div></div>;
 }
 
 export type EquityPath = 'equity' | 'payoff';

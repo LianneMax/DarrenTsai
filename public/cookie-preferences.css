@@ -19,7 +19,10 @@
 .dt-cookie-reopen { display:inline-flex; align-items:center; margin:0; padding:6px 0; min-height:44px; border:0; border-radius:0; background:none; color:inherit; font: 15px/24px 'Outfit','Outfit Fallback',sans-serif; text-align:left; text-decoration:underline; text-underline-offset:4px; cursor:pointer; }
 .dt-cookie-reopen:hover { color:#14667c; }
 .dt-cookie-fallback { position:fixed; z-index:9990; left:16px; bottom:16px; background:#fff; color:#223d55; border:1px solid #cbd8dc; border-radius:8px; padding:8px 13px; }
-@media(max-width:600px) { .dt-cookie-panel { left:12px; bottom:12px; width:calc(100vw - 24px); max-height:calc(100dvh - 24px); padding:24px 20px; font-size:16px; } .dt-cookie-actions { gap:8px; } .dt-cookie-panel h2 { font-size:22px; } .dt-cookie-panel button { padding-inline:8px; } }
+/* Phones (26 Nov 2026): the panel was 402px of an 812px screen and covered the
+   form most ad visitors arrive for. Tighter type and spacing only; the text,
+   Accept/Reject equality and the 44px+ tap targets stay. */
+@media(max-width:600px) { .dt-cookie-panel { left:10px; bottom:10px; width:calc(100vw - 20px); max-height:calc(100dvh - 20px); padding:16px 16px 12px; font-size:14px; line-height:1.5; } .dt-cookie-panel h2 { font-size:18px; margin:0 44px 6px 0; } .dt-cookie-panel p { margin:6px 0; } .dt-cookie-actions { gap:8px; margin:12px 0 6px; } .dt-cookie-panel button { padding-inline:8px; min-height:44px; } .dt-cookie-panel .dt-cookie-close { right:4px; top:4px; } }
 /* Standalone service-area pages retain a dark footer. */
 footer.footer .dt-cookie-reopen:hover{color:#fff}
 footer.footer .dt-cookie-reopen:focus-visible{outline-color:#fff}

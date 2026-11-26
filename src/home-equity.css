@@ -18,3 +18,8 @@
 .equity-revamp .dcp-path .dcp-chip{background:#f0f5f7}.equity-revamp .dcp-path .dcp-chip[aria-pressed=true]{background:#1a7f99;color:#fff}
 @media(hover:hover){.equity-revamp .dcp-chip:hover{background:#e5eef2}.equity-revamp .dcp-chip[aria-pressed=true]:hover{background:#d9eaf0}}
 @media(max-width:600px){.equity-revamp .equity-journey-content{padding:21px 18px 24px}.equity-revamp .dcp-h2-lg{font-size:26px}.equity-revamp .dcp-lead{font-size:17px}.equity-revamp .dcp-grid-2{grid-template-columns:1fr}.equity-revamp .dcp-chips{grid-template-columns:1fr}.equity-revamp .dcp-h3{font-size:19px}.equity-revamp .equity-stage-state{font-size:14px}}
+/* Phones (26 Nov 2026): pull the first question toward the first screen. Most
+   ad clicks land here on a phone and the value field sat 1,371px down. The
+   "1 of 4" line stays for screen readers; the numbered timeline above it
+   already shows the step. */
+@media(max-width:600px){.site-design.equity-design .equity-revamp .equity-opening-surface{margin-bottom:12px}.equity-revamp.equity-estimate-surface .dcp-flow{padding-top:8px}.equity-revamp .journey-progress{margin-bottom:12px}.equity-revamp .equity-journey-content{padding-top:18px}.equity-revamp .equity-stage-state{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}.equity-revamp .dcp-lead{margin-bottom:14px}.equity-revamp .dcp-grid-2{margin-top:14px}}
