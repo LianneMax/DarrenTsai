@@ -2638,6 +2638,8 @@ function processFollowUps() {
       catch (err) { logDebug(ss, 'HubSpot task needs review: ' + err.toString(), ''); }
       try { processHubSpotBookings(ss); }
       catch (err) { logDebug(ss, 'HubSpot booking tracker needs review: ' + err.toString(), ''); }
+      try { processHubSpotLeadStatus(ss); }
+      catch (err) { logDebug(ss, 'HubSpot Lead Status needs review: ' + err.toString(), ''); }
     }
   } finally {
     try { releaseFollowUpWorker(worker); }
@@ -3003,6 +3005,133 @@ function processHubSpotBookings(ss) {
   }
   // Re-read the newest minute next time; the Email ID column stops repeats.
   props.setProperty('HUBSPOT_BOOKINGS_SINCE', String(Math.max(since, cursor - 60 * 1000)));
+}
+
+// ── Lead Status from logged calls (25 Nov 2026) ──────────────────────────────
+//
+// Darren calls from CallRail and HubSpot logs each call on the contact, but
+// Lead Status stayed "New" until he changed it by hand (Mareka, Richard,
+// Kariyana, Nov 2026). This moves Lead Status forward ONE step when a call is
+// logged: an OUTBOUND call on a borrower whose Lead Status is New or blank
+// becomes "Attempted to contact". Nothing else is ever changed:
+//   - any other Lead Status (Attempted, Connected, In progress, Open deal,
+//     Bad timing, Unqualified) is Darren's and is left alone;
+//   - only contacts with Relationship type Borrower / client, or not yet
+//     triaged (blank), are touched; vendors, partners, spam and internal
+//     contacts are skipped;
+//   - TEST contacts are skipped;
+//   - inbound calls are ignored (the lead calling in does not mean Darren
+//     reached out).
+// Dark until HUBSPOT_LEAD_STATUS_ENABLED = true. Uses HUBSPOT_PRIVATE_APP_TOKEN
+// (the Service Key); it needs read access to calls and read/write on contacts.
+// Runs at most every HUBSPOT_LEAD_STATUS_EVERY_MS from the follow-up worker.
+// One row per call + contact on the "HubSpot Lead Status" tab, so a call is
+// handled once; a write whose result is unknown is left for review, never
+// repeated. First run looks back HUBSPOT_LEAD_STATUS_LOOKBACK_DAYS.
+const HUBSPOT_LEAD_STATUS_TAB = 'HubSpot Lead Status';
+const HUBSPOT_LEAD_STATUS_HEADERS = ['Call ID', 'Call At', 'Contact ID', 'From', 'To', 'Status', 'Detail'];
+const HUBSPOT_LEAD_STATUS_EVERY_MS = 10 * 60 * 1000;
+const HUBSPOT_LEAD_STATUS_LOOKBACK_DAYS = 14;
+const HUBSPOT_LEAD_STATUS_PER_RUN = 20;
+const HUBSPOT_LEAD_STATUS_TARGET = 'ATTEMPTED_TO_CONTACT';
+const HUBSPOT_LEAD_STATUS_FROM = ['', 'NEW'];
+
+function hubspotLeadStatusConfig() {
+  const props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('HUBSPOT_LEAD_STATUS_ENABLED') || '').trim() !== 'true') return null;
+  const token = String(props.getProperty('HUBSPOT_PRIVATE_APP_TOKEN') || '').trim();
+  if (!token) return null;
+  return { token: token };
+}
+
+/**
+ * What to do with one contact after an outbound call. Pure, so the rules are
+ * testable. Returns 'update' or the reason it is skipped.
+ */
+function hubspotLeadStatusDecision(p) {
+  p = p || {};
+  const name = [p.firstname, p.lastname].join(' ');
+  if (String(p.rdt_test_lead || '').toLowerCase() === 'yes' || /\bTEST\b/.test(name)) return 'skipped-test';
+  const rel = String(p.relationship_type || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+  if (rel.length && rel.indexOf('borrower_client') === -1) return 'skipped-not-borrower';
+  const status = String(p.hs_lead_status || '').trim().toUpperCase();
+  if (HUBSPOT_LEAD_STATUS_FROM.indexOf(status) === -1) return 'skipped-status-kept';
+  return 'update';
+}
+
+function processHubSpotLeadStatus(ss) {
+  const config = hubspotLeadStatusConfig();
+  if (!config) return;
+  const props = PropertiesService.getScriptProperties();
+  const last = Number(props.getProperty('HUBSPOT_LEAD_STATUS_LAST_RUN') || 0);
+  if (last && Date.now() - last < HUBSPOT_LEAD_STATUS_EVERY_MS) return;
+  props.setProperty('HUBSPOT_LEAD_STATUS_LAST_RUN', String(Date.now()));
+
+  let sheet = ss.getSheetByName(HUBSPOT_LEAD_STATUS_TAB);
+  if (!sheet) { sheet = ss.insertSheet(HUBSPOT_LEAD_STATUS_TAB); appendSafeRow(sheet, HUBSPOT_LEAD_STATUS_HEADERS); }
+  const seen = {};
+  if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function (r) { seen[String(r[0]) + ':' + String(r[2])] = true; });
+
+  const since = Number(props.getProperty('HUBSPOT_LEAD_STATUS_SINCE') || 0) || Date.now() - HUBSPOT_LEAD_STATUS_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  const search = hubspotApi(config, 'post', '/crm/v3/objects/calls/search', {
+    filterGroups: [{ filters: [
+      { propertyName: 'hs_call_direction', operator: 'EQ', value: 'OUTBOUND' },
+      { propertyName: 'hs_timestamp', operator: 'GTE', value: String(since) },
+    ] }],
+    sorts: [{ propertyName: 'hs_timestamp', direction: 'ASCENDING' }],
+    properties: ['hs_timestamp', 'hs_call_direction'], limit: 50,
+  });
+  if (search.code !== 200) {
+    logDebug(ss, 'HubSpot Lead Status call search HTTP ' + search.code + ' (Service Key needs call read access)', '');
+    return;
+  }
+
+  let handled = 0;
+  let cursor = since;
+  let stopped = false;
+  const results = search.json.results || [];
+  for (let i = 0; i < results.length && handled < HUBSPOT_LEAD_STATUS_PER_RUN && !stopped; i++) {
+    const call = results[i];
+    const at = Date.parse(String((call.properties || {}).hs_timestamp || ''));
+    const assoc = hubspotApi(config, 'get', '/crm/v4/objects/calls/' + encodeURIComponent(call.id) + '/associations/contacts');
+    if (assoc.code !== 200) { logDebug(ss, 'HubSpot Lead Status call associations HTTP ' + assoc.code + ', will retry', ''); break; }
+    const contactIds = (assoc.json.results || []).map(function (a) { return String(a.toObjectId || ''); }).filter(Boolean);
+    for (let c = 0; c < contactIds.length; c++) {
+      const contactId = contactIds[c];
+      if (seen[String(call.id) + ':' + contactId]) continue;
+      const got = hubspotApi(config, 'get', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId) +
+        '?properties=hs_lead_status,relationship_type,rdt_test_lead,firstname,lastname');
+      if (got.code !== 200) { logDebug(ss, 'HubSpot Lead Status contact read HTTP ' + got.code + ', will retry', ''); stopped = true; break; }
+      handled++;
+      const p = got.json.properties || {};
+      const from = String(p.hs_lead_status || '').trim().toUpperCase();
+      const row = [String(call.id), isNaN(at) ? '' : new Date(at).toISOString(), contactId, from || 'blank', '', '', ''];
+      const decision = hubspotLeadStatusDecision(p);
+      if (decision !== 'update') {
+        row[4] = from || 'blank'; row[5] = decision;
+        appendSafeRow(sheet, row);
+        seen[String(call.id) + ':' + contactId] = true;
+        continue;
+      }
+      // Claim the row before writing, so a crash can never repeat the update.
+      row[4] = HUBSPOT_LEAD_STATUS_TARGET; row[5] = 'sending';
+      appendSafeRow(sheet, row);
+      SpreadsheetApp.flush();
+      seen[String(call.id) + ':' + contactId] = true;
+      const rowIndex = sheet.getLastRow();
+      try {
+        const upd = hubspotApi(config, 'patch', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId),
+          { properties: { hs_lead_status: HUBSPOT_LEAD_STATUS_TARGET } });
+        sheet.getRange(rowIndex, 6, 1, 2).setValues([[upd.code === 200 ? 'done' : 'needs-review',
+          upd.code === 200 ? (from || 'blank') + ' -> Attempted to contact' : 'HTTP ' + upd.code + ' ' + JSON.stringify(upd.json).slice(0, 200)]]);
+      } catch (err) {
+        sheet.getRange(rowIndex, 6, 1, 2).setValues([['needs-review', 'Result unknown; check HubSpot before retrying: ' + err.toString()]]);
+      }
+    }
+    if (!stopped && !isNaN(at)) cursor = Math.max(cursor, at);
+  }
+  // Re-read the newest minute next time; the Call ID column stops repeats.
+  props.setProperty('HUBSPOT_LEAD_STATUS_SINCE', String(Math.max(since, cursor - 60 * 1000)));
 }
 
 // Additional CRM visibility is deliberately dark until account configuration

@@ -33,6 +33,17 @@ Cancellations (Google's "Appointment canceled:" or "Canceled event:" notice) get
 
 Rollback: set `HUBSPOT_BOOKINGS_ENABLED` to anything but `true`.
 
+## Lead Status from logged calls (25 Nov 2026)
+
+`processHubSpotLeadStatus` moves a borrower's HubSpot Lead Status from New (or blank) to Attempted to contact when an OUTBOUND call is logged on the contact. It never changes any other status, never touches vendors, partners, spam, internal or TEST contacts, and ignores inbound calls. Each call + contact is handled once and logged on the "HubSpot Lead Status" tab.
+
+1. The Service Key used as `HUBSPOT_PRIVATE_APP_TOKEN` needs read access to calls and contacts read/write (contacts is already there for bookings). If call read is missing, the Debug tab shows "HubSpot Lead Status call search HTTP 403"; add the call/engagement read scope to the key and it picks up on the next run.
+2. Script Property `HUBSPOT_LEAD_STATUS_ENABLED` = `true`. Optional: `HUBSPOT_LEAD_STATUS_SINCE` (epoch ms) to set where the first run starts; default is 14 days back.
+3. Deploy in place as below. No new trigger: the every-minute `processFollowUps` calls it, at most every 10 minutes.
+4. Verify: within 10 minutes the tab lists recent outbound calls. Rows with Status `done` show `NEW -> Attempted to contact`; others show why they were skipped (`skipped-status-kept`, `skipped-not-borrower`, `skipped-test`). Spot-check one contact in HubSpot.
+
+Rollback: set `HUBSPOT_LEAD_STATUS_ENABLED` to anything but `true`. Contacts already moved stay Attempted (change by hand if needed).
+
 ## Server authentication and email opt-out rollout
 
 ### Durable website inbox rollout
