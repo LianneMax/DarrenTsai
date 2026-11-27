@@ -174,6 +174,12 @@ describe('request guards', () => {
       expect(upstreamCalled()).toBe(false);
     });
 
+    it('takes 5+ units or commercial on the booking prequal (27 Nov 2026)', async () => {
+      const dscr = { ...PREQUAL, bookingGoal: 'dscr', propertyUse: 'investment', propertyState: 'FL', propertyType: '5-plus-commercial' };
+      expect((await handler(req(dscr), ctx)).status).toBe(200);
+      expect((await handler(req({ ...dscr, bookingGoal: 'commercial' }), ctx)).status).toBe(200);
+    });
+
     it('applies the goal: DSCR in OR passes, in NY and NH is refused; own-home rental is refused', async () => {
       const dscr = { ...PREQUAL, bookingGoal: 'dscr', propertyUse: 'investment' };
       expect((await handler(req({ ...dscr, propertyState: 'OR' }), ctx)).status).toBe(200);

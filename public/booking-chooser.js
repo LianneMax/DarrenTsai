@@ -488,7 +488,7 @@
     // Inside the service area the knockouts still decline without posting.
     function outsideArea() { return window.DTServiceArea.check(answers.propertyUse, answers.propertyState, ctx, answers.bookingGoal) === 'out-of-market'; }
     function stepType() {
-      draw(1, 'Property · 2 of 3', 'What type of property is it?', '', choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['mobile-land', 'Mobile home or land']], answers.propertyType), 'Continue', stepProperty);
+      draw(1, 'Property · 2 of 3', 'What type of property is it?', '', choiceGroup('propertyType', [['single-family-condo', 'Single family or condo'], ['2-4-units', '2 to 4 units'], ['5-plus-commercial', '5+ units or commercial'], ['mobile-land', 'Mobile home or land']], answers.propertyType), 'Continue', stepProperty);
       wireChoices(panel, answers, changed);
       panel.querySelector('.dt-book-next').onclick = function () {
         if (!answers.propertyType) { setErr('Please choose the property type.'); return; }

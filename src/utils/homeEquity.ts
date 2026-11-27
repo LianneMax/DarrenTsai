@@ -35,6 +35,10 @@ export const EQUITY_OPTIONS = ['HELOC', 'Fixed home equity loan', 'Cash-out refi
 export const PROPERTY_TYPES = [
   ['single-family-condo', 'Single family or condo'],
   ['2-4-units', '2 to 4 units'],
+  // 27 Nov 2026: shown so the answer is honest; choosing it sends the visitor
+  // to the booking prequal (DSCR or Commercial) rather than saving a home-equity
+  // lead. See COMMERCIAL_PROPERTY_TYPE in serviceArea.ts.
+  ['5-plus-commercial', '5+ units or commercial'],
   ['mobile-land', 'Mobile home or land'],
 ] as const;
 

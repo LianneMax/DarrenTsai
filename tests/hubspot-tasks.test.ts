@@ -166,6 +166,13 @@ describe('HubSpot call task for Darren', () => {
     expect(body).not.toContain('<b>');
   });
 
+  it('names the property type on the task, including 5+ units or commercial (27 Nov 2026)', () => {
+    const { h } = setup();
+    expect(h.gas.hubspotTaskContent({ ...lead, propertyType: '5-plus-commercial' }).body).toContain('Property type: 5+ units or commercial');
+    expect(h.gas.hubspotTaskContent({ ...lead, propertyType: '2-4-units' }).body).toContain('Property type: 2 to 4 units');
+    expect(h.gas.hubspotTaskContent({ ...lead, propertyType: '<b>x</b>' }).body).not.toContain('Property type');
+  });
+
   it('labels YouTube and test leads plainly', () => {
     const { h } = setup();
     expect(h.gas.hubspotTaskContent({ firstName: 'Ann', utm_source: 'youtube' }).subject).toBe('Call Ann (new YouTube lead)');

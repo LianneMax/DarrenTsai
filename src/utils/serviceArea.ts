@@ -104,16 +104,25 @@ export const INQUIRY_MESSAGE_LIMIT = 2000;
 // same calendar after them, so it is held to the same rules.
 export const PREQUAL_FORMS = [BOOKING_PREQUAL_FORM, 'home-equity-calculator'];
 export const PREQUAL_PROPERTY_TYPES = ['single-family-condo', '2-4-units'];
+// 27 Nov 2026 (Max): buildings with 5+ units and commercial property had no
+// honest answer (Kariyana's 16-unit building came in as "2 to 4 units"). They
+// need a commercial or investor (DSCR) loan, so only the booking prequal takes
+// them, where the visitor picks DSCR or Commercial and the lead lands on that
+// tab. /home-equity/ shows the option and sends the visitor to the booking
+// prequal instead of saving a home-equity lead.
+export const COMMERCIAL_PROPERTY_TYPE = '5-plus-commercial';
 export const PREQUAL_MORTGAGE_OK = ['yes', 'no-mortgage'];
 /** Every knockout question has a valid answer, whatever it is (Sheet-only inquiries). */
 export function prequalAnswered(p: Record<string, unknown>): boolean {
-  return ['single-family-condo', '2-4-units', 'mobile-land'].includes(String(p.propertyType))
+  const types = ['single-family-condo', '2-4-units', 'mobile-land', ...(p.formId === BOOKING_PREQUAL_FORM ? [COMMERCIAL_PROPERTY_TYPE] : [])];
+  return types.includes(String(p.propertyType))
     && ['yes', 'no', 'no-mortgage'].includes(String(p.mortgageCurrent))
     && ['yes', 'no'].includes(String(p.recentBankruptcyForeclosure));
 }
 
 export function prequalPasses(p: Record<string, unknown>): boolean {
-  return PREQUAL_PROPERTY_TYPES.includes(String(p.propertyType))
+  const types = p.formId === BOOKING_PREQUAL_FORM ? [...PREQUAL_PROPERTY_TYPES, COMMERCIAL_PROPERTY_TYPE] : PREQUAL_PROPERTY_TYPES;
+  return types.includes(String(p.propertyType))
     && PREQUAL_MORTGAGE_OK.includes(String(p.mortgageCurrent))
     && p.recentBankruptcyForeclosure === 'no';
 }

@@ -73,6 +73,8 @@ export interface EquityPageView {
   /** '' while the visitor is still in, otherwise why the flow stopped. */
   declined: '' | 'property-type' | 'knockout';
   submitLead: () => void;
+  /** Opens the screened booking prequal (5+ units / commercial, 27 Nov 2026). */
+  openBooking: () => void;
 }
 
 const STEPS = [['Your home','Value, mortgage and property'],['Your goal','What you have in mind'],['Your details','How to reach you'],['Review','Preferences and send']] as const;
@@ -135,6 +137,7 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
       <h3 className="dcp-h3">What type of property is it?</h3>
       <Choices options={PROPERTY_TYPES} value={v.propertyType} onChange={v.setPropertyType} label="Property type" />
 
+      {v.propertyType === '5-plus-commercial' ? <CommercialNote v={v} /> : (<>
       <h3 className="dcp-h3">How do you use the home you&apos;re borrowing against?</h3>
       <Choices options={PROPERTY_USES} value={v.propertyUse} onChange={v.setPropertyUse} label="Property use" />
 
@@ -145,6 +148,26 @@ export function StepEquityHome({ v }: { v: EquityPageView }) {
         <small className="dcp-caption dcp-actions-note">No application required to see this estimate.</small>
         <button type="button" className="btn btn-teal" disabled={!zipCheck.canContinue} onClick={v.next}>
           Continue <Arrow />
+        </button>
+      </div>
+      </>)}
+    </div>
+  );
+}
+
+/**
+ * 5+ units or commercial (27 Nov 2026). Not a home-equity loan, so this page
+ * saves nothing: the visitor goes to the booking prequal, picks DSCR or
+ * Commercial there, and the lead lands on that tab with its own property type.
+ */
+function CommercialNote({ v }: { v: EquityPageView }) {
+  return (
+    <div className="dcp-commercial-note" role="status">
+      <p className="dcp-lead">Buildings with 5 or more units and commercial properties use a commercial or investor (DSCR) loan, not a home equity loan. Darren works with these too.</p>
+      <div className="dcp-actions">
+        <small className="dcp-caption dcp-actions-note">A few quick questions, then you can pick a time.</small>
+        <button type="button" className="btn btn-teal" onClick={v.openBooking}>
+          Talk to Darren about this property <Arrow />
         </button>
       </div>
     </div>

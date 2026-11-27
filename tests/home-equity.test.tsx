@@ -15,7 +15,7 @@ import { resolve } from 'node:path';
 import youtubeRedirect from '../netlify/functions/youtube-redirect.mts';
 import { buildEquityLead, equityNumbers } from '../src/utils/homeEquity';
 import { stateForZip } from '../src/utils/zipState';
-import { prequalPasses } from '../src/utils/serviceArea';
+import { prequalPasses, prequalAnswered } from '../src/utils/serviceArea';
 import EquityPage, {
   EquityPageHero, StepEquityHome, StepEquityGoal, StepEquityContact, StepEquityPreferences, EquityRecap, EquityDeclined, EquityProducts,
   EQUITY_FORM_ID, type EquityPageView,
@@ -150,7 +150,7 @@ function view(over: Partial<EquityPageView> = {}): EquityPageView {
     preference: '', setPreference: noop,
     fname: '', setFname: noop, lname: '', setLname: noop, phone: '', setPhone: noop,
     email: '', setEmail: noop, emailHint: null, setEmailHint: noop, message: '', setMessage: noop,
-    sending: false, submitted: false, declined: '', submitLead: noop,
+    sending: false, submitted: false, declined: '', submitLead: noop, openBooking: noop,
     ...over,
   };
 }
@@ -374,5 +374,35 @@ describe('the short links', () => {
       expect(url.searchParams.get('utm_source')).toBe('youtube');
       expect(response.status).toBe(302);
     }
+  });
+});
+
+describe('5+ units or commercial (27 Nov 2026)', () => {
+  it('is offered on step 1 and sends the visitor to the booking prequal instead of continuing', () => {
+    const page = html(<StepEquityHome v={view({ propertyType: '5-plus-commercial' })} />);
+    expect(page).toContain('5+ units or commercial');
+    expect(page).toContain('commercial or investor (DSCR) loan');
+    expect(page).toContain('Talk to Darren about this property');
+    expect(page).not.toContain('How do you use the home');
+    expect(page).not.toMatch(/>Continue/);
+  });
+  it('other property types still show the rest of step 1', () => {
+    const page = html(<StepEquityHome v={view({ propertyType: '2-4-units' })} />);
+    expect(page).toContain('How do you use the home');
+    expect(page).not.toContain('Talk to Darren about this property');
+  });
+  it('passes only on the booking prequal, never as a home-equity lead', () => {
+    const answers = { propertyType: '5-plus-commercial', mortgageCurrent: 'yes', recentBankruptcyForeclosure: 'no' };
+    expect(prequalPasses({ ...answers, formId: 'booking-prequal' })).toBe(true);
+    expect(prequalPasses({ ...answers, formId: 'home-equity-calculator' })).toBe(false);
+    expect(prequalPasses(answers)).toBe(false);
+    expect(prequalAnswered({ ...answers, formId: 'booking-prequal' })).toBe(true);
+    expect(prequalAnswered({ ...answers, formId: 'home-equity-calculator' })).toBe(false);
+  });
+  it('the booking prequal and the Apps Script writer accept it', () => {
+    expect(readFileSync(resolve(__dirname, '../public/booking-chooser.js'), 'utf8')).toContain("['5-plus-commercial', '5+ units or commercial']");
+    const gas = readFileSync(resolve(__dirname, '../google-apps-script.js'), 'utf8');
+    const line = gas.split('\n').find((l) => l.includes("const types = outside ?")) || '';
+    expect(line.match(/5-plus-commercial/g)).toHaveLength(2);
   });
 });

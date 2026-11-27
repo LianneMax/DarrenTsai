@@ -5,7 +5,8 @@ import { EMAIL } from '../config';
 import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
 import { type EmailSuggestion } from '../utils/emailSuggest';
 import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
-import { serviceArea, prequalPasses, outOfMarketPage } from '../utils/serviceArea';
+import { serviceArea, prequalPasses, outOfMarketPage, COMMERCIAL_PROPERTY_TYPE } from '../utils/serviceArea';
+import { openBooking } from '../utils/booking';
 import { stateForZip } from '../utils/zipState';
 import EquityPage, { EQUITY_FORM_ID, type EquityPageView, type EquityPath } from './HomeEquityViews';
 import DebtSavingsCalculator from './DebtSavingsCalculator';
@@ -163,6 +164,9 @@ export default function HomeEquityCalculator() {
       // Outside-area visitors can finish an interest-only inquiry. Their answers
       // and consent are saved before the exit; supported knockout rules stay put.
       if (area === 'supported' && propertyType === 'mobile-land') { setDeclined('property-type'); scrollToFlow(); return; }
+      // 5+ units / commercial is not a home-equity lead: the step shows the way
+      // to the booking prequal instead, and Continue never saves it here.
+      if (propertyType === COMMERCIAL_PROPERTY_TYPE) return;
       milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 1 });
       setStep(2);
       scrollToFlow();
@@ -273,6 +277,7 @@ export default function HomeEquityCalculator() {
     message, setMessage,
     emailHint, setEmailHint,
     sending, submitted, declined, submitLead: () => { void submitLead(); },
+    openBooking,
   };
 
   const disclosure = (

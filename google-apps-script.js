@@ -132,7 +132,9 @@ function bookingCaptureError(data) {
   // 22 Oct (Max): outside the service area the inquiry is recorded even when a
   // knockout fails (Sheet-only, no calendar or CRM); the answers must still be real.
   const outside = bookingServiceArea(data) === 'out-of-market';
-  const types = outside ? ['single-family-condo', '2-4-units', 'mobile-land'] : ['single-family-condo', '2-4-units'];
+  // '5-plus-commercial' (27 Nov 2026): 5+ units or commercial, booking prequal only
+  // (src/utils/serviceArea.ts COMMERCIAL_PROPERTY_TYPE). /home-equity/ never sends it.
+  const types = outside ? ['single-family-condo', '2-4-units', 'mobile-land', '5-plus-commercial'] : ['single-family-condo', '2-4-units', '5-plus-commercial'];
   const mortgage = outside ? ['yes', 'no', 'no-mortgage'] : ['yes', 'no-mortgage'];
   const history = outside ? ['yes', 'no'] : ['no'];
   if (types.indexOf(data.propertyType) === -1 || mortgage.indexOf(data.mortgageCurrent) === -1 ||
@@ -2727,6 +2729,10 @@ function hubspotTaskContent(d) {
     'Email: ' + (d.email || 'not given'),
   ];
   if (d.propertyState) lines.push('Property state: ' + d.propertyState);
+  // Property type in Darren's words (27 Nov 2026), so a 5+ unit or commercial
+  // building is visible on the task, not only in the Sheet.
+  const propertyTypes = { 'single-family-condo': 'Single family or condo', '2-4-units': '2 to 4 units', '5-plus-commercial': '5+ units or commercial', 'mobile-land': 'Mobile home or land' };
+  if (Object.prototype.hasOwnProperty.call(propertyTypes, d.propertyType)) lines.push('Property type: ' + propertyTypes[d.propertyType]);
   if (d.utm_term) lines.push('Search term: ' + d.utm_term);
   if (d.utm_campaign) lines.push('Campaign: ' + d.utm_campaign);
   lines.push(d.smsConsent === true || d.smsMarketingConsent === true || d.smsInformationalConsent === true
