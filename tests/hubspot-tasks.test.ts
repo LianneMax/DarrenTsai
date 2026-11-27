@@ -83,6 +83,30 @@ describe('HubSpot call task for Darren', () => {
     expect(String(h.rowOf('HubSpot Tasks').Payload)).not.toContain('_proxyKey');
   });
 
+  it('sets a blank owner to Darren and a blank Lead Status to New, and leaves set values alone', () => {
+    const contactGet = (props: Record<string, string>) => vi.fn((url: string, o: Record<string, unknown>) => {
+      if (url.endsWith('/crm/v3/objects/contacts/search')) return ok({ results: [{ id: '123' }] });
+      if (url.endsWith('/crm/v3/objects/tasks')) return ok({ id: 'T1' }, 201);
+      if (url.includes('/crm/v3/objects/contacts/123') && o.method === 'get') return ok({ properties: props });
+      return ok({ id: '123' });
+    });
+    const patchesOf = (f: ReturnType<typeof contactGet>) => f.mock.calls.filter((c) => (c[1] as { method: string }).method === 'patch');
+
+    const blank = setup(config, contactGet({ hubspot_owner_id: '', hs_lead_status: '' }) as unknown as ReturnType<typeof hubspotFetch>);
+    blank.h.gas.enqueueHubSpotTask(blank.ss, lead);
+    blank.h.gas.processHubSpotTasks(blank.ss);
+    const p = patchesOf(blank.fetch as unknown as ReturnType<typeof contactGet>);
+    expect(p).toHaveLength(1);
+    expect(JSON.parse(String(p[0][1].payload))).toEqual({ properties: { hubspot_owner_id: '99169757', hs_lead_status: 'NEW' } });
+    expect(String(blank.h.rowOf('HubSpot Tasks').Detail)).toContain('set hubspot_owner_id, hs_lead_status');
+
+    const set = setup(config, contactGet({ hubspot_owner_id: '555', hs_lead_status: 'CONNECTED' }) as unknown as ReturnType<typeof hubspotFetch>);
+    set.h.gas.enqueueHubSpotTask(set.ss, lead);
+    set.h.gas.processHubSpotTasks(set.ss);
+    expect(patchesOf(set.fetch as unknown as ReturnType<typeof contactGet>)).toHaveLength(0);
+    expect(set.h.rowOf('HubSpot Tasks')).toMatchObject({ Status: 'sent', Detail: 'Contact 123' });
+  });
+
   it('waits for HubSpot to create the contact, then creates the task unlinked after 30 minutes', () => {
     const { h, fetch, ss } = setup(config, hubspotFetch([]));
     h.gas.enqueueHubSpotTask(ss, lead);

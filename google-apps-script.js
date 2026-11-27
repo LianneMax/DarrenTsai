@@ -2776,6 +2776,27 @@ function hubspotContactIdByEmail(config, email) {
   return hit && hit.id ? String(hit.id) : '';
 }
 
+/**
+ * Set a blank contact owner to Darren and a blank Lead Status to New. Anything
+ * already set (by Darren, triage or an earlier run) is left alone. Returns a
+ * short note for the log; never throws, because the task already exists.
+ */
+function hubspotFillOwnerAndStatus(config, contactId) {
+  try {
+    const got = hubspotApi(config, 'get', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId) + '?properties=hubspot_owner_id,hs_lead_status');
+    if (got.code !== 200) return '; owner/status read HTTP ' + got.code;
+    const p = got.json.properties || {};
+    const fill = {};
+    if (!String(p.hubspot_owner_id || '').trim()) fill.hubspot_owner_id = config.owner;
+    if (!String(p.hs_lead_status || '').trim()) fill.hs_lead_status = 'NEW';
+    if (!Object.keys(fill).length) return '';
+    const upd = hubspotApi(config, 'patch', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId), { properties: fill });
+    return upd.code === 200 ? '; set ' + Object.keys(fill).join(', ') : '; owner/status fill HTTP ' + upd.code;
+  } catch (err) {
+    return '; owner/status fill failed: ' + err.toString();
+  }
+}
+
 function processHubSpotTasks(ss) {
   const config = hubspotTasksConfig();
   if (!config) return;
@@ -2822,8 +2843,12 @@ function processHubSpotTasks(ss) {
     try {
       const res = hubspotApi(config, 'post', '/crm/v3/objects/tasks', task);
       if (res.code === 201 && res.json.id) {
+        // Owner and Lead Status (27 Nov 2026): the Forms API leaves both blank,
+        // so form-only leads sat unowned until someone triaged them by hand
+        // (Richard, Jocelyn, Rudy, Stefan, Nov 2026). Fill only what is blank.
+        const filled = contactId ? hubspotFillOwnerAndStatus(config, contactId) : '';
         sheet.getRange(row, 4, 1, 3).setValues([[contactId ? 'sent' : 'sent-unlinked', String(res.json.id),
-          contactId ? 'Contact ' + contactId : 'Contact not found after 30 min; task created without it']]);
+          contactId ? 'Contact ' + contactId + filled : 'Contact not found after 30 min; task created without it']]);
       } else {
         sheet.getRange(row, 4, 1, 3).setValues([['needs-review', '', 'HTTP ' + res.code + ' ' + JSON.stringify(res.json).slice(0, 300)]]);
         logDebug(ss, 'HubSpot task rejected: HTTP ' + res.code, data.email);

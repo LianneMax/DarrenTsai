@@ -163,6 +163,105 @@ describe('call-back task for inbound callers', () => {
     expect(h.rowOf('HubSpot Caller Tasks')).toMatchObject({ Status: 'needs-review' });
   });
 
+  describe('scenarios Darren could have (stateful HubSpot: a created task stays open)', () => {
+    type Call = { id: string; at: string; dir: 'INBOUND' | 'OUTBOUND'; ms?: number; transcript?: string };
+    /** A small HubSpot + CallRail for one contact, where tasks and calls accumulate like the real thing. */
+    function world(calls: Call[], contact: Record<string, string> = {}, opts: { openTaskAtStart?: boolean } = {}) {
+      const tasks: string[] = opts.openTaskAtStart ? ['EXISTING'] : [];
+      const fetch = vi.fn((url: string, opt: Record<string, unknown>) => {
+        const inbound = calls.filter((c) => c.dir === 'INBOUND');
+        if (url.startsWith('https://api.callrail.com/')) {
+          return ok({ calls: inbound.map((c) => ({ customer_phone_number: '+19092475448', start_time: c.at, transcription: c.transcript ?? 'Hi, this is about a home equity loan, please call me back.', tags: [], source: 'Google Ads' })) });
+        }
+        if (url.endsWith('/crm/v3/objects/calls/search')) return ok({ results: inbound.map((c) => ({ id: c.id, properties: { hs_timestamp: c.at, hs_call_from_number: '+19092475448', hs_call_duration: String(c.ms ?? 40000) } })) });
+        if (/\/crm\/v4\/objects\/calls\/.+\/associations\/contacts$/.test(url)) return ok({ results: [{ toObjectId: 605000000001 }] });
+        if (/associations\/calls/.test(url)) return ok({ results: calls.map((_c, i) => ({ toObjectId: i + 1 })) });
+        if (url.endsWith('/crm/v3/objects/calls/batch/read')) return ok({ results: calls.map((c) => ({ properties: { hs_timestamp: c.at, hs_call_direction: c.dir } })) });
+        if (/associations\/tasks/.test(url)) return ok({ results: tasks.map((_t, i) => ({ toObjectId: i + 1 })) });
+        if (url.endsWith('/crm/v3/objects/tasks/batch/read')) return ok({ results: tasks.map(() => ({ properties: { hs_task_status: 'NOT_STARTED' } })) });
+        if (url.includes('/crm/v3/objects/contacts/') && opt.method === 'get') return ok({ properties: { firstname: 'Pat', lastname: 'Lee', relationship_type: '', hubspot_owner_id: '', hs_lead_status: '', ...contact } });
+        if (url.endsWith('/crm/v3/objects/tasks') && opt.method === 'post') { tasks.push('T' + (tasks.length + 1)); return ok({ id: 'T' + tasks.length }, 201); }
+        return ok({ id: '605000000001' });
+      });
+      const s = setup({ ...config }, fetch as unknown as ReturnType<typeof apis>);
+      const run = () => { delete s.props.HUBSPOT_CALLER_TASKS_LAST_RUN; s.h.gas.processHubSpotCallerTasks(s.ss); };
+      const statuses = () => (s.h.tabs.get('HubSpot Caller Tasks')?.rows ?? []).slice(1).map((r) => String(r[3]));
+      return { ...s, run, statuses, posts: () => taskPosts(fetch as unknown as ReturnType<typeof apis>).length };
+    }
+
+    it('a new ad lead calls, Darren misses it and they leave a voicemail: one task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(20), dir: 'INBOUND' }]);
+      w.run(); w.run();
+      expect(w.posts()).toBe(1);
+      expect(w.statuses()).toEqual(['done']);
+    });
+
+    it('the lead calls three times in a row because Darren did not pick up: still one task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(40), dir: 'INBOUND' }, { id: 'C2', at: minsAgo(35), dir: 'INBOUND' }, { id: 'C3', at: minsAgo(30), dir: 'INBOUND' }]);
+      w.run();
+      expect(w.posts()).toBe(1);
+      expect(w.statuses()).toEqual(['done', 'skipped-open-task', 'skipped-open-task']);
+    });
+
+    it('the lead filled in the form (call task already open) and then called: no second task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(20), dir: 'INBOUND' }], {}, { openTaskAtStart: true });
+      w.run();
+      expect(w.posts()).toBe(0);
+      expect(w.statuses()).toEqual(['skipped-open-task']);
+    });
+
+    it('Darren returns the call through the CallRail app within 15 minutes: no task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25), dir: 'INBOUND' }, { id: 'C2', at: minsAgo(18), dir: 'OUTBOUND', ms: 300000 }]);
+      w.run();
+      expect(w.posts()).toBe(0);
+      expect(w.statuses()).toEqual(['skipped-called-back']);
+    });
+
+    it('Darren returns the call from his own phone (not logged anywhere): the task is still created', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25), dir: 'INBOUND' }]);
+      w.run();
+      expect(w.posts()).toBe(1);
+    });
+
+    it('Darren picks up and they talk for 8 minutes: no task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25), dir: 'INBOUND', ms: 8 * 60 * 1000 }]);
+      w.run();
+      expect(w.statuses()).toEqual(['skipped-conversation']);
+    });
+
+    it('a robocall about a Google listing: no task, contact not touched', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25), dir: 'INBOUND', transcript: 'Your business is not showing correctly. Press 1 to verify your Google listing.' }]);
+      w.run();
+      expect(w.statuses()).toEqual(['skipped-spam']);
+      expect(w.fetch.mock.calls.some((c) => (c[1] as { method: string }).method === 'patch')).toBe(false);
+    });
+
+    it('a past client Darren already works with calls: task created, his owner and Lead Status kept', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25), dir: 'INBOUND' }], { relationship_type: 'borrower_client', hubspot_owner_id: '99169757', hs_lead_status: 'CONNECTED' });
+      w.run();
+      expect(w.posts()).toBe(1);
+      expect(w.fetch.mock.calls.some((c) => (c[1] as { method: string }).method === 'patch')).toBe(false);
+    });
+
+    it('a vendor already marked in HubSpot calls again: no task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25), dir: 'INBOUND' }], { relationship_type: 'vendor' });
+      w.run();
+      expect(w.statuses()).toEqual(['skipped-not-borrower']);
+    });
+
+    it('the lead calls again the next day after Darren closed the first task: a new task', () => {
+      const w = world([{ id: 'C1', at: minsAgo(25 * 60), dir: 'INBOUND' }]);
+      w.run();
+      expect(w.posts()).toBe(1);
+      // Darren completes it (no open task), then the lead calls again.
+      const w2 = world([{ id: 'C1', at: minsAgo(25 * 60), dir: 'INBOUND' }, { id: 'C2', at: minsAgo(30), dir: 'INBOUND' }]);
+      w2.h.tabs.set('HubSpot Caller Tasks', { name: 'HubSpot Caller Tasks', rows: [['Call ID', 'Call At', 'Contact ID', 'Status', 'Task ID', 'Detail'], ['C1', '', '605000000001', 'done', 'T1', '']] });
+      w2.run();
+      expect(w2.posts()).toBe(1);
+      expect(w2.statuses()).toEqual(['done', 'done']);
+    });
+  });
+
   it('spam rules: narrow phrases only, and nothing from caller ID or call length', () => {
     const { h } = setup();
     expect(h.gas.callerSpamReason(null)).toBe('');
