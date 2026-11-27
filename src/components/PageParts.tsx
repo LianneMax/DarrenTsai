@@ -355,6 +355,30 @@ export function LeadPreferencesStep({ v, caption, submitLabel, onBack, formId = 
   );
 }
 
+/**
+ * A validation message shown on the page, at the top of the step, instead of a
+ * pop-up (28 Nov 2026, Max: one way of showing errors on every form, as /adu/
+ * already did). It is announced (role="alert"), takes focus and scrolls into
+ * view so keyboard and screen-reader users land on it, and goes away when the
+ * step changes. An uncertain save still uses ErrorDialog: that one needs a
+ * decision, not a correction.
+ */
+export function InlineFormError({ message, className = 'form-inline-error', title = 'Check your details.' }: { message: string | null; className?: string; title?: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!message || !box.current) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    box.current.focus({ preventScroll: true });
+    box.current.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  }, [message]);
+  if (!message) return null;
+  return (
+    <div ref={box} className={className} role="alert" tabIndex={-1}>
+      <strong>{title}</strong> {message} <span className="form-inline-error-note">Your entries are still here.</span>
+    </div>
+  );
+}
+
 /** Keep validation separate from an uncertain save: dismissing never retries or
  * resets the form, so a retry retains the same submission identity. */
 export function ErrorDialog({ message, onClose, id, kind = 'validation' }: { message: string | null; onClose: () => void; id: string; kind?: 'validation' | 'save' }) {

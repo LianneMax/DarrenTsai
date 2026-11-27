@@ -10,7 +10,7 @@ let root:Root; let host:HTMLDivElement; let posted:Record<string,unknown>[];
 const text=()=>host.textContent||'';
 const heading=()=>host.querySelector('#adu-step-heading')?.textContent;
 async function button(name:string) {
-  const button=Array.from(host.querySelectorAll('button')).find(b=>{const label=b.getAttribute('aria-label')||b.textContent?.trim().replace(/^[\d\s←✓]+/,'')||'';return label===name||label.startsWith(name);});
+  const button=Array.from(host.querySelectorAll('button')).find(b=>{const label=(b.getAttribute('aria-label')||'').replace(/^\d+\.\s*/,'')||b.textContent?.trim().replace(/^[\d\s←✓]+/,'')||''; /* house buttons are named "1. Original home" since 28 Nov 2026 (label-in-name) */return label===name||label.startsWith(name);});
   expect(button, name).toBeTruthy(); await act(async()=>button!.click());
 }
 async function input(id:string,value:string) {

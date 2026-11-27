@@ -48,7 +48,7 @@ describe('authoritative Sheet-only booking inquiries', () => {
     const data = inquiry({ propertyState: state, state: 'CA', propertyUse: use, bookingGoal: goal, captureDisposition: 'supported' });
     expect(h.post(data)).toEqual({ success: true, submissionId: data.submissionId, receipt: 'saved', replayed: false, disposition: 'sheet-only' });
     expect(h.rowOf(tab)).toMatchObject({ State: state, 'Property State': state, 'Licensed?': 'No',
-      'Service Area Result': 'out-of-market', 'Service Area Version': '2026-10-15-v3', Status: 'Sheet only: outside service area', Contacted: '',
+      'Service Area Result': 'out-of-market', 'Service Area Version': '2026-10-15-v3', Status: 'Sheet only: outside service area',
       'Privacy Acknowledged': 'Yes', 'Form ID': 'booking-prequal' });
     const snapshot = JSON.parse(String(h.rowOf(tab)['Submission Snapshot']));
     expect(snapshot.captureDisposition).toBe('sheet-only');

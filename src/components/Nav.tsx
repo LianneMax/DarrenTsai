@@ -109,7 +109,7 @@ export default function Nav({ onOpenContact, alwaysSolid = false, landing = fals
       <nav className={`nav${scrolled || alwaysSolid ? ' nav-scrolled' : ''}${menuOpen ? ' nav-menu-open' : ''}${landing ? ' nav-landing' : ''}`}>
         <div className="nav-inner container">
 
-          <a href="/" className="nav-logo" aria-label="Darren Tsai Home">
+          <a href="/" className="nav-logo">
             <div className="nav-avatar">
               <img
                 src="/darren-avatar.png"

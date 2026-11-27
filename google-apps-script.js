@@ -245,12 +245,13 @@ function effectiveClickIdType(d) {
  * And once a lead is found there is nowhere to record that it was worked, so
  * the Sheet cannot say which of the four were ever called.
  *
- * Status and Contacted are deliberately left blank for a person to fill in.
- * This is a stopgap until HubSpot: a CRM owns lead state properly, and the
- * point here is only to stop the record being unreadable in the meantime.
- * migrateLeadTabs() carries whatever a person typed into them across by name.
+ * Test? marks test leads and Status marks Sheet-only (outside service area)
+ * inquiries; both are written on every submission. HubSpot Lead Status now
+ * owns whether a lead was worked, so the old "Contacted" column, which nothing
+ * wrote or read, was removed on 28 Nov 2026 (Max).
+ * migrateLeadTabs() carries whatever a person typed into these across by name.
  */
-const TRIAGE_HEADERS = ['Test?', 'Status', 'Contacted'];
+const TRIAGE_HEADERS = ['Test?', 'Status'];
 // Preserve the triage and attribution blocks. Consent evidence is written by header name.
 // Keep the original evidence columns readable. SMS Consent remains marketing
 // only; the two explicit categories describe this submission, not a CRM subscription
@@ -263,7 +264,9 @@ const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent 
   'Property ZIP', 'Credit Range', 'Cash Range',
   // /book/'s goal question (policy v3, 15 Oct 2026). Review Flag is Yes for
   // commercial and not-sure, which Darren reviews before the call.
-  'Booking Goal', 'Review Flag'];
+  'Booking Goal', 'Review Flag',
+  // /home-equity/'s optional "Any other loans on this home?" (28 Nov 2026).
+  'Other Loans'];
 
 /**
  * The addresses used for testing, matched with any +tag stripped.
@@ -296,9 +299,9 @@ function isTestLead(d) {
   return false;
 }
 
-/** Test?, Status, Contacted. Unsupported inquiries carry a visible Sheet-only status. */
+/** Test?, Status. Unsupported inquiries carry a visible Sheet-only status. */
 function triageRow(d) {
-  return [isTestLead(d) ? 'TEST' : '', isSheetOnlyInquiry(d) ? 'Sheet only: outside service area' : '', ''];
+  return [isTestLead(d) ? 'TEST' : '', isSheetOnlyInquiry(d) ? 'Sheet only: outside service area' : ''];
 }
 
 function licensedCell(d) { return isLicensedState(d.state) ? 'Yes' : 'No'; }
@@ -363,6 +366,8 @@ const HEADER_ALIASES = {
 const DROPPED_HEADERS = {
   'Debt Consolidation': ['Best Time to Call', 'Lead Source']
 };
+/** Retired on every tab. Contacted (28 Nov 2026): HubSpot Lead Status replaced it. */
+const DROPPED_HEADERS_ALL_TABS = ['Contacted'];
 
 /** One line per debt the visitor entered, for a single cell Darren can read. */
 function debtsSummary(debts) {
@@ -720,7 +725,7 @@ function finishLeadSchema(schema) {
     const own = schema.detailValues(d);
     own['Inquiry Message'] = d.message || '';
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
-    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '', d.propertyZip || '', d.creditRange || '', d.cashRange || '', d.bookingGoal || '', d.reviewFlag || '']);
+    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '', d.propertyZip || '', d.creditRange || '', d.cashRange || '', d.bookingGoal || '', d.reviewFlag || '', d.otherLoans || '']);
     SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
     const attr = byHeader(ATTR_HEADERS, attrRow(d));
     ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });
@@ -2008,7 +2013,7 @@ function sameCell(a, b) {
  *   empty    blank-headed columns with nothing under them, left behind
  */
 function planTabMigration(tabName, live, headers, rows) {
-  const dropList = Object.prototype.hasOwnProperty.call(DROPPED_HEADERS, tabName) ? DROPPED_HEADERS[tabName] : [];
+  const dropList = (Object.prototype.hasOwnProperty.call(DROPPED_HEADERS, tabName) ? DROPPED_HEADERS[tabName] : []).concat(DROPPED_HEADERS_ALL_TABS);
   const oldNames = {}; // an old name -> the schema header it became
   Object.keys(HEADER_ALIASES).forEach(function (h) {
     HEADER_ALIASES[h].forEach(function (old) { oldNames[old] = h; });
@@ -2733,6 +2738,9 @@ function hubspotTaskContent(d) {
   // building is visible on the task, not only in the Sheet.
   const propertyTypes = { 'single-family-condo': 'Single family or condo', '2-4-units': '2 to 4 units', '5-plus-commercial': '5+ units or commercial', 'mobile-land': 'Mobile home or land' };
   if (Object.prototype.hasOwnProperty.call(propertyTypes, d.propertyType)) lines.push('Property type: ' + propertyTypes[d.propertyType]);
+  // Other loans already on the home (28 Nov 2026): changes the borrowing room.
+  const otherLoans = { none: 'none', heloc: 'a HELOC', second: 'a second mortgage or home equity loan', 'not-sure': 'not sure' };
+  if (Object.prototype.hasOwnProperty.call(otherLoans, d.otherLoans)) lines.push('Other loans on the home: ' + otherLoans[d.otherLoans]);
   if (d.utm_term) lines.push('Search term: ' + d.utm_term);
   if (d.utm_campaign) lines.push('Campaign: ' + d.utm_campaign);
   lines.push(d.smsConsent === true || d.smsMarketingConsent === true || d.smsInformationalConsent === true

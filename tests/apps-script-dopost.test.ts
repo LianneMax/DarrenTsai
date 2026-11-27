@@ -665,11 +665,11 @@ describe('triage columns', () => {
     expect(h.rowOf('Debt Consolidation', 1)['Test?']).toBe('');
   });
 
-  it('leaves Status and Contacted for a person to fill in', () => {
+  it('leaves Status blank for a supported lead, and has no Contacted column (retired 28 Nov 2026)', () => {
     post(h, { ...LEAD, email: 'sam@example.com' });
     const row = h.rowOf('Debt Consolidation', 1);
     expect(row['Status']).toBe('');
-    expect(row['Contacted']).toBe('');
+    expect(row).not.toHaveProperty('Contacted');
   });
 
   it('reaches every lead-bearing tab', () => {

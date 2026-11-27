@@ -77,7 +77,7 @@ filter stays on the old tab.
    | `NEEDS MIGRATION (...)` | Expected for all five existing tabs the first time |
    | `New columns it will gain` | Blank on old rows afterwards. Correct |
    | `Left behind: Best Time to Call, Lead Source` | Debt Consolidation only. They stay readable in the old tab |
-   | `Carried across though not in the schema: "..."` | A column someone added by hand. It is kept, after `Contacted` |
+   | `Carried across though not in the schema: "..."` | A column someone added by hand. It is kept, after `Status` |
    | `Formulas: N` above 0 | Stop and look at them first |
    | `Filter on the tab: YES` | Note it; re-create it on the new tab afterwards |
    | `Home Equity` / `ADU` / `Self-Employed`: `no such tab yet` | Expected until each has a lead |
@@ -97,7 +97,7 @@ filter stays on the old tab.
    | `NOT MIGRATED, the copy did not match` | The tab is untouched. Send the line to Max |
 
 5. **Check three rows per tab by eye**, old tab beside new: a name, an email
-   and whatever is in `Status` and `Contacted` must be under the same header in
+   and whatever is in `Status` must be under the same header in
    both. On Debt Consolidation check the oldest row: its `Total Debt Balance`
    must be the same number in both tabs.
 6. **The site is already out.** It shipped with `main` on 10 Oct: the debt
@@ -112,7 +112,7 @@ filter stays on the old tab.
 | After the migration | Expect |
 | --- | --- |
 | Every lead tab's first columns | `Timestamp`, `Submission ID`, `First Name`, `Last Name`, `Email`, `Phone`, `State`, `Licensed?`, `Source`, `Magnet/Goal`, `Form ID`, `Page` |
-| Every lead tab's last columns | the attribution block (with `First Touch Medium` after `First Touch Source`), then `Test?`, `Status`, `Contacted` |
+| Every lead tab's last columns | the attribution block (with `First Touch Medium` after `First Touch Source`), then `Test?`, `Status` |
 | A new row's `Submission ID` | A long id. The same id is inside that lead's `Payload` on the `Follow-ups` tab |
 | A new row's `Page` | The path only, e.g. `/dscr/` |
 | An old row's new columns | Blank. Those leads were never asked |
@@ -233,7 +233,7 @@ The `newsletter` tag on an FHA lead is deliberate, not a bug.
 | Check | Expect |
 | --- | --- |
 | Site | Success card, "You're all set!" |
-| Sheet tab `Debt Consolidation` | New row with the savings figures. `Licensed?` sits straight after `State`, as on every tab since the R1 migration; `Test?`, `Status` and `Contacted` are the last three |
+| Sheet tab `Debt Consolidation` | New row with the savings figures. `Licensed?` sits straight after `State`, as on every tab since the R1 migration; `Test?` and `Status` are the last three |
 | Sheet `Debts` | One readable line per debt you entered, e.g. `Credit Card $8,500 at 24.99% ($250/mo)` |
 | Sheet `Estimated Home Equity` / `Current LTV` / `Current Monthly Payment` | The equity snapshot from step 2 and the "Today" card from step 3. A paid-off home (balance `0`) shows its whole value as equity and an LTV of `0` |
 | Sheet `Rate Source Date` | The PMMS week in the page's rate note, e.g. `2026-10-08`. Blank only if the rates call failed |

@@ -14,3 +14,4 @@
 [data-service-area] legend{font-size:18px;font-weight:600;color:#223d55;padding:0}
 [data-service-area] label{font-size:14px;color:#526676}
 /* Final step layout (28 Nov 2026, Max approved the preview): optional texts grouped in one box, required acknowledgement alone above the button, Wording unchanged. */.compliance-disclosure .sms-group{border:1px solid #dfe5ea;border-radius:12px;padding:6px 18px 12px;margin:0 0 18px}.compliance-disclosure .sms-group p.sms-details{font-size:14px;line-height:1.5;margin:8px 0 0}.compliance-disclosure .privacy-ack{border-top:1px solid #e6ebef;padding-top:14px}.compliance-disclosure .privacy-ack .sms-choice{margin:0 0 4px}
+/* Links inside consent text are underlined, not colour-only (28 Nov 2026 a11y pass, WCAG 1.4.1). */.compliance-disclosure a{text-decoration:underline;text-underline-offset:2px}

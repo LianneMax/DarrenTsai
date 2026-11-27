@@ -55,7 +55,7 @@ Decision (Max, 8 Oct): remove "Best Time to Call" and "Lead Source" ("How did yo
 Decision (Max, 8 Oct, on the build plan): rows are written **by header name**, not by position. This replaces step 5's "ensureHeaders refuses a sheet whose headers don't match the schema": a mismatch is alerted, never a reason to refuse a lead. Columns still move only through the migration function.
 
 ## Standard order for every lead tab
-Timestamp | Submission ID | First Name | Last Name | Email | Phone | State | Licensed? | Source | Magnet/Goal | Form ID | Page | [funnel details] | UTM Source | UTM Medium | UTM Campaign | UTM Term | UTM Content | Click ID | Click ID Type | Landing Page | Referrer | First Touch Source | First Touch Medium | First Touch Campaign | First Click ID | First Click ID Type | First Touch At | Test? | Status | Contacted
+Timestamp | Submission ID | First Name | Last Name | Email | Phone | State | Licensed? | Source | Magnet/Goal | Form ID | Page | [funnel details] | UTM Source | UTM Medium | UTM Campaign | UTM Term | UTM Content | Click ID | Click ID Type | Landing Page | Referrer | First Touch Source | First Touch Medium | First Touch Campaign | First Click ID | First Click ID Type | First Touch At | Test? | Status
 
 Form ID tells apart two forms on one page (e.g. the FHA guide form vs the "Have Darren review my payment" form). New fields in future go into their logical block, through the same migration function.
 
@@ -126,3 +126,8 @@ New columns the site already sends but the Sheet does not store: Form ID, Page, 
 
 ## Site wording (revamp spec sections 6 and 12, with Max's override)
 Estimated Home Equity (not Available Equity); Estimated Monthly Savings (kept, per Max), shown as a payment increase when negative; Weighted Average Interest Rate only if balance-weighted; Illustrative CLTV (not available credit); Options worth discussing (not best loan / you qualify); Monthly Payment (P&I) where tax and insurance are excluded; "Your request has been received" (not "Darren has reviewed"). Never: approved, you qualify, available credit, guaranteed savings, best loan, a benchmark as a personal quote. Keep the line "Lower monthly payments do not necessarily mean lower total borrowing costs" near the savings figures. Sheet headers use the same words.
+
+## 28 November 2026 changes
+
+- `Contacted` retired on every lead tab. Nothing wrote or read it; HubSpot Lead Status records whether a lead was worked. The empty columns were deleted from the 10 live tabs and from the All Leads formula. Migration leaves it in the "(old ...)" tab if an old layout still has it (`DROPPED_HEADERS_ALL_TABS`). `Test?` and `Status` stay: the script writes them on every submission.
+- `Other Loans` added after `Review Flag`: the optional /home-equity/ answer `none`, `heloc`, `second` or `not-sure` (blank when skipped). Added to a live tab by name on the first lead that carries it, and shown in All Leads.

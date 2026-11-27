@@ -4,7 +4,7 @@ import { type EmailSuggestion } from '../utils/emailSuggest';
 import { ADU_PURPOSES } from '../utils/adu';
 import { COMMON_CLTV_LIMIT } from '../utils/homeEquity';
 import { PROPERTY_STATES, PROPERTY_STATE_LABELS } from '../utils/serviceArea';
-import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep, LeadPreferencesStep, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
+import { Arrow, Check, Row, EquitySnapshot, MoneyInput, LeadContactStep, LeadPreferencesStep, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS, InlineFormError } from './PageParts';
 import AduHouseExplorer from './AduHouseExplorer';
 import { ArrowIcon, MarketingFaq } from './Marketing';
 import JourneyTimeline from './JourneyTimeline';
@@ -21,7 +21,7 @@ export interface AduPageView {
   emailHint: EmailSuggestion | null; setEmailHint: (h: EmailSuggestion | null) => void;
   message: string; setMessage: (value: string) => void;
   usState: string; setUsState: (v: string) => void; sending: boolean; submitted: boolean;
-  submitLead: () => void; openBooking: () => void; errorMsg: string | null;
+  submitLead: () => void; openBooking: () => void; errorMsg: string | null; errorKind?: 'validation' | 'save';
 }
 const STEPS = [['Your project','What you have in mind'],['Your home','The home behind the plan'],['Your snapshot','Bring the numbers together'],['Details','How to reach you'],['Review','Preferences and send']] as const;
 const PURPOSE_NOTES = ['Make room for someone close.','Explore a space for tenants.','Improve the home you have.','Talk through a different project.'];
@@ -148,7 +148,7 @@ export default function AduPage({v,disclosure}:{v:AduPageView;overlays?:ReactNod
     <section id="project" className="adu-workspace design-wrap" aria-label="Your project funding snapshot" data-dt-form="adu-calculator">
       <JourneyTimeline steps={STEPS} current={v.step} complete={v.submitted} disabled={v.sending} onStep={v.goStep}/>
       <div className="adu-work-area"><div className="adu-stage-state"><span>{v.submitted?'Request received':`${v.step} of ${STEPS.length}`}</span></div>
-        {v.errorMsg&&<div className="adu-inline-error" role="alert">{v.errorMsg}</div>}
+        <InlineFormError className="adu-inline-error form-inline-error" title={v.errorKind==='save'?'Save not confirmed.':'Check your details.'} message={v.errorMsg}/>
         {v.submitted?<AduRecap v={v}/>:v.step===1?<StepAduProject v={v}/>:v.step===2?<StepAduHome v={v}/>:v.step===3?<StepAduSnapshot v={v}/>:v.step===4?<StepAduContact v={v}/>:<StepAduReview v={v}/>}</div>
     </section><PlanningChecks/>
     <div className="adu-faq-section"><MarketingFaq onOpenContact={v.openBooking} groups={ADU_FAQ} promptTitle="A project in mind?" promptDescription="Talk through the numbers and the possibilities with Darren."/></div>

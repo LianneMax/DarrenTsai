@@ -51,6 +51,7 @@ const ATTR_OLD = [
   'Click ID', 'Click ID Type', 'Landing Page', 'Referrer',
   'First Touch Source', 'First Touch Campaign', 'First Click ID', 'First Click ID Type', 'First Touch At',
 ];
+// The old layouts really had a Contacted column (removed from the schema 28 Nov 2026).
 const TRIAGE = ['Test?', 'Status', 'Contacted'];
 
 /** Each tab's header row as the script behind the live deployment wrote it. */
@@ -121,20 +122,21 @@ describe('migrating a tab moves every value with its header', () => {
     expect(tab.rows[0]).toEqual(h.gas.SOURCE_SCHEMAS['DebtConsolidation'].headers);
     const row = read(tab);
     for (const [header, value] of Object.entries(DEBT_ROW)) {
-      if (header === 'Best Time to Call' || header === 'Lead Source') continue;
+      if (header === 'Best Time to Call' || header === 'Lead Source' || header === 'Contacted') continue;
       expect(row[header], header).toBe(value);
     }
     expect(lines.find((l) => l.startsWith('Debt Consolidation:'))).toContain('migrated 1 row(s)');
   });
 
-  it('keeps what a person typed into Status and Contacted', () => {
-    // The two cells nothing can regenerate: the record of which leads were called.
+  it('keeps what a person typed into Status, and leaves the retired Contacted in the old tab', () => {
+    // Contacted was retired on 28 Nov 2026 (HubSpot Lead Status replaced it);
+    // anything typed there stays readable in the (old) tab.
     const h = load();
     h.seed('Debt Consolidation', [OLD.debt, rowFor(OLD.debt, DEBT_ROW)]);
     h.gas.migrateLeadTabs();
-    expect(read(h.tabs.get('Debt Consolidation')!)).toMatchObject({
-      Status: 'Called 28 Sep, left voicemail', Contacted: 'Yes',
-    });
+    expect(read(h.tabs.get('Debt Consolidation')!)).toMatchObject({ Status: 'Called 28 Sep, left voicemail' });
+    expect(h.tabs.get('Debt Consolidation')!.rows[0]).not.toContain('Contacted');
+    expect(read(h.oldTab('Debt Consolidation'))).toMatchObject({ Contacted: 'Yes' });
   });
 
   it('leaves the columns a historical row has no answer for blank, never 0', () => {
@@ -192,7 +194,7 @@ describe('migrating a tab moves every value with its header', () => {
     });
   });
 
-  it('FHA: brings the estimator columns in from after Contacted', () => {
+  it('FHA: brings the estimator columns in from after the old triage columns', () => {
     const h = load();
     h.seed('FHA', [OLD.fha, rowFor(OLD.fha, {
       Email: 'ben@example.com', 'Credit Score': '680', 'Test?': 'TEST',
@@ -202,10 +204,10 @@ describe('migrating a tab moves every value with its header', () => {
     const tab = h.tabs.get('FHA')!;
     const headers = tab.rows[0] as string[];
     expect(headers.indexOf('Purchase Price')).toBe(headers.indexOf('Credit Score') + 1);
-    expect(headers.at(-1)).toBe('Contacted');
+    expect(headers.at(-1)).toBe('Status');
     expect(read(tab)).toMatchObject({
       'Credit Score': '680', 'Purchase Price': 400000, 'Down Payment %': 3.5, Rate: 6.5,
-      'Est. Monthly Payment': 2950, 'Test?': 'TEST', Contacted: '',
+      'Est. Monthly Payment': 2950, 'Test?': 'TEST',
     });
   });
 
@@ -224,7 +226,8 @@ describe('migrating a tab moves every value with its header', () => {
       const tab = h.tabs.get(name)!;
       expect(tab.rows.length, name).toBe(n + 1);
       for (let i = 0; i < n; i++) {
-        expect(read(tab, i + 1), name).toMatchObject({ Email: `lead${i}@example.com`, Contacted: `c${i}` });
+        expect(read(tab, i + 1), name).toMatchObject({ Email: `lead${i}@example.com` });
+        expect(read(h.oldTab(name), i + 1), name).toMatchObject({ Contacted: `c${i}` });
       }
       expect(h.oldTab(name).rows.length, name).toBe(n + 1);
     }
@@ -295,7 +298,9 @@ describe('what the migration will not do', () => {
     const h = load();
     h.seed('Debt Consolidation', [doubled, row]);
     h.gas.migrateLeadTabs();
-    expect(read(h.tabs.get('Debt Consolidation')!)).toMatchObject({ Status: 'Called', Contacted: 'TEST' });
+    // Status merges; the misfiled flag under Contacted stays in the (old) tab only.
+    expect(read(h.tabs.get('Debt Consolidation')!)).toMatchObject({ Status: 'Called' });
+    expect(h.oldTab('Debt Consolidation').rows[1][37]).toBe('TEST'); // first of the two Contacted columns
   });
 
   it('refuses to choose when the two copies disagree, and changes nothing', () => {
@@ -384,7 +389,7 @@ describe('the first lead after the migration', () => {
     expect(tab.rows).toHaveLength(3);
     expect(tab.rows[0]).toEqual(harness.gas.SOURCE_SCHEMAS['DebtConsolidation'].headers);
     expect(read(tab, 2)).toMatchObject({ Email: 'new@example.com', 'Monthly Savings': -80, 'Licensed?': 'Yes' });
-    expect(read(tab, 1)).toMatchObject({ Email: 'steven@example.com', Contacted: 'Yes' });
+    expect(read(tab, 1)).toMatchObject({ Email: 'steven@example.com', Status: 'Called 28 Sep, left voicemail' });
     expect(mail).toEqual([]);
   });
 });

@@ -83,7 +83,7 @@ export default function AduHouseExplorer() {
     <ol className="adu-house-timeline" aria-label="House illustration views" data-playing={playing&&visible&&pageVisible} onKeyDown={event=>{
       if(event.key==='ArrowRight'){event.preventDefault();next();}
       if(event.key==='ArrowLeft'){event.preventDefault();previous();}
-    }}>{HOUSE_SCENES.map((scene,i)=><li key={scene.id} className={index===i?'is-active':i<index?'is-past':''}><button type="button" data-early={`adu-house-${scene.id}`} aria-label={scene.label} title={scene.label} aria-pressed={index===i} onClick={()=>choose(i)}><span>{i+1}</span></button></li>)}</ol>
+    }}>{HOUSE_SCENES.map((scene,i)=><li key={scene.id} className={index===i?'is-active':i<index?'is-past':''}><button type="button" data-early={`adu-house-${scene.id}`} aria-label={`${i+1}. ${scene.label}`} title={scene.label} aria-pressed={index===i} onClick={()=>choose(i)}><span>{i+1}</span></button></li>)}</ol>
     <figcaption>Concept illustrations. Permits, design and availability depend on your property and local rules.{reduced&&<span> Animation off for reduced motion.</span>}</figcaption>
   </figure>;
 }

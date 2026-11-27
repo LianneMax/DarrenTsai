@@ -27,10 +27,10 @@ import SavedLeadCalendar from './SavedLeadCalendar';
 import { formatCurrency } from '../utils/formatters';
 import { type EmailSuggestion, emailHintMessage, hintAfterBlur } from '../utils/emailSuggest';
 import { EQUITY_GOALS, CREDIT_RANGES, CASH_RANGES, EQUITY_OPTIONS, PROPERTY_TYPES, PROPERTY_USES } from '../utils/homeEquity';
-import { serviceArea } from '../utils/serviceArea';
+import { serviceArea, OTHER_LOANS } from '../utils/serviceArea';
 import InquiryMessage from './InquiryMessage';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
-import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS, InlineFormError } from './PageParts';
 import ComplianceDisclosure, { ContactSummary } from './ComplianceDisclosure';
 import { HouseOptions } from './Marketing';
 import { formatUsPhone } from '../utils/phone';
@@ -61,6 +61,9 @@ export interface EquityPageView {
   mortgageCurrent: string; setMortgageCurrent: (v: string) => void;
   bankruptcy: string; setBankruptcy: (v: string) => void;
   preference: string; setPreference: (v: string) => void;
+  otherLoans: string; setOtherLoans: (v: string) => void;
+  /** A validation message for the current step, shown on the page (28 Nov 2026). */
+  formError: string | null;
 
   fname: string; setFname: (v: string) => void;
   lname: string; setLname: (v: string) => void;
@@ -191,6 +194,10 @@ export function StepEquityGoal({ v }: { v: EquityPageView }) {
       <h3 className="dcp-h3">Is your mortgage current?</h3>
       <Choices options={YES_NO_NONE} value={v.mortgageCurrent} onChange={v.setMortgageCurrent} label="Mortgage current" />
 
+      {/* Optional (28 Nov 2026): a HELOC or second already on the home changes the borrowing room. */}
+      <h3 className="dcp-h3">Any other loans on this home? <span className="dcp-optional">· optional</span></h3>
+      <Choices options={OTHER_LOANS} value={v.otherLoans} onChange={v.setOtherLoans} label="Other loans on this home" />
+
       <h3 className="dcp-h3">Any bankruptcy or foreclosure in the last 4 years?</h3>
       <Choices options={NO_YES} value={v.bankruptcy} onChange={v.setBankruptcy} label="Bankruptcy or foreclosure" />
 
@@ -198,7 +205,7 @@ export function StepEquityGoal({ v }: { v: EquityPageView }) {
       <Chips options={EQUITY_OPTIONS} value={v.preference} onChange={v.setPreference} label="Option of interest" />
       <p className="dcp-hint">Each one is explained below.</p>
 
-      <StepNav back="← Your Home" onBack={() => v.goStep(1)} next={<>Continue <Arrow /></>} onNext={v.next} />
+      <StepNav back="← Back" onBack={() => v.goStep(1)} next={<>Continue <Arrow /></>} onNext={v.next} />
     </div>
   );
 }
@@ -261,7 +268,7 @@ export function StepEquityContact({ v }: { v: EquityPageView }) {
 
       <InquiryMessage id="equity-inquiry-message" value={v.message} onChange={v.setMessage} />
 
-      <StepNav back="← Your Goal" onBack={() => v.goStep(2)} next={<>Continue <Arrow /></>} onNext={v.next} />
+      <StepNav back="← Back" onBack={() => v.goStep(2)} next={<>Continue <Arrow /></>} onNext={v.next} />
     </div>
   );
 }
@@ -278,7 +285,7 @@ export function StepEquityPreferences({ v }: { v: EquityPageView }) {
       <ComplianceDisclosure formId={EQUITY_FORM_ID} />
 
       <StepNav
-        back="← Your Details" onBack={() => v.goStep(3)}
+        back="← Back" onBack={() => v.goStep(3)}
         disabled={v.sending}
         next={v.sending
           ? <><span className="btn-spinner" aria-hidden="true" /> Sending…</>
@@ -416,6 +423,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
         {!done&&<JourneyTimeline steps={STEPS} current={v.step} disabled={v.sending} onStep={v.goStep}/>}
         <div className="equity-journey-content">
         {!done && <p className="equity-stage-state">{v.step} of {STEPS.length}</p>}
+        {!done && <InlineFormError message={v.formError} />}
         {v.submitted && <EquityRecap v={v} />}
         {!v.submitted && v.declined && <EquityDeclined v={v} />}
         {!done && v.step === 1 && <StepEquityHome v={v} />}

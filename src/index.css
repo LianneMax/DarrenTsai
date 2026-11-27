@@ -1665,6 +1665,13 @@ p {
 .error-panel .modal-body { padding: 12px 24px 24px; }
 .error-panel .modal-sub { font-size: 16px; line-height: 1.6; overflow-wrap: anywhere; margin: 0; }
 .error-panel .error-retained { font-size: 14px; line-height: 1.5; color: var(--text-muted); margin: 12px 0 24px; }
+/* Validation messages on the page, at the top of the step (28 Nov 2026). Same look as /adu/'s; focus lands here. */
+.form-inline-error { background: #fff0f0; color: #933c3c; padding: 15px 18px; border-radius: 8px; margin: 0 0 22px; font-size: 16px; line-height: 1.6; overflow-wrap: anywhere; scroll-margin: 96px; }
+.form-inline-error:focus { outline: 2px solid #933c3c; outline-offset: 2px; }
+.form-inline-error strong { font-weight: 600; margin-right: 4px; }
+.form-inline-error-note { display: block; font-size: 14px; color: #7a4646; margin-top: 4px; }
+/* Links inside consent text are underlined, not colour-only (28 Nov 2026 a11y pass, WCAG 1.4.1). */
+.compliance-disclosure a { text-decoration: underline; text-underline-offset: 2px; }
 .error-panel button:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .error-overlay, .error-panel { animation: none; } }
 

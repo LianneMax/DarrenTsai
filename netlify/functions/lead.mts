@@ -1,4 +1,4 @@
-import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses, prequalAnswered, propertyUses, isCaptureInquiry, isCaptureForm, isEquityForm, INQUIRY_MESSAGE_LIMIT } from '../../src/utils/serviceArea';
+import { serviceArea, SERVICE_AREA_VERSION, OUT_OF_MARKET_MESSAGE, PREQUAL_FORMS, BOOKING_PREQUAL_FORM, BOOKING_GOALS, prequalPasses, prequalAnswered, propertyUses, isCaptureInquiry, isCaptureForm, isEquityForm, INQUIRY_MESSAGE_LIMIT, OTHER_LOAN_VALUES } from '../../src/utils/serviceArea';
 import { bookingBucket } from '../../src/utils/bookingBucket';
 import { isTestLead } from '../../src/utils/testLead';
 // Netlify Function: lead
@@ -747,6 +747,12 @@ export default async (req: Request, context: Context) => {
   let sheetOnly = false;
   if (payload.formId === BOOKING_PREQUAL_FORM && payload.message !== undefined && (typeof payload.message !== 'string' || payload.message.length > INQUIRY_MESSAGE_LIMIT)) {
     return jsonResponse(422, { field: 'message', message: 'Please keep your message to 2,000 characters or fewer.' });
+  }
+
+  // Optional "other loans on this home" answer (28 Nov 2026): blank or one of
+  // the listed values, never free text.
+  if (payload.otherLoans !== undefined && payload.otherLoans !== '' && !OTHER_LOAN_VALUES.includes(String(payload.otherLoans))) {
+    return jsonResponse(422, { field: 'otherLoans', message: 'Please choose one of the listed answers about other loans on the home.' });
   }
 
   const captureInquiry = isCaptureInquiry(payload.formId, payload.source);

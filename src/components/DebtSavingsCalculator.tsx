@@ -359,6 +359,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       return;
     }
     if (n > step) milestone('form_step', { form_id: 'debt-savings-calculator', step_id: step });
+    setErrorMsg(null);
     setStep(n);
     setTimeout(() => {
       document.getElementById(flowId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -517,13 +518,15 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     </p>
   );
 
-  const overlays = <ErrorDialog message={errorMsg} kind={errorKind}
+  // Validation messages show on the page (InlineFormError); only an uncertain save opens the dialog.
+  const overlays = <ErrorDialog message={errorKind === 'save' ? errorMsg : null} kind={errorKind}
     onClose={() => setErrorMsg(null)} id="dsc-error-title" />;
 
   // ── Render: /home-equity/'s "Pay off high-interest debt" path ─────────────
 
   const view: DebtPageView = {
     step, goStep,
+    formError: errorKind === 'validation' ? errorMsg : null,
     debts, addDebt, removeDebt, updateDebt,
     totPmt, totBal, wtRate, hasDebt,
     homeValue, setHomeValue, mtgBalance, setMtgBalance, mtgPayment, setMtgPayment,

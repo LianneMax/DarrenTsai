@@ -110,6 +110,20 @@ export const PREQUAL_PROPERTY_TYPES = ['single-family-condo', '2-4-units'];
 // them, where the visitor picks DSCR or Commercial and the lead lands on that
 // tab. /home-equity/ shows the option and sends the visitor to the booking
 // prequal instead of saving a home-equity lead.
+/**
+ * "Any other loans on this home?" (28 Nov 2026, Max). Optional, on /home-equity/
+ * step 2. A HELOC or second already on the home changes the borrowing room, so
+ * Darren sees it before the call. It does not change any estimate on the page.
+ * Values are what the Sheet's Other Loans column and the HubSpot task receive.
+ */
+export const OTHER_LOANS = [
+  ['none', 'No other loans'],
+  ['heloc', 'A HELOC'],
+  ['second', 'A second mortgage or home equity loan'],
+  ['not-sure', 'Not sure'],
+] as const;
+export const OTHER_LOAN_VALUES: readonly string[] = OTHER_LOANS.map(([v]) => v);
+
 export const COMMERCIAL_PROPERTY_TYPE = '5-plus-commercial';
 export const PREQUAL_MORTGAGE_OK = ['yes', 'no-mortgage'];
 /** Every knockout question has a valid answer, whatever it is (Sheet-only inquiries). */

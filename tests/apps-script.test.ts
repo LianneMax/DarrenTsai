@@ -156,8 +156,8 @@ describe('column alignment — a mismatch here corrupts a live sheet', () => {
   it('ends every lead tab on the triage columns, with attribution just before them', () => {
     for (const key of Object.keys(gas.SOURCE_SCHEMAS)) {
       const headers = gas.SOURCE_SCHEMAS[key].headers;
-      expect(headers.slice(-3)).toEqual(['Test?', 'Status', 'Contacted']);
-      expect(headers.slice(-3 - gas.ATTR_HEADERS.length, -3)).toEqual(gas.ATTR_HEADERS);
+      expect(headers.slice(-2)).toEqual(['Test?', 'Status']);
+      expect(headers.slice(-2 - gas.ATTR_HEADERS.length, -2)).toEqual(gas.ATTR_HEADERS);
     }
   });
 

@@ -36,7 +36,7 @@ import AprEstimate from './AprEstimate';
 import InquiryMessage from './InquiryMessage';
 import { COMMON_CLTV_LIMIT, PROPERTY_USES } from '../utils/homeEquity';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
-import { Arrow, Check, Row, StepNav, EquitySnapshot, FieldHelp, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
+import { Arrow, Check, Row, StepNav, EquitySnapshot, FieldHelp, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS, InlineFormError } from './PageParts';
 
 export interface DebtRow {
   id: number;
@@ -116,6 +116,8 @@ export interface DebtPageView {
   submitted: boolean;
   submitLead: () => void;
   openBooking: () => void;
+  /** A validation message for the current step, shown on the page (28 Nov 2026). */
+  formError: string | null;
 
   /** The rate-source line and the full disclosure, the same elements the homepage shows. */
   rateBadge: ReactNode;
@@ -618,6 +620,7 @@ export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtP
         <div className={v.submitted ? '' : `equity-journey-layout${v.step === 3 ? ' payoff-comparison-layout' : ''}`}>
         {!v.submitted&&<JourneyTimeline steps={STEPS} current={v.step} disabled={v.sending} onStep={v.goStep}/>}
         <div className="equity-journey-content">
+        {!v.submitted && <InlineFormError message={v.formError} />}
         {v.submitted && <DebtRecap v={v} />}
         {!v.submitted && v.step === 1 && <StepDebts v={v} />}
         {!v.submitted && v.step === 2 && <StepHome v={v} />}

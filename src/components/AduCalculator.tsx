@@ -28,7 +28,7 @@ const emailSchema = z.string().email();
  */
 export default function AduCalculator() {
   const [step, setStep] = useState(1);
-  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'adu-calculator',error_code:'validation'}); setErrorMsg(message); };
+  const validationError = (message: string) => { if (message) milestone('form_error', {form_id:'adu-calculator',error_code:'validation'}); setErrorKind('validation'); setErrorMsg(message); };
   useEffect(() => { window.DTLead?.begin('adu-calculator'); }, []);
 
   const [homeValue, setHomeValue] = useState('');
@@ -47,6 +47,7 @@ export default function AduCalculator() {
   const [usState, setUsState] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<'validation' | 'save'>('validation');
   const [sending, setSending] = useState(false);
   const inFlight = useRef(false);
 
@@ -126,12 +127,14 @@ export default function AduCalculator() {
       setSending(false);
     }
     if (!result.ok && result.kind === 'fieldError') {
+      setErrorKind('validation');
       setErrorMsg(result.message);
       // Contact fields sit one screen back since 1 Nov: return there to fix them.
       if (CONTACT_FIELD.test(result.field)) setStep(4);
       return;
     }
     if (!result.ok) {
+      setErrorKind('save');
       setErrorMsg(
         "We couldn't confirm whether your request was saved. " +
         `Retry here with the same details, or email ${EMAIL} for help.`
@@ -146,7 +149,7 @@ export default function AduCalculator() {
     step, goStep,
     homeValue, setHomeValue, mtgBalance, setMtgBalance, projectCost, setProjectCost, toFinance, setToFinance,
     hv, mb, cost, fin, hasHome, equity, ltv, cltv, gap,
-    purpose, setPurpose, propertyUse, setPropertyUse, errorMsg,
+    purpose, setPurpose, propertyUse, setPropertyUse, errorMsg, errorKind,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, usState, setUsState, message, setMessage,
     sending, submitted, submitLead: () => { void submitLead(); }, openBooking,

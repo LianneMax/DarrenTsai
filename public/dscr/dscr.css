@@ -52,7 +52,7 @@
 .dscr-page .input-shell:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px #1a7f9920; }
 .dscr-page .dp-row { margin-top:26px; }
 .dscr-page .dp-row label { font-weight:450; }
-.dscr-page .dp-value { color:var(--accent); font-weight:550; }
+.dscr-page .dp-value { color:#13677c; font-weight:550; } /* 4.5:1 on the slider panel (28 Nov 2026 a11y pass) */
 .dscr-page .ladder { border-color:#dfe7ec; border-radius:8px; }
 .dscr-page .rung { background:#fff; grid-template-columns:110px minmax(12px,1fr) 89px; padding:12px 13px; font-size:14px; }
 .dscr-page .rung.active { background:#e0eef2; color:var(--navy); }

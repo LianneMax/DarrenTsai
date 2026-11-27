@@ -92,6 +92,8 @@ export interface EquityLeadInput {
   recentBankruptcyForeclosure: string;
   /** Optional; '' when skipped. */
   preference: string;
+  /** Optional "other loans on this home" (OTHER_LOANS in serviceArea.ts); '' when skipped. */
+  otherLoans?: string;
   message?: string;
 }
 
@@ -115,6 +117,7 @@ export function buildEquityLead(i: EquityLeadInput) {
     amountExploring: '',
     illustrativeCltv: '',
     preference: i.preference,
+    otherLoans: i.otherLoans || '',
     message: i.message || '',
     propertyType: i.propertyType,
     propertyUse: i.propertyUse,

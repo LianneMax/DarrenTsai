@@ -97,6 +97,7 @@ export default function HomeEquityCalculator() {
   const [mortgageCurrent, setMortgageCurrent] = useState('');
   const [bankruptcy, setBankruptcy] = useState('');
   const [preference, setPreference] = useState('');
+  const [otherLoans, setOtherLoans] = useState('');
 
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
@@ -145,6 +146,7 @@ export default function HomeEquityCalculator() {
   // Back only, from the step tabs. Forwards goes through next(), which checks.
   const goStep = (n: number) => {
     if (n >= step) return;
+    setErrorMsg(null);
     setStep(n);
     scrollToFlow();
   };
@@ -168,6 +170,7 @@ export default function HomeEquityCalculator() {
       // to the booking prequal instead, and Continue never saves it here.
       if (propertyType === COMMERCIAL_PROPERTY_TYPE) return;
       milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 1 });
+      setErrorMsg(null);
       setStep(2);
       scrollToFlow();
       return;
@@ -183,6 +186,7 @@ export default function HomeEquityCalculator() {
         return;
       }
       milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 2 });
+      setErrorMsg(null);
       setStep(3);
       scrollToFlow();
       return;
@@ -202,6 +206,7 @@ export default function HomeEquityCalculator() {
         return;
       }
       milestone('form_step', { form_id: EQUITY_FORM_ID, step_id: 3 });
+      setErrorMsg(null);
       setStep(4);
       scrollToFlow();
     }
@@ -238,7 +243,7 @@ export default function HomeEquityCalculator() {
       firstName: fname.trim(), lastName: lname.trim(), phone, email, message,
       homeValue: hv, mortgageBalance: mb,
       propertyType, propertyUse, propertyZip: zip, propertyState,
-      goal, creditRange, cashRange, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy, preference,
+      goal, creditRange, cashRange, mortgageCurrent, recentBankruptcyForeclosure: bankruptcy, preference, otherLoans,
     }));
     if (!result.ok) {
       inFlight.current = false;
@@ -273,6 +278,8 @@ export default function HomeEquityCalculator() {
     propertyType, setPropertyType, propertyUse, setPropertyUse, zip, setZip, propertyState, setPropertyState,
     goal, setGoal, creditRange, setCreditRange, cashRange, setCashRange,
     mortgageCurrent, setMortgageCurrent, bankruptcy, setBankruptcy, preference, setPreference,
+    otherLoans, setOtherLoans,
+    formError: errorKind === 'validation' ? errorMsg : null,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     message, setMessage,
     emailHint, setEmailHint,
@@ -297,7 +304,8 @@ export default function HomeEquityCalculator() {
     </p>
   );
 
-  const overlays = <ErrorDialog kind={errorKind} message={errorMsg} onClose={() => setErrorMsg(null)} id="he-error-title" />;
+  // Validation messages show on the page (InlineFormError); only an uncertain save opens the dialog.
+  const overlays = <ErrorDialog kind={errorKind} message={errorKind === 'save' ? errorMsg : null} onClose={() => setErrorMsg(null)} id="he-error-title" />;
 
   return (
     <EquityPage v={view} overlays={overlays} disclosure={disclosure}

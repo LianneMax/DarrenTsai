@@ -36,8 +36,8 @@ const ATTR = [
   'First Touch Source', 'First Touch Medium', 'First Touch Campaign',
   'First Click ID', 'First Click ID Type', 'First Touch At',
 ];
-const TRIAGE = ['Test?', 'Status', 'Contacted'];
-const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot', 'Property Type', 'Mortgage Current', 'Recent Bankruptcy/Foreclosure', 'Property ZIP', 'Credit Range', 'Cash Range', 'Booking Goal', 'Review Flag'];
+const TRIAGE = ['Test?', 'Status'];
+const CONSENT = ['SMS Consent', 'SMS Consent Version', 'SMS Consent Text', 'SMS Consent At', 'Privacy Acknowledged', 'Privacy Version', 'SMS Informational Consent', 'SMS Marketing Consent', 'SMS Informational Consent Text', 'Property State', 'Property Use', 'Service Area Result', 'Service Area Version', 'Submission Snapshot', 'Property Type', 'Mortgage Current', 'Recent Bankruptcy/Foreclosure', 'Property ZIP', 'Credit Range', 'Cash Range', 'Booking Goal', 'Review Flag', 'Other Loans'];
 
 /** source -> [tab, the funnel's own columns], as docs/lead-sheet-schema.md lists them. */
 const DETAILS: Record<string, [string, string[]]> = {
@@ -236,7 +236,6 @@ describe('a row is written under its header by name, wherever the header is', ()
     expect(tab.rows[0]).toEqual(shuffled); // nothing added, nothing moved
     expect(tab.rows[1][shuffled.indexOf('Email')]).toBe(DEBT_LEAD.email);
     expect(tab.rows[1][shuffled.indexOf('Test?')]).toBe('TEST');
-    expect(tab.rows[1][shuffled.indexOf('Contacted')]).toBe('');
     expect(tab.rows[1][shuffled.indexOf('Monthly Savings')]).toBe(-120);
   });
 
@@ -289,7 +288,7 @@ describe('a row is written under its header by name, wherever the header is', ()
     const h = load();
     h.seed({ name: 'Qualify', rows: [before] });
     h.post({ source: 'QualifyForm', email: 'liannemaxbalbastro+q@gmail.com', firstUtmCampaign: 'yt-buyer' });
-    expect(h.rowOf('Qualify')).toMatchObject({ 'First Touch Campaign': 'yt-buyer', 'Test?': 'TEST', Contacted: '' });
+    expect(h.rowOf('Qualify')).toMatchObject({ 'First Touch Campaign': 'yt-buyer', 'Test?': 'TEST', Status: '' });
   });
 });
 
