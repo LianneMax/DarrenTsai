@@ -2640,6 +2640,8 @@ function processFollowUps() {
       catch (err) { logDebug(ss, 'HubSpot booking tracker needs review: ' + err.toString(), ''); }
       try { processHubSpotLeadStatus(ss); }
       catch (err) { logDebug(ss, 'HubSpot Lead Status needs review: ' + err.toString(), ''); }
+      try { processHubSpotCallerTasks(ss); }
+      catch (err) { logDebug(ss, 'Caller tasks need review: ' + err.toString(), ''); }
     }
   } finally {
     try { releaseFollowUpWorker(worker); }
@@ -3132,6 +3134,269 @@ function processHubSpotLeadStatus(ss) {
   }
   // Re-read the newest minute next time; the Call ID column stops repeats.
   props.setProperty('HUBSPOT_LEAD_STATUS_SINCE', String(Math.max(since, cursor - 60 * 1000)));
+}
+
+// ── Call-back task for inbound callers (27 Nov 2026) ─────────────────────────
+//
+// A website form lead gets a same-day call task (processHubSpotTasks), but a
+// lead who CALLS got nothing: CallRail's HubSpot integration logs the call and
+// creates the contact with no owner, no Lead Status and no task, and someone
+// had to notice it in the daily review (Sylvia, Lopezaparicio, Richard Luna,
+// Nov 2026, each about a day later). This creates "Call back <name>" for
+// Darren once an inbound call is 15 minutes old, unless:
+//   - the contact is not a borrower (vendor, partner, spam, internal) or TEST;
+//   - Darren has already made an outbound call to the contact since (only
+//     calls made through CallRail are logged; his own phone is invisible);
+//   - the contact already has an open task (someone is already on it);
+//   - the call was a real conversation (CALLER_TASK_TALKED_MS or longer);
+//   - CallRail marks it as spam: a spam tag, lead status "Not a lead", or a
+//     robocall phrase in its transcript ("verify your Google listing, press 1",
+//     Santa Ana Ca, 19 Nov). Caller ID with only a city, call length and even a
+//     prior ad visit are NOT spam signals: Rudy showed as "Los Angeles Ca" and
+//     was real, and the Santa Ana robocall inherited an ad visitor's session.
+// A blank owner becomes Darren and a blank Lead Status becomes New; anything
+// already set is left alone. A missed call from the lead is INBOUND in both
+// CallRail and HubSpot, so it never counts as Darren reaching out.
+//
+// Dark until HUBSPOT_CALLER_TASKS_ENABLED = true AND a CallRail API key is set
+// (CALLRAIL_API_TOKEN, numeric CALLRAIL_ACCOUNT_ID): without the spam check
+// every robocall would become a task. One row per HubSpot call on the "HubSpot
+// Caller Tasks" tab; a task POST whose result is unknown goes to review and is
+// never repeated. First run looks back CALLER_TASK_LOOKBACK_MS.
+const CALLER_TASK_TAB = 'HubSpot Caller Tasks';
+const CALLER_TASK_HEADERS = ['Call ID', 'Call At', 'Contact ID', 'Status', 'Task ID', 'Detail'];
+const CALLER_TASK_EVERY_MS = 5 * 60 * 1000;
+const CALLER_TASK_WAIT_MS = 15 * 60 * 1000;          // CallRail's transcript is usually ready by then
+const CALLER_TASK_TRANSCRIPT_WAIT_MS = 60 * 60 * 1000; // after this, decide without a transcript
+const CALLER_TASK_TALKED_MS = 3 * 60 * 1000;
+const CALLER_TASK_LOOKBACK_MS = 2 * 24 * 60 * 60 * 1000;
+const CALLER_TASK_PER_RUN = 10;
+// Phrases from robocalls, never from a borrower. Kept narrow on purpose: a
+// false match silently drops a real lead's task.
+const CALLER_SPAM_PHRASES = [
+  /\bpress (?:1|one)\b/i,
+  /\bgoogle (?:business )?(?:listing|profile)\b/i,
+  /\bbusiness listing\b/i,
+  /\bverify your (?:google|business|listing)\b/i,
+  /\bextended (?:car |vehicle |auto )?warranty\b/i,
+  /\bthis is (?:a|an) (?:automated|recorded) (?:call|message)\b/i,
+  /\bstudent loan forgiveness\b/i,
+];
+
+function callerTasksConfig() {
+  const props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('HUBSPOT_CALLER_TASKS_ENABLED') || '').trim() !== 'true') return null;
+  const token = String(props.getProperty('HUBSPOT_PRIVATE_APP_TOKEN') || '').trim();
+  const callrailToken = String(props.getProperty('CALLRAIL_API_TOKEN') || '').trim();
+  const account = String(props.getProperty('CALLRAIL_ACCOUNT_ID') || '').trim();
+  if (!token || !callrailToken || !/^\d+$/.test(account)) return null;
+  const owner = String(props.getProperty('HUBSPOT_TASK_OWNER_ID') || '').trim() || HUBSPOT_TASK_OWNER_DEFAULT;
+  return { token: token, owner: owner, callrailToken: callrailToken, account: account,
+    company: String(props.getProperty('CALLRAIL_COMPANY_ID') || '').trim() };
+}
+
+/** The 10-digit US number, '' if there is none. Pure. */
+function callerDigits(phone) {
+  const d = String(phone || '').replace(/\D/g, '');
+  return d.length === 11 && d.charAt(0) === '1' ? d.slice(1) : d.length === 10 ? d : '';
+}
+
+/** Why CallRail says this call is spam, '' when it does not. Pure. */
+function callerSpamReason(cr) {
+  if (!cr) return '';
+  const tags = (cr.tags || []).map(function (t) { return String(t && t.name !== undefined ? t.name : t); });
+  const tag = tags.filter(function (t) { return /spam|robo|solicit/i.test(t); })[0];
+  if (tag) return 'CallRail tag "' + tag + '"';
+  if (String(cr.lead_status || '').toLowerCase() === 'not_a_lead') return 'CallRail lead status: Not a lead';
+  const text = String(cr.transcription || '');
+  for (let i = 0; i < CALLER_SPAM_PHRASES.length; i++) {
+    const m = text.match(CALLER_SPAM_PHRASES[i]);
+    if (m) return 'robocall phrase in transcript: "' + m[0] + '"';
+  }
+  return '';
+}
+
+/**
+ * Task or the reason to skip. Pure, so every rule is testable.
+ * f: { contact props, durationMs, calledBack, openTask, spam }
+ */
+function callerTaskDecision(f) {
+  const p = f.contact || {};
+  const name = [p.firstname, p.lastname].join(' ');
+  if (String(p.rdt_test_lead || '').toLowerCase() === 'yes' || /\bTEST\b/.test(name)) return 'skipped-test';
+  const rel = String(p.relationship_type || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+  if (rel.length && rel.indexOf('borrower_client') === -1) return 'skipped-not-borrower';
+  if (f.spam) return 'skipped-spam';
+  if (f.calledBack) return 'skipped-called-back';
+  if (f.openTask) return 'skipped-open-task';
+  if (Number(f.durationMs || 0) >= CALLER_TASK_TALKED_MS) return 'skipped-conversation';
+  return 'task';
+}
+
+/** Subject and body of the call-back task. Pure, escaped. */
+function callerTaskContent(p, call, cr) {
+  const esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  const name = [p.firstname, p.lastname].map(function (s) { return String(s || '').trim(); }).filter(Boolean).join(' ') || 'caller';
+  const source = cr && cr.source ? String(cr.source) : '';
+  let when = '';
+  try { when = new Date(call.at).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' PT'; }
+  catch { when = new Date(call.at).toISOString(); }
+  const lines = ['Called Darren ' + when + ', ' + Math.round(Number(call.durationMs || 0) / 1000) + ' s. No call back from CallRail since.'];
+  if (cr && cr.voicemail === true) lines.push('Left a voicemail.');
+  lines.push('Phone: ' + (call.from || p.phone || 'see contact'));
+  if (source) lines.push('Source: ' + source + (cr.keywords ? ', search "' + cr.keywords + '"' : ''));
+  const said = String(cr && cr.transcription || '').replace(/\s+/g, ' ').trim();
+  lines.push(said ? 'Transcript start: ' + said.slice(0, 280) + (said.length > 280 ? '...' : '') : 'No transcript in CallRail.');
+  lines.push('Spam check: no spam tag or robocall phrase in CallRail. Created automatically for inbound calls.');
+  return { subject: 'Call back ' + name + ' (inbound call' + (source ? ', ' + source : '') + ')', body: lines.map(esc).join('<br>') };
+}
+
+/** The CallRail record for this call (same number, start within 3 minutes), null if none. */
+function callerCallRailMatch(config, digits, atMs) {
+  const day = function (ms) { return new Date(ms).toISOString().slice(0, 10); };
+  let url = 'https://api.callrail.com/v3/a/' + config.account + '/calls.json?direction=inbound&search=' + digits +
+    '&start_date=' + day(atMs - 864e5) + '&end_date=' + day(atMs + 864e5) +
+    '&fields=transcription,tags,lead_status,voicemail,source,keywords&per_page=25';
+  if (config.company) url += '&company_id=' + encodeURIComponent(config.company);
+  const resp = UrlFetchApp.fetch(url, { method: 'get', muteHttpExceptions: true, headers: { Authorization: 'Token token=' + config.callrailToken } });
+  if (resp.getResponseCode() !== 200) throw new Error('CallRail calls HTTP ' + resp.getResponseCode());
+  let json = {};
+  try { json = JSON.parse(String(resp.getContentText() || '{}')); } catch { json = {}; }
+  const hits = (json.calls || []).filter(function (c) {
+    return callerDigits(c.customer_phone_number) === digits && Math.abs(Date.parse(String(c.start_time || '')) - atMs) <= 3 * 60 * 1000;
+  });
+  return hits[0] || null;
+}
+
+/** Read the objects of one type associated with a contact (ids, then one batch read). */
+function callerAssociated(config, contactId, type, properties) {
+  const assoc = hubspotApi(config, 'get', '/crm/v4/objects/contacts/' + encodeURIComponent(contactId) + '/associations/' + type + '?limit=100');
+  if (assoc.code !== 200) throw new Error(type + ' associations HTTP ' + assoc.code);
+  const ids = (assoc.json.results || []).map(function (a) { return String(a.toObjectId || ''); }).filter(Boolean);
+  if (!ids.length) return [];
+  const read = hubspotApi(config, 'post', '/crm/v3/objects/' + type + '/batch/read',
+    { properties: properties, inputs: ids.map(function (id) { return { id: id }; }) });
+  if (read.code !== 200 && read.code !== 207) throw new Error(type + ' batch read HTTP ' + read.code);
+  return (read.json.results || []).map(function (r) { return r.properties || {}; });
+}
+
+function processHubSpotCallerTasks(ss) {
+  const config = callerTasksConfig();
+  if (!config) return;
+  const props = PropertiesService.getScriptProperties();
+  const last = Number(props.getProperty('HUBSPOT_CALLER_TASKS_LAST_RUN') || 0);
+  if (last && Date.now() - last < CALLER_TASK_EVERY_MS) return;
+  props.setProperty('HUBSPOT_CALLER_TASKS_LAST_RUN', String(Date.now()));
+
+  let sheet = ss.getSheetByName(CALLER_TASK_TAB);
+  if (!sheet) { sheet = ss.insertSheet(CALLER_TASK_TAB); appendSafeRow(sheet, CALLER_TASK_HEADERS); }
+  const seen = {};
+  if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) { seen[String(r[0])] = true; });
+
+  const since = Number(props.getProperty('HUBSPOT_CALLER_TASKS_SINCE') || 0) || Date.now() - CALLER_TASK_LOOKBACK_MS;
+  const search = hubspotApi(config, 'post', '/crm/v3/objects/calls/search', {
+    filterGroups: [{ filters: [
+      { propertyName: 'hs_call_direction', operator: 'EQ', value: 'INBOUND' },
+      { propertyName: 'hs_timestamp', operator: 'GTE', value: String(since) },
+    ] }],
+    sorts: [{ propertyName: 'hs_timestamp', direction: 'ASCENDING' }],
+    properties: ['hs_timestamp', 'hs_call_from_number', 'hs_call_duration', 'hs_call_title'], limit: 50,
+  });
+  if (search.code !== 200) { logDebug(ss, 'Caller tasks: call search HTTP ' + search.code, ''); return; }
+
+  let cursor = since;
+  let handled = 0;
+  const results = search.json.results || [];
+  for (let i = 0; i < results.length && handled < CALLER_TASK_PER_RUN; i++) {
+    const c = results[i];
+    const cp = c.properties || {};
+    const at = Date.parse(String(cp.hs_timestamp || ''));
+    if (isNaN(at)) continue;
+    if (Date.now() - at < CALLER_TASK_WAIT_MS) break; // too new; sorted ascending, so the rest are too
+    if (seen[String(c.id)]) { cursor = Math.max(cursor, at); continue; }
+    const call = { id: String(c.id), at: at, from: String(cp.hs_call_from_number || ''), durationMs: Number(cp.hs_call_duration || 0) };
+    const row = [call.id, new Date(at).toISOString(), '', '', '', ''];
+    const record = function (status, taskId, detail) {
+      row[3] = status; row[4] = taskId || ''; row[5] = String(detail || '').slice(0, 400);
+      appendSafeRow(sheet, row); seen[call.id] = true;
+    };
+
+    let contactId = '';
+    let contact;
+    let cr = null;
+    let calledBack = false;
+    let openTask = false;
+    try {
+      const assoc = hubspotApi(config, 'get', '/crm/v4/objects/calls/' + encodeURIComponent(call.id) + '/associations/contacts');
+      if (assoc.code !== 200) throw new Error('call associations HTTP ' + assoc.code);
+      contactId = String(((assoc.json.results || [])[0] || {}).toObjectId || '');
+      if (!contactId) {
+        // CallRail's integration may still be creating the contact; give it an hour.
+        if (Date.now() - at < CALLER_TASK_TRANSCRIPT_WAIT_MS) break;
+        record('skipped-no-contact', '', 'No contact on the call (deleted or never created)');
+        cursor = Math.max(cursor, at); handled++; continue;
+      }
+      row[2] = contactId;
+      const got = hubspotApi(config, 'get', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId) +
+        '?properties=firstname,lastname,phone,relationship_type,rdt_test_lead,hubspot_owner_id,hs_lead_status');
+      if (got.code !== 200) throw new Error('contact read HTTP ' + got.code);
+      contact = got.json.properties || {};
+      const quick = callerTaskDecision({ contact: contact });
+      if (quick === 'skipped-test' || quick === 'skipped-not-borrower') { record(quick, '', ''); cursor = Math.max(cursor, at); handled++; continue; }
+
+      const digits = callerDigits(call.from || contact.phone);
+      if (digits) cr = callerCallRailMatch(config, digits, at);
+      if (cr && !cr.transcription && Date.now() - at < CALLER_TASK_TRANSCRIPT_WAIT_MS) break; // wait for the transcript
+      calledBack = callerAssociated(config, contactId, 'calls', ['hs_timestamp', 'hs_call_direction']).some(function (k) {
+        return String(k.hs_call_direction || '') === 'OUTBOUND' && Date.parse(String(k.hs_timestamp || '')) > at;
+      });
+      openTask = callerAssociated(config, contactId, 'tasks', ['hs_task_status']).some(function (k) {
+        return String(k.hs_task_status || '') !== 'COMPLETED';
+      });
+    } catch (err) {
+      // Read-only so far: stop here and retry this call next run.
+      logDebug(ss, 'Caller tasks: ' + err.toString() + ', will retry', '');
+      break;
+    }
+    handled++;
+    const spam = callerSpamReason(cr);
+    const decision = callerTaskDecision({ contact: contact, durationMs: call.durationMs, calledBack: calledBack, openTask: openTask, spam: spam });
+    if (decision !== 'task') {
+      record(decision, '', spam || (cr ? '' : 'No matching CallRail call'));
+      cursor = Math.max(cursor, at);
+      continue;
+    }
+
+    const content = callerTaskContent(contact, call, cr);
+    const task = { properties: {
+      hs_task_subject: content.subject, hs_task_body: content.body, hs_task_status: 'NOT_STARTED',
+      hs_task_priority: 'HIGH', hs_task_type: 'CALL', hs_timestamp: hubspotTaskDueAt(Date.now()), hubspot_owner_id: config.owner,
+    }, associations: [{ to: { id: contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 204 }] }] };
+    // Claim before the POST, so a crash can never create a second task.
+    record('sending', '', '');
+    SpreadsheetApp.flush();
+    cursor = Math.max(cursor, at);
+    const rowIndex = sheet.getLastRow();
+    try {
+      const res = hubspotApi(config, 'post', '/crm/v3/objects/tasks', task);
+      if (res.code !== 201 || !res.json.id) {
+        sheet.getRange(rowIndex, 4, 1, 3).setValues([['needs-review', '', 'HTTP ' + res.code + ' ' + JSON.stringify(res.json).slice(0, 200)]]);
+        continue;
+      }
+      const fill = {};
+      if (!String(contact.hubspot_owner_id || '').trim()) fill.hubspot_owner_id = config.owner;
+      if (!String(contact.hs_lead_status || '').trim()) fill.hs_lead_status = 'NEW';
+      let note = 'Task created' + (cr ? '' : '; no matching CallRail call, spam not checked');
+      if (Object.keys(fill).length) {
+        const upd = hubspotApi(config, 'patch', '/crm/v3/objects/contacts/' + encodeURIComponent(contactId), { properties: fill });
+        note += upd.code === 200 ? '; set ' + Object.keys(fill).join(', ') : '; contact fill HTTP ' + upd.code;
+      }
+      sheet.getRange(rowIndex, 4, 1, 3).setValues([['done', String(res.json.id), note]]);
+    } catch (err) {
+      sheet.getRange(rowIndex, 4, 1, 3).setValues([['needs-review', '', 'Task result unknown; check HubSpot before retrying: ' + err.toString()]]);
+    }
+  }
+  props.setProperty('HUBSPOT_CALLER_TASKS_SINCE', String(Math.max(since, cursor - 60 * 1000)));
 }
 
 // Additional CRM visibility is deliberately dark until account configuration

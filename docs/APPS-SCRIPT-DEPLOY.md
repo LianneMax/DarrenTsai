@@ -44,6 +44,23 @@ Rollback: set `HUBSPOT_BOOKINGS_ENABLED` to anything but `true`.
 
 Rollback: set `HUBSPOT_LEAD_STATUS_ENABLED` to anything but `true`. Contacts already moved stay Attempted (change by hand if needed).
 
+Rule (Max, 26 Nov): any outbound call means Attempted to contact, connected or not. A missed call FROM the lead is inbound in CallRail and HubSpot and never counts.
+
+## Call-back task for inbound callers (27 Nov 2026)
+
+`processHubSpotCallerTasks` (follow-up worker, at most every 5 minutes) creates a HubSpot task "Call back <name> (inbound call, <source>)" for Darren once an inbound call is 15 minutes old. It skips the call when CallRail marks it as spam (a spam tag, lead status "Not a lead", or a robocall phrase such as "press 1" or "Google listing" in the transcript), when Darren has already made an outbound call to the contact since, when the contact already has an open task, when the call lasted 3 minutes or more, and for non-borrower or TEST contacts. A blank owner becomes Darren and a blank Lead Status becomes New. One row per HubSpot call on the **HubSpot Caller Tasks** tab.
+
+The spam check reads CallRail, so this stays dark until a CallRail key is set:
+
+1. In CallRail, create an API v3 key (your user's profile, API Keys; Max creates it, it is a secret). Do not paste it anywhere but Script Properties.
+2. Script Properties: `CALLRAIL_API_TOKEN` = the key, `CALLRAIL_ACCOUNT_ID` = `523782312`, `CALLRAIL_COMPANY_ID` = `650367292` (both from the CallRail URLs). These do not turn on the dormant form-submission sync, which needs `CALLRAIL_SYNC_ENABLED`.
+3. The HubSpot Service Key also needs task read access (it already creates tasks and reads calls). If a read is refused, the Debug tab shows "Caller tasks: ... HTTP 403".
+4. `HUBSPOT_CALLER_TASKS_ENABLED` = `true`. Optional `HUBSPOT_CALLER_TASKS_SINCE` (epoch ms) for where the first run starts; default is 2 days back (contacts that already have an open task are skipped).
+5. Deploy in place as below. No new trigger.
+6. Verify: the tab lists recent inbound calls with `done` and a Task ID, or why each was skipped (`skipped-spam`, `skipped-called-back`, `skipped-open-task`, `skipped-conversation`, `skipped-not-borrower`, `skipped-no-contact`). A `done` row whose Detail says "spam not checked" had no matching CallRail call.
+
+Rollback: set `HUBSPOT_CALLER_TASKS_ENABLED` to anything but `true`. Tasks already created stay.
+
 ## Server authentication and email opt-out rollout
 
 ### Durable website inbox rollout
