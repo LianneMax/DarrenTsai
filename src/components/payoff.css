@@ -85,6 +85,9 @@
   .dcp-payoff .dcp-debt > div { grid-column: 1 / -1; }
   .dcp-payoff .dcp-debt > div:first-child { grid-column: 1; }
   .dcp-payoff .dcp-debt > .dcp-remove { grid-column: 2; grid-row: 1; }
+  /* One card has no remove button, so Debt Type lines up with the fields below. */
+  .dcp-payoff .dcp-debt.is-single > div:first-child { grid-column: 1 / -1; }
+  .dcp-payoff .dcp-debt.is-single > .dcp-remove { display: none; }
   .dcp-payoff .dcp-option { padding: 20px; }
   .dcp-payoff .journey-progress button { gap: 6px; min-width: 0; }
   .dcp-payoff .journey-progress strong { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }

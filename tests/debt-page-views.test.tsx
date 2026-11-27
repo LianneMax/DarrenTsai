@@ -80,6 +80,8 @@ describe('debt cards (27 Nov 2026: one to start)', () => {
   it('a single card has no remove button; two cards each have one', () => {
     const one = html(<StepDebts v={view({ debts: [{ id: 1, type: '', bal: 0, pmt: 0, rate: 0 }] })} />);
     expect(one).not.toContain('aria-label="Remove debt"');
+    // A hidden, disabled placeholder keeps the row's grid column (layout fix, 27 Nov 2026).
+    expect(one.match(/class="dcp-remove"[^>]*disabled/g)).toHaveLength(1);
     expect(one).toContain('+ Add Another Debt');
     const two = html(<StepDebts v={view()} />);
     expect(two.match(/aria-label="Remove debt"/g)).toHaveLength(2);

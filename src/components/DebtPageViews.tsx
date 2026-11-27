@@ -155,7 +155,7 @@ export function StepDebts({ v }: { v: DebtPageView }) {
       <h2 className="dcp-h2">Your Current Monthly Debts</h2>
 
       {v.debts.map((d) => (
-        <div key={d.id} className="dcp-debt">
+        <div key={d.id} className={v.debts.length > 1 ? 'dcp-debt' : 'dcp-debt is-single'}>
           <div>
             <label className="input-label" htmlFor={`debt-type-${d.id}`}>Debt Type</label>
             <CustomSelect
@@ -199,9 +199,16 @@ export function StepDebts({ v }: { v: DebtPageView }) {
               <span className="input-suffix">%</span>
             </div>
           </div>
-          {/* The only card can't be removed: an empty list has nothing to fill in. */}
-          {v.debts.length > 1 && (
+          {/* The only card can't be removed: an empty list has nothing to fill in.
+              The button stays in the grid (hidden, disabled) because the row's
+              layout reserves its column; without it, Balance fell into that 22px
+              column on mid-width screens (27 Nov 2026). */}
+          {v.debts.length > 1 ? (
             <button type="button" className="dcp-remove" onClick={() => v.removeDebt(d.id)} aria-label="Remove debt">
+              ×
+            </button>
+          ) : (
+            <button type="button" className="dcp-remove" disabled aria-hidden="true" tabIndex={-1} style={{ visibility: 'hidden' }}>
               ×
             </button>
           )}
