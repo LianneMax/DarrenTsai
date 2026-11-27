@@ -1,5 +1,5 @@
 import type { Config } from '@netlify/functions';
-import { synchronizeLeads, notifyInboxWorkerFailure } from './lead-inbox.mts';
+import { synchronizeLeads, notifyInboxWorkerFailure, recordSyncHeartbeat } from './lead-inbox.mts';
 
 // Production scheduled functions cannot be invoked through a public URL.
 // Continue draining even if new inbox admissions are disabled for rollback.
@@ -7,6 +7,9 @@ export default async () => {
   try {
     const result=await synchronizeLeads();
     console.log('Lead inbox synchronization',result);
+    // Uptime (27 Nov 2026): stamp a completed run for /api/health. Only after a
+    // run that finished, so a worker that keeps failing ages out and is reported.
+    await recordSyncHeartbeat();
     return new Response(null,{status:204});
   } catch {
     console.error('Lead inbox synchronization interrupted; durable records retained for the next run');

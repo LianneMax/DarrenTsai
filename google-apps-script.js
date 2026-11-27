@@ -2582,6 +2582,11 @@ function processFollowUps() {
     return;
   }
   if (!worker) return;
+  // Uptime heartbeat (27 Nov 2026): doGet reports it and Netlify's uptime-watch
+  // emails Max when it is over 15 minutes old (a stopped trigger or a lock that
+  // never frees, like the unexplained 21 Oct admission timeout).
+  try { PropertiesService.getScriptProperties().setProperty('FOLLOWUP_WORKER_AT', String(Date.now())); }
+  catch (err) { Logger.log('Worker heartbeat not saved: ' + err.toString()); }
   try {
     const started = Date.now();
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -2642,6 +2647,8 @@ function processFollowUps() {
       catch (err) { logDebug(ss, 'HubSpot Lead Status needs review: ' + err.toString(), ''); }
       try { processHubSpotCallerTasks(ss); }
       catch (err) { logDebug(ss, 'Caller tasks need review: ' + err.toString(), ''); }
+      try { watchSite(); }
+      catch (err) { logDebug(ss, 'Site watch needs review: ' + err.toString(), ''); }
     }
   } finally {
     try { releaseFollowUpWorker(worker); }
@@ -3581,7 +3588,72 @@ function installFollowUpTrigger() {
 }
 
 function doGet() {
+  // workerAt (27 Nov 2026): when the follow-up worker last started, for
+  // Netlify's uptime-watch. A timestamp only; no lead data.
+  let workerAt = null;
+  try { workerAt = Number(PropertiesService.getScriptProperties().getProperty('FOLLOWUP_WORKER_AT')) || null; }
+  catch (err) { workerAt = null; }
   return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok', captureProtocol: 'stable-id-v1' }))
+    .createTextOutput(JSON.stringify({ status: 'ok', captureProtocol: 'stable-id-v1', workerAt: workerAt }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── Site watch (27 Nov 2026) ─────────────────────────────────────────────────
+//
+// Max: "make sure nothing is down or will be under maintenance as often since
+// we might lose leads." Netlify's uptime-watch checks this script; this checks
+// Netlify from Google's side, so an outage on either side is reported by the
+// other. Every SITE_WATCH_EVERY_MS from the follow-up worker:
+//   - the homepage answers 200;
+//   - /api/health answers and the website inbox worker (which carries every
+//     form submission to this script) completed a run in the last 15 minutes.
+// One email per hour while a problem lasts. Dark until Script Property
+// SITE_WATCH_ENABLED = true, like every other optional job in this script.
+const SITE_URL = 'https://realdarrentsai.com';
+const SITE_WATCH_EVERY_MS = 10 * 60 * 1000;
+const SITE_INBOX_STALE_SEC = 15 * 60;
+
+/** Pure: the problems in one round of checks, [] when all is well. */
+function siteWatchProblems(home, health) {
+  const problems = [];
+  if (!home || home.code !== 200) problems.push('The homepage answered ' + (home ? 'HTTP ' + home.code : 'nothing') + '.');
+  if (!health || health.code !== 200) {
+    problems.push('The site health check answered ' + (health ? 'HTTP ' + health.code : 'nothing') + '.');
+  } else {
+    let body = null;
+    try { body = JSON.parse(health.text); } catch { body = null; }
+    const age = body && typeof body.inboxSyncAgeSec === 'number' ? body.inboxSyncAgeSec : null;
+    if (age === null) problems.push('The website inbox worker has no recorded run.');
+    else if (age > SITE_INBOX_STALE_SEC) problems.push('The website inbox worker last finished ' + Math.round(age / 60) + ' minutes ago.');
+  }
+  return problems;
+}
+
+function watchSite() {
+  const props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('SITE_WATCH_ENABLED') || '').trim() !== 'true') return;
+  const last = Number(props.getProperty('SITE_WATCH_LAST_RUN') || 0);
+  if (last && Date.now() - last < SITE_WATCH_EVERY_MS) return;
+  props.setProperty('SITE_WATCH_LAST_RUN', String(Date.now()));
+  const get = function (path) {
+    try {
+      const r = UrlFetchApp.fetch(SITE_URL + path, { method: 'get', muteHttpExceptions: true, followRedirects: true });
+      return { code: r.getResponseCode(), text: String(r.getContentText() || '') };
+    } catch (err) { return null; }
+  };
+  const problems = siteWatchProblems(get('/'), get('/api/health'));
+  if (!problems.length) return;
+  // Hourly hold in a Script Property: it survives cache eviction, unlike CacheService.
+  const alerted = Number(props.getProperty('SITE_WATCH_ALERTED_AT') || 0);
+  if (alerted && Date.now() - alerted < 60 * 60 * 1000) return;
+  props.setProperty('SITE_WATCH_ALERTED_AT', String(Date.now()));
+  MailApp.sendEmail({
+    to: ALERT_EMAIL,
+    subject: 'Lead system check: the website needs attention',
+    body: problems.join('\n') + '\n\n' +
+      'Checked from Google Apps Script at ' + new Date().toISOString() + '.\n\n' +
+      'What this means: if the site or its inbox worker is down, visitors may not be able to send a form, or saved forms are waiting to reach the Sheet. ' +
+      'Check Netlify: Deploys (a failed or paused deploy), Functions > lead-inbox-sync logs, and open ' + SITE_URL + '/api/health. ' +
+      'Do not re-enter leads. This notice repeats at most once an hour while the problem lasts. Off switch: set Script Property SITE_WATCH_ENABLED to anything but true.'
+  });
 }

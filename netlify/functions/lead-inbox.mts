@@ -74,6 +74,26 @@ async function deliverAlert(reference:string, subject:string, text:string, signa
   } catch {return false;}
 }
 
+/** Operational alert to Max, at most once per `reference` (Resend idempotency).
+ * Shared with the uptime watch, so every ops email comes from one sender. */
+export async function sendOpsAlert(reference:string, subject:string, text:string):Promise<boolean> {
+  return deliverAlert(reference,subject,text,AbortSignal.timeout(5000));
+}
+
+// Uptime (27 Nov 2026): the every-minute sync stamps this after each completed
+// run, so /api/health and the Apps Script's site watch can tell a stalled worker
+// from a quiet one. Its own store: nothing here touches the lead inbox.
+export const HEALTH_STORE = 'site-health';
+export async function recordSyncHeartbeat():Promise<void> {
+  try {
+    await getStore(HEALTH_STORE,{consistency:'strong'}).setJSON('inbox-sync',{at:Date.now()});
+  } catch { /* a missed stamp only ages the heartbeat; never fail the sync for it */ }
+}
+export async function readSyncHeartbeat():Promise<number|null> {
+  const value=await getStore(HEALTH_STORE,{consistency:'strong'}).get('inbox-sync',{type:'json'}) as {at?:number}|null;
+  return value && typeof value.at==='number' ? value.at : null;
+}
+
 async function notifyDelay(record:Pick<RecordState,'id'>, signal:AbortSignal):Promise<boolean> {
   return deliverAlert(record.id,'Website inquiry saved; Sheet synchronization needs attention',
         'This inquiry is safely saved in the private website inbox. Synchronization to the Sheet needs attention. '+

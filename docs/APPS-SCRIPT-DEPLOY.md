@@ -46,6 +46,15 @@ Rollback: set `HUBSPOT_LEAD_STATUS_ENABLED` to anything but `true`. Contacts alr
 
 Rule (Max, 26 Nov): any outbound call means Attempted to contact, connected or not. A missed call FROM the lead is inbound in CallRail and HubSpot and never counts.
 
+## Uptime watch, both directions (27 Nov 2026)
+
+Netlify and this script watch each other, one email per problem per hour:
+
+- Netlify `uptime-watch` (every 10 min) reads this script's `/exec` health answer. It alerts when there's no answer, the capture protocol is wrong, or `workerAt` (set each time `processFollowUps` starts) is over 15 minutes old. Uses Resend, to Max.
+- This script's `watchSite` (from the follow-up worker, every 10 min) reads the homepage and `https://realdarrentsai.com/api/health`. It alerts when either is down or the website inbox worker's last completed run is over 15 minutes old. Uses MailApp, to `ALERT_EMAIL`.
+
+Order: deploy the site first (adds `/api/health` and the inbox heartbeat), then this script in place, then set Script Property `SITE_WATCH_ENABLED` = `true`. Off switch: set it to anything else. Netlify's side needs no setting.
+
 ## Call-back task for inbound callers (27 Nov 2026)
 
 `processHubSpotCallerTasks` (follow-up worker, at most every 5 minutes) creates a HubSpot task "Call back <name> (inbound call, <source>)" for Darren once an inbound call is 15 minutes old. It skips the call when CallRail marks it as spam (a spam tag, lead status "Not a lead", or a robocall phrase such as "press 1" or "Google listing" in the transcript), when Darren has already made an outbound call to the contact since, when the contact already has an open task, when the call lasted 3 minutes or more, and for non-borrower or TEST contacts. A blank owner becomes Darren and a blank Lead Status becomes New. One row per HubSpot call on the **HubSpot Caller Tasks** tab.
