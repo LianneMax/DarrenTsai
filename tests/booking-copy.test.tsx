@@ -116,7 +116,15 @@ describe('SMS consent v6 keeps every 10DLC element on every form', () => {
     expect([value('SMS_INFO_LABEL'), value('SMS_MARKETING_LABEL'), value('SMS_TERMS')]).toEqual([INFO, MARKETING, TERMS]);
     expect(SOURCE).toContain("var SMS_INFO_TEXT = SMS_INFO_LABEL + ' ' + SMS_TERMS;");
     expect(SOURCE).toContain("var SMS_MARKETING_TEXT = SMS_MARKETING_LABEL + ' ' + SMS_TERMS;");
-    expect(SOURCE).toContain("esc(SMS_TERMS) + SMS_LINKS + '</p>'");
+    // 28 Nov 2026 layout: the terms line closes the optional-texts group, and the
+    // required acknowledgement comes after it, on its own.
+    expect(SOURCE).toContain("esc(SMS_TERMS) + SMS_LINKS + '</p></div>'");
+    const group = SOURCE.indexOf('dt-book-sms-group');
+    const wrapper = SOURCE.indexOf('<div class="dt-book-privacy-ack">');
+    const ack = SOURCE.indexOf('name="privacy" required');
+    expect(group).toBeGreaterThan(-1);
+    expect(wrapper).toBeGreaterThan(group);
+    expect(ack).toBeGreaterThan(wrapper);
     expect(SOURCE).toContain('smsInformationalConsentText: SMS_INFO_TEXT');
     expect(SOURCE).toContain('smsConsentText: SMS_MARKETING_TEXT');
   });

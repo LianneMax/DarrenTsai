@@ -509,15 +509,22 @@
     function stepContact() {
       var note = answers.bookingGoal === 'not-sure' ? '' : '<label class="dt-book-field">Anything you’d like Darren to know? (optional)<textarea class="dt-book-situation" name="message" rows="3" maxlength="2000" aria-describedby="dt-book-message-help">' + esc(contact.message) + '</textarea></label><p id="dt-book-message-help" class="dt-book-note">Up to 2,000 characters. Please leave out account numbers, Social Security numbers and other sensitive details.</p>';
       draw(2, 'Contact details', 'Where should Darren reach you?', 'Your contact details stay here while you review your answers.', '<form novalidate><div class="dt-book-contact-details"><div class="dt-book-row"><label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(contact.firstName) + '"></label><label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(contact.lastName) + '"></label></div><label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(contact.email) + '"></label><label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required value="' + esc(contact.phone) + '"></label></div><div class="dt-book-consents" hidden>' +
-        note + '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label>' +
-        '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_LABEL) + '</span></label>' +
+        '<div class="dt-book-summary"><div class="dt-book-summary-head"><strong>Darren will contact you at</strong><button type="button" class="dt-book-summary-edit" aria-label="Edit your contact details">Edit</button></div><ul class="dt-book-summary-list"></ul></div>' + note +
+        '<div class="dt-book-sms-group">' + '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_LABEL) + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_LABEL) + '</span></label>' +
-        '<p class="dt-book-note dt-book-note-sms">' + esc(SMS_TERMS) + SMS_LINKS + '</p>' +
+        '<p class="dt-book-note dt-book-note-sms">' + esc(SMS_TERMS) + SMS_LINKS + '</p></div>' +
+        '<div class="dt-book-privacy-ack">' + '<label class="dt-book-check dt-book-check-req"><input type="checkbox" name="privacy" required' + (contact.privacy ? ' checked' : '') + '> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener">Terms &amp; Legal Disclosures</a>. (Required)</span></label></div>' +
         '<p class="dt-book-note">Submitting records your inquiry and checks service availability. Calendar access depends on the property and your answers.</p></div><p class="dt-book-err" role="alert"></p><div class="dt-book-actions"><button type="button" class="dt-book-link dt-book-back">Back</button><button type="submit" class="dt-book-next">Review preferences</button></div></form>', '');
       var form = panel.querySelector('form');
       var consentVisible = false;
       contactView = function (show) {
         consentVisible = show;
+        if (show) {
+          // Contact summary on the last screen (28 Nov 2026). textContent only, so visitor input never becomes markup.
+          var list = form.querySelector('.dt-book-summary-list'); list.textContent = '';
+          var fe = form.elements;
+          [(fe.firstName.value.trim() + ' ' + fe.lastName.value.trim()).trim(), fe.email.value.trim(), fe.phone.value.trim()].forEach(function (t) { if (!t) return; var li = document.createElement('li'); li.textContent = t; list.appendChild(li); });
+        }
         form.querySelector('.dt-book-contact-details').hidden = show;
         form.querySelector('.dt-book-consents').hidden = !show;
         panel.querySelector('.dt-book-title').textContent = show ? 'Review your preferences.' : 'Where should Darren reach you?';
@@ -529,6 +536,7 @@
       form.elements.phone.addEventListener('input', function (e) { e.target.value = formatPhone(e.target.value); });
       form.addEventListener('input', rememberContact);
       form.addEventListener('change', rememberContact);
+      form.querySelector('.dt-book-summary-edit').onclick = function () { if (busy) return; rememberContact(); contactView(false); };
       form.querySelector('.dt-book-back').onclick = function () {
         if (busy) return;
         rememberContact();

@@ -31,7 +31,7 @@ import { serviceArea } from '../utils/serviceArea';
 import InquiryMessage from './InquiryMessage';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS } from './PageParts';
-import ComplianceDisclosure from './ComplianceDisclosure';
+import ComplianceDisclosure, { ContactSummary } from './ComplianceDisclosure';
 import { HouseOptions } from './Marketing';
 import { formatUsPhone } from '../utils/phone';
 
@@ -274,6 +274,7 @@ export function StepEquityPreferences({ v }: { v: EquityPageView }) {
       <h2 className="dcp-h2 dcp-h2-lg">Your preferences.</h2>
       <p className="dcp-lead">Review and send. Text messages are optional.</p>
       <span data-service-area={EQUITY_FORM_ID} hidden />
+      <ContactSummary name={`${v.fname} ${v.lname}`} email={v.email} phone={v.phone} onEdit={() => v.goStep(3)} />
       <ComplianceDisclosure formId={EQUITY_FORM_ID} />
 
       <StepNav

@@ -1,5 +1,5 @@
 import ServiceAreaFields from './ServiceAreaFields';
-import ComplianceDisclosure from './ComplianceDisclosure';
+import ComplianceDisclosure, { ContactSummary } from './ComplianceDisclosure';
 import InquiryMessage from './InquiryMessage';
 /**
  * Pieces shared by the revamp pages (/debt-consolidation/ since phase 2,
@@ -340,6 +340,7 @@ export function LeadPreferencesStep({ v, caption, submitLabel, onBack, formId = 
       <h2 className="dcp-h2 dcp-h2-lg">Your preferences.</h2>
       <p className="dcp-lead">Review and send. Text messages are optional.</p>
       {caption && <p className="dcp-caption">{caption}</p>}
+      <ContactSummary name={`${v.fname} ${v.lname}`} email={v.email} phone={v.phone} onEdit={onBack} />
       <ComplianceDisclosure formId={formId} />
 
       <StepNav

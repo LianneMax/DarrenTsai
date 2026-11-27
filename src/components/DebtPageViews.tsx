@@ -1,7 +1,7 @@
 import { useZipLookup } from '../hooks/useZipLookup';
 import { PropertyZipState, Choices } from './PropertyLocationFields';
 import JourneyTimeline from './JourneyTimeline';
-import ComplianceDisclosure from './ComplianceDisclosure';
+import ComplianceDisclosure, { ContactSummary } from './ComplianceDisclosure';
 /**
  * The "Pay off high-interest debt" comparison on /home-equity/ (moved from the
  * retired /debt-consolidation/ on 15 Oct 2026; first drawn in revamp phase 2).
@@ -536,6 +536,7 @@ export function StepPreferences({ v }: { v: DebtPageView }) {
     <div className="dcp-panel">
       <h2 className="dcp-h2 dcp-h2-lg">Your preferences.</h2>
       <p className="dcp-lead">Review and send. Text messages are optional.</p>
+      <ContactSummary name={`${v.fname} ${v.lname}`} email={v.email} phone={v.phone} onEdit={() => v.goStep(4)} />
       <ComplianceDisclosure formId="debt-savings-calculator" />
       {v.sending && <p className="dcp-hint" role="status">Saving your details. Your calendar will open after the save is confirmed. This can take a few seconds.</p>}
       <StepNav
