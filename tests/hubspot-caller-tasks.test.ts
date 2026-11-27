@@ -66,7 +66,7 @@ const taskPosts = (f: ReturnType<typeof apis>) => callsOf(f, 'post', /\/crm\/v3\
 describe('call-back task for inbound callers', () => {
   it('stays dark until enabled with a HubSpot key AND a CallRail key', () => {
     for (const props of [{}, { HUBSPOT_CALLER_TASKS_ENABLED: 'true', HUBSPOT_PRIVATE_APP_TOKEN: 'pat' },
-      { ...config, CALLRAIL_API_TOKEN: '' }, { ...config, CALLRAIL_ACCOUNT_ID: 'ACC123' }, { ...config, HUBSPOT_CALLER_TASKS_ENABLED: 'false' }]) {
+      { ...config, CALLRAIL_API_TOKEN: '' }, { ...config, CALLRAIL_ACCOUNT_ID: 'not-an-id' }, { ...config, HUBSPOT_CALLER_TASKS_ENABLED: 'false' }]) {
       const { h, fetch, ss } = setup(props as Record<string, string>);
       h.gas.processHubSpotCallerTasks(ss);
       expect(fetch).not.toHaveBeenCalled();

@@ -3189,7 +3189,8 @@ function callerTasksConfig() {
   const token = String(props.getProperty('HUBSPOT_PRIVATE_APP_TOKEN') || '').trim();
   const callrailToken = String(props.getProperty('CALLRAIL_API_TOKEN') || '').trim();
   const account = String(props.getProperty('CALLRAIL_ACCOUNT_ID') || '').trim();
-  if (!token || !callrailToken || !/^\d+$/.test(account)) return null;
+  // CallRail account IDs appear as the number in its web addresses or as "ACC..." in the API.
+  if (!token || !callrailToken || !/^(\d+|ACC[0-9a-f]+)$/i.test(account)) return null;
   const owner = String(props.getProperty('HUBSPOT_TASK_OWNER_ID') || '').trim() || HUBSPOT_TASK_OWNER_DEFAULT;
   return { token: token, owner: owner, callrailToken: callrailToken, account: account,
     company: String(props.getProperty('CALLRAIL_COMPANY_ID') || '').trim() };
