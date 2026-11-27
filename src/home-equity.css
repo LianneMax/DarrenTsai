@@ -23,3 +23,5 @@
    "1 of 4" line stays for screen readers; the numbered timeline above it
    already shows the step. */
 @media(max-width:600px){.site-design.equity-design .equity-revamp .equity-opening-surface{margin-bottom:12px}.equity-revamp.equity-estimate-surface .dcp-flow{padding-top:8px}.equity-revamp .journey-progress{margin-bottom:12px}.equity-revamp .equity-journey-content{padding-top:18px}.equity-revamp .equity-stage-state{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}.equity-revamp .dcp-lead{margin-bottom:14px}.equity-revamp .dcp-grid-2{margin-top:14px}}
+/* Same phone spacing for the payoff path (27 Nov 2026): its first debt field sat at the bottom edge of a 812px screen. */
+@media(max-width:600px){.site-design.equity-design .payoff-flow .equity-opening-surface{margin-bottom:12px}.payoff-flow .dcp-flow{padding-top:8px}.payoff-flow .journey-progress{margin-bottom:12px}}

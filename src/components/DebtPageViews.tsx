@@ -199,9 +199,12 @@ export function StepDebts({ v }: { v: DebtPageView }) {
               <span className="input-suffix">%</span>
             </div>
           </div>
-          <button type="button" className="dcp-remove" onClick={() => v.removeDebt(d.id)} aria-label="Remove debt">
-            ×
-          </button>
+          {/* The only card can't be removed: an empty list has nothing to fill in. */}
+          {v.debts.length > 1 && (
+            <button type="button" className="dcp-remove" onClick={() => v.removeDebt(d.id)} aria-label="Remove debt">
+              ×
+            </button>
+          )}
         </div>
       ))}
 

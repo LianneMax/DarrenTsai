@@ -20,7 +20,7 @@ declare global {
 }
 
 /** Consent-gated observations with a separate PII-free contract. */
-export function milestone(event: 'form_start' | 'form_step' | 'form_error', params: Record<string, unknown>): void {
+export function milestone(event: 'form_start' | 'form_step' | 'form_error' | 'equity_path', params: Record<string, unknown>): void {
   try { window.DT?.milestone?.(event, params); } catch { /* Measurement never blocks the form. */ }
 }
 

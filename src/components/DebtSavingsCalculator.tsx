@@ -132,9 +132,10 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // No type either. Pre-labelling the rows "Credit Card" and "Auto Loan" meant
   // someone with two cards typed their second card into a row that says Auto
   // Loan, and the type travels in the payload and the rescue email.
+  // One card to start (27 Nov 2026): two empty cards made the first screen on a
+  // phone mostly blank debt fields; "+ Add Another Debt" adds the next one.
   const [debts, setDebts] = useState<Debt[]>([
     { id: 1, type: '', bal: 0, pmt: 0, rate: 0 },
-    { id: 2, type: '', bal: 0, pmt: 0, rate: 0 },
   ]);
 
   // Home

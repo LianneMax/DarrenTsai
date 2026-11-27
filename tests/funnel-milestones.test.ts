@@ -50,6 +50,18 @@ describe('consent-aware form observations', () => {
     expect(browser.dataLayer.filter((e: any) => e.event === 'form_error')).toHaveLength(2);
     expect(browser.dataLayer).toHaveLength(4);
   });
+  it('records which /home-equity/ path a visitor picks, once per path, and nothing else (27 Nov 2026)', () => {
+    const { browser, emit } = runtime(true);
+    emit('equity_path', { form_id: 'home-equity-calculator', path: 'payoff' });
+    emit('equity_path', { form_id: 'home-equity-calculator', path: 'payoff' });
+    emit('equity_path', { form_id: 'home-equity-calculator', path: 'equity' });
+    emit('equity_path', { form_id: 'home-equity-calculator', path: 'private@example.com' });
+    emit('equity_path', { form_id: 'home-equity-calculator' });
+    expect(browser.dataLayer).toEqual([
+      { event: 'equity_path', form_id: 'home-equity-calculator', page_path: '/fha/', path: 'payoff' },
+      { event: 'equity_path', form_id: 'home-equity-calculator', page_path: '/fha/', path: 'equity' },
+    ]);
+  });
   it('records a start from an actual annotated form interaction, and cannot break inputs', () => {
     const { browser } = runtime(true);
     document.body.innerHTML = '<div data-dt-form="home-equity-calculator"><input value="private@example.com"></div>';

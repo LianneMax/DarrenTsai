@@ -71,6 +71,21 @@ it('gives every home-step number an associated visible label', () => {
   ]);
 });
 
+describe('debt cards (27 Nov 2026: one to start)', () => {
+  it('the calculator starts with one empty debt card', () => {
+    const src = readFileSync(resolve(__dirname, '../src/components/DebtSavingsCalculator.tsx'), 'utf8');
+    const start = src.slice(src.indexOf('useState<Debt[]>(['), src.indexOf(']);', src.indexOf('useState<Debt[]>([')));
+    expect(start.match(/id: \d/g)).toEqual(['id: 1']);
+  });
+  it('a single card has no remove button; two cards each have one', () => {
+    const one = html(<StepDebts v={view({ debts: [{ id: 1, type: '', bal: 0, pmt: 0, rate: 0 }] })} />);
+    expect(one).not.toContain('aria-label="Remove debt"');
+    expect(one).toContain('+ Add Another Debt');
+    const two = html(<StepDebts v={view()} />);
+    expect(two.match(/aria-label="Remove debt"/g)).toHaveLength(2);
+  });
+});
+
 describe('an untouched page shows no figures', () => {
   it('step 1 shows its totals only once there is a debt row, as the homepage does', () => {
     const page = html(<StepDebts v={view({ debts: [] })} />);

@@ -370,7 +370,7 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
   const done = v.submitted || !!v.declined;
   if (path === 'payoff') {
     return (
-      <section className="dcp">
+      <section className="dcp payoff-flow">
         <div className="equity-opening-surface"><EquityPageHero path={path} onPath={onPath} /></div>
         {payoff}
         {overlays}

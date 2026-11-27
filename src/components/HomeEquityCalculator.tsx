@@ -55,6 +55,9 @@ export default function HomeEquityCalculator() {
   // the query are left as they are.
   const setPath = (next: EquityPath) => {
     setPathState(next);
+    // Which path a visitor picks (27 Nov 2026), once per path per page view.
+    // Only a click counts: a ?goal=payoff link is the link's choice, not theirs.
+    milestone('equity_path', { form_id: EQUITY_FORM_ID, path: next });
     try {
       const url = new URL(window.location.href);
       if (next === 'payoff') url.searchParams.set('goal', 'payoff'); else url.searchParams.delete('goal');

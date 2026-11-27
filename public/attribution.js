@@ -237,16 +237,20 @@
       // GA4-only observations, so they follow the Google rule (on unless rejected).
       var c = window.DTConsent;
       if (!c || !(c.isGoogleAllowed ? c.isGoogleAllowed() : c.isAllowed())) return;
-      if (['form_start', 'form_step', 'form_error'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
+      // equity_path (27 Nov 2026): which /home-equity/ path a visitor chose,
+      // "equity" or "payoff", so GA4 can show how many want the debt comparison.
+      if (['form_start', 'form_step', 'form_error', 'equity_path'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
       var path = window.location.pathname;
       var paths = ['/', '/book/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/about/', '/reviews/', '/legal/', '/privacy-policy/'];
       var out = { event: event, form_id: params.form_id, page_path: paths.indexOf(path) >= 0 ? path : '/other/' };
       if (/^[1-6]$/.test(String(params.step_id || ''))) out.step_id = String(params.step_id);
       if (['validation', 'policy_exit', 'network', 'uncertain', 'rejected', 'rate_limited', 'submission_conflict', 'receipt_invalid'].indexOf(params.error_code) >= 0) out.error_code = params.error_code;
       if (['contact', 'property', 'consent', 'numbers', 'other'].indexOf(params.field_category) >= 0) out.field_category = params.field_category;
+      if (['equity', 'payoff'].indexOf(params.path) >= 0) out.path = params.path;
       if (event === 'form_step' && !out.step_id) return;
       if (event === 'form_error' && !out.error_code) return;
-      var key = event + ':' + out.form_id + ':' + (out.step_id || '');
+      if (event === 'equity_path' && !out.path) return;
+      var key = event + ':' + out.form_id + ':' + (out.step_id || out.path || '');
       if (event !== 'form_error' && milestonesSeen[key]) return;
       if (event !== 'form_error') milestonesSeen[key] = true;
       window.dataLayer.push(out);
