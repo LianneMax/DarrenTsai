@@ -28,7 +28,7 @@ Re-checked against the code (48 commits since 27 Oct, last 9451841 on 23 Nov) an
 
 ### Still open from this draft
 
-- Item 3, final step easier to scan (consent hierarchy). Not shipped. A local-only preview was made 28 Nov (screenshots in Claude outputs/final-step-preview, fictional data, nothing submitted) for Max to review; see item 3 below.
+- Item 3, final step easier to scan: shipped 28 Nov (99e8e9c) after Max approved the local preview; see item 3 below.
 - Item 4, plain words for abbreviations (P&I, HELOAN, CLTV). Not done.
 - Follow-on: consistent Back/Continue and inline errors; 200% zoom, keyboard and screen-reader pass. Not done.
 
@@ -123,13 +123,13 @@ Retain all approved consent wording and the existing step count. Organize the fi
 
 Improve spacing, line length and secondary-text readability. Do not collapse, hide, preselect, shorten or combine legally significant consent text. Copy that changes consent meaning needs separate content approval.
 
-Preview, 28 November (local only, not shipped). Today the final step on every funnel (home equity, payoff, the /book/ prequal and the opt-ins) is one shared consent block: required acknowledgement first, then the two text choices and their disclosure, with no contact recap. The preview keeps every checkbox, its exact wording and its data attribute, and only reorders and groups them:
+Shipped 28 November (99e8e9c), after Max approved a local preview. Today the final step on every funnel (home equity, payoff, the /book/ prequal and the opt-ins) is one shared consent block: required acknowledgement first, then the two text choices and their disclosure, with no contact recap. The preview keeps every checkbox, its exact wording and its data attribute, and only reorders and groups them:
 
 1. A light card "Darren will contact you at" with name, email and phone, and an Edit link that goes back to the details step.
 2. The two optional text choices and their disclosure inside one bordered group, with no heading, the disclosure in smaller type.
 3. A divider, then the required privacy acknowledgement on its own directly above the submit button.
 
-The anything-to-add message stays on the details step, where it lives today. If approved, the change sits in the shared consent component, so all funnels change together; tests that read the checkboxes by data attribute stay valid.
+The anything-to-add message stays on the details step, where it lives today. It is in the shared consent component, so the home equity, payoff and ADU funnels changed together; the /book/ prequal got the same summary and order, and the DSCR, FHA and investing guide modals got the same order (no summary card there, because their contact fields share the screen). Tests that read the checkboxes by data attribute stay valid.
 
 Screen property eligibility only on the final deliberate, privacy-acknowledged submission. Keep the existing four booking stages. Supported saved leads reach the calendar; outside-area saved inquiries reach the correct recorded exit. Do not open the calendar or fire the qualified lead event on checkbox changes.
 
