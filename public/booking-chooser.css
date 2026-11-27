@@ -152,13 +152,16 @@ body.booking-page{background:#f5f8fa}
    only browser-default piece left in this form. */
 .dt-book-shell .dt-book-field select{padding-right:44px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23223d55' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center;-webkit-appearance:none;appearance:none;cursor:pointer}
 /* Last screen layout (28 Nov 2026, Max approved the preview): contact summary, optional texts grouped, required acknowledgement alone above the buttons. Wording unchanged. */
-.dt-book-shell .dt-book-summary{border:1px solid #dfe5ea;background:#f6f8fa;border-radius:12px;padding:16px 18px;margin:4px 0 18px}
-.dt-book-shell .dt-book-summary-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
-.dt-book-shell .dt-book-summary-head strong{font-size:15px;color:#1e3448}
-.dt-book-shell .dt-book-summary-edit{background:none;border:0;padding:0;font:inherit;font-size:14px;color:#1a7f99;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.dt-book-shell .dt-book-summary-list{list-style:none;margin:0;padding:0}
-.dt-book-shell .dt-book-summary-list li{font-size:15px;line-height:1.6;color:#334e62;overflow-wrap:anywhere}
 .dt-book-shell .dt-book-sms-group{border:1px solid #dfe5ea;border-radius:12px;padding:2px 18px 12px;margin:16px 0 18px}
 .dt-book-shell .dt-book-sms-group .dt-book-note-sms{font-size:14px;margin:8px 0 0}
 .dt-book-shell .dt-book-privacy-ack{border-top:1px solid #e6ebef;padding-top:4px}
 .dt-book-shell .dt-book-privacy-ack .dt-book-check-req{margin-bottom:12px}
+
+.dt-book-shell .dt-book-summary{background:#f4f7f9;border-radius:12px;padding:16px 20px 6px;margin:4px 0 18px}
+.dt-book-shell .dt-book-summary-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid #e1e7ec}
+.dt-book-shell .dt-book-summary-head strong{font-size:15px;font-weight:600;color:#1e3448}
+.dt-book-shell .dt-book-summary-edit{background:none;border:0;padding:0;font:inherit;font-size:14px;font-weight:500;color:#1a7f99;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.dt-book-shell .dt-book-summary-row{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:10px 0;border-bottom:1px solid #e1e7ec;font-size:15px}
+.dt-book-shell .dt-book-summary-row:last-child{border-bottom:0}
+.dt-book-shell .dt-book-summary-row>span:first-child{color:#5b6b79}
+.dt-book-shell .dt-book-summary-row>span:last-child{font-weight:500;color:#1e3448;text-align:right;overflow-wrap:anywhere;min-width:0}

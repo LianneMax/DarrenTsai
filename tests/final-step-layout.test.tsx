@@ -36,13 +36,17 @@ describe('contact summary', () => {
     const onEdit = vi.fn();
     const html = renderToStaticMarkup(<ContactSummary name="Alex Sample" email="alex@example.com" phone="(714) 555-0199" onEdit={onEdit} />);
     expect(html).toContain('Darren will contact you at');
-    for (const t of ['Alex Sample', 'alex@example.com', '(714) 555-0199']) expect(html).toContain(`<li>${t}</li>`);
+    // Same label/value rows as the saved-answers recap.
+    expect(html).toContain('class="dcp-recap-rows contact-summary"');
+    for (const [label, t] of [['Name', 'Alex Sample'], ['Email', 'alex@example.com'], ['Phone', '(714) 555-0199']]) {
+      expect(html).toContain(`<div class="dcp-row"><span>${label}</span><span>${t}</span></div>`);
+    }
     expect(html).toContain('aria-label="Edit your contact details"');
   });
 
   it('skips blank lines and escapes what the visitor typed', () => {
     const html = renderToStaticMarkup(<ContactSummary name="  " email="<b>x</b>@example.com" phone="" onEdit={() => {}} />);
-    expect(html.match(/<li>/g)).toHaveLength(1);
+    expect(html.match(/class="dcp-row"/g)).toHaveLength(1);
     expect(html).toContain('&lt;b&gt;');
   });
 });

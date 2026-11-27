@@ -38,6 +38,20 @@ describe('formula-like text is written as text', () => {
     for (const v of Object.values(row)) expect(v).not.toBeInstanceOf(Formula);
   });
 
+  // 28 Nov 2026 (Max): the "Anything you'd like Darren to know?" box. There is
+  // no SQL database anywhere in the lead path (Sheet, HubSpot API, Netlify
+  // blobs), so SQL-looking text is only text; it must arrive exactly as typed.
+  it('stores the inquiry message box as typed, formula or SQL-looking', () => {
+    const SQL = "Robert'); DROP TABLE leads;-- <script>alert(1)</script>";
+    for (const message of [ATTACK, SQL]) {
+      const { res, rowOf } = post({ ...BASE, source: 'home-equity', firstName: 'Ava', message });
+      expect(res.success).toBe(true);
+      const row = rowOf('Home Equity');
+      expect(Object.values(row)).toContain(message);
+      for (const v of Object.values(row)) expect(v).not.toBeInstanceOf(Formula);
+    }
+  });
+
   it('leaves ordinary values exactly as they were', () => {
     const { rowOf } = post({ ...BASE, source: 'fha-contact', firstName: 'Ava', phone: '+1 714 555 0100', loanAmount: 392755, message: '-5% down? Is that possible' });
     const row = rowOf('FHA');

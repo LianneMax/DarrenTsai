@@ -509,7 +509,7 @@
     function stepContact() {
       var note = answers.bookingGoal === 'not-sure' ? '' : '<label class="dt-book-field">Anything you’d like Darren to know? (optional)<textarea class="dt-book-situation" name="message" rows="3" maxlength="2000" aria-describedby="dt-book-message-help">' + esc(contact.message) + '</textarea></label><p id="dt-book-message-help" class="dt-book-note">Up to 2,000 characters. Please leave out account numbers, Social Security numbers and other sensitive details.</p>';
       draw(2, 'Contact details', 'Where should Darren reach you?', 'Your contact details stay here while you review your answers.', '<form novalidate><div class="dt-book-contact-details"><div class="dt-book-row"><label class="dt-book-field">First name<input name="firstName" autocomplete="given-name" required value="' + esc(contact.firstName) + '"></label><label class="dt-book-field">Last name<input name="lastName" autocomplete="family-name" required value="' + esc(contact.lastName) + '"></label></div><label class="dt-book-field">Email<input name="email" type="email" autocomplete="email" required value="' + esc(contact.email) + '"></label><label class="dt-book-field">Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="14" placeholder="(714) 000-0000" required value="' + esc(contact.phone) + '"></label></div><div class="dt-book-consents" hidden>' +
-        '<div class="dt-book-summary"><div class="dt-book-summary-head"><strong>Darren will contact you at</strong><button type="button" class="dt-book-summary-edit" aria-label="Edit your contact details">Edit</button></div><ul class="dt-book-summary-list"></ul></div>' + note +
+        '<div class="dt-book-summary"><div class="dt-book-summary-head"><strong>Darren will contact you at</strong><button type="button" class="dt-book-summary-edit" aria-label="Edit your contact details">Edit</button></div><div class="dt-book-summary-list"></div></div>' + note +
         '<div class="dt-book-sms-group">' + '<label class="dt-book-check"><input type="checkbox" name="smsInfo"' + (contact.smsInfo ? ' checked' : '') + '> <span>' + esc(SMS_INFO_LABEL) + '</span></label>' +
         '<label class="dt-book-check"><input type="checkbox" name="smsMarketing"' + (contact.smsMarketing ? ' checked' : '') + '> <span>' + esc(SMS_MARKETING_LABEL) + '</span></label>' +
         '<p class="dt-book-note dt-book-note-sms">' + esc(SMS_TERMS) + SMS_LINKS + '</p></div>' +
@@ -521,9 +521,16 @@
         consentVisible = show;
         if (show) {
           // Contact summary on the last screen (28 Nov 2026). textContent only, so visitor input never becomes markup.
+          // Label and value rows, like the site's saved-answers recap.
           var list = form.querySelector('.dt-book-summary-list'); list.textContent = '';
           var fe = form.elements;
-          [(fe.firstName.value.trim() + ' ' + fe.lastName.value.trim()).trim(), fe.email.value.trim(), fe.phone.value.trim()].forEach(function (t) { if (!t) return; var li = document.createElement('li'); li.textContent = t; list.appendChild(li); });
+          [['Name', (fe.firstName.value.trim() + ' ' + fe.lastName.value.trim()).trim()], ['Email', fe.email.value.trim()], ['Phone', fe.phone.value.trim()]].forEach(function (r) {
+            if (!r[1]) return;
+            var row = document.createElement('div'); row.className = 'dt-book-summary-row';
+            var k = document.createElement('span'); k.textContent = r[0];
+            var v = document.createElement('span'); v.textContent = r[1];
+            row.appendChild(k); row.appendChild(v); list.appendChild(row);
+          });
         }
         form.querySelector('.dt-book-contact-details').hidden = show;
         form.querySelector('.dt-book-consents').hidden = !show;
