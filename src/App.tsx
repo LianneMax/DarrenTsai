@@ -27,7 +27,7 @@ export default function App() {
       {/* One <main> landmark per page (audit L3): screen-reader users jump to it,
           and Lighthouse fails a page without one. Nav and Footer stay outside. */}
       <main>
-        <HomeHero />
+        <HomeHero onOpenContact={openContact} />
         <MarketingBenefits onOpenContact={openContact} />
         <MarketingOptions />
         <Reviews />

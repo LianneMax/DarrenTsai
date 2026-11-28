@@ -275,7 +275,7 @@ export function StepHome({ v }: { v: DebtPageView }) {
 
       <div className="dcp-grid-3">
         <div>
-          <label className="input-label" htmlFor="payoff-mortgage-payment">Monthly Payment (P&amp;I)</label>
+          <label className="input-label" htmlFor="payoff-mortgage-payment">Monthly payment (principal and interest)</label>
           <div className="input-prefix-wrap">
             <span className="input-prefix">$</span>
             <input id="payoff-mortgage-payment" type="number" className="form-input input-has-prefix"
@@ -389,7 +389,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
     <div className="dcp-option dcp-option-today">
       <span className="dcp-option-title">Today</span>
       <span className="dcp-option-pay">{formatCurrency(v.todayTotal)}<small>/month</small></span>
-      <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : 'Mortgage P&I + all debts'}</span>
+      <span className="dcp-option-scope">{paidOff ? 'All debts (no mortgage)' : 'Mortgage principal and interest + all debts'}</span>
     </div>
     <p className="dcp-comparison-note">Compare your combined monthly payments. Taxes, insurance, HOA and closing costs are excluded; your actual obligation will be greater.</p>
     <p className="dcp-comparison-note"><strong>A lower monthly payment is not a calculation of total savings.</strong> A loan secured by your home can put your home at risk.</p>
@@ -429,7 +429,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       </OptionCard>
       <OptionCard id={same ? 'refiSame' : 'refi'} title="Cash-out refinance" v={v}
         payment={refiPayment > 0 ? refiPayment : null}
-        scope={`Estimated P&I · new ${refiYears || '—'}YR fixed`} save={refiDifference} action="Discuss this refinance"
+        scope={`Principal and interest · new ${refiYears || '—'}-year fixed`} save={refiDifference} action="Discuss this refinance"
         controls={<div className="dcp-loan-controls">
           <label className="input-label" htmlFor="refi-comparison-term">Repayment term</label>
           <CustomSelect id="refi-comparison-term" value={v.refiTerm} onChange={term => v.setRefiTerm(term === 'same' ? 'same' : '30')} placeholder="Choose term"
@@ -455,7 +455,7 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       <summary>Cash-out refinance calculation details</summary>
       <Row label="New Loan Amount" value={v.newLoan > 0 ? formatCurrency(v.newLoan) : '—'} />
       <Row label="Rate / term" value={`${formatRate(v.rate30)} / ${refiYears || '—'} yr`} />
-      <Row label="Monthly P&I Payment" value={refiPayment > 0 ? formatCurrency(refiPayment) : '—'} />
+      <Row label="Monthly principal and interest" value={refiPayment > 0 ? formatCurrency(refiPayment) : '—'} />
       <Row strong label={RESULT_ROW_LABEL} value={refiPayment > 0 ? savingsRowText(refiDifference) : '—'} />
     </details>
     <details className="dcp-details">
@@ -464,7 +464,8 @@ export function StepCompare({ v }: { v: DebtPageView }) {
       <Row label="Equity Loan Rate / Term" value={v.heloanPriced && v.heloanAmt > 0 ? `${formatRate(v.tierRate)} / ${v.tierYears} yr` : '—'} />
       <Row label="Equity Loan Monthly Payment" value={v.heloanPmt > 0 ? formatCurrency(v.heloanPmt) : '—'} />
       <Row label="Existing Mortgage Payment" value={v.mp > 0 ? formatCurrency(v.mp) : '—'} />
-      <Row label="Illustrative CLTV" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
+      <Row label="All loans as a share of home value (CLTV)" value={v.cltv > 0 ? formatRate(v.cltv) : '—'} />
+      <p className="dcp-hint">Your mortgage plus the new equity loan, divided by your home's value. Many lenders cap this at {COMMON_CLTV_LIMIT}%.</p>
       <Row strong label={BLENDED_ROW_LABEL} value={v.heloanPriced && v.heloanPmt > 0 ? savingsRowText(v.heloanSave) : '—'} />
     </details>
     <p id="dsc-cost-assumptions" className="dcp-caption"><strong>Cost assumptions:</strong> payments show principal and interest only, excluding taxes, insurance and fees. Estimated APR assumes $0 upfront finance charges unless you enter them using the info icon. Actual costs and APR require a lender's Loan Estimate.</p>
@@ -562,10 +563,10 @@ function chosenLine(v: DebtPageView): { label: string; detail: string } {
     return { label: 'HELOC', detail: v.helocRoom === null ? 'Line amount and payment need a personal review.' : `${formatCurrency(v.helocRoom)} illustrative borrowing room at ${COMMON_CLTV_LIMIT}% combined loan-to-value. Not approved credit.` };
   }
   if (v.chosen === 'refi' && v.refiPmt > 0) {
-    return { label: 'Cash-out refinance', detail: `${formatCurrency(v.refiPmt)}/mo est. P&I · ${savingsText(v.refiSave)}` };
+    return { label: 'Cash-out refinance', detail: `${formatCurrency(v.refiPmt)}/mo est. principal and interest · ${savingsText(v.refiSave)}` };
   }
   if (v.chosen === 'refiSame' && v.refiSameTermPmt > 0) {
-    return { label: 'Refinance, same payoff date', detail: `${formatCurrency(v.refiSameTermPmt)}/mo est. P&I · ${savingsText(v.refiSameTermSave)}` };
+    return { label: 'Refinance, same payoff date', detail: `${formatCurrency(v.refiSameTermPmt)}/mo est. principal and interest · ${savingsText(v.refiSameTermSave)}` };
   }
   if (v.chosen === 'heloan' && v.heloanPriced && v.heloanPmt > 0) {
     return { label: 'Fixed home equity loan', detail: `${formatCurrency(v.heloanTotal)}/mo combined · ${savingsText(v.heloanSave)}` };

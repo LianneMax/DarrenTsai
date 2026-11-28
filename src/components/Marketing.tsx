@@ -103,10 +103,12 @@ function EquityIllustration() {
   </div>;
 }
 
-export function MarketingHomeHero() {
+/** 28 Nov 2026 (Max, as a user): Book a Call sits in the hero too, beside the
+ * equity check, so someone ready to talk does not have to find the nav. */
+export function MarketingHomeHero({ onOpenContact }: { onOpenContact?: () => void }) {
   return <section className="hero wrap">
     <div className="hero-copy"><h1>Your home.<br />More <em>possibilities.</em></h1><p>Understand your equity. Explore what it could help you do. Take the next step with a clearer picture.</p>
-      <div className="hero-actions"><a className="design-primary large" href="/home-equity/">Check my home equity <ArrowIcon /></a><a href="#goals">Explore other goals ↓</a></div>
+      <div className="hero-actions"><a className="design-primary large" href="/home-equity/">Check my home equity <ArrowIcon /></a>{onOpenContact && <button type="button" className="design-outline large hero-book" data-early="hero-contact" onClick={onOpenContact}>Book a Call</button>}<a className="hero-goals-link" href="#goals">Explore other goals ↓</a></div>
       <p className="hero-trust">Darren Tsai · NMLS #2438102 · CA DRE #02103705</p></div>
     <div className="hero-visual"><EquityIllustration /><div className="personal-intro" id="about"><img src="/darren-96.webp" width="46" height="46" alt="Darren Tsai" /><div><strong>Real numbers. Personal guidance.</strong><small>Darren Tsai · Senior Loan Officer</small></div><a href="/about/">Meet Darren <ArrowIcon /></a></div></div>
   </section>;

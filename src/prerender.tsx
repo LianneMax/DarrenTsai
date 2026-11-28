@@ -99,7 +99,7 @@ export function renderHomeShell(): string {
     <>
       <Nav onOpenContact={noop} />
       <main>
-        <HomeHero />
+        <HomeHero onOpenContact={noop} />
       </main>
     </>,
   );

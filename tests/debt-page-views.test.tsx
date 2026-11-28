@@ -66,7 +66,7 @@ it('gives every home-step number an associated visible label', () => {
   const inputs = Array.from(host.querySelectorAll('input'));
   expect(inputs).toHaveLength(6);
   expect(inputs.map(input => input.labels?.[0]?.textContent)).toEqual([
-    'Current Home Value', 'Current Mortgage Balance', 'Monthly Payment (P&I)',
+    'Current Home Value', 'Current Mortgage Balance', 'Monthly payment (principal and interest)',
     'Mortgage Rate · optional', 'Remaining Term · optional', "ZIP of the home you're borrowing against",
   ]);
 });

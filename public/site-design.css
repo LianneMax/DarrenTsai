@@ -159,3 +159,9 @@ body.site-design{font-size:1rem}
 :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea):focus-visible{outline:2px solid #1a7f99!important;outline-offset:-1px!important;box-shadow:0 0 0 4px #1a7f9926}
 .input-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea,.cselect-trigger):focus-visible{outline:none!important;box-shadow:none}
 .input-shell:focus-within{border-color:#1a7f99!important;box-shadow:0 0 0 1px #1a7f99,0 0 0 4px #1a7f9926!important}
+
+/* 28 Nov 2026: hero Book a Call beside the equity check. On phones the two
+   buttons share the row; the goals link drops to its own line. */
+.site-design .hero-actions>.hero-book{font-size:16px;color:var(--action-teal);border-color:var(--action-teal);background:#fff}
+.site-design .hero-actions>.hero-book:hover{background:#edf4f6}
+@media (max-width:640px){.site-design .hero-actions{gap:12px}.site-design .hero-actions>.design-primary,.site-design .hero-actions>.hero-book{flex:1 1 auto}.site-design .hero-actions>.hero-goals-link{flex-basis:100%}}

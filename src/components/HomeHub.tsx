@@ -80,7 +80,7 @@ const ICONS = {
  * needs no early-click key, and it carries no phone number for CallRail to
  * swap and React to overwrite.
  */
-export function HomeHero() { return <MarketingHomeHero />; }
+export function HomeHero({ onOpenContact }: { onOpenContact?: () => void }) { return <MarketingHomeHero onOpenContact={onOpenContact} />; }
 
 // ─── Goals ────────────────────────────────────────────────────────────────────
 
