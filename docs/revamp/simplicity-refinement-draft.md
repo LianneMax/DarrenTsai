@@ -58,7 +58,7 @@ How each step is recorded today. "Pushed" means the site writes it to the dataLa
 | /home-equity/ equity | Prequal knockout | Yes | booking_prequal_declined | No | GTM tag |
 | /home-equity/ equity | Lead saved | Yes | generate_lead + virtual_page_view | generate_lead only | None that matters |
 | /home-equity/?goal=payoff | Debts, home, compare, details steps | Yes | form_start, form_step (debt-savings-calculator) | No | GTM tag |
-| /home-equity/?goal=payoff | Discuss button on a comparison card | No | none | No | Add which option was picked (form_step carries it only as a step) |
+| /home-equity/?goal=payoff | Discuss button on a comparison card | Yes (since 28 Nov) | option_selected, option = heloc, heloan, refi or refiSame | No | GTM tag |
 | /home-equity/?goal=payoff | Lead saved | Yes | generate_lead | Yes | None |
 | /book/ prequal | Goal, property, details steps | Yes | form_start, form_step 2 to 4, form_error | No | GTM tag |
 | /book/ prequal | Knockout | Yes | booking_prequal_declined | No | GTM tag |
@@ -67,11 +67,11 @@ How each step is recorded today. "Pushed" means the site writes it to the dataLa
 | All calendar flows | Call booked | No (Google's calendar can't report it) | HubSpot lifecycle MQL via Apps Script, sent to Ads as Book appointment | Not in GA4 | Fine for Ads; GA4 can't see bookings |
 | /adu/ | Steps, errors, lead | Yes | form_start, form_step, form_error, generate_lead | generate_lead only | GTM tag |
 | /dscr/, /fha/, /realestateinvesting/ guides | Steps, errors, lead | Yes | form_step, form_error, generate_lead | generate_lead only | GTM tag |
-| Contact modals (home, calculator, ADU, DSCR, FHA, REI) | Open, errors, lead | Start and errors yes; open no | form_start, form_error, generate_lead | generate_lead only | GTM tag; modal open not tracked |
+| Book a Call panel (every Book a Call button) | Open, errors, lead | Yes (open since 28 Nov) | booking_open (placement = hero, nav, mobile-menu, footer, page, other), form_start, form_error, generate_lead | generate_lead only | GTM tag |
 | /mortgage-calculator/ | Using the calculator | No | none | No | Optional: one calculator_used event |
 | Back buttons and step tabs | Going back | No | none | No | Low priority |
 
-Recommended new or forwarded events, all PII-free: form_start, form_step, form_error, booking_page_shown, booking_prequal_declined (forward in GTM), plus equity_path (pushed since 27 Nov) and option_selected (new, small code change). With these, GA4 can show a step-by-step drop-off funnel for each form.
+Recommended new or forwarded events, all PII-free: form_start, form_step, form_error, booking_page_shown, booking_prequal_declined (forward in GTM), plus equity_path (pushed since 27 Nov), booking_open and option_selected (both pushed since 28 Nov). With these, GA4 can show a step-by-step drop-off funnel for each form.
 
 ## Intended outcome
 
