@@ -359,6 +359,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
       return;
     }
     if (n > step) milestone('form_step', { form_id: 'debt-savings-calculator', step_id: step });
+    if (n < step) milestone('form_back', { form_id: 'debt-savings-calculator', step_id: step });
     setErrorMsg(null);
     setStep(n);
     setTimeout(() => {

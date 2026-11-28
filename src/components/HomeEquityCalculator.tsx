@@ -146,6 +146,7 @@ export default function HomeEquityCalculator() {
   // Back only, from the step tabs. Forwards goes through next(), which checks.
   const goStep = (n: number) => {
     if (n >= step) return;
+    milestone('form_back', { form_id: EQUITY_FORM_ID, step_id: step });
     setErrorMsg(null);
     setStep(n);
     scrollToFlow();

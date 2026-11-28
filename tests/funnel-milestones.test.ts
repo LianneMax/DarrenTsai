@@ -95,3 +95,36 @@ describe('Book a Call panel opens and payoff option picks', () => {
     expect(JSON.stringify(browser.dataLayer)).not.toMatch(/castle|@/);
   });
 });
+
+// 28 Nov 2026 (Max): going back a step, and real use of the mortgage calculator.
+describe('back steps and calculator use', () => {
+  it('records a step left by going back, needs the step, and keeps one per step', () => {
+    const { browser, emit } = runtime(true);
+    emit('form_back', { form_id: 'home-equity-calculator', step_id: 3 });
+    emit('form_back', { form_id: 'home-equity-calculator', step_id: 3 });
+    emit('form_back', { form_id: 'home-equity-calculator', step_id: 2 });
+    emit('form_back', { form_id: 'home-equity-calculator' });
+    expect(browser.dataLayer).toEqual([
+      { event: 'form_back', form_id: 'home-equity-calculator', page_path: '/fha/', step_id: '3' },
+      { event: 'form_back', form_id: 'home-equity-calculator', page_path: '/fha/', step_id: '2' },
+    ]);
+  });
+  it('records mortgage calculator use once', () => {
+    const { browser, emit } = runtime(true);
+    emit('calculator_used', { form_id: 'mortgage-calculator' });
+    emit('calculator_used', { form_id: 'mortgage-calculator' });
+    expect(browser.dataLayer).toEqual([{ event: 'calculator_used', form_id: 'mortgage-calculator', page_path: '/fha/' }]);
+  });
+  it('reads the step from the guide pop-up counter when its Back is clicked', () => {
+    document.body.innerHTML = '<span id="fhaGuideCount">Step 2 of 3</span><button id="fhaGuideBack">Back</button>';
+    const browser: any = { location: { pathname: '/fha/', search: '', href: 'https://realdarrentsai.com/fha/' }, localStorage: window.localStorage, dataLayer: [], DTConsent: { isAllowed: () => true, whenAllowed: () => {} } };
+    const add = document.addEventListener.bind(document);
+    const listeners: Array<[string, EventListener]> = [];
+    vi.spyOn(document, 'addEventListener').mockImplementation(((type: string, fn: EventListener, opts?: boolean | AddEventListenerOptions) => { listeners.push([type, fn]); add(type, fn, opts); }) as typeof document.addEventListener);
+    new Function('window', source)(browser);
+    browser.dataLayer = [];
+    document.getElementById('fhaGuideBack')!.click();
+    listeners.forEach(([type, fn]) => document.removeEventListener(type, fn, true));
+    expect(browser.dataLayer.filter((e: any) => e.event === 'form_back')).toEqual([{ event: 'form_back', form_id: 'fha-magnet', page_path: '/fha/', step_id: '2' }]);
+  });
+});

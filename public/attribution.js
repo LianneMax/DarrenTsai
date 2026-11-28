@@ -225,7 +225,7 @@
   }
 
   var milestonesSeen = {};
-  var forms = ['home-equity-calculator', 'debt-savings-calculator', 'adu-calculator', 'booking-prequal', 'dscr-magnet', 'fha-magnet', 'rei-magnet', 'home-contact-modal', 'mortgage-calculator-contact-modal', 'debt-consolidation-contact-modal', 'home-equity-contact-modal', 'adu-contact-modal', 'dscr-contact-modal', 'fha-contact-modal', 'rei-contact-modal'];
+  var forms = ['mortgage-calculator', 'home-equity-calculator', 'debt-savings-calculator', 'adu-calculator', 'booking-prequal', 'dscr-magnet', 'fha-magnet', 'rei-magnet', 'home-contact-modal', 'mortgage-calculator-contact-modal', 'debt-consolidation-contact-modal', 'home-equity-contact-modal', 'adu-contact-modal', 'dscr-contact-modal', 'fha-contact-modal', 'rei-contact-modal'];
   /**
    * Friction measurements deliberately do not use track(): it adds the whole
    * attribution snapshot and queues before GTM loads. These observations need
@@ -241,7 +241,7 @@
       // "equity" or "payoff", so GA4 can show how many want the debt comparison.
       // booking_open and option_selected (28 Nov 2026, Max): when the Book a Call
       // panel opens and from which button, and which payoff option was picked.
-      if (['form_start', 'form_step', 'form_error', 'equity_path', 'booking_open', 'option_selected'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
+      if (['form_start', 'form_step', 'form_error', 'equity_path', 'booking_open', 'option_selected', 'form_back', 'calculator_used'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
       var path = window.location.pathname;
       var paths = ['/', '/book/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/about/', '/reviews/', '/legal/', '/privacy-policy/'];
       var out = { event: event, form_id: params.form_id, page_path: paths.indexOf(path) >= 0 ? path : '/other/' };
@@ -251,7 +251,7 @@
       if (['equity', 'payoff'].indexOf(params.path) >= 0) out.path = params.path;
       if (['hero', 'nav', 'mobile-menu', 'footer', 'page', 'other'].indexOf(params.placement) >= 0) out.placement = params.placement;
       if (['heloc', 'heloan', 'refi', 'refiSame'].indexOf(params.option) >= 0) out.option = params.option;
-      if (event === 'form_step' && !out.step_id) return;
+      if ((event === 'form_step' || event === 'form_back') && !out.step_id) return;
       if (event === 'form_error' && !out.error_code) return;
       if (event === 'equity_path' && !out.path) return;
       if (event === 'booking_open' && !out.placement) return;
@@ -271,6 +271,16 @@
     var root = target && target.closest ? target.closest('[data-dt-form]') : null;
     if (root && target.closest('input,select,textarea,button')) milestone('form_start', { form_id: root.getAttribute('data-dt-form') });
   }
+  // form_back (28 Nov 2026, Max): Back on the three guide pop-ups, with the step
+  // the visitor was on. Read in the capture phase, before the step changes.
+  var guideBacks = { guideBack: ['dscr-magnet', 'guideStepCount'], fhaGuideBack: ['fha-magnet', 'fhaGuideCount'], reiGuideBack: ['rei-magnet', 'reiGuideCount'] };
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('#guideBack, #fhaGuideBack, #reiGuideBack') : null;
+    if (!t || !guideBacks[t.id]) return;
+    var count = document.getElementById(guideBacks[t.id][1]);
+    var n = count && /Step ([1-6])/.exec(count.textContent || '');
+    milestone('form_back', { form_id: guideBacks[t.id][0], step_id: n ? n[1] : '' });
+  }, true);
   document.addEventListener('input', started, true);
   document.addEventListener('change', started, true);
   document.addEventListener('click', started, true);

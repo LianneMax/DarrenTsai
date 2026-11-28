@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { milestone } from './utils/attribution';
 import Nav from './components/Nav';
 import { useBookingEntry } from './hooks/useBookingEntry';
 import Calculator from './components/Calculator';
@@ -9,6 +10,15 @@ import { useMortgageInputs } from './hooks/useMortgageInputs';
 export default function MortgageCalculatorApp() {
   const { inputs, setInputs, summary } = useMortgageInputs();
   const openContact = useBookingEntry();
+
+  // calculator_used (28 Nov 2026, Max): once per visit, the first time the
+  // visitor's own change produces a payment, so GA4 can tell use from visits.
+  // Inputs restored from earlier in the session do not count until changed.
+  const firstInputs = useRef(inputs);
+  useEffect(() => {
+    if (inputs === firstInputs.current) return;
+    if (inputs.loanAmount > 0 && inputs.annualRate > 0) milestone('calculator_used', { form_id: 'mortgage-calculator' });
+  }, [inputs]);
 
   // The same queue used by the other pre-rendered entries. Replaying on the
   // real mounted element preserves booking/contact behavior and tracking.

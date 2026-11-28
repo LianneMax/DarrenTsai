@@ -412,6 +412,8 @@
     }
     function draw(stageIndex, part, title, intro, html, label, back) {
       if (stageIndex > stage && window.DT && window.DT.milestone) window.DT.milestone('form_step', { form_id: FORM_ID, step_id: stage + 1 });
+      // Going back a stage (28 Nov 2026): the step the visitor left.
+      if (stageIndex < stage && window.DT && window.DT.milestone) window.DT.milestone('form_back', { form_id: FORM_ID, step_id: stage + 1 });
       stage = stageIndex; reached = Math.max(reached, stage);
       panel.innerHTML = '<div class="dt-book-meta"><span>' + ['Your goal', 'Your property', 'Your details', BOOKING_READY ? 'Pick a time' : 'Your request'][stage] + '</span><span>' + esc(part || 'Step ' + (stage + 1) + ' of 4') + '</span></div>' +
         '<h2 class="dt-book-title" tabindex="-1">' + esc(title) + '</h2>' + (intro ? '<p class="dt-book-sub">' + esc(intro) + '</p>' : '') + html +
