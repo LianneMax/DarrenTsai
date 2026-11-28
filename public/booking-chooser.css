@@ -167,3 +167,5 @@ body.booking-page{background:#f5f8fa}
 .dt-book-shell .dt-book-summary-row>span:last-child{font-weight:500;color:#1e3448;text-align:right;overflow-wrap:anywhere;min-width:0}
 /* Links in the consent text are underlined, not colour-only (28 Nov 2026 a11y pass, WCAG 1.4.1). */
 .dt-book-shell .dt-book-note a,.dt-book-shell .dt-book-check a{text-decoration:underline;text-underline-offset:2px}
+/* Typing on a phone (html.kb-open from /keyboard-fit.js): the fixed Back/Next bar joins the page flow so it never covers the field (28 Nov 2026). */
+html.kb-open .dt-book-shell .dt-book-actions{position:static;box-shadow:none}

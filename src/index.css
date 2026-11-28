@@ -2447,3 +2447,7 @@ html.goal-payoff .hv-payoff { display: inline; }
 html.goal-payoff dl.hv-payoff { display: block; }
 .dcp-path { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 28px auto 0; padding: 0 16px; max-width: 1080px; }
 .dcp-option-pay-text { font-size: 18px; }
+
+/* While someone types on a phone (html.kb-open, set by /keyboard-fit.js on touch devices) the fixed
+   bottom call bar steps aside so it cannot sit between the field and the keyboard (28 Nov 2026). */
+html.kb-open .dcp-mobile-bar { display: none; }

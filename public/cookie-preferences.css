@@ -26,3 +26,5 @@
 /* Standalone service-area pages retain a dark footer. */
 footer.footer .dt-cookie-reopen:hover{color:#fff}
 footer.footer .dt-cookie-reopen:focus-visible{outline-color:#fff}
+/* Typing on a phone (html.kb-open from /keyboard-fit.js): the banner steps aside until the field loses focus (28 Nov 2026). */
+html.kb-open .dt-cookie-panel,html.kb-open .dt-cookie-fallback{display:none}
