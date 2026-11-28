@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { isValidUsPhone } from '../utils/phone';
 import { EMAIL } from '../config';
 import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
-import { type EmailSuggestion } from '../utils/emailSuggest';
+import { type EmailSuggestion, cannotReceiveEmail, UNDELIVERABLE_EMAIL_MESSAGE } from '../utils/emailSuggest';
 import { buildEquityLead, equityNumbers } from '../utils/homeEquity';
 import { serviceArea, prequalPasses, outOfMarketPage, COMMERCIAL_PROPERTY_TYPE } from '../utils/serviceArea';
 import { openBooking } from '../utils/booking';
@@ -201,6 +201,10 @@ export default function HomeEquityCalculator() {
         validationError('Please enter a valid email address.');
         return;
       }
+      if (cannotReceiveEmail(email)) {
+        validationError(UNDELIVERABLE_EMAIL_MESSAGE);
+        return;
+      }
       if (!isValidUsPhone(phone.trim())) {
         validationError('Please enter a valid US phone number.');
         return;
@@ -229,6 +233,10 @@ export default function HomeEquityCalculator() {
     }
     if (!emailSchema.safeParse(email.trim()).success) {
       validationError('Please enter a valid email address.');
+      return;
+    }
+    if (cannotReceiveEmail(email)) {
+      validationError(UNDELIVERABLE_EMAIL_MESSAGE);
       return;
     }
     if (!isValidUsPhone(phone.trim())) {

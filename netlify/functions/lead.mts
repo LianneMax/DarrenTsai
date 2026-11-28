@@ -238,12 +238,25 @@ const KNOWN_GOOD_DOMAINS = new Set([
   "proton.me", "bellsouth.net", "realdarrentsai.com", "resend.dev",
 ]);
 
+// Domains and top-level names reserved by RFC 2606 / 6761: no inbox can ever
+// exist under them. Same list as public/email-suggest.js (the forms refuse
+// these on Continue since 28 Nov 2026); this is the backstop for a page whose
+// script did not load. tests/email-reserved.test.ts keeps the two in step.
+export const RESERVED_EMAIL_DOMAINS = ["example.com", "example.org", "example.net", "test.com", "localhost"];
+export const RESERVED_EMAIL_TLDS = ["test", "example", "invalid", "localhost", "local"];
+
+export function isReservedEmailDomain(domain: string): boolean {
+  const d = domain.toLowerCase();
+  if (RESERVED_EMAIL_DOMAINS.some((r) => d === r || d.endsWith("." + r))) return true;
+  return RESERVED_EMAIL_TLDS.includes(d.slice(d.lastIndexOf(".") + 1));
+}
+
 /** Warm containers reuse this, so a repeat submission costs no second lookup. */
 const domainCache = new Map<string, boolean>();
 
 /** The slice of node:dns this file uses. */
 type MxResolver = {
-  resolveMx(domain: string): Promise<unknown[]>;
+  resolveMx(domain: string): Promise<Array<{ exchange?: string } | unknown>>;
   resolve4(domain: string): Promise<string[]>;
   cancel(): void;
 };
@@ -297,6 +310,7 @@ export function emailDomain(email: unknown): string | null {
  * Anything else - timeout, SERVFAIL, a thrown resolver - returns false.
  */
 async function domainCannotReceiveMail(domain: string): Promise<boolean> {
+  if (isReservedEmailDomain(domain)) return true;
   if (KNOWN_GOOD_DOMAINS.has(domain)) return false;
   const cached = domainCache.get(domain);
   if (cached !== undefined) return cached;
@@ -305,6 +319,11 @@ async function domainCannotReceiveMail(domain: string): Promise<boolean> {
   const lookup = (async () => {
     try {
       const mx = await resolver.resolveMx(domain);
+      // A "null MX" (RFC 7505: one record pointing at ".") is the domain
+      // saying outright that it accepts no mail. example.com publishes one,
+      // which is how a test address used to get through.
+      const exchanges = mx.map((r) => String((r as { exchange?: string } | null)?.exchange ?? "x").trim());
+      if (exchanges.length > 0 && exchanges.every((e) => e === "" || e === ".")) return true;
       if (mx.length > 0) return false;
     } catch (err) {
       const code = (err as { code?: string } | null)?.code ?? "";

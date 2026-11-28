@@ -22,6 +22,20 @@ export function checkEmail(value: string): EmailSuggestion | null {
   try { return api()?.check(value) ?? null; } catch { return null; }
 }
 
+/** What the forms say when they refuse an address that can never get mail. */
+export const UNDELIVERABLE_EMAIL_MESSAGE = "That address can't receive email. Please use an email address you check.";
+
+/**
+ * True for an address mail can never reach (example.com, a .test domain and
+ * the like). 28 Nov 2026 (Max): the forms now refuse these on Continue instead
+ * of only hinting, so a visitor fixes it while they are still on the page. The
+ * server refuses them too (netlify/functions/lead.mts), in case this script
+ * has not loaded.
+ */
+export function cannotReceiveEmail(value: string): boolean {
+  return checkEmail(value)?.kind === 'undeliverable';
+}
+
 export function emailHintMessage(result: EmailSuggestion | null): string {
   try { return api()?.message(result) ?? ''; } catch { return ''; }
 }

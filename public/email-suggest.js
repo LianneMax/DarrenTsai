@@ -3,8 +3,10 @@
  *
  * Why: Resend rejects some addresses outright (422 "Invalid `to` field"). By the
  * time that happens the lead is already saved and the visitor has gone, so the
- * only place to catch a typo is in the form, while they can still fix it. This
- * suggests, never blocks: a wrong guess must not stop a real address.
+ * only place to catch a typo is in the form, while they can still fix it. A
+ * typo guess only suggests, never blocks: a wrong guess must not stop a real
+ * address. A reserved domain (example.com, .test) does block, through blocks()
+ * below, because no real inbox can live there (28 Nov 2026, Max).
  *
  * Shared by the three static landing pages and the React app, so the rule lives
  * in one file instead of five copies that drift apart.
@@ -24,6 +26,18 @@
   // Reserved by RFC 2606 / used in docs and tests: mail to these can never be
   // delivered. This is what produced the 422s in the 16 Sep logs.
   var UNDELIVERABLE = ['example.com', 'example.org', 'example.net', 'test.com', 'localhost'];
+  // Whole top-level names reserved by RFC 2606 / 6761: nothing under them can
+  // ever receive mail. Since 28 Nov 2026 the forms refuse these on Continue.
+  var RESERVED_TLDS = ['test', 'example', 'invalid', 'localhost', 'local'];
+
+  function isUndeliverableDomain(domain) {
+    if (UNDELIVERABLE.indexOf(domain) !== -1) return true;
+    for (var i = 0; i < UNDELIVERABLE.length; i++) {
+      if (domain.slice(-(UNDELIVERABLE[i].length + 1)) === '.' + UNDELIVERABLE[i]) return true; // mail.example.com
+    }
+    var tld = domain.slice(domain.lastIndexOf('.') + 1);
+    return RESERVED_TLDS.indexOf(tld) !== -1;
+  }
 
   /** Levenshtein distance, capped for speed: we only care about <= 2. */
   function distance(a, b) {
@@ -57,7 +71,7 @@
     var domain = email.slice(at + 1).toLowerCase();
     if (domain.indexOf('.') === -1) return null; // still typing the domain
 
-    if (UNDELIVERABLE.indexOf(domain) !== -1) {
+    if (isUndeliverableDomain(domain)) {
       return { kind: 'undeliverable', suggestion: null, email: null };
     }
     if (KNOWN.indexOf(domain) !== -1) return null; // already right
@@ -79,7 +93,7 @@
 
   function message(result) {
     if (!result) return '';
-    if (result.kind === 'undeliverable') return "That address can't receive email. Please check it.";
+    if (result.kind === 'undeliverable') return "That address can't receive email. Please use an email address you check.";
     return 'Did you mean ' + result.email + '?';
   }
 
@@ -114,7 +128,13 @@
     timer = setTimeout(run, 800);
   }
 
-  root.dtEmailSuggest = { check: check, message: message, afterPress: afterPress };
+  /** True when the address can never get mail: the forms refuse it on Continue. */
+  function blocks(value) {
+    var r = check(value);
+    return !!r && r.kind === 'undeliverable';
+  }
+
+  root.dtEmailSuggest = { check: check, message: message, afterPress: afterPress, blocks: blocks };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = root.dtEmailSuggest;
 

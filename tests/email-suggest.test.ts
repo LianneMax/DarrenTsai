@@ -43,6 +43,16 @@ describe('catches what actually goes wrong', () => {
     expect(message(check('jane@example.com'))).toMatch(/can't receive email/);
   });
 
+  // 28 Nov 2026 (Max): these now block Continue, so the list must not catch a real domain.
+  it('blocks reserved domains and subdomains, never a real provider', () => {
+    const src = readFileSync(resolve(__dirname, '../public/email-suggest.js'), 'utf8');
+    const g: Record<string, unknown> = {};
+    new Function('window', 'document', 'module', src)(g, undefined, undefined);
+    const blocks = (g.dtEmailSuggest as { blocks: (v: string) => boolean }).blocks;
+    for (const bad of ['jane@example.com', 'jane@mail.example.net', 'jane@shop.test', 'jane@x.invalid', 'jane@box.local']) expect(blocks(bad)).toBe(true);
+    for (const ok of ['jane@gmail.com', 'jane@examples.com', 'jane@mytest.com', 'jane@contest.com', 'jane@test.co', 'jane@gmial.com', 'jane@', '']) expect(blocks(ok)).toBe(false);
+  });
+
   it('keeps the local part, including plus addressing', () => {
     expect(check('max+loans@gmial.com')?.email).toBe('max+loans@gmail.com');
   });

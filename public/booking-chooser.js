@@ -230,6 +230,9 @@
     return block(d.slice(0, 3)) && block(d.slice(3, 6));
   }
   function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || '').trim()); }
+  // example.com, .test and the like: no inbox can exist there (email-suggest.js).
+  function deadEmail(v) { try { return !!(window.dtEmailSuggest && window.dtEmailSuggest.blocks && window.dtEmailSuggest.blocks(v)); } catch (e) { return false; } }
+  var DEAD_EMAIL_MSG = "That address can't receive email. Please use an email address you check.";
 
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
@@ -556,6 +559,7 @@
         var f = form.elements;
         if (!f.firstName.value.trim() || !f.lastName.value.trim() || !f.email.value.trim() || !f.phone.value.trim()) { setErr('Please fill in your name, email and phone.'); return; }
         if (!validEmail(f.email.value)) { contactView(false); setErr('Please enter a valid email address.'); f.email.focus(); return; }
+        if (deadEmail(f.email.value)) { contactView(false); setErr(DEAD_EMAIL_MSG); f.email.focus(); return; }
         if (!validPhone(f.phone.value)) { contactView(false); setErr('Please enter a valid US phone number.'); f.phone.focus(); return; }
         if (!consentVisible) { contactView(true); return; }
         submit(form);
@@ -567,6 +571,7 @@
       var val = function (n) { return String(f[n].value || '').trim(); };
       if (!val('firstName') || !val('lastName') || !val('email') || !val('phone')) { setErr('Please fill in your name, email and phone.'); return; }
       if (!validEmail(val('email'))) { setErr('Please enter a valid email address.'); f.email.focus(); return; }
+      if (deadEmail(val('email'))) { contactView(false); setErr(DEAD_EMAIL_MSG); f.email.focus(); return; }
       if (!validPhone(val('phone'))) { setErr('Please enter a valid US phone number.'); f.phone.focus(); return; }
       if (!f.privacy.checked) { setErr('Please acknowledge the Privacy Policy and Terms to continue.'); f.privacy.focus(); return; }
       if (busy) return;

@@ -1062,6 +1062,22 @@ function leadSnapshot(data) {
   return out;
 }
 
+// Plain-word values for the HubSpot answer fields (28 Nov 2026). Keys are the
+// codes the forms send; see src/utils/homeEquity.ts, serviceArea.ts and
+// public/booking-chooser.js GOAL_OPTIONS.
+const HUBSPOT_PROPERTY_TYPES = { 'single-family-condo': 'Single family or condo', '2-4-units': '2 to 4 units', '5-plus-commercial': '5+ units or commercial', 'mobile-land': 'Mobile home or land' };
+const HUBSPOT_OTHER_LOANS = { none: 'No other loans', heloc: 'A HELOC', second: 'A second mortgage or home equity loan', 'not-sure': 'Not sure' };
+const HUBSPOT_CASH_RANGES = ['$25k-75k', '$75k-150k', '$150k+'];
+const HUBSPOT_EQUITY_GOALS = ['Debt payoff', 'Home improvement', 'Business or investment', 'Other'];
+const HUBSPOT_BOOKING_GOALS = { equity: 'Home equity cash', dscr: 'Investment property (DSCR)', 'own-home': 'Buy or refinance a home', commercial: 'Commercial or custom', 'not-sure': 'Not sure yet' };
+
+/** The equity form's goal, else the booking panel's, in plain words. '' when neither is known. */
+function hubspotGoalLabel(data) {
+  if (HUBSPOT_EQUITY_GOALS.indexOf(data.goal) !== -1) return data.goal;
+  if (Object.prototype.hasOwnProperty.call(HUBSPOT_BOOKING_GOALS, data.bookingGoal)) return HUBSPOT_BOOKING_GOALS[data.bookingGoal];
+  return '';
+}
+
 function hubspotFields(data) {
   const fields = [];
   function add(name, value) {
@@ -1113,6 +1129,16 @@ function hubspotFields(data) {
   // are would read as "out of area", which is a claim nobody made.
   if (data.state) add('rdt_licensed_state', isLicensedState(data.state) ? 'Yes' : 'No');
   add('rdt_test_lead', isTestLead(data) ? 'Yes' : 'No');
+
+  // 28 Nov 2026 (Max): the answers Darren wants to filter and report on in
+  // HubSpot, in plain words. The five properties and their hidden fields on the
+  // API form were created that day. Only known values are sent: an unexpected
+  // code is left blank rather than written into the CRM as-is.
+  add('rdt_search_keyword', String(data.utm_term || '').slice(0, 200));
+  add('rdt_goal', hubspotGoalLabel(data));
+  if (HUBSPOT_CASH_RANGES.indexOf(data.cashRange) !== -1) add('rdt_cash_range', data.cashRange);
+  if (Object.prototype.hasOwnProperty.call(HUBSPOT_PROPERTY_TYPES, data.propertyType)) add('rdt_property_type', HUBSPOT_PROPERTY_TYPES[data.propertyType]);
+  if (Object.prototype.hasOwnProperty.call(HUBSPOT_OTHER_LOANS, data.otherLoans)) add('rdt_other_loans', HUBSPOT_OTHER_LOANS[data.otherLoans]);
 
   // Admin-approved API form fields only. Adding properties is not SMS enrollment.
   // Blank omission preserves existing contact answers; the snapshot keeps history.

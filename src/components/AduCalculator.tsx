@@ -4,7 +4,7 @@ import { isValidUsPhone } from '../utils/phone';
 import { EMAIL } from '../config';
 import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openBooking } from '../utils/booking';
-import { type EmailSuggestion } from '../utils/emailSuggest';
+import { type EmailSuggestion, cannotReceiveEmail, UNDELIVERABLE_EMAIL_MESSAGE } from '../utils/emailSuggest';
 import { aduNumbers, buildAduLead } from '../utils/adu';
 import AduPage, { type AduPageView } from './AduViews';
 import { serviceArea, outOfMarketPage } from '../utils/serviceArea';
@@ -92,6 +92,7 @@ export default function AduCalculator() {
       if (n >= 5) {
         if (!fname.trim() || !phone || !email) { validationError('Please fill in your name, phone and email.'); return; }
         if (!emailSchema.safeParse(email.trim()).success) { validationError('Please enter a valid email address.'); return; }
+        if (cannotReceiveEmail(email)) { validationError(UNDELIVERABLE_EMAIL_MESSAGE); return; }
         if (!isValidUsPhone(phone.trim())) { validationError('Please enter a valid US phone number.'); return; }
       }
     }
@@ -108,6 +109,10 @@ export default function AduCalculator() {
     }
     if (!emailSchema.safeParse(email.trim()).success) {
       validationError('Please enter a valid email address.');
+      return;
+    }
+    if (cannotReceiveEmail(email)) {
+      validationError(UNDELIVERABLE_EMAIL_MESSAGE);
       return;
     }
     if (!isValidUsPhone(phone.trim())) {

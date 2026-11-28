@@ -4,7 +4,7 @@ import { isValidUsPhone } from '../utils/phone';
 import { RATES_ENDPOINT, EMAIL } from '../config';
 import { CONTACT_FIELD, useLeadSubmit } from '../hooks/useLeadSubmit';
 import { openBooking as openBookingPanel } from '../utils/booking';
-import { type EmailSuggestion } from '../utils/emailSuggest';
+import { type EmailSuggestion, cannotReceiveEmail, UNDELIVERABLE_EMAIL_MESSAGE } from '../utils/emailSuggest';
 import DebtPage, { type DebtPageView } from './DebtPageViews';
 import { type DebtOption } from './debtOptions';
 import { milestone } from '../utils/attribution';
@@ -330,7 +330,7 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
   // the home on step 2; contact details (4) and the consent boxes (5) are
   // separate screens, as on /book/ and the guide forms.
   const hasProperty = Boolean(propertyUse && propertyState && /^\d{5}$/.test(zip));
-  const contactReady = Boolean(fname.trim() && lname.trim() && emailSchema.safeParse(email.trim()).success && isValidUsPhone(phone.trim()));
+  const contactReady = Boolean(fname.trim() && lname.trim() && emailSchema.safeParse(email.trim()).success && !cannotReceiveEmail(email) && isValidUsPhone(phone.trim()));
   const furthestStep = !hasDebt ? 1 : !hasHome || !hasProperty ? 2 : contactReady ? 5 : 4;
   const gateMessage = !hasDebt
     ? 'Add at least one debt with a balance and a monthly payment, so the comparison is about your money and not an example.'
@@ -376,6 +376,10 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     }
     if (!emailSchema.safeParse(email.trim()).success) {
       validationError('Please enter a valid email address.');
+      return;
+    }
+    if (cannotReceiveEmail(email)) {
+      validationError(UNDELIVERABLE_EMAIL_MESSAGE);
       return;
     }
     if (!isValidUsPhone(phone.trim())) {

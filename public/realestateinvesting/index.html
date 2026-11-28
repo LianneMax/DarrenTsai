@@ -1240,6 +1240,7 @@
     if (!name) { setError('Name', 'Required'); valid = false; }
     if (!email) { setError('Email', 'Required'); valid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError('Email', 'Enter a valid email'); valid = false; }
+    else if (window.dtEmailSuggest && window.dtEmailSuggest.blocks && window.dtEmailSuggest.blocks(email)) { setError('Email', "That address can't receive email. Please use an email address you check."); valid = false; }
     if (!phone) { setError('Phone', 'Required'); valid = false; }
     else if (!isValidUSPhone(phoneDigits)) { setError('Phone', 'Enter a valid US phone number'); valid = false; }
     if (includeProperty && !state) { setError('State', 'Required'); valid = false; }

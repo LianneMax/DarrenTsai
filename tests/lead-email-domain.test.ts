@@ -104,9 +104,37 @@ describe('refuses only a domain that certainly cannot receive mail', () => {
   it('accepts a domain with no MX but an A record, per RFC 5321', async () => {
     answers.mx = { err: 'ENODATA' };
     answers.a = { ok: ['93.184.216.34'] };
-    const res = await handler(req(lead('jane@example.com')), ctx);
+    const res = await handler(req(lead('jane@smallshop.io')), ctx);
     expect(res.status).toBe(200);
     expect(saved()).toBe(true);
+  });
+
+  // 28 Nov 2026 (Max): "this should only accept emails that have a proper inbox".
+  it('refuses a null MX (RFC 7505), which is how example.com says it takes no mail', async () => {
+    answers.mx = { ok: [{ exchange: '', priority: 0 }] };
+    const res = await handler(req(lead('jane@parked-domain.io')), ctx);
+    expect(res.status).toBe(422);
+    expect(saved()).toBe(false);
+  });
+
+  it.each(['jane@example.com', 'jane@mail.example.org', 'jane@test.com', 'jane@shop.test', 'jane@site.invalid'])(
+    'refuses the reserved address %s without asking DNS',
+    async (email) => {
+      const res = await handler(req(lead(email)), ctx);
+      expect(res.status).toBe(422);
+      expect((await res.json()).field).toBe('email');
+      expect(resolverCalls).toBe(0);
+      expect(saved()).toBe(false);
+    },
+  );
+
+  it('keeps the server list and the form list (public/email-suggest.js) the same', async () => {
+    const { readFileSync } = await import('node:fs');
+    const js = readFileSync('public/email-suggest.js', 'utf8');
+    const list = (name: string) => JSON.parse(js.match(new RegExp(`var ${name} = (\\[[^\\]]*\\])`))![1].replace(/'/g, '"'));
+    const { RESERVED_EMAIL_DOMAINS, RESERVED_EMAIL_TLDS } = await import('../netlify/functions/lead.mts');
+    expect(list('UNDELIVERABLE')).toEqual(RESERVED_EMAIL_DOMAINS);
+    expect(list('RESERVED_TLDS')).toEqual(RESERVED_EMAIL_TLDS);
   });
 });
 
@@ -164,8 +192,8 @@ describe('cost', () => {
   it('remembers a domain it has already refused', async () => {
     answers.mx = { err: 'ENOTFOUND' };
     answers.a = { err: 'ENOTFOUND' };
-    await handler(req(lead('jane@gone.invalid')), ctx);
-    await handler(req(lead('bob@gone.invalid')), ctx);
+    await handler(req(lead('jane@gone-shop.io')), ctx);
+    await handler(req(lead('bob@gone-shop.io')), ctx);
     expect(resolverCalls).toBe(1);
   });
 });
