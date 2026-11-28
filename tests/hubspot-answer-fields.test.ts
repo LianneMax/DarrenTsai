@@ -47,6 +47,17 @@ describe('HubSpot answer fields', () => {
     for (const name of ['rdt_goal', 'rdt_cash_range', 'rdt_property_type', 'rdt_other_loans']) expect(r).not.toHaveProperty(name);
   });
 
+  // 28 Nov 2026 (Max): the payoff card the visitor chose, in the page's words.
+  it.each([
+    ['heloc', 'HELOC'],
+    ['heloan', 'Fixed home equity loan'],
+    ['refi', 'Cash-out refinance (new 30 years)'],
+    ['refiSame', 'Cash-out refinance (same payoff date)'],
+  ])('sends the payoff option %s as %s, and nothing for an unknown one', (code, label) => {
+    expect(fields({ comparisonOption: code }).rdt_payoff_option).toBe(label);
+    expect(fields({ comparisonOption: 'castle' })).not.toHaveProperty('rdt_payoff_option');
+  });
+
   it('caps a long search term', () => {
     expect(fields({ utm_term: 'x'.repeat(500) }).rdt_search_keyword).toHaveLength(200);
   });

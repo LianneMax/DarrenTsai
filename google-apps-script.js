@@ -266,7 +266,24 @@ const SMS_CONSENT_HEADERS = ['SMS Consent', 'SMS Consent Version', 'SMS Consent 
   // commercial and not-sure, which Darren reviews before the call.
   'Booking Goal', 'Review Flag',
   // /home-equity/'s optional "Any other loans on this home?" (28 Nov 2026).
-  'Other Loans'];
+  'Other Loans',
+  // Which card the visitor chose to discuss on the debt payoff comparison
+  // (28 Nov 2026, Max). Before this it was only inside Submission Snapshot.
+  'Payoff Option'];
+
+// The payoff comparison's cards, in the words the page uses. Keys are the
+// comparisonOption values the payoff form sends (DebtSavingsCalculator.tsx).
+const PAYOFF_OPTIONS = {
+  heloc: 'HELOC',
+  heloan: 'Fixed home equity loan',
+  refi: 'Cash-out refinance (new 30 years)',
+  refiSame: 'Cash-out refinance (same payoff date)'
+};
+
+/** The chosen payoff card in plain words, '' when none or unknown. */
+function payoffOptionLabel(d) {
+  return Object.prototype.hasOwnProperty.call(PAYOFF_OPTIONS, d && d.comparisonOption) ? PAYOFF_OPTIONS[d.comparisonOption] : '';
+}
 
 /**
  * The addresses used for testing, matched with any +tag stripped.
@@ -725,7 +742,7 @@ function finishLeadSchema(schema) {
     const own = schema.detailValues(d);
     own['Inquiry Message'] = d.message || '';
     schema.details.forEach(function (h) { v[h] = cell(own[h]); });
-    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '', d.propertyZip || '', d.creditRange || '', d.cashRange || '', d.bookingGoal || '', d.reviewFlag || '', d.otherLoans || '']);
+    const consent = byHeader(SMS_CONSENT_HEADERS, [d.smsConsent === true ? 'Yes' : d.smsConsent === false ? 'No' : '', d.smsConsentVersion || '', d.smsConsentText || '', d.smsConsentAt || '', d.privacyAcknowledged === true ? 'Yes' : d.privacyAcknowledged === false ? 'No' : '', d.privacyVersion || '', d.smsInformationalConsent === true ? 'Yes' : d.smsInformationalConsent === false ? 'No' : '', d.smsMarketingConsent === true ? 'Yes' : d.smsMarketingConsent === false ? 'No' : '', d.smsInformationalConsentText || '', d.propertyState || '', d.propertyUse || '', d.serviceAreaResult || '', d.serviceAreaVersion || '', JSON.stringify(leadSnapshot(d)), d.propertyType || '', d.mortgageCurrent || '', d.recentBankruptcyForeclosure || '', d.propertyZip || '', d.creditRange || '', d.cashRange || '', d.bookingGoal || '', d.reviewFlag || '', d.otherLoans || '', payoffOptionLabel(d)]);
     SMS_CONSENT_HEADERS.forEach(function (h) { v[h] = consent[h]; });
     const attr = byHeader(ATTR_HEADERS, attrRow(d));
     ATTR_HEADERS.forEach(function (h) { v[h] = attr[h]; });
@@ -1139,6 +1156,7 @@ function hubspotFields(data) {
   if (HUBSPOT_CASH_RANGES.indexOf(data.cashRange) !== -1) add('rdt_cash_range', data.cashRange);
   if (Object.prototype.hasOwnProperty.call(HUBSPOT_PROPERTY_TYPES, data.propertyType)) add('rdt_property_type', HUBSPOT_PROPERTY_TYPES[data.propertyType]);
   if (Object.prototype.hasOwnProperty.call(HUBSPOT_OTHER_LOANS, data.otherLoans)) add('rdt_other_loans', HUBSPOT_OTHER_LOANS[data.otherLoans]);
+  add('rdt_payoff_option', payoffOptionLabel(data));
 
   // Admin-approved API form fields only. Adding properties is not SMS enrollment.
   // Blank omission preserves existing contact answers; the snapshot keeps history.
@@ -2767,6 +2785,8 @@ function hubspotTaskContent(d) {
   // Other loans already on the home (28 Nov 2026): changes the borrowing room.
   const otherLoans = { none: 'none', heloc: 'a HELOC', second: 'a second mortgage or home equity loan', 'not-sure': 'not sure' };
   if (Object.prototype.hasOwnProperty.call(otherLoans, d.otherLoans)) lines.push('Other loans on the home: ' + otherLoans[d.otherLoans]);
+  // The payoff comparison card they chose to discuss (28 Nov 2026).
+  if (payoffOptionLabel(d)) lines.push('Option they want to discuss: ' + payoffOptionLabel(d));
   if (d.utm_term) lines.push('Search term: ' + d.utm_term);
   if (d.utm_campaign) lines.push('Campaign: ' + d.utm_campaign);
   lines.push(d.smsConsent === true || d.smsMarketingConsent === true || d.smsInformationalConsent === true
