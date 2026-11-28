@@ -31,6 +31,7 @@ import { serviceArea, OTHER_LOANS } from '../utils/serviceArea';
 import InquiryMessage from './InquiryMessage';
 import { BOOKING_CALENDAR_READY } from '../utils/booking';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, Chips, MoneyInput, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS, InlineFormError } from './PageParts';
+import { useStepHeadingFocus } from '../hooks/useStepHeadingFocus';
 import ComplianceDisclosure, { ContactSummary } from './ComplianceDisclosure';
 import { HouseOptions } from './Marketing';
 import { formatUsPhone } from '../utils/phone';
@@ -399,6 +400,8 @@ export default function EquityPage({ v, overlays, disclosure, path = 'equity', o
   path?: EquityPath; onPath?: (p: EquityPath) => void; payoff?: ReactNode;
 }) {
   const done = v.submitted || !!v.declined;
+  // Screen readers hear the new step after Continue or Back (NVDA pass, 28 Nov 2026).
+  useStepHeadingFocus('equity', path === 'payoff' ? 'payoff' : `${v.step}|${v.submitted}|${v.declined}`);
   if (path === 'payoff') {
     return (
       <section className="dcp payoff-flow">

@@ -37,6 +37,7 @@ import InquiryMessage from './InquiryMessage';
 import { COMMON_CLTV_LIMIT, PROPERTY_USES } from '../utils/homeEquity';
 import { DEBT_TYPES, HELOAN_TIERS, HELOAN_TERMS, type DebtOption } from './debtOptions';
 import { Arrow, Check, Row, StepNav, EquitySnapshot, FieldHelp, HOME_VALUE_TIPS, MORTGAGE_BALANCE_TIPS, InlineFormError } from './PageParts';
+import { useStepHeadingFocus } from '../hooks/useStepHeadingFocus';
 
 export interface DebtRow {
   id: number;
@@ -608,6 +609,8 @@ export function DebtRecap({ v }: { v: DebtPageView }) {
  * hero button and the step buttons scroll to.
  */
 export default function DebtPage({ v, overlays, flowId = 'savings' }: { v: DebtPageView; overlays: ReactNode; flowId?: string }) {
+  // Screen readers hear the new step after Continue or Back (NVDA pass, 28 Nov 2026).
+  useStepHeadingFocus(flowId, `${v.step}|${v.submitted}`);
   return (
     <div className="dcp-payoff">
       <div id={flowId} className="dcp-flow" data-dt-form="debt-savings-calculator">

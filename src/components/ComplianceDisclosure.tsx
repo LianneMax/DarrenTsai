@@ -14,7 +14,7 @@ export default function ComplianceDisclosure({ formId }: { formId: string }) {
         <p className="sms-details">Optional, and not a condition of purchase or of submitting this form. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help or STOP to opt out. <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">SMS Privacy Policy</a> | <a href="/legal" target="_blank" rel="noopener noreferrer">Terms</a></p>
       </div>
       <div className="privacy-ack">
-        <label className="sms-choice"><input type="checkbox" required data-privacy-form={formId} /> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener noreferrer">Terms &amp; Legal Disclosures</a>. (Required)</span></label>
+        <label className="sms-choice"><input type="checkbox" required aria-invalid={false} data-privacy-form={formId} /> <span>I acknowledge the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="/legal" target="_blank" rel="noopener noreferrer">Terms &amp; Legal Disclosures</a>. (Required)</span></label>
       </div>
     </div>
   );
