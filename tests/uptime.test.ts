@@ -17,7 +17,7 @@ vi.mock('@netlify/blobs', () => ({ getStore: (name: string) => ({
 }) }));
 
 import health from '../netlify/functions/health.mts';
-import uptimeWatch, { judgeWriter } from '../netlify/functions/uptime-watch.mts';
+import uptimeWatch, { judgeWriter, statusEmail, STATUS_SUBJECT } from '../netlify/functions/uptime-watch.mts';
 import syncHandler from '../netlify/functions/lead-inbox-sync.mts';
 
 const env = { APPS_SCRIPT_WEBHOOK_URL: 'https://script.google.com/macros/s/TEST/exec', LEAD_PROXY_KEY: 'k', RESEND_API_KEY: 're_test' } as Record<string, string>;
@@ -79,6 +79,34 @@ describe('Netlify side', () => {
     expect(sends).toHaveLength(2);
     expect(sends[0]).toBe(sends[1]); // same idempotency key within the hour, so Resend sends one email
   });
+
+  // 28 Nov 2026 (Max): one Gmail thread, written like the daily-task emails, with an all-clear.
+  it('sends every uptime email in one thread, in the daily-task format, and an all clear on recovery', async () => {
+    const mails: Array<{ subject: string; text: string; headers?: Record<string, string> }> = [];
+    const answer = { body: { status: 'ok', captureProtocol: 'stable-id-v1', workerAt: minsAgo(45) } as unknown };
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (url.includes('resend')) { mails.push(JSON.parse(String(init.body))); return new Response('{"id":"m1"}'); }
+      return new Response(JSON.stringify(answer.body));
+    }));
+    await uptimeWatch();
+    answer.body = { status: 'ok', captureProtocol: 'stable-id-v1', workerAt: minsAgo(1) };
+    await uptimeWatch();
+    await uptimeWatch(); // still healthy: no second all clear
+    expect(mails).toHaveLength(2);
+    expect(mails.map((m) => m.subject)).toEqual([STATUS_SUBJECT, STATUS_SUBJECT]);
+    for (const m of mails) expect(m.headers?.References).toBe('<lead-system-status@realdarrentsai.com>');
+    expect(mails[0].text).toMatch(/^Hi Max,\n\nLead follow-ups/);
+    expect(mails[0].text).toContain('[ ] 1. Apps Script > Executions');
+    expect(mails[0].text).toContain('Thank you!\nLead system watch');
+    expect(mails[1].text).toContain('All clear');
+  });
+
+  it('formats a status email with no checklist when there is nothing to do', () => {
+    const text = statusEmail({ headline: 'All clear.', problems: [], meaning: 'Fine.', checks: [], source: 'Netlify', now: Date.UTC(2026, 10, 28, 12, 34) });
+    expect(text).not.toContain('[ ]');
+    expect(text).toContain('Manila');
+    expect(text).toContain('No action needed.');
+  });
 });
 
 describe('Apps Script side', () => {
@@ -121,11 +149,26 @@ describe('Apps Script side', () => {
     w.h.gas.watchSite();
     expect(w.urls).toEqual(['https://realdarrentsai.com/', 'https://realdarrentsai.com/api/health']);
     expect(w.mails).toHaveLength(1);
-    expect(w.mails[0].subject).toContain('website needs attention');
+    expect(w.mails[0].subject).toBe('Lead system status | realdarrentsai.com');
+    expect(w.mails[0].body).toMatch(/^Hi Max,\n\nThe website needs attention\./);
+    expect(w.mails[0].body).toContain('[ ] 1. Netlify > Deploys');
     expect(w.mails[0].body).toContain('60 minutes ago');
     delete w.props.SITE_WATCH_LAST_RUN; // past the 10-minute spacing, still inside the hour
     w.h.gas.watchSite();
     expect(w.mails).toHaveLength(1);
+  });
+
+  it('sends one all clear in the same thread once the site recovers', () => {
+    const w = gas({ SITE_WATCH_ENABLED: 'true' }, { inboxSyncAgeSec: 3600 });
+    w.h.gas.watchSite();
+    const healthy = gas({ ...w.props, SITE_WATCH_LAST_RUN: '' }, { status: 'ok', inboxSyncAgeSec: 30 });
+    healthy.h.gas.watchSite();
+    expect(healthy.mails).toHaveLength(1);
+    expect(healthy.mails[0].subject).toBe('Lead system status | realdarrentsai.com');
+    expect(healthy.mails[0].body).toContain('All clear');
+    delete healthy.props.SITE_WATCH_LAST_RUN;
+    healthy.h.gas.watchSite();
+    expect(healthy.mails).toHaveLength(1);
   });
 
   it('when enabled and healthy, sends nothing', () => {

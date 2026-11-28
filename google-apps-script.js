@@ -3682,18 +3682,54 @@ function watchSite() {
     } catch (err) { return null; }
   };
   const problems = siteWatchProblems(get('/'), get('/api/health'));
-  if (!problems.length) return;
+  if (!problems.length) {
+    // Recovered (28 Nov 2026): close the episode in the same thread, once.
+    const openSince = Number(props.getProperty('SITE_WATCH_OPEN_SINCE') || 0);
+    if (openSince) {
+      props.deleteProperty('SITE_WATCH_OPEN_SINCE');
+      MailApp.sendEmail({ to: ALERT_EMAIL, subject: STATUS_SUBJECT, body: statusEmailText({
+        headline: 'All clear: the website and its inbox worker are answering again.',
+        problems: [], meaning: 'The problem first reported ' + statusCheckedAt(openSince) + ' is resolved. Forms saved meanwhile reach the Sheet automatically.',
+        checks: [], source: 'Google Apps Script', now: Date.now() }) });
+    }
+    return;
+  }
+  if (!props.getProperty('SITE_WATCH_OPEN_SINCE')) props.setProperty('SITE_WATCH_OPEN_SINCE', String(Date.now()));
   // Hourly hold in a Script Property: it survives cache eviction, unlike CacheService.
   const alerted = Number(props.getProperty('SITE_WATCH_ALERTED_AT') || 0);
   if (alerted && Date.now() - alerted < 60 * 60 * 1000) return;
   props.setProperty('SITE_WATCH_ALERTED_AT', String(Date.now()));
-  MailApp.sendEmail({
-    to: ALERT_EMAIL,
-    subject: 'Lead system check: the website needs attention',
-    body: problems.join('\n') + '\n\n' +
-      'Checked from Google Apps Script at ' + new Date().toISOString() + '.\n\n' +
-      'What this means: if the site or its inbox worker is down, visitors may not be able to send a form, or saved forms are waiting to reach the Sheet. ' +
-      'Check Netlify: Deploys (a failed or paused deploy), Functions > lead-inbox-sync logs, and open ' + SITE_URL + '/api/health. ' +
-      'Do not re-enter leads. This notice repeats at most once an hour while the problem lasts. Off switch: set Script Property SITE_WATCH_ENABLED to anything but true.'
-  });
+  MailApp.sendEmail({ to: ALERT_EMAIL, subject: STATUS_SUBJECT, body: statusEmailText({
+    headline: 'The website needs attention.',
+    problems: problems,
+    meaning: 'If the site or its inbox worker is down, visitors may not be able to send a form, or saved forms are waiting to reach the Sheet.',
+    checks: [
+      'Netlify > Deploys: is the latest deploy failed or paused?',
+      'Netlify > Functions > lead-inbox-sync logs.',
+      'Open ' + SITE_URL + '/api/health in a browser.',
+    ],
+    source: 'Google Apps Script', now: Date.now() }) });
+}
+
+// 28 Nov 2026 (Max): every uptime email shares one subject, so Gmail keeps them
+// in one thread, and reads like the daily-task emails to Darren. Netlify's
+// uptime-watch uses the same subject and wording (netlify/functions/uptime-watch.mts).
+const STATUS_SUBJECT = 'Lead system status | realdarrentsai.com';
+
+function statusCheckedAt(ms) {
+  const d = new Date(ms);
+  return Utilities.formatDate(d, 'Asia/Manila', 'd MMM yyyy, h:mm a') + ' Manila (' + Utilities.formatDate(d, 'America/Los_Angeles', 'h:mm a') + ' Pacific)';
+}
+
+/** Greeting, what's wrong, a [ ] checklist, a separator and a sign-off. */
+function statusEmailText(o) {
+  const lines = ['Hi Max,', '', o.headline, ''];
+  if (o.problems.length) { lines.push("What's wrong:"); o.problems.forEach(function (p) { lines.push('- ' + p); }); lines.push(''); }
+  if (o.meaning) lines.push('What this means:', o.meaning, '');
+  if (o.checks.length) { lines.push('What to check:'); o.checks.forEach(function (c, i) { lines.push('[ ] ' + (i + 1) + '. ' + c); }); lines.push(''); }
+  lines.push('--------------------------------------------',
+    'Checked by ' + o.source + ', ' + statusCheckedAt(o.now) + '.',
+    o.problems.length ? 'This repeats at most once an hour while the problem lasts. Do not re-enter leads. Off switch: set Script Property SITE_WATCH_ENABLED to anything but true.' : 'No action needed.',
+    '', 'Thank you!', 'Lead system watch');
+  return lines.join('\n');
 }

@@ -60,7 +60,7 @@ export async function admitLead(payload:Payload, sheetOnly:boolean, signal:Abort
 const WORK_MS=22_000, LEASE_MS=60_000;
 const backoff=(attempt:number)=>[60_000,5*60_000,20*60_000,60*60_000][Math.min(attempt-1,3)];
 
-async function deliverAlert(reference:string, subject:string, text:string, signal:AbortSignal):Promise<boolean> {
+async function deliverAlert(reference:string, subject:string, text:string, signal:AbortSignal, headers?:Record<string,string>):Promise<boolean> {
   const key=Netlify.env.get('RESEND_API_KEY');
   if(!key) return false;
   try {
@@ -68,7 +68,7 @@ async function deliverAlert(reference:string, subject:string, text:string, signa
       headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json',
         'Idempotency-Key':`lead-inbox-alert/${digest(reference)}`},
       body:JSON.stringify({from:'Darren Tsai <darren@realdarrentsai.com>',to:['liannemaxbalbastro@gmail.com'],
-        subject,text})});
+        subject,text,...(headers?{headers}:{})})});
     const body=await response.json();
     return response.ok && typeof body?.id==='string';
   } catch {return false;}
@@ -76,8 +76,8 @@ async function deliverAlert(reference:string, subject:string, text:string, signa
 
 /** Operational alert to Max, at most once per `reference` (Resend idempotency).
  * Shared with the uptime watch, so every ops email comes from one sender. */
-export async function sendOpsAlert(reference:string, subject:string, text:string):Promise<boolean> {
-  return deliverAlert(reference,subject,text,AbortSignal.timeout(5000));
+export async function sendOpsAlert(reference:string, subject:string, text:string, headers?:Record<string,string>):Promise<boolean> {
+  return deliverAlert(reference,subject,text,AbortSignal.timeout(5000),headers);
 }
 
 // Uptime (27 Nov 2026): the every-minute sync stamps this after each completed
