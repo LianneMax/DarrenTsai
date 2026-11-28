@@ -160,8 +160,25 @@ body.site-design{font-size:1rem}
 .input-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea,.cselect-trigger):focus-visible{outline:none!important;box-shadow:none}
 .input-shell:focus-within{border-color:#1a7f99!important;box-shadow:0 0 0 1px #1a7f99,0 0 0 4px #1a7f9926!important}
 
-/* 28 Nov 2026: hero Book a Call beside the equity check. On phones the two
-   buttons share the row; the goals link drops to its own line. */
-.site-design .hero-actions>.hero-book{font-size:16px;color:var(--action-teal);border-color:var(--action-teal);background:#fff}
-.site-design .hero-actions>.hero-book:hover{background:#edf4f6}
-@media (max-width:640px){.site-design .hero-actions{gap:12px}.site-design .hero-actions>.design-primary,.site-design .hero-actions>.hero-book{flex:1 1 auto}.site-design .hero-actions>.hero-goals-link{flex-basis:100%}}
+/* 28 Nov 2026 (Max): hero Book a Call, made more personal and alive: Darren's
+   photo, a "15 min with Darren" line and a calendar icon. It fills teal on
+   hover and pulses once after load to catch the eye; no motion for visitors
+   who ask for less. "Explore other goals" sits centered under the hero, just
+   above the license strip, with a slow bobbing arrow. */
+.site-design .hero-book{position:relative;display:inline-flex;align-items:center;gap:12px;min-height:58px;padding:8px 18px 8px 8px;border:1.5px solid var(--action-teal);border-radius:8px;background:#fff;color:var(--action-teal);font:inherit;text-align:left;cursor:pointer;transition:background .2s,color .2s,box-shadow .2s,transform .2s}
+.site-design .hero-book img{width:40px;height:40px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--action-teal)}
+.site-design .hero-book-text{display:flex;flex-direction:column;line-height:1.15}
+.site-design .hero-book-text strong{font-size:16px;font-weight:600}
+.site-design .hero-book-text small{font-size:13px;color:#526676;transition:color .2s}
+.site-design .hero-book-icon{width:22px;height:22px;margin-left:4px;flex:none;transition:transform .25s}
+.site-design .hero-book:hover,.site-design .hero-book:focus-visible{background:var(--action-teal);color:#fff;box-shadow:0 8px 22px #1a7f9933;transform:translateY(-1px)}
+.site-design .hero-book:hover .hero-book-text small,.site-design .hero-book:focus-visible .hero-book-text small{color:#e3f3f7}
+.site-design .hero-book:hover .hero-book-icon{transform:rotate(-8deg) scale(1.08)}
+.site-design .hero-book::after{content:"";position:absolute;inset:-1.5px;border-radius:9px;pointer-events:none;box-shadow:0 0 0 0 #1a7f9966;animation:heroBookPulse 1.6s ease-out 1.2s 2}
+@keyframes heroBookPulse{0%{box-shadow:0 0 0 0 #1a7f9966}100%{box-shadow:0 0 0 12px #1a7f9900}}
+.site-design .hero>.hero-goals-link{grid-column:1/-1;justify-self:center;align-self:center;display:inline-flex;align-items:center;gap:8px;margin-top:-20px;padding:8px 14px;color:#223d55;font-size:16px;font-weight:550;text-decoration:none;border-radius:8px}
+.site-design .hero>.hero-goals-link:hover{color:var(--action-teal);text-decoration:underline;text-underline-offset:4px}
+.site-design .hero-goals-arrow{display:inline-block;animation:heroGoalsBob 2.4s ease-in-out infinite}
+@keyframes heroGoalsBob{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+@media (prefers-reduced-motion:reduce){.site-design .hero-book,.site-design .hero-book-icon{transition:none}.site-design .hero-book::after,.site-design .hero-goals-arrow{animation:none}.site-design .hero-book:hover{transform:none}}
+@media (max-width:640px){.site-design .hero-actions{gap:12px}.site-design .hero-actions>.design-primary,.site-design .hero-actions>.hero-book{flex:1 1 100%;justify-content:center}.site-design .hero>.hero-goals-link{margin-top:-8px;align-self:center}}

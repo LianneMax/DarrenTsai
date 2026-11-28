@@ -108,10 +108,16 @@ function EquityIllustration() {
 export function MarketingHomeHero({ onOpenContact }: { onOpenContact?: () => void }) {
   return <section className="hero wrap">
     <div className="hero-copy"><h1>Your home.<br />More <em>possibilities.</em></h1><p>Understand your equity. Explore what it could help you do. Take the next step with a clearer picture.</p>
-      <div className="hero-actions"><a className="design-primary large" href="/home-equity/">Check my home equity <ArrowIcon /></a>{onOpenContact && <button type="button" className="design-outline large hero-book" data-early="hero-contact" onClick={onOpenContact}>Book a Call</button>}<a className="hero-goals-link" href="#goals">Explore other goals ↓</a></div>
+      <div className="hero-actions"><a className="design-primary large" href="/home-equity/">Check my home equity <ArrowIcon /></a>{onOpenContact && <button type="button" className="hero-book" data-early="hero-contact" onClick={onOpenContact}><img src="/darren-96.webp" width="32" height="32" alt="" /><span className="hero-book-text"><strong>Book a Call</strong><small>15 min with Darren</small></span><CalendarIcon /></button>}</div>
       <p className="hero-trust">Darren Tsai · NMLS #2438102 · CA DRE #02103705</p></div>
     <div className="hero-visual"><EquityIllustration /><div className="personal-intro" id="about"><img src="/darren-96.webp" width="46" height="46" alt="Darren Tsai" /><div><strong>Real numbers. Personal guidance.</strong><small>Darren Tsai · Senior Loan Officer</small></div><a href="/about/">Meet Darren <ArrowIcon /></a></div></div>
+    {/* 28 Nov 2026 (Max): centered under the hero, just above the license strip. */}
+    <a className="hero-goals-link" href="#goals">Explore other goals <span className="hero-goals-arrow" aria-hidden="true">↓</span></a>
   </section>;
+}
+
+function CalendarIcon() {
+  return <svg className="hero-book-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.8" /><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M9.5 14.5l2 2 3.5-3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function ChevronIcon({ back = false }: { back?: boolean }) {
