@@ -29,7 +29,7 @@ Re-checked against the code (48 commits since 27 Oct, last 9451841 on 23 Nov) an
 ### Still open from this draft
 
 - Item 3, final step easier to scan: shipped 28 Nov (99e8e9c) after Max approved the local preview; see item 3 below.
-- Item 4, plain words for abbreviations (P&I, HELOAN, CLTV). Not done.
+- Item 4, plain words for abbreviations. Done 28 Nov (24cb4b6): P&I reads "principal and interest", 30YR reads "30-year", CLTV reads "All loans as a share of home value (CLTV)" with a one-line explanation. HELOAN already showed as "Fixed home equity loan".
 - Follow-on: consistent Back/Continue and inline errors; 200% zoom, keyboard and screen-reader pass. Not done.
 
 ### Findings from the 25 Nov walk, in priority order (status 28 Nov)
