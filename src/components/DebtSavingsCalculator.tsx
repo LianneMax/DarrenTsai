@@ -540,7 +540,11 @@ export default function DebtSavingsCalculator({ flowId = 'savings' }: { flowId?:
     sameTermYears, refiSameTermPmt, refiSameTermSave, yearsAdded,
     heloanTier, setHeloanTier, heloanTerm, setHeloanTerm,
     tierRate, tierYears, heloanPriced, heloanAmt, heloanPmt, leftoverPmt, heloanTotal, heloanSave, cltv,
-    chosen, setChosen, helocRoom,
+    chosen, setChosen: (option: DebtOption) => {
+      // Which comparison card the visitor chose to discuss (28 Nov 2026, Max).
+      if (option) milestone('option_selected', { form_id: 'debt-savings-calculator', option });
+      setChosen(option);
+    }, helocRoom,
     fname, setFname, lname, setLname, phone, setPhone, email, setEmail,
     emailHint, setEmailHint, zip, setZip, propertyState, setPropertyState, propertyUse, setPropertyUse, message, setMessage,
     sending, submitted, submitLead, openBooking,

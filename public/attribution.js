@@ -239,7 +239,9 @@
       if (!c || !(c.isGoogleAllowed ? c.isGoogleAllowed() : c.isAllowed())) return;
       // equity_path (27 Nov 2026): which /home-equity/ path a visitor chose,
       // "equity" or "payoff", so GA4 can show how many want the debt comparison.
-      if (['form_start', 'form_step', 'form_error', 'equity_path'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
+      // booking_open and option_selected (28 Nov 2026, Max): when the Book a Call
+      // panel opens and from which button, and which payoff option was picked.
+      if (['form_start', 'form_step', 'form_error', 'equity_path', 'booking_open', 'option_selected'].indexOf(event) < 0 || !params || forms.indexOf(params.form_id) < 0) return;
       var path = window.location.pathname;
       var paths = ['/', '/book/', '/home-equity/', '/adu/', '/mortgage-calculator/', '/dscr/', '/fha/', '/realestateinvesting/', '/about/', '/reviews/', '/legal/', '/privacy-policy/'];
       var out = { event: event, form_id: params.form_id, page_path: paths.indexOf(path) >= 0 ? path : '/other/' };
@@ -247,10 +249,14 @@
       if (['validation', 'policy_exit', 'network', 'uncertain', 'rejected', 'rate_limited', 'submission_conflict', 'receipt_invalid'].indexOf(params.error_code) >= 0) out.error_code = params.error_code;
       if (['contact', 'property', 'consent', 'numbers', 'other'].indexOf(params.field_category) >= 0) out.field_category = params.field_category;
       if (['equity', 'payoff'].indexOf(params.path) >= 0) out.path = params.path;
+      if (['hero', 'nav', 'mobile-menu', 'footer', 'page', 'other'].indexOf(params.placement) >= 0) out.placement = params.placement;
+      if (['heloc', 'heloan', 'refi', 'refiSame'].indexOf(params.option) >= 0) out.option = params.option;
       if (event === 'form_step' && !out.step_id) return;
       if (event === 'form_error' && !out.error_code) return;
       if (event === 'equity_path' && !out.path) return;
-      var key = event + ':' + out.form_id + ':' + (out.step_id || out.path || '');
+      if (event === 'booking_open' && !out.placement) return;
+      if (event === 'option_selected' && !out.option) return;
+      var key = event + ':' + out.form_id + ':' + (out.step_id || out.path || out.placement || out.option || '');
       if (event !== 'form_error' && milestonesSeen[key]) return;
       if (event !== 'form_error') milestonesSeen[key] = true;
       window.dataLayer.push(out);

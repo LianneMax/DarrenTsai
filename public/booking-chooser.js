@@ -826,6 +826,18 @@
     if (!window.DTServiceArea) { window.location.assign('/book/'); return; }
     injectStyles();
     lastFocus = document.activeElement;
+    // Which button opened the panel (28 Nov 2026), so GA4 can tell the hero,
+    // nav, phone menu, footer and in-page buttons apart. No visitor data.
+    try {
+      var from = lastFocus && lastFocus.closest ? lastFocus : null;
+      var placement = !from ? 'other'
+        : from.closest('.hero-actions') ? 'hero'
+        : from.closest('.nav-mobile-menu') ? 'mobile-menu'
+        : from.closest('nav, .nav') ? 'nav'
+        : from.closest('footer') ? 'footer'
+        : from.closest('main, section') ? 'page' : 'other';
+      if (window.DT && window.DT.milestone) window.DT.milestone('booking_open', { form_id: FORM_ID, placement: placement });
+    } catch (e) { /* analytics must never block the panel */ }
     // Mobile booking closes its navigation drawer. Returning focus to that
     // now-hidden trigger strands keyboard users, so restore the visible menu.
     if (lastFocus && lastFocus.closest && lastFocus.closest('.nav-mobile-menu')) lastFocus = document.querySelector('.nav-hamburger') || lastFocus;

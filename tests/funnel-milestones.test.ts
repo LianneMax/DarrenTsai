@@ -73,3 +73,25 @@ describe('consent-aware form observations', () => {
     expect(document.querySelector('input')!.value).toBe('private@example.com');
   });
 });
+
+// 28 Nov 2026 (Max: "we can do this"): the two gaps in the tracking table.
+describe('Book a Call panel opens and payoff option picks', () => {
+  it('records where the booking panel was opened from, once per place, and nothing else', () => {
+    const { browser, emit } = runtime(true);
+    emit('booking_open', { form_id: 'booking-prequal', placement: 'hero' });
+    emit('booking_open', { form_id: 'booking-prequal', placement: 'hero' });
+    emit('booking_open', { form_id: 'booking-prequal', placement: 'nav' });
+    emit('booking_open', { form_id: 'booking-prequal', placement: 'private@example.com' });
+    emit('booking_open', { form_id: 'booking-prequal' });
+    expect(browser.dataLayer).toEqual([
+      { event: 'booking_open', form_id: 'booking-prequal', page_path: '/fha/', placement: 'hero' },
+      { event: 'booking_open', form_id: 'booking-prequal', page_path: '/fha/', placement: 'nav' },
+    ]);
+  });
+  it('records which payoff option was picked, from the known four only', () => {
+    const { browser, emit } = runtime(true);
+    for (const option of ['heloc', 'heloan', 'refi', 'refiSame', 'heloc', 'castle']) emit('option_selected', { form_id: 'debt-savings-calculator', option });
+    expect(browser.dataLayer.map((e: any) => e.option)).toEqual(['heloc', 'heloan', 'refi', 'refiSame']);
+    expect(JSON.stringify(browser.dataLayer)).not.toMatch(/castle|@/);
+  });
+});
